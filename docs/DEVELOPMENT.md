@@ -71,6 +71,8 @@ content/
     lessons/   # empty (.gitkeep only) -- scaffolded, not built out
 docs/          # this file + ARCHITECTURE.md
 tests/         # pytest suite, one file per module roughly mirroring app/
+data/          # gitignored -- settings.json + progress.sqlite3, created
+               # on first run (see "Data storage" below)
 graphify-out/  # knowledge-graph snapshot of the codebase (see repo root
                # CLAUDE.md's graphify section) -- regenerate with the
                # graphify skill, not meant to be hand-edited
@@ -249,6 +251,13 @@ targets desktop only.
 ## Data storage
 
 Everything lives locally and offline — no cloud, no accounts, no network
-access at all. `settings.json` and `progress.sqlite3` live in
-`%APPDATA%\CodingAdventure\` on Windows, resolved by
-`resolve_platform_data_dir()` (`app/config/platform_paths.py`).
+access at all. `settings.json` and `progress.sqlite3` live in a
+project-local `data/` folder (gitignored), resolved by
+`resolve_platform_data_dir()` (`app/config/platform_paths.py`) — this
+app runs from a git checkout rather than being installed as a packaged
+product, so progress lives next to the code instead of in an
+OS-appropriate per-user directory. `app/config/settings.py`'s
+`get_data_dir()` migrates forward, once, from the old
+`%APPDATA%\CodingAdventure\` location if anything's still there from
+before this change, never overwriting a file that already exists at the
+new location.

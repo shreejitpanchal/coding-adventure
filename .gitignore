@@ -2,6 +2,6 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-app-data/
+data/
 build/
 *.egg-info/

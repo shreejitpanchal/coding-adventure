@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -10,9 +13,38 @@ from app.config.platform_paths import resolve_platform_data_dir
 SETTINGS_FILENAME = "settings.json"
 DB_FILENAME = "progress.sqlite3"
 
+# Storage lived in an OS-appropriate per-user directory (%APPDATA%\CodingAdventure
+# on Windows) before moving to a project-local data/ folder. _migrate_from_legacy_dir()
+# copies anything found there forward, once, so switching storage location never
+# resets a user's progress -- see resolve_platform_data_dir()'s docstring for why
+# project-local is now preferred.
+_LEGACY_APP_FOLDER_NAME = "CodingAdventure"
+
+
+def _legacy_platform_data_dir() -> Path:
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        return (Path(appdata) if appdata else Path.home()) / _LEGACY_APP_FOLDER_NAME
+    return Path.home() / f".{_LEGACY_APP_FOLDER_NAME.lower()}"
+
+
+def _migrate_from_legacy_dir(data_dir: Path) -> None:
+    """One-time copy from the old per-user platform directory. Never
+    overwrites a file that already exists at the destination."""
+    old_dir = _legacy_platform_data_dir()
+    if old_dir == data_dir or not old_dir.is_dir():
+        return
+    for filename in (SETTINGS_FILENAME, DB_FILENAME):
+        old_file = old_dir / filename
+        new_file = data_dir / filename
+        if old_file.is_file() and not new_file.exists():
+            shutil.copy2(old_file, new_file)
+
 
 def get_data_dir() -> Path:
-    return resolve_platform_data_dir()
+    data_dir = resolve_platform_data_dir()
+    _migrate_from_legacy_dir(data_dir)
+    return data_dir
 
 
 def get_db_path() -> Path:

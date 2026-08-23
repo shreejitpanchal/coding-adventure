@@ -425,10 +425,14 @@ sequenceDiagram
 
 ## 6. Persistence model
 
-One file per install, resolved by `app/config/platform_paths.py`'s
-`resolve_platform_data_dir()` (`%APPDATA%\CodingAdventure\` on Windows).
-Every progress table carries a `language` column — there is exactly one
-`progress.sqlite3`, shared by every track, not one database per language.
+One file per checkout, resolved by `app/config/platform_paths.py`'s
+`resolve_platform_data_dir()` — a project-local `data/` folder next to
+the code, not an OS per-user directory (`get_data_dir()` migrates
+forward, once, from the old `%APPDATA%\CodingAdventure\` location if
+anything's there from before this app switched to project-local
+storage). Every progress table carries a `language` column — there is
+exactly one `progress.sqlite3`, shared by every track, not one database
+per language.
 
 ```mermaid
 erDiagram
