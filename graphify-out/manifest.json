@@ -42,10 +42,10 @@
     "semantic_hash": "4723ee752034ec0bad9268de26528ecd"
   },
   "app/engine/languages.py": {
-    "mtime": 1787451337.867028,
-    "seen": 1787453473.5757837,
-    "ast_hash": "cdba206625064bc040861d9bbfc4563a",
-    "semantic_hash": "cdba206625064bc040861d9bbfc4563a"
+    "mtime": 1787455711.76063,
+    "seen": 1787456701.301561,
+    "ast_hash": "4c7984e2dd8caa1fc4c4b4f5971b38de",
+    "semantic_hash": "4c7984e2dd8caa1fc4c4b4f5971b38de"
   },
   "app/engine/lesson_engine.py": {
     "mtime": 1787451304.2753518,
@@ -90,16 +90,16 @@
     "semantic_hash": "4a7a460c84e7c92bf623fd0736487ec2"
   },
   "app/execution/errors.py": {
-    "mtime": 1787451377.9995081,
-    "seen": 1787453473.57579,
-    "ast_hash": "ce3a57e2fc733c86abcd9fd116116927",
-    "semantic_hash": "ce3a57e2fc733c86abcd9fd116116927"
+    "mtime": 1787455675.5243702,
+    "seen": 1787456701.30157,
+    "ast_hash": "3c348500de0ea59c97ec18f8d690b7a9",
+    "semantic_hash": "3c348500de0ea59c97ec18f8d690b7a9"
   },
   "app/execution/java_engine.py": {
-    "mtime": 1787451382.364813,
-    "seen": 1787453473.5757904,
-    "ast_hash": "48b6fe87aa14d029780876b84cbfbca1",
-    "semantic_hash": "48b6fe87aa14d029780876b84cbfbca1"
+    "mtime": 1787455649.550705,
+    "seen": 1787456701.301571,
+    "ast_hash": "7556fb153bd3ee8a17b8c3509fec88be",
+    "semantic_hash": "7556fb153bd3ee8a17b8c3509fec88be"
   },
   "app/execution/python_engine.py": {
     "mtime": 1787451362.678159,
@@ -180,16 +180,16 @@
     "semantic_hash": "41916d98366242c03a016ac38ebc93f6"
   },
   "app/ui/language_select.py": {
-    "mtime": 1787452245.7892792,
-    "seen": 1787453473.5758007,
-    "ast_hash": "1ddf6a158f186c099b8018f4af835417",
-    "semantic_hash": "1ddf6a158f186c099b8018f4af835417"
+    "mtime": 1787455734.1944883,
+    "seen": 1787456701.3015852,
+    "ast_hash": "397b90b8ade59edbe016b681ac73b04f",
+    "semantic_hash": "397b90b8ade59edbe016b681ac73b04f"
   },
   "app/ui/lesson_screen.py": {
-    "mtime": 1787451572.6804144,
-    "seen": 1787453473.5758014,
-    "ast_hash": "1934d61dfe541a15c2f1535cc9f74cf0",
-    "semantic_hash": "1934d61dfe541a15c2f1535cc9f74cf0"
+    "mtime": 1787455682.7891774,
+    "seen": 1787456701.3015862,
+    "ast_hash": "f2322398c29b8834e60c1aca63605857",
+    "semantic_hash": "f2322398c29b8834e60c1aca63605857"
   },
   "app/ui/progress_screen.py": {
     "mtime": 1787451609.393365,
@@ -252,10 +252,10 @@
     "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
   },
   "tests/test_lesson_engine.py": {
-    "mtime": 1787454342.4465325,
-    "seen": 1787454807.4681642,
-    "ast_hash": "76b38402a267fedc88d6dc14e2106452",
-    "semantic_hash": "76b38402a267fedc88d6dc14e2106452"
+    "mtime": 1787456128.5417984,
+    "seen": 1787456701.3015997,
+    "ast_hash": "7d3b00db05d142fc202ec892a54db9a0",
+    "semantic_hash": "7d3b00db05d142fc202ec892a54db9a0"
   },
   "tests/test_progress_store.py": {
     "mtime": 1787452099.293837,
@@ -270,16 +270,16 @@
     "semantic_hash": "e502b2df2b01a3429cf626483231bc4f"
   },
   "CLAUDE.md": {
-    "mtime": 1787452813.216465,
-    "seen": 1787453473.5758114,
-    "ast_hash": "67e32c94418ed17dc54e04839f011850",
-    "semantic_hash": "67e32c94418ed17dc54e04839f011850"
+    "mtime": 1787456195.8369374,
+    "seen": 1787456701.3016026,
+    "ast_hash": "1b47f1459d60e5739e5a6195c97ff4f3",
+    "semantic_hash": "1b47f1459d60e5739e5a6195c97ff4f3"
   },
   "README.md": {
-    "mtime": 1787454371.4307723,
-    "seen": 1787454807.4681666,
-    "ast_hash": "9b261202577f19732aec6e45240759a4",
-    "semantic_hash": "9b261202577f19732aec6e45240759a4"
+    "mtime": 1787456162.486953,
+    "seen": 1787456701.3016033,
+    "ast_hash": "31c8b5df4f1abf7fa1a277cc45a891e3",
+    "semantic_hash": "31c8b5df4f1abf7fa1a277cc45a891e3"
   },
   "content/python/lessons/concurrency_async_01_gather_order.yaml": {
     "mtime": 1787451909.8837602,
@@ -742,5 +742,203 @@
     "seen": 1787454807.4681995,
     "ast_hash": "9317c664bb67eedfcffe26132d78fe8a",
     "semantic_hash": "9317c664bb67eedfcffe26132d78fe8a"
+  },
+  "build_apk.sh": {
+    "mtime": 1787454900.149304,
+    "seen": 1787456701.3015935,
+    "ast_hash": "6d3c90f5a9fcbf1d2c3a20011313685a",
+    "semantic_hash": "6d3c90f5a9fcbf1d2c3a20011313685a"
+  },
+  "tests/test_execution_java.py": {
+    "mtime": 1787456120.5736454,
+    "seen": 1787456701.3015976,
+    "ast_hash": "2972629765a520413797afabc105c4d3",
+    "semantic_hash": "2972629765a520413797afabc105c4d3"
+  },
+  "content/java/lessons/concurrency_async_01_race_condition_synchronized.yaml": {
+    "mtime": 1787455862.0060625,
+    "seen": 1787456701.3016043,
+    "ast_hash": "1cabdcee60662e423f2f8a218d2eeac4",
+    "semantic_hash": "1cabdcee60662e423f2f8a218d2eeac4"
+  },
+  "content/java/lessons/concurrency_async_02_atomic_integer.yaml": {
+    "mtime": 1787455867.4561956,
+    "seen": 1787456701.3016057,
+    "ast_hash": "4a9eade2d02fd62584bb2bbf9306e9ed",
+    "semantic_hash": "4a9eade2d02fd62584bb2bbf9306e9ed"
+  },
+  "content/java/lessons/concurrency_async_03_executor_service.yaml": {
+    "mtime": 1787455874.0494528,
+    "seen": 1787456701.3016064,
+    "ast_hash": "84fc83ae9e907195389c3eb3174d027c",
+    "semantic_hash": "84fc83ae9e907195389c3eb3174d027c"
+  },
+  "content/java/lessons/concurrency_async_04_completable_future.yaml": {
+    "mtime": 1787455879.0121453,
+    "seen": 1787456701.3016071,
+    "ast_hash": "452c99818c5daf9cd6e80cf631e676ad",
+    "semantic_hash": "452c99818c5daf9cd6e80cf631e676ad"
+  },
+  "content/java/lessons/concurrency_async_05_executor_await_termination.yaml": {
+    "mtime": 1787455884.8210201,
+    "seen": 1787456701.3016078,
+    "ast_hash": "2925ce06165c888e9d5b1c10ffb17778",
+    "semantic_hash": "2925ce06165c888e9d5b1c10ffb17778"
+  },
+  "content/java/lessons/core_refresher_01_lambda_expression.yaml": {
+    "mtime": 1787455776.6168478,
+    "seen": 1787456701.3016088,
+    "ast_hash": "852cedb9b4ce67e11c1e8ad92702baa2",
+    "semantic_hash": "852cedb9b4ce67e11c1e8ad92702baa2"
+  },
+  "content/java/lessons/core_refresher_02_streams_filter_map.yaml": {
+    "mtime": 1787455781.5839193,
+    "seen": 1787456701.3016095,
+    "ast_hash": "c3bb7ae481a1e2fe725eb5723bab43be",
+    "semantic_hash": "c3bb7ae481a1e2fe725eb5723bab43be"
+  },
+  "content/java/lessons/core_refresher_03_optional.yaml": {
+    "mtime": 1787455785.9849665,
+    "seen": 1787456701.3016105,
+    "ast_hash": "e17474e56a7507ef12aba311cf1a34c4",
+    "semantic_hash": "e17474e56a7507ef12aba311cf1a34c4"
+  },
+  "content/java/lessons/core_refresher_04_record_class.yaml": {
+    "mtime": 1787455790.9021173,
+    "seen": 1787456701.3016114,
+    "ast_hash": "572ee0b14c234552c0e4fa0b6a8e3487",
+    "semantic_hash": "572ee0b14c234552c0e4fa0b6a8e3487"
+  },
+  "content/java/lessons/core_refresher_05_try_with_resources.yaml": {
+    "mtime": 1787455795.5244381,
+    "seen": 1787456701.3016124,
+    "ast_hash": "0d457c7e22af3808121c6a6844b2f97b",
+    "semantic_hash": "0d457c7e22af3808121c6a6844b2f97b"
+  },
+  "content/java/lessons/data_structures_01_hashmap_iteration_order.yaml": {
+    "mtime": 1787455804.4645011,
+    "seen": 1787456701.301613,
+    "ast_hash": "b00c36686b0eab4c03f07afc49c64924",
+    "semantic_hash": "b00c36686b0eab4c03f07afc49c64924"
+  },
+  "content/java/lessons/data_structures_02_arraydeque_queue.yaml": {
+    "mtime": 1787455809.377703,
+    "seen": 1787456701.301631,
+    "ast_hash": "820d4838167aa8ae10609b5fe3c7612c",
+    "semantic_hash": "820d4838167aa8ae10609b5fe3c7612c"
+  },
+  "content/java/lessons/data_structures_03_comparator_custom_sort.yaml": {
+    "mtime": 1787455815.4014785,
+    "seen": 1787456701.3016322,
+    "ast_hash": "c06a8397536779c115056fa657f55dea",
+    "semantic_hash": "c06a8397536779c115056fa657f55dea"
+  },
+  "content/java/lessons/data_structures_04_treemap_sorted_keys.yaml": {
+    "mtime": 1787455820.851074,
+    "seen": 1787456701.3016334,
+    "ast_hash": "5a3c5f1fbbba3ecbc68f50e52a3936d2",
+    "semantic_hash": "5a3c5f1fbbba3ecbc68f50e52a3936d2"
+  },
+  "content/java/lessons/data_structures_05_priority_queue.yaml": {
+    "mtime": 1787455825.485792,
+    "seen": 1787456701.3016343,
+    "ast_hash": "2ec5955b730d10133fa086be7c787903",
+    "semantic_hash": "2ec5955b730d10133fa086be7c787903"
+  },
+  "content/java/lessons/gotcha_gauntlet_01_off_by_one_loop.yaml": {
+    "mtime": 1787455893.3598635,
+    "seen": 1787456701.301635,
+    "ast_hash": "329d70ccd35f0e0abe7ac243a66cb952",
+    "semantic_hash": "329d70ccd35f0e0abe7ac243a66cb952"
+  },
+  "content/java/lessons/gotcha_gauntlet_02_switch_fallthrough.yaml": {
+    "mtime": 1787455898.809019,
+    "seen": 1787456701.3016357,
+    "ast_hash": "4f0159229067ef84e16b45aaf97b5cf9",
+    "semantic_hash": "4f0159229067ef84e16b45aaf97b5cf9"
+  },
+  "content/java/lessons/gotcha_gauntlet_03_concurrent_modification.yaml": {
+    "mtime": 1787455904.8281472,
+    "seen": 1787456701.3016367,
+    "ast_hash": "b8444e1f582052684d595ba3c84eef75",
+    "semantic_hash": "b8444e1f582052684d595ba3c84eef75"
+  },
+  "content/java/lessons/gotcha_gauntlet_04_integer_overflow.yaml": {
+    "mtime": 1787455909.770437,
+    "seen": 1787456701.3016374,
+    "ast_hash": "36295c0e81d0b9d97e8cb9ef0d35098f",
+    "semantic_hash": "36295c0e81d0b9d97e8cb9ef0d35098f"
+  },
+  "content/java/lessons/gotcha_gauntlet_05_equals_hashcode_contract.yaml": {
+    "mtime": 1787455915.651664,
+    "seen": 1787456701.3016381,
+    "ast_hash": "f2f4da4d48664c90cc0565f1ea429e24",
+    "semantic_hash": "f2f4da4d48664c90cc0565f1ea429e24"
+  },
+  "content/java/lessons/idioms_gotchas_01_string_equality.yaml": {
+    "mtime": 1787455747.166236,
+    "seen": 1787456701.3016388,
+    "ast_hash": "8068459a8b60ed61b6c13e4fbae5030b",
+    "semantic_hash": "8068459a8b60ed61b6c13e4fbae5030b"
+  },
+  "content/java/lessons/idioms_gotchas_02_integer_caching.yaml": {
+    "mtime": 1787455752.0875564,
+    "seen": 1787456701.3016398,
+    "ast_hash": "84026e914b2673ac3d21c658bd3248dc",
+    "semantic_hash": "84026e914b2673ac3d21c658bd3248dc"
+  },
+  "content/java/lessons/idioms_gotchas_03_finally_overrides_return.yaml": {
+    "mtime": 1787455756.9907298,
+    "seen": 1787456701.3016405,
+    "ast_hash": "8318d9dd928522fd4a2dab143404c627",
+    "semantic_hash": "8318d9dd928522fd4a2dab143404c627"
+  },
+  "content/java/lessons/idioms_gotchas_04_array_default_null.yaml": {
+    "mtime": 1787455762.440411,
+    "seen": 1787456701.3016412,
+    "ast_hash": "a23f59558577b00b4ed454d4697d178b",
+    "semantic_hash": "a23f59558577b00b4ed454d4697d178b"
+  },
+  "content/java/lessons/idioms_gotchas_05_static_field_shared.yaml": {
+    "mtime": 1787455767.2958002,
+    "seen": 1787456701.301642,
+    "ast_hash": "c72580570ae65128f0ac1d9964db192b",
+    "semantic_hash": "c72580570ae65128f0ac1d9964db192b"
+  },
+  "content/java/lessons/stdlib_deep_dive_01_stringbuilder.yaml": {
+    "mtime": 1787455833.493218,
+    "seen": 1787456701.3016427,
+    "ast_hash": "b941e987ab67d6d7c4dd2039a6738a0c",
+    "semantic_hash": "b941e987ab67d6d7c4dd2039a6738a0c"
+  },
+  "content/java/lessons/stdlib_deep_dive_02_string_format.yaml": {
+    "mtime": 1787455837.852888,
+    "seen": 1787456701.3016436,
+    "ast_hash": "0a686d0a2759bc38d02ae0cc3302c40f",
+    "semantic_hash": "0a686d0a2759bc38d02ae0cc3302c40f"
+  },
+  "content/java/lessons/stdlib_deep_dive_03_objects_equals_null_safe.yaml": {
+    "mtime": 1787455842.230738,
+    "seen": 1787456701.3016443,
+    "ast_hash": "2defca11e0d52c8b49149a4a9f6c4de6",
+    "semantic_hash": "2defca11e0d52c8b49149a4a9f6c4de6"
+  },
+  "content/java/lessons/stdlib_deep_dive_04_java_time_duration.yaml": {
+    "mtime": 1787455847.679219,
+    "seen": 1787456701.301645,
+    "ast_hash": "f156fb86a37a8b0b6a3a960a058e9bfe",
+    "semantic_hash": "f156fb86a37a8b0b6a3a960a058e9bfe"
+  },
+  "content/java/lessons/stdlib_deep_dive_05_regex_matches.yaml": {
+    "mtime": 1787455852.9407651,
+    "seen": 1787456701.3016458,
+    "ast_hash": "38046008d7f7446656808282da18bf40",
+    "semantic_hash": "38046008d7f7446656808282da18bf40"
+  },
+  "content/java/quiz/quiz_questions.yaml": {
+    "mtime": 1787456070.000339,
+    "seen": 1787456701.301647,
+    "ast_hash": "38c8d86f6c1a652b86b0571a386e76e1",
+    "semantic_hash": "38c8d86f6c1a652b86b0571a386e76e1"
   }
 }
