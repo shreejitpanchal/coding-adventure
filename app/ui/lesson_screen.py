@@ -126,10 +126,6 @@ class _ExerciseController:
             "▶ Run", on_click=self._on_run, height=48,
             style=ft.ButtonStyle(bgcolor=theme.success, color="#FFFFFF"),
         )
-        self.stop_button = ft.Button(
-            "⏹ Stop", on_click=self._on_stop, disabled=True, height=48,
-            style=ft.ButtonStyle(bgcolor=theme.danger, color="#FFFFFF"),
-        )
         reset_button = ft.Button(
             "↺ Reset", on_click=self._on_reset, height=44,
             style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
@@ -138,7 +134,7 @@ class _ExerciseController:
             "💡 Hint", on_click=self._on_hint, disabled=not exercise.hints, height=44,
             style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
         )
-        children.append(ft.Row([self.run_button, self.stop_button, reset_button, self.hint_button], spacing=10, wrap=True))
+        children.append(ft.Row([self.run_button, reset_button, self.hint_button], spacing=10, wrap=True))
 
         self.hint_text = ft.Text("", size=self._fs(13), color=theme.warning)
         children.append(self.hint_text)
@@ -200,7 +196,6 @@ class _ExerciseController:
             return
         self._running = True
         self.run_button.disabled = True
-        self.stop_button.disabled = False
         self._hide_details()
         self.output_text.value = "Running..."
         self.output_text.color = self.theme.text_muted
@@ -215,12 +210,11 @@ class _ExerciseController:
         stdin_text = f"{input_value}\n" if input_value is not None else None
 
         result = await asyncio.to_thread(self.engine.run, code, 8.0, handle, stdin_text)
-        self._on_run_complete(result, handle)
+        self._on_run_complete(result)
 
-    def _on_run_complete(self, result: ExecutionResult, handle: RunHandle) -> None:
+    def _on_run_complete(self, result: ExecutionResult) -> None:
         self._running = False
         self.run_button.disabled = False
-        self.stop_button.disabled = True
 
         if result.blocked:
             self._show_output(result.blocked_message or "This toolchain isn't available.", self.theme.danger)
@@ -228,12 +222,9 @@ class _ExerciseController:
             return
 
         if result.timed_out:
-            if handle.cancelled:
-                self._show_output("Stopped.", self.theme.text_muted)
-            else:
-                self._show_output("Timed out -- check for a loop that never terminates.", self.theme.danger)
-                self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_timeout")
-                self._maybe_show_practice()
+            self._show_output("Timed out -- check for a loop that never terminates.", self.theme.danger)
+            self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_timeout")
+            self._maybe_show_practice()
             self.page.update()
             return
 
@@ -275,10 +266,6 @@ class _ExerciseController:
             self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_wrong_output", result.stdout[-200:])
             self._maybe_show_practice()
         self.page.update()
-
-    def _on_stop(self, e) -> None:
-        if self._run_handle is not None:
-            self._run_handle.cancel()
 
     def _on_reset(self, e) -> None:
         self.editor.value = self.exercise.starter_code.strip()
