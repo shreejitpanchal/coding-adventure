@@ -252,10 +252,10 @@
     "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
   },
   "tests/test_lesson_engine.py": {
-    "mtime": 1787456128.5417984,
-    "seen": 1787456701.3015997,
-    "ast_hash": "7d3b00db05d142fc202ec892a54db9a0",
-    "semantic_hash": "7d3b00db05d142fc202ec892a54db9a0"
+    "mtime": 1787459204.865561,
+    "seen": 1787459568.8465164,
+    "ast_hash": "2f605da617f6267feaaaf85857e173f1",
+    "semantic_hash": "2f605da617f6267feaaaf85857e173f1"
   },
   "tests/test_progress_store.py": {
     "mtime": 1787452099.293837,
@@ -276,10 +276,10 @@
     "semantic_hash": "1b47f1459d60e5739e5a6195c97ff4f3"
   },
   "README.md": {
-    "mtime": 1787456162.486953,
-    "seen": 1787456701.3016033,
-    "ast_hash": "31c8b5df4f1abf7fa1a277cc45a891e3",
-    "semantic_hash": "31c8b5df4f1abf7fa1a277cc45a891e3"
+    "mtime": 1787459242.7773905,
+    "seen": 1787459568.8465197,
+    "ast_hash": "e040a756d147dc0a7f9f975e50c51a94",
+    "semantic_hash": "e040a756d147dc0a7f9f975e50c51a94"
   },
   "content/python/lessons/concurrency_async_01_gather_order.yaml": {
     "mtime": 1787451909.8837602,
@@ -743,12 +743,6 @@
     "ast_hash": "9317c664bb67eedfcffe26132d78fe8a",
     "semantic_hash": "9317c664bb67eedfcffe26132d78fe8a"
   },
-  "build_apk.sh": {
-    "mtime": 1787454900.149304,
-    "seen": 1787456701.3015935,
-    "ast_hash": "6d3c90f5a9fcbf1d2c3a20011313685a",
-    "semantic_hash": "6d3c90f5a9fcbf1d2c3a20011313685a"
-  },
   "tests/test_execution_java.py": {
     "mtime": 1787456120.5736454,
     "seen": 1787456701.3015976,
@@ -936,9 +930,249 @@
     "semantic_hash": "38046008d7f7446656808282da18bf40"
   },
   "content/java/quiz/quiz_questions.yaml": {
-    "mtime": 1787456070.000339,
-    "seen": 1787456701.301647,
-    "ast_hash": "38c8d86f6c1a652b86b0571a386e76e1",
-    "semantic_hash": "38c8d86f6c1a652b86b0571a386e76e1"
+    "mtime": 1787459192.633394,
+    "seen": 1787459568.8465555,
+    "ast_hash": "82134f374b06bbd680514b62695bdc2d",
+    "semantic_hash": "82134f374b06bbd680514b62695bdc2d"
+  },
+  "content/java/lessons/dependency_management_01_version_string_comparison.yaml": {
+    "mtime": 1787458653.2332516,
+    "seen": 1787459568.8465211,
+    "ast_hash": "f266efeadd9ea3ceebf9498f84d1a0fd",
+    "semantic_hash": "f266efeadd9ea3ceebf9498f84d1a0fd"
+  },
+  "content/java/lessons/dependency_management_02_classpath_last_write_wins.yaml": {
+    "mtime": 1787458659.2297845,
+    "seen": 1787459568.846522,
+    "ast_hash": "575a04bcd2d7be0e945c97cd9ee594dc",
+    "semantic_hash": "575a04bcd2d7be0e945c97cd9ee594dc"
+  },
+  "content/java/lessons/dependency_management_03_optional_dependency_check.yaml": {
+    "mtime": 1787458664.7110422,
+    "seen": 1787459568.846523,
+    "ast_hash": "172ff41e460a763b67e9d8511a2d5e3a",
+    "semantic_hash": "172ff41e460a763b67e9d8511a2d5e3a"
+  },
+  "content/java/lessons/dependency_management_04_minimum_version_check.yaml": {
+    "mtime": 1787458670.6891725,
+    "seen": 1787459568.8465242,
+    "ast_hash": "8c388b895684451397b9805578c7597d",
+    "semantic_hash": "8c388b895684451397b9805578c7597d"
+  },
+  "content/java/lessons/dependency_management_05_maven_coordinate_parsing.yaml": {
+    "mtime": 1787458674.7313864,
+    "seen": 1787459568.8465252,
+    "ast_hash": "b41b76d9167c0300971a80d2d71d83f4",
+    "semantic_hash": "b41b76d9167c0300971a80d2d71d83f4"
+  },
+  "content/java/lessons/deployment_01_env_var_defaults.yaml": {
+    "mtime": 1787458710.2952032,
+    "seen": 1787459568.8465257,
+    "ast_hash": "da3cce0027d89d549da277513247f24b",
+    "semantic_hash": "da3cce0027d89d549da277513247f24b"
+  },
+  "content/java/lessons/deployment_02_case_insensitive_boolean_parsing.yaml": {
+    "mtime": 1787458714.6553266,
+    "seen": 1787459568.8465266,
+    "ast_hash": "f3f5b43c0a2129c181db59979aeb5a6a",
+    "semantic_hash": "f3f5b43c0a2129c181db59979aeb5a6a"
+  },
+  "content/java/lessons/deployment_03_shutdown_hook.yaml": {
+    "mtime": 1787458720.6917,
+    "seen": 1787459568.8465276,
+    "ast_hash": "8f01e9c2c4aa6194e2e01f2364ba6351",
+    "semantic_hash": "8f01e9c2c4aa6194e2e01f2364ba6351"
+  },
+  "content/java/lessons/deployment_04_health_check.yaml": {
+    "mtime": 1787458725.0647302,
+    "seen": 1787459568.8465283,
+    "ast_hash": "355f066b6938e5348986f3e5ff653784",
+    "semantic_hash": "355f066b6938e5348986f3e5ff653784"
+  },
+  "content/java/lessons/deployment_05_idempotent_deploy_step.yaml": {
+    "mtime": 1787458729.739137,
+    "seen": 1787459568.846529,
+    "ast_hash": "2338be2f37e55033c9c950bf47b1a0e9",
+    "semantic_hash": "2338be2f37e55033c9c950bf47b1a0e9"
+  },
+  "content/java/lessons/functional_programming_01_method_reference.yaml": {
+    "mtime": 1787458595.884332,
+    "seen": 1787459568.8465297,
+    "ast_hash": "5193a3cd97ce1b59fd17d52743d798da",
+    "semantic_hash": "5193a3cd97ce1b59fd17d52743d798da"
+  },
+  "content/java/lessons/functional_programming_02_stream_reduce.yaml": {
+    "mtime": 1787458600.2481515,
+    "seen": 1787459568.846531,
+    "ast_hash": "87102980a34855eebaeb911d64c620b5",
+    "semantic_hash": "87102980a34855eebaeb911d64c620b5"
+  },
+  "content/java/lessons/functional_programming_03_immutable_list.yaml": {
+    "mtime": 1787458605.1657076,
+    "seen": 1787459568.8465314,
+    "ast_hash": "77c60dc5907b3ac55bf0d160ffda7b62",
+    "semantic_hash": "77c60dc5907b3ac55bf0d160ffda7b62"
+  },
+  "content/java/lessons/functional_programming_04_function_andthen.yaml": {
+    "mtime": 1787458610.063827,
+    "seen": 1787459568.846532,
+    "ast_hash": "a01f4eac747f8a8df3142a41ce8e5a27",
+    "semantic_hash": "a01f4eac747f8a8df3142a41ce8e5a27"
+  },
+  "content/java/lessons/functional_programming_05_supplier_lazy.yaml": {
+    "mtime": 1787458615.4651625,
+    "seen": 1787459568.846533,
+    "ast_hash": "2529229ee0efcd566e056b8e6bc4c0b9",
+    "semantic_hash": "2529229ee0efcd566e056b8e6bc4c0b9"
+  },
+  "content/java/lessons/observability_01_structured_logging.yaml": {
+    "mtime": 1787458740.734536,
+    "seen": 1787459568.8465364,
+    "ast_hash": "5defcad0d591e40149065f6d346242a7",
+    "semantic_hash": "5defcad0d591e40149065f6d346242a7"
+  },
+  "content/java/lessons/observability_02_log_level_filtering.yaml": {
+    "mtime": 1787458747.3653789,
+    "seen": 1787459568.846537,
+    "ast_hash": "fc624b8ffb769d700a5c8656779c67b5",
+    "semantic_hash": "fc624b8ffb769d700a5c8656779c67b5"
+  },
+  "content/java/lessons/observability_03_correlation_id_threadlocal.yaml": {
+    "mtime": 1787458752.8334825,
+    "seen": 1787459568.846538,
+    "ast_hash": "1adc30a32a23e94d781ff4f47756bc96",
+    "semantic_hash": "1adc30a32a23e94d781ff4f47756bc96"
+  },
+  "content/java/lessons/observability_04_metrics_counter.yaml": {
+    "mtime": 1787458757.7476678,
+    "seen": 1787459568.8465388,
+    "ast_hash": "b06b965f3c199264a257c0a518c92b85",
+    "semantic_hash": "b06b965f3c199264a257c0a518c92b85"
+  },
+  "content/java/lessons/observability_05_timing_instrumentation.yaml": {
+    "mtime": 1787458762.5776079,
+    "seen": 1787459568.8465395,
+    "ast_hash": "2892483d55840edba2a5fdcc345026be",
+    "semantic_hash": "2892483d55840edba2a5fdcc345026be"
+  },
+  "content/java/lessons/packaging_01_manifest_main_class.yaml": {
+    "mtime": 1787458682.9267907,
+    "seen": 1787459568.8465402,
+    "ast_hash": "f3b4d3efc45d729d5e13b309a22bede7",
+    "semantic_hash": "f3b4d3efc45d729d5e13b309a22bede7"
+  },
+  "content/java/lessons/packaging_02_package_naming_convention.yaml": {
+    "mtime": 1787458687.8675501,
+    "seen": 1787459568.8465412,
+    "ast_hash": "d018361f31f7dcb6221cd44c6b90f3e9",
+    "semantic_hash": "d018361f31f7dcb6221cd44c6b90f3e9"
+  },
+  "content/java/lessons/packaging_03_semver_bump.yaml": {
+    "mtime": 1787458692.2935264,
+    "seen": 1787459568.846542,
+    "ast_hash": "478ab250b37d097099afdd816669b521",
+    "semantic_hash": "478ab250b37d097099afdd816669b521"
+  },
+  "content/java/lessons/packaging_04_service_registry.yaml": {
+    "mtime": 1787458697.180012,
+    "seen": 1787459568.8465426,
+    "ast_hash": "266d59a976fb155bea2128648affdee0",
+    "semantic_hash": "266d59a976fb155bea2128648affdee0"
+  },
+  "content/java/lessons/packaging_05_jar_filename_parsing.yaml": {
+    "mtime": 1787458702.4071481,
+    "seen": 1787459568.8465433,
+    "ast_hash": "77df5995e33e07b24d8f2e832a2e14b5",
+    "semantic_hash": "77df5995e33e07b24d8f2e832a2e14b5"
+  },
+  "content/java/lessons/recursion_01_missing_base_case.yaml": {
+    "mtime": 1787458623.0969527,
+    "seen": 1787459568.846544,
+    "ast_hash": "c2ceea60605f89ec821805f8f76d6e60",
+    "semantic_hash": "c2ceea60605f89ec821805f8f76d6e60"
+  },
+  "content/java/lessons/recursion_02_stack_overflow_to_iterative.yaml": {
+    "mtime": 1787458628.026912,
+    "seen": 1787459568.846545,
+    "ast_hash": "0c0cf7b02dff549be39396b979f03b75",
+    "semantic_hash": "0c0cf7b02dff549be39396b979f03b75"
+  },
+  "content/java/lessons/recursion_03_mutual_recursion.yaml": {
+    "mtime": 1787458632.9338994,
+    "seen": 1787459568.8465455,
+    "ast_hash": "7496cde6d160cc038940973d94d1c3c9",
+    "semantic_hash": "7496cde6d160cc038940973d94d1c3c9"
+  },
+  "content/java/lessons/recursion_04_recursive_tree_sum.yaml": {
+    "mtime": 1787458638.3721116,
+    "seen": 1787459568.8465462,
+    "ast_hash": "a1e3c3608c77f9c75c4624fa591dcab6",
+    "semantic_hash": "a1e3c3608c77f9c75c4624fa591dcab6"
+  },
+  "content/java/lessons/recursion_05_memoized_recursion.yaml": {
+    "mtime": 1787459046.330302,
+    "seen": 1787459568.846547,
+    "ast_hash": "dc512eaf7b11f66891974b7966a0fa7c",
+    "semantic_hash": "dc512eaf7b11f66891974b7966a0fa7c"
+  },
+  "content/java/lessons/sync_vs_async_01_completablefuture_chaining.yaml": {
+    "mtime": 1787458564.8946674,
+    "seen": 1787459568.8465476,
+    "ast_hash": "d00b963df7098ed4c48144d253e9d238",
+    "semantic_hash": "d00b963df7098ed4c48144d253e9d238"
+  },
+  "content/java/lessons/sync_vs_async_02_completablefuture_combine.yaml": {
+    "mtime": 1787458569.793658,
+    "seen": 1787459568.8465486,
+    "ast_hash": "64f8dbdd36692cb3a9e41ed0352c705f",
+    "semantic_hash": "64f8dbdd36692cb3a9e41ed0352c705f"
+  },
+  "content/java/lessons/sync_vs_async_03_completablefuture_exceptionally.yaml": {
+    "mtime": 1787458890.1517315,
+    "seen": 1787459568.8465493,
+    "ast_hash": "96f452ee0e3d2aadc7df113a2bde290d",
+    "semantic_hash": "96f452ee0e3d2aadc7df113a2bde290d"
+  },
+  "content/java/lessons/sync_vs_async_04_supplyasync_custom_executor.yaml": {
+    "mtime": 1787458580.7570274,
+    "seen": 1787459568.84655,
+    "ast_hash": "95dd06e22df06034ad2d36925f8e6661",
+    "semantic_hash": "95dd06e22df06034ad2d36925f8e6661"
+  },
+  "content/java/lessons/sync_vs_async_05_virtual_threads.yaml": {
+    "mtime": 1787458587.8981996,
+    "seen": 1787459568.8465507,
+    "ast_hash": "016ccc0140483fb4fbe58f6864f0e043",
+    "semantic_hash": "016ccc0140483fb4fbe58f6864f0e043"
+  },
+  "content/java/lessons/thread_scheduling_01_thread_naming.yaml": {
+    "mtime": 1787458529.2905605,
+    "seen": 1787459568.8465512,
+    "ast_hash": "d25a82f1c67a090c00dd4526a3e24989",
+    "semantic_hash": "d25a82f1c67a090c00dd4526a3e24989"
+  },
+  "content/java/lessons/thread_scheduling_02_daemon_flag.yaml": {
+    "mtime": 1787458533.0907042,
+    "seen": 1787459568.8465521,
+    "ast_hash": "016163e781138f29310e46bca61b877e",
+    "semantic_hash": "016163e781138f29310e46bca61b877e"
+  },
+  "content/java/lessons/thread_scheduling_03_thread_priority.yaml": {
+    "mtime": 1787458537.4605083,
+    "seen": 1787459568.8465528,
+    "ast_hash": "2786903c74d25607f36b24b75025e2e1",
+    "semantic_hash": "2786903c74d25607f36b24b75025e2e1"
+  },
+  "content/java/lessons/thread_scheduling_04_blocking_queue.yaml": {
+    "mtime": 1787458544.5965831,
+    "seen": 1787459568.8465536,
+    "ast_hash": "bcc1763201168bda30deb75d9db2d228",
+    "semantic_hash": "bcc1763201168bda30deb75d9db2d228"
+  },
+  "content/java/lessons/thread_scheduling_05_interrupt_handling.yaml": {
+    "mtime": 1787458550.8663328,
+    "seen": 1787459568.8465543,
+    "ast_hash": "48f2709cc21ed30954950f32de96f081",
+    "semantic_hash": "48f2709cc21ed30954950f32de96f081"
   }
 }
