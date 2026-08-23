@@ -78,3 +78,14 @@ def test_loads_cpp_content():
     assert len(categories) == 6
     assert "gotcha_gauntlet" in categories
     assert "concurrency_async" in categories
+
+
+def test_loads_spring_content():
+    engine = ExerciseEngine("spring")
+    assert len(engine) == 15
+    assert engine.has("dependency_injection_05")
+    categories = engine.categories()
+    assert len(categories) == 3
+    assert "dependency_injection" in categories
+    assert "bean_lifecycle" in categories
+    assert "configuration_profiles" in categories

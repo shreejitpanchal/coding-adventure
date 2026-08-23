@@ -1,0 +1,85 @@
+id: dependency_injection_05
+title: "Every Dependency, Explicit and Immutable"
+language: spring
+level: 5
+objective: "Consolidate multiple field-injected dependencies into a single constructor with final fields."
+explanation: |
+  Multiple @Autowired fields hide a class's real dependencies behind
+  reflection and allow the object to exist in a partially-constructed
+  state. Collecting every dependency into one constructor with final
+  fields does two things at once: the dependencies become visible and
+  required right in the class's public signature (no separate
+  documentation needed), and `final` guarantees they can never be
+  reassigned after construction -- the object is fully valid the moment
+  it exists, and testable with plain `new` and hand-made fakes.
+example_code: |
+  private final Formatter formatter;
+  private final Store store;
+
+  public ReportGenerator(Formatter formatter, Store store) {
+      this.formatter = formatter;
+      this.store = store;
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class ReportGenerator {
+      @Autowired
+      private ReportFormatter formatter;
+      @Autowired
+      private ReportStore store;
+
+      public String generate(String data) {
+          String formatted = formatter.format(data);
+          store.save(formatted);
+          return formatted;
+      }
+  }
+
+  @Component
+  class ReportFormatter {
+      public String format(String data) { return "[REPORT] " + data; }
+  }
+
+  @Component
+  class ReportStore {
+      public void save(String report) { /* no-op for the exercise */ }
+  }
+challenge: |
+  The test constructs ReportGenerator directly with `new` and hand-made
+  collaborators, with no Spring context involved -- but both dependencies
+  are field-injected, so they stay null outside a real container. Fix
+  this by giving ReportGenerator a constructor that takes both
+  ReportFormatter and ReportStore as parameters, assigning them to final
+  fields, and removing the @Autowired field injection entirely.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Both dependencies need to become constructor parameters assigned to final fields."
+  - "public ReportGenerator(ReportFormatter formatter, ReportStore store) { this.formatter = formatter; this.store = store; }"
+xp_reward: 15
+achievement: dependency_injection_master
+category: dependency_injection
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "public ReportGenerator\\("
+  - "final ReportFormatter"
+  - "final ReportStore"
+concept_tags: [dependency_injection, constructor_injection, immutability]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class ReportGeneratorTest {
+      @Test
+      void constructsDirectlyWithoutReflection() {
+          ReportGenerator generator = new ReportGenerator(new ReportFormatter(), new ReportStore());
+          assertThat(generator.generate("sales")).isEqualTo("[REPORT] sales");
+      }
+  }

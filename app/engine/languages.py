@@ -39,8 +39,8 @@ LANGUAGES: dict[str, LanguageInfo] = {
     ),
     "spring": LanguageInfo(
         key="spring", title="Spring", icon="\U0001F343",
-        tagline="Coming soon -- Spring Boot, DI, and REST refreshers.",
-        available=False,
+        tagline="Dependency injection, bean lifecycle, and configuration -- keep your instincts sharp.",
+        available=True,
     ),
 }
 

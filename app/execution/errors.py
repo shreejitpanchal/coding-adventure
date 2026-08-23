@@ -52,6 +52,16 @@ CPP_FRIENDLY: dict[str, tuple[str, str]] = {
     "std::bad_variant_access": ("Wrong variant alternative accessed.", "Check which alternative is actually active before accessing it."),
 }
 
+SPRING_FRIENDLY: dict[str, tuple[str, str]] = {
+    "NoSuchBeanDefinitionException": ("No matching bean found.", "Check the bean is actually registered (@Component/@Bean) and its type/qualifier matches what's being injected."),
+    "NoUniqueBeanDefinitionException": ("Multiple matching beans found.", "Use @Qualifier, @Primary, or a more specific type to disambiguate which bean should be injected."),
+    "BeanCreationException": ("Bean creation failed.", "Check the constructor/factory method for this bean -- a dependency it needs may itself have failed to create."),
+    "UnsatisfiedDependencyException": ("Unsatisfied dependency.", "Check every constructor/field this bean depends on is itself a registered bean."),
+    "BeanCurrentlyInCreationException": ("Circular dependency.", "Two or more beans depend on each other during construction -- break the cycle or use @Lazy on one side."),
+    "BeanInstantiationException": ("Bean instantiation failed.", "Check the class has a usable constructor and doesn't throw during construction."),
+    "BeanNotOfRequiredTypeException": ("Bean type mismatch.", "Check the bean registered under this name/type actually matches what's being injected."),
+}
+
 DEFAULT_MESSAGE = "Something went wrong while running this code."
 DEFAULT_HINT = "Check the details below and try again."
 
@@ -66,6 +76,11 @@ _CPP_EXCEPTION_RE = re.compile(r"terminate called after throwing an instance of 
 _CPP_EXCEPTION_WHAT_RE = re.compile(r"what\(\):\s*(.+)")
 _CPP_CRASH_NOTE_RE = re.compile(r"\[process (?:exited with code|terminated by signal) [^:]+: ([^\]]+)\]")
 
+_SPRING_COMPILE_ERROR_RE = re.compile(r"COMPILATION ERROR")
+_SPRING_ASSERTION_RE = re.compile(r"org\.opentest4j\.AssertionFailedError")
+_SPRING_ASSERTION_DETAIL_RE = re.compile(r"expected:\s*(.+?)\s*\n\s*but was:\s*(.+)")
+_SPRING_EXCEPTION_RE = re.compile(r"(?:Caused by:\s*)?(?:[\w.]+\.)?(\w+(?:Exception|Error))(?::|$)", re.MULTILINE)
+
 
 def translate_error(stderr: str, language: str = "python") -> tuple[str, str]:
     if language == "python":
@@ -75,6 +90,8 @@ def translate_error(stderr: str, language: str = "python") -> tuple[str, str]:
         return _translate_java_error(stderr)
     if language == "cpp":
         return _translate_cpp_error(stderr)
+    if language == "spring":
+        return _translate_spring_error(stderr)
     return (DEFAULT_MESSAGE, DEFAULT_HINT)
 
 
@@ -126,7 +143,34 @@ def _translate_cpp_error(stderr: str) -> tuple[str, str]:
     return (DEFAULT_MESSAGE, DEFAULT_HINT)
 
 
+def _translate_spring_error(stderr: str) -> tuple[str, str]:
+    if _SPRING_COMPILE_ERROR_RE.search(stderr):
+        return ("Compile error.", "Check the line the compiler points to for a missing semicolon, brace, or type mismatch.")
+
+    if _SPRING_ASSERTION_RE.search(stderr):
+        detail_match = _SPRING_ASSERTION_DETAIL_RE.search(stderr)
+        message = "Test assertion failed."
+        if detail_match:
+            message = f"Test assertion failed -- expected {detail_match.group(1).strip()}, but was {detail_match.group(2).strip()}."
+        return (message, "Check the expected vs. actual value shown below.")
+
+    exc_match = _SPRING_EXCEPTION_RE.search(stderr)
+    exc_type = exc_match.group(1) if exc_match else ""
+    if exc_type in SPRING_FRIENDLY:
+        return SPRING_FRIENDLY[exc_type]
+    if exc_type:
+        return (f"Test failed ({exc_type}).", "Check the raw output below for details.")
+    return ("Test failed.", "Check the raw output below for details.")
+
+
 def extract_error_line_number(stderr: str, language: str = "python") -> Optional[int]:
+    if language == "spring":
+        # JUnit's reflection-based test invocation appends java.base frames
+        # (e.g. ArrayList.java:1596) after the actual test file's frame --
+        # the first match is the relevant one here, unlike plain Java where
+        # the last match (closest to the entry point) is preferred.
+        matches = _JAVA_LINE_RE.findall(stderr)
+        return int(matches[0]) if matches else None
     if language == "java":
         pattern = _JAVA_LINE_RE
     elif language == "cpp":

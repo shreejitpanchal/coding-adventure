@@ -21,9 +21,9 @@ flowchart TB
         ui["Flet UI\n(main.py -> app/ui/*)"]
         core["Shared core\napp/engine, app/progress, app/config"]
         exec_["app/execution\none ExecutionEngine per language"]
-        toolchains[("Local toolchains\npython / javac+java / g++\n(mvn -- not yet used)")]
+        toolchains[("Local toolchains\npython / javac+java / g++ / mvn+java")]
         fsdata[("settings.json +\nprogress.sqlite3\n(local disk)")]
-        content[("content/<language>/*.yaml\n(exercises, quiz -- read-only)")]
+        content[("content/<language>/*.yaml\n(exercises, quiz -- read-only)\n+ spring/scaffold/pom.xml")]
     end
 
     user -->|uses| ui
@@ -65,7 +65,7 @@ flowchart LR
         engine["app/engine\nExerciseEngine, QuizEngine,\nvalidator, categories, languages"]
         progress["app/progress\nProgressStore (SQLite, per-language)"]
         config["app/config\nSettings, load/save,\nplatform data dir"]
-        execution["app/execution\nExecutionEngine ABC +\nPythonEngine / JavaEngine /\nCppEngine / SpringEngine (stub)"]
+        execution["app/execution\nExecutionEngine ABC +\nPythonEngine / JavaEngine /\nCppEngine / SpringEngine"]
     end
 
     ui --> shared
@@ -106,6 +106,7 @@ classDiagram
         +str difficulty
         +list~str~ contains_patterns
         +list~str~ concept_tags
+        +str spring_test_code
     }
 
     class ExerciseEngine {
@@ -145,13 +146,14 @@ classDiagram
     class ExecutionEngine {
         <<abstract>>
         +str language
-        +run(code, timeout, handle, stdin_text) ExecutionResult
+        +run(code, timeout, handle, stdin_text, exercise) ExecutionResult
     }
     class PythonEngine
     class JavaEngine
     class CppEngine
     class SpringEngine {
-        <<not implemented>>
+        scaffolds a temp Maven project per run,
+        needs `exercise` for spring_test_code
     }
     ExecutionEngine <|-- PythonEngine
     ExecutionEngine <|-- JavaEngine
@@ -294,7 +296,12 @@ flowchart TB
     ccompile -->|ok| crun["run compiled binary\nsubprocess, timeout, stdin piped"]
     crun -->|crash, empty stderr| ccrash["_describe_crash(returncode)\nNTSTATUS / signal -> synthetic stderr line"]
 
-    lang -->|spring| notimpl["NotImplementedError\n(interface defined, not built)"]
+    lang -->|spring| scheck["check_toolchain('spring')"]
+    scheck -->|missing mvn/java| sblocked["ExecutionResult(blocked=True,\ninstall hint)"]
+    scheck -->|available| sscaffold["copy scaffold pom.xml,\nwrite code + exercise.spring_test_code\ninto temp Maven project"]
+    sscaffold --> srun["mvn.cmd -q -o test\nPopen, 45s internal timeout"]
+    srun -->|BUILD SUCCESS| sok["ExecutionResult(success=True,\nstdout='BUILD SUCCESS')"]
+    srun -->|BUILD FAILURE| serr["ExecutionResult(success=False,\nstderr=sanitized mvn stdout)"]
 
     pyrun --> result["ExecutionResult\n(stdout, stderr, success, timed_out)"]
     jrun --> result
@@ -303,6 +310,8 @@ flowchart TB
     crun --> result
     ccrash --> result
     ccerr --> result
+    sok --> result
+    serr --> result
 
     result --> validator["app/engine/validator.py\nvalidate_output() +\nvalidate_contains()"]
     validator --> outcome{"Correct AND uses\nthe taught construct?"}
@@ -505,7 +514,11 @@ default.
   files, no app-code change, and what let C++ ship with its own smaller
   6-category set (skipping categories like packaging/deployment that fit
   a framework or package manager better than bare C++) without touching
-  any app code either. Spring, once built, can do the same.
+  any app code either. Spring took this furthest: its 3 categories
+  (`dependency_injection`, `bean_lifecycle`, `configuration_profiles`)
+  have no equivalent at all in the other tracks, and still required zero
+  changes to `ExerciseEngine`/`CATEGORY_META`'s lookup logic — only new
+  `CATEGORY_META` *entries* for display, same as any other new category.
 - **Crash-containment, not a safety sandbox.** The kids' app this one is
   architecturally based on runs an AST-based builtins/import allowlist
   because it has to defend against accidental-or-adversarial child

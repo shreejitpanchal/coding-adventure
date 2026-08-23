@@ -1,0 +1,80 @@
+id: bean_lifecycle_03
+title: "Initializing Before Your Dependencies Arrive"
+language: spring
+level: 8
+objective: "Move initialization logic that depends on an injected field out of the constructor and into a @PostConstruct method."
+explanation: |
+  Field injection populates @Autowired fields *after* the constructor
+  runs -- the container has to construct the object first before it has
+  anything to reflectively inject into. Code in the constructor that
+  reads an @Autowired field is reading it before it's ever been set,
+  getting a NullPointerException. @PostConstruct marks a method to run
+  once construction *and* dependency injection are both fully complete,
+  which is the right place for initialization logic that depends on
+  injected collaborators.
+example_code: |
+  @PostConstruct
+  public void warmUp() {
+      cachedSummary = "CACHED: " + source.load();
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class CatalogCache {
+      @Autowired
+      private CatalogSource source;
+
+      private String cachedSummary;
+
+      public CatalogCache() {
+          cachedSummary = "CACHED: " + source.load();
+      }
+
+      public String summary() {
+          return cachedSummary;
+      }
+  }
+
+  @Component
+  class CatalogSource {
+      public String load() { return "catalog-data"; }
+  }
+challenge: |
+  The constructor calls source.load(), but source is field-injected and
+  isn't populated until after the constructor finishes -- this throws a
+  NullPointerException during bean creation. Fix this by moving the
+  initialization logic out of the constructor and into a method annotated
+  @PostConstruct, which Spring calls only after all dependencies are
+  injected.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Field injection happens after the constructor runs -- reading source in the constructor gets null."
+  - "Remove the constructor body, add a warmUp() method annotated @PostConstruct containing the same logic."
+xp_reward: 15
+achievement: null
+category: bean_lifecycle
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "@PostConstruct"
+concept_tags: [bean_lifecycle, postconstruct, initialization, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class CatalogCacheTest {
+      @Test
+      void warmsUpAfterDependenciesAreInjected() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(CatalogCache.class, CatalogSource.class)) {
+              CatalogCache cache = ctx.getBean(CatalogCache.class);
+              assertThat(cache.summary()).isEqualTo("CACHED: catalog-data");
+          }
+      }
+  }

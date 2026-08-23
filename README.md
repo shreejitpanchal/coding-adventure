@@ -1,8 +1,8 @@
 # Coding Adventure
 
 A focused, offline coding refresher for working professionals — Python,
-Java, C++, and Spring. One desktop app, no accounts, no cloud, nothing to
-sign up for.
+Java, C++, and Spring, all four fully built out. One desktop app, no
+accounts, no cloud, nothing to sign up for.
 
 ## Who it's for
 
@@ -12,11 +12,11 @@ through in a few focused minutes, not tutorials to sit through.
 
 ## What's inside
 
-- **Language picker** — every session starts by choosing a track. Python,
-  Java, and C++ are fully built out; Spring is visible as "coming soon"
-  so the shape of the app doesn't change as it's added. A track whose
-  local toolchain isn't installed (e.g. no JDK, no g++) shows "Toolchain
-  needed" with an install hint instead of pretending it's ready.
+- **Language picker** — every session starts by choosing a track. All
+  four tracks (Python, Java, C++, Spring) are fully built out. A track
+  whose local toolchain isn't installed (e.g. no JDK, no g++, no Maven)
+  shows "Toolchain needed" with an install hint instead of pretending
+  it's ready.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
   grinding one category at a time.
@@ -26,10 +26,13 @@ through in a few focused minutes, not tutorials to sit through.
   Algorithms, Standard Library Deep Dive, Concurrency & Async, Thread
   Scheduling, Sync vs Async, Functional Programming, Recursion,
   Dependency Management, Packaging, Deployment, Observability, and the
-  flagship **Gotcha Gauntlet**. C++ covers its own 6 categories (a
-  general-purpose-language subset, not framework-specific): Idioms &
-  Gotchas, Core Language Refresher, Data Structures, Standard Library
-  Deep Dive, Concurrency & Async, and Gotcha Gauntlet.
+  flagship **Gotcha Gauntlet**. C++ and Spring each define their own
+  smaller category sets instead, since chasing full 14-category parity
+  doesn't fit a bare language or a DI framework the same way it fits two
+  general-purpose languages: C++ covers 6 (Idioms & Gotchas, Core
+  Language Refresher, Data Structures, Standard Library Deep Dive,
+  Concurrency & Async, Gotcha Gauntlet), Spring covers 3 (Dependency
+  Injection, Bean Lifecycle & Scopes, Configuration & Profiles).
   - **Python** — 75 exercises (mutable defaults, race conditions, float
     precision, silent exception swallowing, GIL vs true parallelism, and
     more).
@@ -42,23 +45,26 @@ through in a few focused minutes, not tutorials to sit through.
     pass-by-reference, unsigned wraparound, RAII/smart pointers, STL
     containers and algorithms, std::thread/mutex/atomic/async, missing
     virtual destructors, and more).
+  - **Spring** — 15 exercises (constructor vs field injection, ambiguous
+    beans and @Qualifier/@Primary, singleton vs prototype scope,
+    @PostConstruct/@PreDestroy, @Lazy, @Value placeholder resolution,
+    @Profile-gated beans, and more), using plain Spring Framework
+    (spring-context/spring-test) rather than Spring Boot, so `mvn test`
+    stays fast and fully offline after the shared scaffold's dependencies
+    are warmed once.
 - **Quiz Bank** — 87 Python questions, 70 Java questions, 35 C++
-  questions, reshuffled every session.
+  questions, 20 Spring questions, reshuffled every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
 - **Real execution, not a simulated sandbox** — Python exercises run
   against your actual local `python` interpreter; Java exercises are
   compiled with `javac` and run with `java`; C++ exercises are compiled
-  with `g++` and run as a native binary — all three in an isolated
-  subprocess with a timeout.
+  with `g++` and run as a native binary; Spring exercises run against a
+  scaffolded Maven project via `mvn test` — all in an isolated subprocess
+  with a timeout.
 - **100% offline and private** — everything runs and stays on your
-  machine. No accounts, no network access, no data collection.
-
-Spring has its execution-engine interface defined and a content
-directory scaffolded (`content/spring`), ready to fill in — see
-`app/execution/spring_engine.py` for what's left to implement (a
-scaffolded Maven project per exercise, run via `mvn test`, rather than a
-single-file compile-and-run).
+  machine. No accounts, no network access (beyond the one-time Maven
+  dependency download for the Spring track), no data collection.
 
 ## Getting started
 
@@ -78,10 +84,9 @@ itself up; every run after that launches straight into the app.
 
 - `app/engine/` — content model (`Exercise`, `QuizQuestion`), YAML
   loaders, category/unlock logic.
-- `app/execution/` — one `ExecutionEngine` per language.
-  `python_engine.py`, `java_engine.py`, and `cpp_engine.py` are
-  implemented; `spring_engine.py` defines the interface and raises
-  `NotImplementedError` until built out.
+- `app/execution/` — one `ExecutionEngine` per language, all four
+  implemented (`python_engine.py`, `java_engine.py`, `cpp_engine.py`,
+  `spring_engine.py`).
 - `app/progress/` — SQLite-backed XP/streaks/badges/activity log, keyed
   per language track.
 - `app/ui/` — Flet screens.

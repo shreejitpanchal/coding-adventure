@@ -1,0 +1,86 @@
+id: dependency_injection_02
+title: "Two Beans, One Interface, No Way to Choose"
+language: spring
+level: 2
+objective: "Fix a NoUniqueBeanDefinitionException by qualifying which implementation of an interface should be injected."
+explanation: |
+  When two or more beans implement the same interface, `@Autowired` on
+  that interface type alone is ambiguous -- Spring has no way to know
+  which one you mean, and fails fast at context-refresh time with
+  NoUniqueBeanDefinitionException rather than guessing. @Qualifier(name)
+  tells the container exactly which bean (by its registered name) to wire
+  in at that injection point.
+example_code: |
+  @Autowired
+  public Checkout(@Qualifier("discountPricing") PricingStrategy strategy) {
+      this.strategy = strategy;
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  interface AlertChannel {
+      String alert(String text);
+  }
+
+  @Component("emailAlert")
+  class EmailAlert implements AlertChannel {
+      public String alert(String text) { return "EMAIL: " + text; }
+  }
+
+  @Component("smsAlert")
+  class SmsAlert implements AlertChannel {
+      public String alert(String text) { return "SMS: " + text; }
+  }
+
+  @Component
+  public class AlertDispatcher {
+      private final AlertChannel channel;
+
+      @Autowired
+      public AlertDispatcher(AlertChannel channel) {
+          this.channel = channel;
+      }
+
+      public String dispatch(String text) {
+          return channel.alert(text);
+      }
+  }
+challenge: |
+  Both EmailAlert and SmsAlert implement AlertChannel, so
+  AlertDispatcher's constructor injection of a plain AlertChannel is
+  ambiguous -- the context fails to refresh with
+  NoUniqueBeanDefinitionException. Fix this by adding
+  @Qualifier("smsAlert") to the constructor parameter, so the dispatcher
+  is unambiguously wired to SmsAlert.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Two @Component beans implement the same interface -- Spring can't pick one on its own."
+  - "@Autowired public AlertDispatcher(@Qualifier(\"smsAlert\") AlertChannel channel) { ... }"
+xp_reward: 10
+achievement: null
+category: dependency_injection
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "@Qualifier\\(\"smsAlert\"\\)"
+concept_tags: [dependency_injection, qualifier, ambiguous_bean]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class AlertDispatcherTest {
+      @Test
+      void dispatchesViaSms() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(
+                  EmailAlert.class, SmsAlert.class, AlertDispatcher.class)) {
+              AlertDispatcher dispatcher = ctx.getBean(AlertDispatcher.class);
+              assertThat(dispatcher.dispatch("server down")).isEqualTo("SMS: server down");
+          }
+      }
+  }

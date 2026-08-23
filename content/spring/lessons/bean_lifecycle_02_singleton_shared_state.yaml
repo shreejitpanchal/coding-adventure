@@ -1,0 +1,76 @@
+id: bean_lifecycle_02
+title: "The 'Two' Instances That Were Actually One"
+language: spring
+level: 7
+objective: "Fix unexpectedly shared mutable state by declaring a bean prototype-scoped instead of relying on the default singleton scope."
+explanation: |
+  Every @Component is a singleton by default -- exactly one instance
+  exists in the container, and every getBean() call (or injection point)
+  returns the *same* object. That's fine for stateless services, but for
+  something meant to hold per-use mutable state, it's a trap: two
+  "separate" getBean() calls actually hand back the same instance, so
+  mutating one is indistinguishable from mutating the other.
+  @Scope("prototype") tells Spring to construct a brand-new instance on
+  every request instead.
+example_code: |
+  @Component
+  @Scope("prototype")
+  public class RequestContext { ... }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class RequestContext {
+      private int hits = 0;
+
+      public void recordHit() {
+          hits++;
+      }
+
+      public int getHits() {
+          return hits;
+      }
+  }
+challenge: |
+  RequestContext is a default singleton, so two separate getBean() calls
+  actually return the exact same instance -- recording hits on the first
+  "one" leaks into the second, and the test's expectation that a freshly
+  fetched instance starts at 0 hits fails. Fix this by adding
+  @Scope("prototype"), so every getBean() call constructs a genuinely
+  independent instance.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Every @Component is a singleton by default -- 'two' getBean() calls return the same object unless told otherwise."
+  - "@Scope(\"prototype\") above @Component makes every getBean() call construct a fresh instance."
+xp_reward: 10
+achievement: null
+category: bean_lifecycle
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "@Scope\\(\"prototype\"\\)"
+concept_tags: [bean_lifecycle, bean_scope, prototype_scope, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class RequestContextTest {
+      @Test
+      void eachRequestGetsAnIndependentInstance() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(RequestContext.class)) {
+              RequestContext first = ctx.getBean(RequestContext.class);
+              first.recordHit();
+              first.recordHit();
+
+              RequestContext second = ctx.getBean(RequestContext.class);
+
+              assertThat(second.getHits()).isEqualTo(0);
+              assertThat(first).isNotSameAs(second);
+          }
+      }
+  }

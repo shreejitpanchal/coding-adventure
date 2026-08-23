@@ -6,13 +6,14 @@ and how to run it, see the main [README](../README.md).
 
 ## Status
 
-Python and Java tracks are both fully built — same 14 topic categories
-each, real execution against a local `python`/`javac`+`java` toolchain.
-C++ is also fully built (its own 6 topic categories, since it's a
-general-purpose language subset rather than a framework), executed
-against a local `g++` toolchain. Spring is scaffolded (content directory
-exists, the `ExecutionEngine` interface is defined) but not
-implemented — see `app/execution/spring_engine.py`. The app is
+All four tracks are fully built. Python and Java share the same 14 topic
+categories, real execution against a local `python`/`javac`+`java`
+toolchain. C++ has its own 6 topic categories (a general-purpose
+language subset rather than a framework), executed against a local
+`g++` toolchain. Spring has its own 3 topic categories, executed against
+a local Maven + JDK toolchain via a scaffolded Maven project run through
+`mvn test` — see `app/execution/spring_engine.py` and "Execution
+engines" below for how that differs from the other three. The app is
 **desktop-only by design**, not by omission — see "Why no Android build"
 below.
 
@@ -31,9 +32,18 @@ Manually, if you prefer:
 
 Running Java exercises additionally needs a local JDK (`javac`/`java` on
 PATH); running C++ exercises needs a local `g++` (e.g. MinGW-w64 on
-Windows) on PATH — the language picker shows "Toolchain needed" instead
+Windows) on PATH; running Spring exercises needs a local JDK plus Maven
+(`mvn` on PATH) — the language picker shows "Toolchain needed" instead
 of "Available" if one isn't found, rather than failing confusingly the
-first time someone tries to run code.
+first time someone tries to run code. The Spring track's first `mvn
+test` run needs network access once, to download its dependencies into
+the local `~/.m2` repository — every run after that is fully offline.
+
+A toolchain installed mid-session (e.g. via `winget`) won't be picked up
+until whatever launched the app is restarted — Windows doesn't push
+`PATH` changes into already-running processes, so a freshly-installed
+compiler stays invisible to `shutil.which()` until VS Code/the terminal
+is reopened.
 
 ## Running the tests
 
@@ -41,9 +51,9 @@ first time someone tries to run code.
 .venv\Scripts\python.exe -m pytest tests\ -v
 ```
 
-Java- and C++-execution tests are skipped automatically
-(`pytest.mark.skipif`) on a machine with no JDK / no `g++` on PATH,
-rather than failing.
+Java-, C++-, and Spring-execution tests are skipped automatically
+(`pytest.mark.skipif`) on a machine missing the relevant toolchain
+(JDK / `g++` / Maven+JDK) on PATH, rather than failing.
 
 ## Project layout
 
@@ -73,7 +83,9 @@ content/
     lessons/   # own 6 category keys (not the full 14 -- see below)
     quiz/
   spring/
-    lessons/   # empty (.gitkeep only) -- scaffolded, not built out
+    lessons/   # own 3 category keys (not the full 14 -- see below)
+    quiz/
+    scaffold/pom.xml  # shared Maven project template, copied per run
 docs/          # this file + ARCHITECTURE.md
 tests/         # pytest suite, one file per module roughly mirroring app/
 data/          # gitignored -- settings.json + progress.sqlite3, created
@@ -146,6 +158,15 @@ across languages — `ExerciseEngine.categories()` is still derived purely
 from what's present in each language's own content directory, so C++
 having a different-sized set required zero app-code changes.
 
+Spring goes further still: it's a framework, not a general-purpose
+language, so even C++'s 6-category shape doesn't fit. Its 3 categories —
+`dependency_injection`, `bean_lifecycle`, `configuration_profiles` — are
+Spring-specific concerns with no equivalent in the other tracks at all.
+This first batch deliberately stays within plain Spring Framework
+territory (dependency injection, bean scopes/lifecycle hooks,
+`@Value`/`@Profile` configuration) rather than reaching for Spring Boot's
+web/data layers — see "Execution engines" below for why.
+
 ### Daily Refresher
 
 `ExerciseEngine.daily_refresher(completed_ids, count=5)` computes a
@@ -180,12 +201,17 @@ answer isn't always in the same position.
 ### Execution engines
 
 `app/execution/base.py` defines the shared contract every language
-implements: `ExecutionEngine.run(code, timeout, handle, stdin_text) ->
-ExecutionResult` (`success`, `stdout`, `stderr`, `timed_out`, `blocked`,
-`blocked_message`), plus `RunHandle` for mid-run cancellation (used when
-navigating away from a lesson while code is still running — there's no
-visible Stop button, since the fixed timeout already guarantees a
-runaway run gets killed).
+implements: `ExecutionEngine.run(code, timeout, handle, stdin_text,
+exercise) -> ExecutionResult` (`success`, `stdout`, `stderr`,
+`timed_out`, `blocked`, `blocked_message`), plus `RunHandle` for mid-run
+cancellation (used when navigating away from a lesson while code is
+still running — there's no visible Stop button, since the fixed timeout
+already guarantees a runaway run gets killed). The `exercise` parameter
+is unused by the three single-file engines but required by
+`SpringEngine`, since a Spring exercise needs more than a code string to
+run (see below) — `lesson_screen.py` passes it on every call regardless
+of language, so only `SpringEngine` needed to change behavior when it
+was added.
 
 - **`python_engine.py`** — a fast local `compile()` syntax pre-check,
   then `python -I <file>` in an isolated subprocess with a timeout
@@ -208,11 +234,33 @@ runaway run gets killed).
   stderr line whenever stderr would otherwise be empty — an uncaught
   `std::exception`'s own `what()` text is left untouched since it's
   already useful.
-- **`spring_engine.py`** — interface defined, body raises
-  `NotImplementedError`. Spring needs a fundamentally different shape
-  than the other three (a scaffolded Maven project per exercise, run via
-  `mvn test`, not a single-file compile-and-run) — see the docstring in
-  `spring_engine.py`.
+- **`spring_engine.py`** — the fundamentally different one: a Spring
+  exercise isn't a single self-contained code string, since completion
+  is gated by a fixed JUnit test class (`Exercise.spring_test_code`),
+  not just `expected_output`. Each run copies the shared scaffold at
+  `content/spring/scaffold/pom.xml` into a fresh temp Maven project,
+  writes the submitted code and the exercise's fixed test class under
+  `src/main`/`src/test` (both class names auto-detected the same way
+  `java_engine.py` does), then runs `mvn.cmd -q -o test` via `Popen` (the
+  `.cmd` extension is required on Windows — `subprocess.Popen` can't
+  launch a bare `.cmd`/batch file the way a shell can) under the usual
+  `RunHandle`/timeout contract, though with its own longer internal
+  timeout (`MVN_TIMEOUT_SECONDS = 45.0`) rather than the 8s the UI
+  passes in, since JVM+Maven+Spring context startup needs more headroom.
+  Deliberately uses plain Spring Framework (`spring-context`/
+  `spring-test`), not Spring Boot — no embedded server or
+  autoconfiguration to boot, which keeps a cold `mvn -o test` run around
+  4 seconds and fully offline once the scaffold's dependencies are
+  warmed into `~/.m2` once. Maven's own logger writes everything
+  (including `[ERROR]` diagnostics) to **stdout**, never stderr, so a
+  failing run's output is routed into `ExecutionResult.stderr` to match
+  the other engines' contract; a passing run returns a synthetic,
+  deterministic `stdout="BUILD SUCCESS"` rather than the real surefire
+  summary line, since that line's elapsed-time/class-name content is
+  non-deterministic and can't reliably satisfy `validate_output()`'s
+  `re.fullmatch()`. `_sanitize_path()` strips the temp dir's absolute
+  path (Maven reports it in both a backslash and a `/C:/...`
+  forward-slash form) out of compiler errors before they reach the UI.
 
 **Framing is crash-containment, not child safety.** Unlike the sibling
 kids' app this one's architecture is based on, there's no AST-based

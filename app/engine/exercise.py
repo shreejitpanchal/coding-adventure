@@ -38,3 +38,7 @@ class Exercise:
     concept_tags: list[str] = field(default_factory=list)
     """Fixed vocabulary shared with quiz questions, feeds adaptive practice
     recommendations."""
+    spring_test_code: str = ""
+    """Spring-only: the fixed JUnit test class source that gates completion
+    via `mvn test`, since a Spring exercise isn't a single self-contained
+    code string like the other languages -- see app.execution.spring_engine."""

@@ -1,0 +1,84 @@
+id: configuration_profiles_05
+title: "The Config Value That Must Not Have a Default"
+language: spring
+level: 15
+objective: "Require a property to be explicitly supplied (no fallback default) for values where a silent default would be actively dangerous."
+explanation: |
+  @Value("${key:default}") is convenient, but a default isn't always the
+  right choice -- for something like a production database URL, silently
+  falling back to a placeholder value if the real config was never
+  supplied would fail in a much worse way (connecting to the wrong place,
+  or failing mysteriously later) than failing loudly at startup.
+  @Value("${key}") with no `:default` at all does exactly that: if the
+  property genuinely isn't set, context refresh fails immediately with a
+  clear "could not resolve placeholder" error instead of limping along
+  with a wrong value.
+example_code: |
+  @Value("${db.url}")
+  private String url;
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Value;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.Profile;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  public class DbConfig {
+  }
+
+  @Component
+  @Profile("prod")
+  class ProdDataSource {
+      @Value("${db.url:jdbc:h2:mem:default}")
+      private String url;
+
+      public String connectionInfo() { return "connecting to " + url; }
+  }
+challenge: |
+  ProdDataSource falls back to a dummy in-memory default
+  (jdbc:h2:mem:default) whenever db.url isn't explicitly configured --
+  the test registers a real production URL as a property, but also needs
+  a PropertySourcesPlaceholderConfigurer bean to resolve @Value at all
+  (see the earlier "unresolved placeholder" exercise). Fix this by adding
+  a static @Bean PropertySourcesPlaceholderConfigurer to DbConfig, and
+  removing the ":jdbc:h2:mem:default" fallback from @Value so a missing
+  db.url fails loudly instead of silently connecting to the wrong place.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Two things are needed: a PropertySourcesPlaceholderConfigurer bean (so @Value resolves at all), and dropping the default fallback."
+  - "@Bean public static PropertySourcesPlaceholderConfigurer placeholderConfigurer() { return new PropertySourcesPlaceholderConfigurer(); }"
+  - "Change @Value(\"${db.url:jdbc:h2:mem:default}\") to just @Value(\"${db.url}\")."
+xp_reward: 15
+achievement: configuration_profiles_master
+category: configuration_profiles
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - '@Value\("\$\{db\.url\}"\)'
+  - "PropertySourcesPlaceholderConfigurer"
+concept_tags: [configuration, value_annotation, required_property, profiles]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import org.springframework.core.env.MapPropertySource;
+  import java.util.Map;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class DbConfigTest {
+      @Test
+      void requiresExplicitUrlWithNoDefaultFallback() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+              ctx.getEnvironment().setActiveProfiles("prod");
+              ctx.getEnvironment().getPropertySources()
+                  .addFirst(new MapPropertySource("test", Map.of("db.url", "jdbc:postgresql://prod-host/app")));
+              ctx.register(DbConfig.class, ProdDataSource.class);
+              ctx.refresh();
+              ProdDataSource ds = ctx.getBean(ProdDataSource.class);
+              assertThat(ds.connectionInfo()).isEqualTo("connecting to jdbc:postgresql://prod-host/app");
+          }
+      }
+  }

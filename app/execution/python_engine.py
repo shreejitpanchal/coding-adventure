@@ -6,9 +6,12 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from app.execution.base import DEFAULT_TIMEOUT_SECONDS, ExecutionEngine, ExecutionResult, RunHandle
+
+if TYPE_CHECKING:
+    from app.engine.exercise import Exercise
 
 
 class PythonEngine(ExecutionEngine):
@@ -20,6 +23,7 @@ class PythonEngine(ExecutionEngine):
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         handle: Optional[RunHandle] = None,
         stdin_text: Optional[str] = None,
+        exercise: Optional["Exercise"] = None,
     ) -> ExecutionResult:
         try:
             compile(code, "<exercise>", "exec")

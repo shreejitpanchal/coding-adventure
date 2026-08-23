@@ -1,0 +1,73 @@
+id: dependency_injection_04
+title: "The Dependency That Might Not Exist"
+language: spring
+level: 4
+objective: "Mark a dependency as optional with @Autowired(required = false) so its absence doesn't crash the context."
+explanation: |
+  By default, @Autowired requires a matching bean to exist -- if none is
+  registered, the context fails to refresh with
+  NoSuchBeanDefinitionException. When a collaborator is genuinely
+  optional (present in some deployments, absent in others), @Autowired
+  (required = false) tells Spring "wire it in if it exists, leave the
+  field null otherwise" instead of treating its absence as a startup
+  error.
+example_code: |
+  @Autowired(required = false)
+  private MetricsRecorder metrics;
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class AuditLogger {
+      @Autowired
+      private SlowAuditSink sink;
+
+      public String record(String event) {
+          if (sink == null) {
+              return "SKIPPED: " + event;
+          }
+          return sink.write(event);
+      }
+  }
+
+  class SlowAuditSink {
+      public String write(String event) { return "AUDITED: " + event; }
+  }
+challenge: |
+  SlowAuditSink is never registered as a bean in this context, so the
+  required @Autowired on sink fails the context at refresh time with
+  NoSuchBeanDefinitionException -- the null-check in record() never even
+  gets a chance to run. Fix this by adding (required = false) to the
+  @Autowired annotation, so the context starts fine and record("login")
+  correctly returns "SKIPPED: login".
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "SlowAuditSink is never registered as a bean -- the required @Autowired fails before the null-check code even runs."
+  - "@Autowired(required = false)"
+xp_reward: 10
+achievement: null
+category: dependency_injection
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "required\\s*=\\s*false"
+concept_tags: [dependency_injection, optional_dependency]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class AuditLoggerTest {
+      @Test
+      void skipsGracefullyWhenSinkNotRegistered() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AuditLogger.class)) {
+              AuditLogger logger = ctx.getBean(AuditLogger.class);
+              assertThat(logger.record("login")).isEqualTo("SKIPPED: login");
+          }
+      }
+  }

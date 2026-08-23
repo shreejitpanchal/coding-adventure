@@ -1,0 +1,82 @@
+id: dependency_injection_03
+title: "Picking a Default Among Equals"
+language: spring
+level: 3
+objective: "Use @Primary to resolve ambiguity by declaring one implementation the default, instead of qualifying every injection point."
+explanation: |
+  @Qualifier works at each injection site, but if most callers want the
+  same default implementation and only a few need the alternative,
+  marking that default @Primary is less repetitive -- it tells Spring
+  "when nothing else disambiguates, use this one." @Qualifier still wins
+  at any specific site that adds it; @Primary is just the tiebreaker for
+  everywhere else.
+example_code: |
+  @Component
+  @Primary
+  class StandardPricing implements PricingStrategy { ... }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  interface PricingStrategy {
+      double price(double base);
+  }
+
+  @Component
+  class StandardPricing implements PricingStrategy {
+      public double price(double base) { return base; }
+  }
+
+  @Component
+  class DiscountPricing implements PricingStrategy {
+      public double price(double base) { return base * 0.9; }
+  }
+
+  @Component
+  public class Checkout {
+      private final PricingStrategy strategy;
+
+      public Checkout(PricingStrategy strategy) {
+          this.strategy = strategy;
+      }
+
+      public double total(double base) {
+          return strategy.price(base);
+      }
+  }
+challenge: |
+  StandardPricing and DiscountPricing both implement PricingStrategy with
+  no way to disambiguate, so the context fails to refresh with
+  NoUniqueBeanDefinitionException. Fix this by adding @Primary to
+  StandardPricing, making it the unambiguous default so Checkout wires in
+  correctly and total(100.0) returns 100.0 (full price, not discounted).
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "@Primary marks one implementation as the default when there's no other tiebreaker."
+  - "Add @Primary above @Component on StandardPricing."
+xp_reward: 10
+achievement: null
+category: dependency_injection
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "@Primary"
+concept_tags: [dependency_injection, primary_bean, ambiguous_bean]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class CheckoutTest {
+      @Test
+      void resolvesUnambiguously() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(
+                  StandardPricing.class, DiscountPricing.class, Checkout.class)) {
+              Checkout checkout = ctx.getBean(Checkout.class);
+              assertThat(checkout.total(100.0)).isEqualTo(100.0);
+          }
+      }
+  }

@@ -1,0 +1,220 @@
+questions:
+  - id: q01
+    question: "Why does a field annotated @Autowired stay null when the object is constructed directly with `new` instead of through Spring?"
+    options:
+      - "Field injection only works for interface types"
+      - "Spring populates @Autowired fields via reflection after construction -- a plain `new` call never triggers that step"
+      - "@Autowired fields require a no-args constructor"
+      - "It doesn't stay null -- this is a myth"
+    correct: 1
+    explanation: "Field injection depends entirely on the container's post-construction reflection step; bypass the container and nothing populates the field."
+    concept_tags: [dependency_injection, testability, gotchas]
+
+  - id: q02
+    question: "What's the main advantage of constructor injection over field injection?"
+    options:
+      - "Constructor injection is faster at runtime"
+      - "Dependencies become explicit, required constructor parameters -- the object can't exist half-wired, and it's testable with plain `new`"
+      - "Field injection is deprecated and no longer works"
+      - "There's no real difference"
+    correct: 1
+    explanation: "Constructor injection makes every dependency visible in the signature and guarantees the object is fully valid the moment it's constructed."
+    concept_tags: [dependency_injection, constructor_injection]
+
+  - id: q03
+    question: "What happens when two beans implement the same interface and a third bean @Autowired-injects that interface with no further disambiguation?"
+    options:
+      - "Spring picks the first one registered"
+      - "NoUniqueBeanDefinitionException -- the context fails to refresh"
+      - "Both get injected into a List automatically"
+      - "It compiles but throws at first use, not at startup"
+    correct: 1
+    explanation: "Ambiguous injection fails fast at context-refresh time rather than guessing which bean was meant."
+    concept_tags: [dependency_injection, ambiguous_bean]
+
+  - id: q04
+    question: "What does @Qualifier(\"beanName\") do?"
+    options:
+      - "Marks a bean as required"
+      - "Tells Spring exactly which registered bean (by name) to inject at that specific injection point"
+      - "Renames a bean"
+      - "Excludes a bean from the context entirely"
+    correct: 1
+    explanation: "@Qualifier disambiguates which of several matching beans should be wired in at a specific point."
+    concept_tags: [dependency_injection, qualifier]
+
+  - id: q05
+    question: "How does @Primary differ from @Qualifier for resolving ambiguous beans?"
+    options:
+      - "They're identical in every way"
+      - "@Primary marks one implementation as the default for every unqualified injection point, rather than disambiguating at each individual site"
+      - "@Primary only works on interfaces, @Qualifier only on classes"
+      - "@Primary is deprecated in favor of @Qualifier"
+    correct: 1
+    explanation: "@Primary sets a default that applies everywhere an injection point doesn't otherwise disambiguate; @Qualifier still wins at any site that specifies it."
+    concept_tags: [dependency_injection, primary_bean]
+
+  - id: q06
+    question: "What does @Autowired(required = false) change about a dependency?"
+    options:
+      - "The dependency becomes lazy-loaded"
+      - "If no matching bean exists, the field is left null instead of failing context startup with NoSuchBeanDefinitionException"
+      - "The dependency is injected as an Optional automatically"
+      - "It has no effect -- required is always false by default"
+    correct: 1
+    explanation: "required = false turns a missing dependency from a startup failure into a null field, for genuinely optional collaborators."
+    concept_tags: [dependency_injection, optional_dependency]
+
+  - id: q07
+    question: "What scope does a @Component get if no @Scope is specified?"
+    options:
+      - "prototype -- a new instance every time"
+      - "singleton -- exactly one shared instance for the whole container"
+      - "request -- one instance per HTTP request"
+      - "It depends on the class's constructor"
+    correct: 1
+    explanation: "Singleton is Spring's default bean scope; every getBean() call or injection returns the same instance unless told otherwise."
+    concept_tags: [bean_lifecycle, bean_scope]
+
+  - id: q08
+    question: "Why might @Scope(\"prototype\") be necessary for a bean holding per-use mutable state?"
+    options:
+      - "Prototype beans are faster to construct"
+      - "Without it, every 'separate' request for the bean returns the exact same singleton instance, so mutations leak across supposedly independent uses"
+      - "Prototype scope is required for any class with fields"
+      - "It isn't necessary -- singleton beans can't hold state at all"
+    correct: 1
+    explanation: "Singleton scope means shared state by default; prototype scope gives each request a genuinely independent instance."
+    concept_tags: [bean_lifecycle, prototype_scope, gotchas]
+
+  - id: q09
+    question: "Why can't initialization logic that reads an @Autowired field safely live in the constructor?"
+    options:
+      - "Constructors can't call other methods"
+      - "Field injection happens after the constructor runs, so the field is still null when the constructor executes"
+      - "Spring forbids logic inside constructors"
+      - "It's actually safe -- this is a myth"
+    correct: 1
+    explanation: "The container must construct the object before it has anything to reflectively inject -- reading an @Autowired field in the constructor reads it before it's set."
+    concept_tags: [bean_lifecycle, postconstruct, gotchas]
+
+  - id: q10
+    question: "What does @PostConstruct guarantee about when its annotated method runs?"
+    options:
+      - "It runs before the constructor"
+      - "It runs after construction AND after all dependency injection is complete"
+      - "It runs on a background thread"
+      - "It runs only once per JVM, regardless of how many beans use it"
+    correct: 1
+    explanation: "@PostConstruct is the right place for initialization logic that depends on injected collaborators, since it fires only after they're all set."
+    concept_tags: [bean_lifecycle, postconstruct, initialization]
+
+  - id: q11
+    question: "What triggers a bean's @PreDestroy method to run?"
+    options:
+      - "It runs automatically every time the bean is used"
+      - "The ApplicationContext shutting down (e.g. ctx.close())"
+      - "A JVM garbage collection pass"
+      - "@PreDestroy methods never run automatically -- they must be called manually"
+    correct: 1
+    explanation: "@PreDestroy hooks into container teardown, making it the natural place for releasing resources a bean acquired during its lifetime."
+    concept_tags: [bean_lifecycle, predestroy, cleanup]
+
+  - id: q12
+    question: "What's the effect of adding @Lazy to a singleton bean?"
+    options:
+      - "The bean becomes prototype-scoped"
+      - "Construction is deferred until the bean is actually first requested, instead of happening eagerly at context startup"
+      - "The bean is constructed on a separate thread"
+      - "@Lazy has no effect on singleton beans"
+    correct: 1
+    explanation: "@Lazy avoids paying an expensive bean's construction cost on every startup, even when that bean is never actually used in a given run."
+    concept_tags: [bean_lifecycle, lazy_initialization, performance]
+
+  - id: q13
+    question: "In plain Spring (not Spring Boot), what's required before @Value(\"${...}\") placeholders will actually resolve?"
+    options:
+      - "Nothing -- it works automatically like in Spring Boot"
+      - "A PropertySourcesPlaceholderConfigurer bean must be explicitly registered in the context"
+      - "The property must be a Java system property"
+      - "@Value only works inside @Configuration classes"
+    correct: 1
+    explanation: "Spring Boot auto-configures placeholder resolution; plain Spring needs an explicit PropertySourcesPlaceholderConfigurer bean or nothing gets resolved."
+    concept_tags: [configuration, value_annotation, placeholder_resolution, gotchas]
+
+  - id: q14
+    question: "What does @Value(\"${greeting.prefix:Hello}\") do if greeting.prefix is never configured anywhere?"
+    options:
+      - "Throws an exception at context startup"
+      - "Resolves to the default value \"Hello\" after the colon"
+      - "Resolves to an empty string"
+      - "Resolves to null"
+    correct: 1
+    explanation: "The colon syntax provides a fallback default used whenever the property itself isn't set."
+    concept_tags: [configuration, value_annotation]
+
+  - id: q15
+    question: "What does @Profile(\"dev\") on a @Component mean?"
+    options:
+      - "The bean is only used during development builds, determined at compile time"
+      - "The bean is only registered in the context when \"dev\" is among the currently active profiles"
+      - "The bean gets extra debug logging automatically"
+      - "@Profile has no runtime effect, it's purely documentation"
+    correct: 1
+    explanation: "@Profile gates bean registration on which profiles are active at context-refresh time, letting environment-specific implementations coexist in the same codebase."
+    concept_tags: [configuration, profiles, environment_specific_beans]
+
+  - id: q16
+    question: "What does @Profile(\"!prod\") mean?"
+    options:
+      - "The bean is active only in a profile literally named \"!prod\""
+      - "The bean is active whenever \"prod\" is NOT among the active profiles, including when no profile is set at all"
+      - "It's invalid syntax and will throw at startup"
+      - "It's equivalent to @Profile(\"prod\")"
+    correct: 1
+    explanation: "The ! prefix negates a profile condition -- useful for dev/debug conveniences that should exist everywhere except one specific environment."
+    concept_tags: [configuration, profiles, profile_negation]
+
+  - id: q17
+    question: "What does Spring's Environment abstraction represent?"
+    options:
+      - "Only Java system environment variables (System.getenv())"
+      - "Every configured property source (system properties, property files, explicitly registered sources) as one queryable object"
+      - "The currently active Spring profile, and nothing else"
+      - "A wrapper around the JVM's classpath"
+    correct: 1
+    explanation: "Environment unifies every property source into one API, injectable and queryable like any other bean via getProperty()."
+    concept_tags: [configuration, environment, property_resolution]
+
+  - id: q18
+    question: "Why might @Value(\"${db.url}\") (no default) be preferred over @Value(\"${db.url:some-fallback}\") for a production database URL?"
+    options:
+      - "It's faster to resolve"
+      - "A missing required config value fails loudly at startup instead of silently connecting to a wrong or dummy fallback"
+      - "There's no functional difference between the two"
+      - "It's required syntax for @Profile-scoped beans"
+    correct: 1
+    explanation: "For genuinely critical config, failing fast on a missing value is safer than silently limping along with an inappropriate default."
+    concept_tags: [configuration, value_annotation, required_property]
+
+  - id: q19
+    question: "What happens when ctx.getBean(SomeClass.class) is called on a class with no @Component (and not otherwise registered)?"
+    options:
+      - "Spring constructs it on the fly using its no-args constructor"
+      - "NoSuchBeanDefinitionException -- the class was never registered as a bean"
+      - "It returns null"
+      - "It works as long as the class is public"
+    correct: 1
+    explanation: "A plain class is invisible to Spring's container until something (like @Component) registers it as a managed bean."
+    concept_tags: [bean_lifecycle, component_annotation]
+
+  - id: q20
+    question: "Why is constructor injection generally considered easier to unit test than field injection?"
+    options:
+      - "It isn't -- both are equally testable"
+      - "A constructor-injected object can be built directly with `new` and hand-made fakes, with no Spring container involved at all"
+      - "Constructor injection automatically generates mock objects"
+      - "Field injection requires a database connection to test"
+    correct: 1
+    explanation: "Constructor parameters are just normal Java arguments -- no reflection or container needed to supply them in a test."
+    concept_tags: [dependency_injection, constructor_injection, testability]

@@ -209,7 +209,7 @@ class _ExerciseController:
         self._current_input_value = input_value
         stdin_text = f"{input_value}\n" if input_value is not None else None
 
-        result = await asyncio.to_thread(self.engine.run, code, 8.0, handle, stdin_text)
+        result = await asyncio.to_thread(self.engine.run, code, 8.0, handle, stdin_text, self.exercise)
         self._on_run_complete(result)
 
     def _on_run_complete(self, result: ExecutionResult) -> None:

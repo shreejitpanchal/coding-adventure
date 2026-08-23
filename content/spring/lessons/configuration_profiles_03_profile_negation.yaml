@@ -1,0 +1,62 @@
+id: configuration_profiles_03
+title: "Active Everywhere Except Production"
+language: spring
+level: 13
+objective: "Use @Profile's negation syntax (!name) to register a bean everywhere except one specific environment."
+explanation: |
+  @Profile accepts a `!` prefix meaning "not this profile" -- @Profile
+  ("!prod") registers the bean whenever "prod" is *not* among the active
+  profiles, including when no profile is set at all. This is the natural
+  way to express "a dev/debug convenience that should exist by default,
+  but must never appear in production" without having to separately list
+  every non-prod profile that does exist.
+example_code: |
+  @Component
+  @Profile("!prod")
+  public class DebugToolbar { ... }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.annotation.Profile;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  @Profile("prod")
+  public class DebugToolbar {
+      public String render() { return "DEBUG TOOLBAR"; }
+  }
+challenge: |
+  DebugToolbar is a debug-only convenience, but @Profile("prod") does the
+  opposite of what's intended -- it only registers the bean *in*
+  production, and the test (which sets no active profile at all, the
+  common "default" case) fails with NoSuchBeanDefinitionException. Fix
+  this by changing the profile expression to "!prod", so the toolbar is
+  active everywhere except production.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "@Profile(\"prod\") only activates the bean IN production -- the opposite of a debug-only tool's intent."
+  - "@Profile(\"!prod\") -- the ! prefix means 'active whenever this profile is NOT set'."
+xp_reward: 15
+achievement: null
+category: configuration_profiles
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - '@Profile\("!prod"\)'
+concept_tags: [configuration, profiles, profile_negation, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class DebugToolbarTest {
+      @Test
+      void isActiveByDefaultWhenNoProfileSet() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(DebugToolbar.class)) {
+              DebugToolbar toolbar = ctx.getBean(DebugToolbar.class);
+              assertThat(toolbar.render()).isEqualTo("DEBUG TOOLBAR");
+          }
+      }
+  }

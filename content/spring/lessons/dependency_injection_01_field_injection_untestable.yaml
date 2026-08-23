@@ -1,0 +1,79 @@
+id: dependency_injection_01
+title: "The Bean That Couldn't Be Unit Tested"
+language: spring
+level: 1
+objective: "Replace field injection with constructor injection so the class can be constructed directly, without a Spring context."
+explanation: |
+  @Autowired on a private field only works because Spring's container uses
+  reflection to reach in and set it after construction -- plain `new
+  OrderNotifier()` leaves that field null, since nothing outside the
+  container can populate it. Constructor injection makes every dependency
+  an explicit, required constructor parameter instead: the object simply
+  cannot exist in a half-wired state, and a plain unit test can build one
+  with `new` and a hand-made fake, no Spring context needed at all. This is
+  why constructor injection is the modern default recommendation over
+  field injection.
+example_code: |
+  @Component
+  public class Greeter {
+      private final Translator translator;
+
+      public Greeter(Translator translator) {
+          this.translator = translator;
+      }
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class OrderNotifier {
+      @Autowired
+      private MessageSender sender;
+
+      public String notifyOrder(String orderId) {
+          return sender.send("Order " + orderId + " confirmed");
+      }
+  }
+
+  class MessageSender {
+      public String send(String message) {
+          return "SENT: " + message;
+      }
+  }
+challenge: |
+  The test constructs OrderNotifier directly with `new` and a fake
+  MessageSender, with no Spring context involved -- but the @Autowired
+  field is never populated outside a real container, so sender stays null
+  and notifyOrder() throws a NullPointerException. Fix this by giving
+  OrderNotifier a constructor that takes MessageSender as a parameter and
+  assigns it to a final field, removing @Autowired and the field
+  injection entirely.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Field injection needs Spring's reflection to populate it -- a plain `new` call skips that entirely."
+  - "public OrderNotifier(MessageSender sender) { this.sender = sender; } -- then drop @Autowired and the field-level assignment."
+xp_reward: 10
+achievement: null
+category: dependency_injection
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "public OrderNotifier\\("
+concept_tags: [dependency_injection, constructor_injection, testability]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class OrderNotifierTest {
+      @Test
+      void notifiesWithoutSpringContext() {
+          MessageSender sender = new MessageSender();
+          OrderNotifier notifier = new OrderNotifier(sender);
+          assertThat(notifier.notifyOrder("42")).isEqualTo("SENT: Order 42 confirmed");
+      }
+  }

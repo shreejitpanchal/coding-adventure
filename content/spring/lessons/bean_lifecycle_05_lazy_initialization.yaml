@@ -1,0 +1,71 @@
+id: bean_lifecycle_05
+title: "The Expensive Bean Nobody Asked For Yet"
+language: spring
+level: 10
+objective: "Use @Lazy to defer a singleton bean's construction until it's actually first used, instead of eagerly at context startup."
+explanation: |
+  By default, every singleton bean is constructed eagerly when the
+  context refreshes -- even one that might never actually be used during
+  a given run. For a genuinely expensive bean (heavy setup, a slow
+  connection, a large in-memory structure), that's wasted work on every
+  startup that doesn't need it. @Lazy defers construction until the first
+  time something actually asks for the bean (via injection or
+  getBean()), trading a small first-access delay for not paying the cost
+  at all when it's never needed.
+example_code: |
+  @Component
+  @Lazy
+  public class ExpensiveEngine { ... }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class ExpensiveEngine {
+      public static int constructions = 0;
+
+      public ExpensiveEngine() {
+          constructions++;
+      }
+
+      public String run() {
+          return "computed";
+      }
+  }
+challenge: |
+  ExpensiveEngine is constructed eagerly the moment the context refreshes,
+  before anything has asked for it -- the test's assertion that
+  `constructions` is still 0 right after context startup fails. Fix this
+  by adding @Lazy, so construction is deferred until the bean is actually
+  requested via getBean().
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Every singleton is constructed eagerly at context startup by default, whether or not it's ever used."
+  - "Add @Lazy above @Component, and import org.springframework.context.annotation.Lazy."
+xp_reward: 15
+achievement: bean_lifecycle_master
+category: bean_lifecycle
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "@Lazy"
+concept_tags: [bean_lifecycle, lazy_initialization, performance]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class ExpensiveEngineTest {
+      @Test
+      void isNotConstructedUntilFirstUsed() {
+          ExpensiveEngine.constructions = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(ExpensiveEngine.class)) {
+              assertThat(ExpensiveEngine.constructions).isEqualTo(0);
+              ctx.getBean(ExpensiveEngine.class);
+              assertThat(ExpensiveEngine.constructions).isEqualTo(1);
+          }
+      }
+  }

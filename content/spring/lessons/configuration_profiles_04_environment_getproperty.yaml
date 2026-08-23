@@ -1,0 +1,73 @@
+id: configuration_profiles_04
+title: "Reading Configuration Programmatically"
+language: spring
+level: 14
+objective: "Inject the Environment and read a property from it dynamically, instead of hardcoding a value."
+explanation: |
+  @Value is the declarative way to pull in a single property, but
+  sometimes code needs to read configuration programmatically -- with a
+  computed key, a fallback chain, or just because it's more natural at
+  that point in the code. Spring's Environment abstraction represents
+  every configured property source (system properties, property files,
+  explicitly registered sources) as one queryable object, injectable like
+  any other bean via @Autowired.
+example_code: |
+  @Autowired
+  private Environment environment;
+
+  public String appName() {
+      return environment.getProperty("app.name", "DefaultApp");
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class BrandingService {
+      public String appName() {
+          return "DefaultApp";
+      }
+  }
+challenge: |
+  appName() always returns the hardcoded literal "DefaultApp", ignoring
+  whatever the environment actually has configured -- the test registers
+  "app.name" -> "TestApp" as a property source and expects that value
+  back. Fix this by injecting Spring's Environment and reading
+  "app.name" from it (with "DefaultApp" as the fallback for when the
+  property genuinely isn't set).
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "org.springframework.core.env.Environment can be @Autowired like any other bean."
+  - "@Autowired private Environment environment; then environment.getProperty(\"app.name\", \"DefaultApp\");"
+xp_reward: 10
+achievement: null
+category: configuration_profiles
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "Environment"
+  - "getProperty"
+concept_tags: [configuration, environment, property_resolution]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import org.springframework.core.env.MapPropertySource;
+  import java.util.Map;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class BrandingServiceTest {
+      @Test
+      void readsNameFromRegisteredPropertySource() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+              ctx.getEnvironment().getPropertySources()
+                  .addFirst(new MapPropertySource("test", Map.of("app.name", "TestApp")));
+              ctx.register(BrandingService.class);
+              ctx.refresh();
+              BrandingService service = ctx.getBean(BrandingService.class);
+              assertThat(service.appName()).isEqualTo("TestApp");
+          }
+      }
+  }

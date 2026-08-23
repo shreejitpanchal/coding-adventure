@@ -1,0 +1,74 @@
+id: configuration_profiles_02
+title: "One Interface, a Different Bean Per Environment"
+language: spring
+level: 12
+objective: "Use @Profile to register environment-specific implementations of the same interface, activated by which profile is active."
+explanation: |
+  @Profile("name") on a bean means "only register this bean when that
+  profile is active." It's the standard way to swap an implementation
+  based on environment -- a dev implementation that just logs, versus a
+  prod implementation that actually calls an external system -- without
+  any if/else in application code. Which profile is active is set on the
+  Environment before the context refreshes (in a real app, typically via
+  a command-line flag or environment variable; here, the test sets it
+  directly for a deterministic, isolated run).
+example_code: |
+  @Component
+  @Profile("dev")
+  class DevMailService implements MailService { ... }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  interface MailService {
+      String send(String to);
+  }
+
+  @Component
+  class DevMailService implements MailService {
+      public String send(String to) { return "LOGGED (dev): mail to " + to; }
+  }
+
+  @Component
+  class ProdMailService implements MailService {
+      public String send(String to) { return "SENT (prod): mail to " + to; }
+  }
+challenge: |
+  Neither DevMailService nor ProdMailService is profile-scoped, so both
+  are always registered together, and injecting a plain MailService is
+  ambiguous. Fix this by adding @Profile("dev") to DevMailService and
+  @Profile("prod") to ProdMailService, so activating the "dev" profile
+  registers only DevMailService.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Without @Profile, both implementations are always active together -- that's what makes the injection ambiguous."
+  - "@Profile(\"dev\") above DevMailService, @Profile(\"prod\") above ProdMailService."
+xp_reward: 10
+achievement: null
+category: configuration_profiles
+category_level: 2
+difficulty: core
+contains_patterns:
+  - '@Profile\("dev"\)'
+  - '@Profile\("prod"\)'
+concept_tags: [configuration, profiles, environment_specific_beans]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class MailServiceTest {
+      @Test
+      void devProfileSelectsDevMailService() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+              ctx.getEnvironment().setActiveProfiles("dev");
+              ctx.register(DevMailService.class, ProdMailService.class);
+              ctx.refresh();
+              MailService service = ctx.getBean(MailService.class);
+              assertThat(service.send("ada@example.com")).isEqualTo("LOGGED (dev): mail to ada@example.com");
+          }
+      }
+  }

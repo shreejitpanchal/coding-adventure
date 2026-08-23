@@ -30,6 +30,9 @@ CATEGORY_META: dict[str, CategoryMeta] = {
     "deployment": CategoryMeta("Deployment", "\U0001F680", "#22D3EE"),
     "observability": CategoryMeta("Observability", "\U0001F50D", "#A78BFA"),
     "gotcha_gauntlet": CategoryMeta("Gotcha Gauntlet", "\U0001F41E", "#FF6B6B"),
+    "dependency_injection": CategoryMeta("Dependency Injection", "\U0001F9E9", "#7C9EFF"),
+    "bean_lifecycle": CategoryMeta("Bean Lifecycle & Scopes", "\U0001F331", "#4ADE9E"),
+    "configuration_profiles": CategoryMeta("Configuration & Profiles", "\U0001F39B️", "#FFC857"),
 }
 
 DEFAULT_META = CategoryMeta("More Practice", "⭐", "#8A93C7")

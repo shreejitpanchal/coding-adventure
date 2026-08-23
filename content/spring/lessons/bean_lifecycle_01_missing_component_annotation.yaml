@@ -1,0 +1,58 @@
+id: bean_lifecycle_01
+title: "The Class Spring Never Knew About"
+language: spring
+level: 6
+objective: "Fix a NoSuchBeanDefinitionException by registering a plain class as a bean with @Component."
+explanation: |
+  A plain Java class, no matter how correctly written, is invisible to
+  Spring's container unless something tells the container to manage it --
+  @Component is that signal for component-scanned classes.
+  ctx.getBean(HealthCheck.class) on an unregistered class fails with
+  NoSuchBeanDefinitionException, since the class simply never became a
+  bean in the first place.
+example_code: |
+  @Component
+  public class HealthCheck {
+      public String status() { return "OK"; }
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  public class HealthCheck {
+      public String status() {
+          return "OK";
+      }
+  }
+challenge: |
+  HealthCheck has no @Component annotation, so Spring's container never
+  registers it as a bean -- ctx.getBean(HealthCheck.class) throws
+  NoSuchBeanDefinitionException. Fix this by adding @Component to the
+  class, so the context can construct and return it.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "A plain class isn't a bean until something tells Spring's container to manage it."
+  - "Add @Component above the class declaration, and import org.springframework.stereotype.Component."
+xp_reward: 10
+achievement: null
+category: bean_lifecycle
+category_level: 1
+difficulty: warmup
+contains_patterns:
+  - "@Component"
+concept_tags: [bean_lifecycle, component_annotation]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class HealthCheckTest {
+      @Test
+      void isRegisteredAsABean() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(HealthCheck.class)) {
+              HealthCheck check = ctx.getBean(HealthCheck.class);
+              assertThat(check.status()).isEqualTo("OK");
+          }
+      }
+  }

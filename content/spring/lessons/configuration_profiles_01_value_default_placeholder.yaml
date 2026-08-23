@@ -1,0 +1,74 @@
+id: configuration_profiles_01
+title: "The Placeholder That Was Never Resolved"
+language: spring
+level: 11
+objective: "Register a PropertySourcesPlaceholderConfigurer bean so @Value(\"${...}\") placeholders actually get resolved."
+explanation: |
+  In plain Spring (unlike Spring Boot, which wires this up
+  automatically), @Value("${...}") placeholders only get resolved if a
+  PropertySourcesPlaceholderConfigurer bean is registered in the context
+  -- without one, the container doesn't know it needs to process those
+  expressions at all, and bean creation fails outright. Registering it as
+  a static @Bean method in a @Configuration class is the standard way to
+  opt into placeholder resolution (static is required here specifically
+  because this particular bean has to run during a very early phase of
+  context startup, before normal bean instantiation).
+example_code: |
+  @Bean
+  public static PropertySourcesPlaceholderConfigurer placeholderConfigurer() {
+      return new PropertySourcesPlaceholderConfigurer();
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Value;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  public class AppConfig {
+  }
+
+  @Component
+  class Greeter {
+      @Value("${greeting.prefix:Hello}")
+      private String prefix;
+
+      public String greet(String name) {
+          return prefix + ", " + name + "!";
+      }
+  }
+challenge: |
+  No PropertySourcesPlaceholderConfigurer bean is registered, so
+  @Value("${greeting.prefix:Hello}") is never resolved -- bean creation
+  fails. Fix this by adding a static @Bean method to AppConfig that
+  returns a new PropertySourcesPlaceholderConfigurer, so the ${...}
+  placeholder resolves to its default value "Hello".
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Plain Spring (not Boot) needs an explicit PropertySourcesPlaceholderConfigurer bean to resolve @Value(\"${...}\") at all."
+  - "@Bean public static PropertySourcesPlaceholderConfigurer placeholderConfigurer() { return new PropertySourcesPlaceholderConfigurer(); }"
+xp_reward: 10
+achievement: null
+category: configuration_profiles
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "PropertySourcesPlaceholderConfigurer"
+concept_tags: [configuration, value_annotation, placeholder_resolution, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class AppConfigTest {
+      @Test
+      void resolvesDefaultPlaceholderValue() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class, Greeter.class)) {
+              Greeter greeter = ctx.getBean(Greeter.class);
+              assertThat(greeter.greet("Ada")).isEqualTo("Hello, Ada!");
+          }
+      }
+  }

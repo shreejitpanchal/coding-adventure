@@ -1,0 +1,65 @@
+id: bean_lifecycle_04
+title: "The Resource Nobody Closed"
+language: spring
+level: 9
+objective: "Add a @PreDestroy method so a bean's cleanup logic actually runs when the ApplicationContext shuts down."
+explanation: |
+  Closing a context (ctx.close(), or the JVM shutting down cleanly) tears
+  down every singleton bean, but only calls cleanup logic that's actually
+  registered for it -- a plain method sitting on the class does nothing
+  on its own. @PreDestroy marks a method to run automatically during that
+  teardown, the natural place for releasing resources (closing
+  connections, flushing buffers, releasing locks) a bean acquired during
+  its lifetime.
+example_code: |
+  @PreDestroy
+  public void shutdown() {
+      closed = true;
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class ConnectionPool {
+      public static boolean closed = false;
+
+      public void shutdown() {
+          closed = true;
+      }
+  }
+challenge: |
+  shutdown() correctly sets closed to true, but nothing ever calls it --
+  closing the context doesn't know this method exists. Fix this by
+  annotating shutdown() with @PreDestroy, so Spring calls it automatically
+  when the context closes.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "A plain method does nothing on its own during shutdown -- Spring needs to be told to call it."
+  - "Add @PreDestroy directly above the shutdown() method."
+xp_reward: 10
+achievement: null
+category: bean_lifecycle
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "@PreDestroy"
+concept_tags: [bean_lifecycle, predestroy, cleanup]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class ConnectionPoolTest {
+      @Test
+      void cleansUpWhenContextCloses() {
+          ConnectionPool.closed = false;
+          AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(ConnectionPool.class);
+          ctx.getBean(ConnectionPool.class);
+          ctx.close();
+          assertThat(ConnectionPool.closed).isTrue();
+      }
+  }

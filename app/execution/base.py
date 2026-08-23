@@ -12,7 +12,10 @@ import subprocess
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from app.engine.exercise import Exercise
 
 DEFAULT_TIMEOUT_SECONDS = 8.0
 
@@ -64,5 +67,10 @@ class ExecutionEngine(ABC):
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         handle: Optional[RunHandle] = None,
         stdin_text: Optional[str] = None,
+        exercise: Optional["Exercise"] = None,
     ) -> ExecutionResult:
+        """exercise is unused by the single-file engines (Python/Java/C++) --
+        SpringEngine needs it to look up the exercise's fixed test source
+        and scaffold a Maven project, since a Spring exercise isn't a single
+        self-contained code string the way the others are."""
         raise NotImplementedError
