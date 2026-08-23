@@ -1,0 +1,40 @@
+id: core_refresher_03
+title: "Functor Struct to Lambda"
+language: cpp
+level: 8
+objective: "Replace a hand-written function-object struct with a lambda expression."
+explanation: |
+  A struct with just an `operator()` exists purely to be passed as a
+  callable -- a lambda expresses the exact same thing inline, at the
+  point it's actually used, without a separate named type cluttering
+  the surrounding scope.
+example_code: |
+  std::count_if(v.begin(), v.end(), [](int n) { return n > 0; });
+starter_code: |
+  #include <iostream>
+  #include <algorithm>
+  #include <vector>
+  struct IsEven {
+      bool operator()(int n) const { return n % 2 == 0; }
+  };
+  int main() {
+      std::vector<int> nums = {1, 2, 3, 4, 5, 6};
+      int count = std::count_if(nums.begin(), nums.end(), IsEven());
+      std::cout << count << std::endl;
+      return 0;
+  }
+challenge: |
+  Replace the IsEven functor struct with an equivalent lambda expression
+  passed directly to count_if, keeping the same output: 3.
+expected_output: |
+  3
+hints:
+  - "[](int n) { return n % 2 == 0; } replaces the whole IsEven struct and its instantiation."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "\\[\\]\\(int n\\)"
+concept_tags: [lambdas, algorithms]

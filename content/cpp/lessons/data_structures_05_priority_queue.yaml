@@ -1,0 +1,42 @@
+id: data_structures_05
+title: "The Minimum Without a Full Sort"
+language: cpp
+level: 15
+objective: "Use std::priority_queue (a min-heap) to read off the smallest element instead of sorting the entire vector first."
+explanation: |
+  Sorting the whole vector just to read the first element is O(n log
+  n) work to answer a question that only needs the minimum.
+  std::priority_queue is a heap-backed adapter -- by default a max-heap,
+  but passing std::greater<int> flips it into a min-heap -- giving O(1)
+  access to the current minimum after O(n) construction.
+example_code: |
+  #include <queue>
+  std::priority_queue<int, std::vector<int>, std::greater<int>> minHeap(nums.begin(), nums.end());
+  int smallest = minHeap.top();
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  #include <algorithm>
+  int main() {
+      std::vector<int> nums = {5, 1, 4, 2, 3};
+      std::sort(nums.begin(), nums.end());
+      std::cout << nums[0] << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using a std::priority_queue (min-heap, via
+  std::greater<int>) instead of sorting the whole vector, keeping the
+  same output: 1.
+expected_output: |
+  1
+hints:
+  - "#include <queue>"
+  - "std::priority_queue<int, std::vector<int>, std::greater<int>> pq(nums.begin(), nums.end()); then pq.top()."
+xp_reward: 15
+achievement: data_structures_master
+category: data_structures
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "priority_queue"
+concept_tags: [collections, priority_queue, algorithms]

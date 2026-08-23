@@ -1,0 +1,42 @@
+id: core_refresher_02
+title: "Spelling Out a Type auto Could Deduce"
+language: cpp
+level: 7
+objective: "Replace a verbose, fully-spelled-out iterator type with auto."
+explanation: |
+  `auto` lets the compiler deduce a variable's type from its
+  initializer -- for a type as verbose as
+  `std::map<std::string, int>::iterator`, spelling it out is pure noise
+  that also has to be kept in sync if the container type ever changes.
+  `auto` says exactly the same thing more concisely, and stays correct
+  automatically.
+example_code: |
+  std::map<std::string, int> m;
+  auto it = m.begin();
+starter_code: |
+  #include <iostream>
+  #include <map>
+  #include <string>
+  int main() {
+      std::map<std::string, int> ages;
+      ages["Ada"] = 30;
+      for (std::map<std::string, int>::iterator it = ages.begin(); it != ages.end(); ++it) {
+          std::cout << it->first << " " << it->second << std::endl;
+      }
+      return 0;
+  }
+challenge: |
+  Replace the fully-spelled-out iterator type with auto, keeping the
+  same output: "Ada 30".
+expected_output: |
+  Ada 30
+hints:
+  - "auto it = ages.begin(); lets the compiler deduce the iterator type."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "auto it"
+concept_tags: [auto, type_deduction]

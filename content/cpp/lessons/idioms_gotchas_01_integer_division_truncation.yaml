@@ -1,0 +1,43 @@
+id: idioms_gotchas_01
+title: "Integer Division Truncates Silently"
+language: cpp
+level: 1
+objective: "Fix an average calculation that silently truncates to an integer instead of producing a fractional result."
+explanation: |
+  Dividing two `int` values always produces an `int` -- the fractional
+  part is discarded (truncated toward zero), even when the result is
+  assigned to a `double`. The division happens first, in `int`
+  arithmetic; only the already-truncated result gets converted. At
+  least one operand needs to be a floating-point type before the
+  division happens.
+example_code: |
+  int total = 5;
+  int count = 2;
+  double average = static_cast<double>(total) / count;
+  std::cout << average << std::endl;
+starter_code: |
+  #include <iostream>
+  int main() {
+      int total = 7;
+      int count = 2;
+      double average = total / count;
+      std::cout << average << std::endl;
+      return 0;
+  }
+challenge: |
+  total / count is computed as integer division (3), then converted to
+  double (3) -- the .5 is lost before the assignment ever happens. Fix
+  this by casting total to double before dividing, so the output is 3.5.
+expected_output: |
+  3.5
+hints:
+  - "int / int is always int division -- the cast has to happen before the division, not after."
+  - "double average = static_cast<double>(total) / count;"
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "static_cast<double>"
+concept_tags: [integer_division, type_conversion, gotchas]

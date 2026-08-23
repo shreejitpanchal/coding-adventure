@@ -1,0 +1,48 @@
+id: idioms_gotchas_04
+title: "The Countdown Loop That Never Went Negative"
+language: cpp
+level: 4
+objective: "Fix a reverse loop that never terminates because its index is an unsigned type, which can never compare less than zero."
+explanation: |
+  `std::vector::size()` returns `size_t`, an *unsigned* type -- it can
+  never be negative. A loop like `for (size_t i = ...; i >= 0; i--)`
+  looks like it should stop at 0, but once `i` decrements past 0 it
+  wraps around to an enormous positive number instead of going
+  negative, so `i >= 0` is always true. In this sandbox that shows up
+  as a timeout (it keeps indexing far out of bounds instead of ever
+  reaching a check that stops it); on some systems it crashes instead --
+  either way, the loop condition itself is the bug. Using a signed index
+  avoids the wraparound entirely.
+example_code: |
+  for (int i = static_cast<int>(v.size()) - 1; i >= 0; i--) {
+      // safe: i is signed, can actually reach -1 and stop
+  }
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> values = {10, 20, 30};
+      int sum = 0;
+      for (size_t i = values.size() - 1; i >= 0; i--) {
+          sum += values[i];
+      }
+      std::cout << sum << std::endl;
+      return 0;
+  }
+challenge: |
+  i is size_t (unsigned) -- `i >= 0` is always true, so once i wraps
+  past 0 the loop keeps indexing far out of bounds instead of stopping.
+  Fix this by using a signed int index instead, so the output is 60.
+expected_output: |
+  60
+hints:
+  - "size_t can never be negative -- `i >= 0` on an unsigned type is always true."
+  - "for (int i = static_cast<int>(values.size()) - 1; i >= 0; i--)"
+xp_reward: 15
+achievement: null
+category: idioms_gotchas
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "static_cast<int>"
+concept_tags: [unsigned_integers, off_by_one, gotchas]

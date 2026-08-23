@@ -1,0 +1,55 @@
+id: stdlib_deep_dive_05
+title: "Sentinel Value to std::optional"
+language: cpp
+level: 20
+objective: "Replace a magic sentinel value used to mean 'no result' with std::optional, which makes the absence explicit in the type itself."
+explanation: |
+  Returning a sentinel value like -999 to mean "nothing found" only
+  works as long as -999 could never be a legitimate result -- and
+  nothing about the function's signature tells a caller that convention
+  exists at all. std::optional<T> makes "maybe there's a value, maybe
+  there isn't" part of the type itself, checked explicitly with
+  has_value() instead of a fragile magic-number comparison.
+example_code: |
+  #include <optional>
+  std::optional<int> maybeValue = std::nullopt;
+  if (maybeValue.has_value()) { ... }
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int findFirstNegative(const std::vector<int>& nums) {
+      for (int n : nums) {
+          if (n < 0) {
+              return n;
+          }
+      }
+      return -999;
+  }
+  int main() {
+      std::vector<int> nums = {1, 2, 3};
+      int result = findFirstNegative(nums);
+      if (result == -999) {
+          std::cout << "none" << std::endl;
+      } else {
+          std::cout << result << std::endl;
+      }
+      return 0;
+  }
+challenge: |
+  Rewrite findFirstNegative to return std::optional<int> instead of the
+  magic sentinel -999, and update main to check has_value() instead of
+  comparing against -999, keeping the same output: "none".
+expected_output: |
+  none
+hints:
+  - "#include <optional>"
+  - "std::optional<int> findFirstNegative(...) -- return the value directly when found, return std::nullopt otherwise."
+  - "In main: if (!result.has_value()) { ... }"
+xp_reward: 15
+achievement: stdlib_deep_dive_master
+category: stdlib_deep_dive
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "std::optional<int>"
+concept_tags: [optional, modern_cpp]

@@ -1,0 +1,43 @@
+id: stdlib_deep_dive_01
+title: "Manual Digit Parsing to stringstream"
+language: cpp
+level: 16
+objective: "Replace a manual digit-by-digit parse loop with std::stringstream."
+explanation: |
+  Parsing a numeric string character by character, accumulating
+  `value * 10 + digit`, reinvents what std::stringstream already does
+  correctly (including handling of leading whitespace and sign) --
+  extracting into an int with `>>` is both shorter and more robust.
+example_code: |
+  #include <sstream>
+  std::stringstream ss("42");
+  int value;
+  ss >> value;
+starter_code: |
+  #include <iostream>
+  #include <string>
+  int main() {
+      std::string data = "42";
+      int value = 0;
+      for (char c : data) {
+          value = value * 10 + (c - '0');
+      }
+      std::cout << value << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::stringstream to parse data into value instead
+  of manual digit-by-digit accumulation, keeping the same output: 42.
+expected_output: |
+  42
+hints:
+  - "#include <sstream>"
+  - "std::stringstream ss(data); int value = 0; ss >> value;"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "stringstream"
+concept_tags: [strings, streams]

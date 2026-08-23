@@ -1,0 +1,45 @@
+id: data_structures_01
+title: "Manual Bubble Sort to std::sort"
+language: cpp
+level: 11
+objective: "Replace a hand-written bubble sort with std::sort from <algorithm>."
+explanation: |
+  std::sort is a highly optimized (typically introsort) implementation
+  provided by the standard library -- there's essentially never a good
+  reason to hand-write a sort in application code. It's also far less
+  error-prone than a manual nested-loop swap implementation.
+example_code: |
+  #include <algorithm>
+  std::sort(nums.begin(), nums.end());
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> nums = {5, 2, 8, 1, 9};
+      for (size_t i = 0; i < nums.size(); i++) {
+          for (size_t j = 0; j < nums.size() - i - 1; j++) {
+              if (nums[j] > nums[j + 1]) {
+                  int temp = nums[j];
+                  nums[j] = nums[j + 1];
+                  nums[j + 1] = temp;
+              }
+          }
+      }
+      std::cout << nums[0] << std::endl;
+      return 0;
+  }
+challenge: |
+  Replace the manual bubble sort with std::sort(nums.begin(),
+  nums.end()) from <algorithm>, keeping the same output: 1.
+expected_output: |
+  1
+hints:
+  - "#include <algorithm>, then a single call: std::sort(nums.begin(), nums.end());"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "std::sort"
+concept_tags: [algorithms, sorting]

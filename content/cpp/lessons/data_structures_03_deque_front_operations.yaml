@@ -1,0 +1,41 @@
+id: data_structures_03
+title: "O(1) Front Removal with deque"
+language: cpp
+level: 13
+objective: "Replace vector::erase(begin()) -- O(n), shifting every remaining element -- with std::deque's O(1) pop_front()."
+explanation: |
+  Erasing from the front of a std::vector shifts every remaining
+  element left by one slot: O(n). std::deque is designed for O(1)
+  insertion/removal at both ends -- the right container whenever
+  something is being used as a queue.
+example_code: |
+  #include <deque>
+  std::deque<int> q = {1, 2, 3};
+  q.pop_front();
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> queue = {1, 2, 3};
+      int first = queue.front();
+      queue.erase(queue.begin());
+      std::cout << first << " " << queue.size() << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::deque and pop_front() instead of
+  vector::erase(begin()), keeping the same output: "1 2".
+expected_output: |
+  1 2
+hints:
+  - "#include <deque>"
+  - "std::deque<int> queue = {1, 2, 3}; then queue.pop_front(); instead of erase(begin())."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "deque"
+  - "pop_front"
+concept_tags: [collections, performance]

@@ -1,0 +1,50 @@
+id: concurrency_async_02
+title: "std::atomic Instead of a Manually Locked Counter"
+language: cpp
+level: 22
+objective: "Replace a manually mutex-locked counter with std::atomic<int>, which is lock-free and purpose-built for this."
+explanation: |
+  std::atomic<int> provides atomic increment/read (backed by hardware
+  compare-and-swap on most platforms) without needing an explicit lock
+  at all -- for a single counter shared across threads, it's simpler,
+  and typically faster, than a hand-rolled mutex.
+example_code: |
+  #include <atomic>
+  std::atomic<int> counter(0);
+  counter++;
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  #include <mutex>
+  int counter = 0;
+  std::mutex mtx;
+  void increment() {
+      for (int i = 0; i < 50000; i++) {
+          std::lock_guard<std::mutex> lock(mtx);
+          counter++;
+      }
+  }
+  int main() {
+      std::thread t1(increment);
+      std::thread t2(increment);
+      t1.join();
+      t2.join();
+      std::cout << counter << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::atomic<int> instead of a mutex-locked int
+  counter, keeping the same result: 100000.
+expected_output: |
+  100000
+hints:
+  - "#include <atomic>"
+  - "std::atomic<int> counter(0); then just counter++; -- no mutex or lock_guard needed."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 2
+difficulty: deep_dive
+contains_patterns:
+  - "std::atomic<int>"
+concept_tags: [concurrency, atomic, threading]

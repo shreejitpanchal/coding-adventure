@@ -1,0 +1,43 @@
+id: core_refresher_01
+title: "Index Loop to Range-Based For"
+language: cpp
+level: 6
+objective: "Rewrite an index-based loop as a range-based for loop."
+explanation: |
+  A range-based for loop (`for (int n : nums)`) expresses "do this for
+  every element" directly, without the index bookkeeping (`size_t i`,
+  bounds checking, `nums[i]`) an index-based loop needs -- it's the
+  modern C++ default whenever you don't actually need the index itself.
+example_code: |
+  std::vector<int> nums = {1, 2, 3};
+  int total = 0;
+  for (int n : nums) {
+      total += n;
+  }
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> nums = {1, 2, 3, 4};
+      int sum = 0;
+      for (size_t i = 0; i < nums.size(); i++) {
+          sum += nums[i];
+      }
+      std::cout << sum << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using a range-based for loop instead of an index-based
+  one, keeping the same output: 10.
+expected_output: |
+  10
+hints:
+  - "for (int n : nums) { sum += n; } replaces the whole indexed loop."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "for \\(int n : nums\\)"
+concept_tags: [range_based_for, loops]

@@ -12,10 +12,10 @@ through in a few focused minutes, not tutorials to sit through.
 
 ## What's inside
 
-- **Language picker** — every session starts by choosing a track. Python
-  and Java are fully built out; C++ and Spring are visible as "coming
-  soon" so the shape of the app doesn't change as they're added. A track
-  whose local toolchain isn't installed (e.g. no JDK) shows "Toolchain
+- **Language picker** — every session starts by choosing a track. Python,
+  Java, and C++ are fully built out; Spring is visible as "coming soon"
+  so the shape of the app doesn't change as it's added. A track whose
+  local toolchain isn't installed (e.g. no JDK, no g++) shows "Toolchain
   needed" with an install hint instead of pretending it's ready.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
@@ -26,7 +26,10 @@ through in a few focused minutes, not tutorials to sit through.
   Algorithms, Standard Library Deep Dive, Concurrency & Async, Thread
   Scheduling, Sync vs Async, Functional Programming, Recursion,
   Dependency Management, Packaging, Deployment, Observability, and the
-  flagship **Gotcha Gauntlet**.
+  flagship **Gotcha Gauntlet**. C++ covers its own 6 categories (a
+  general-purpose-language subset, not framework-specific): Idioms &
+  Gotchas, Core Language Refresher, Data Structures, Standard Library
+  Deep Dive, Concurrency & Async, and Gotcha Gauntlet.
   - **Python** — 75 exercises (mutable defaults, race conditions, float
     precision, silent exception swallowing, GIL vs true parallelism, and
     more).
@@ -35,21 +38,27 @@ through in a few focused minutes, not tutorials to sit through.
     virtual threads and CompletableFuture for concurrency,
     ConcurrentModificationException, silent int overflow, the
     equals()/hashCode() contract, and more).
-- **Quiz Bank** — 87 Python questions, 70 Java questions, reshuffled
-  every session.
+  - **C++** — 30 exercises (integer division/overflow, pass-by-value vs
+    pass-by-reference, unsigned wraparound, RAII/smart pointers, STL
+    containers and algorithms, std::thread/mutex/atomic/async, missing
+    virtual destructors, and more).
+- **Quiz Bank** — 87 Python questions, 70 Java questions, 35 C++
+  questions, reshuffled every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
 - **Real execution, not a simulated sandbox** — Python exercises run
   against your actual local `python` interpreter; Java exercises are
-  compiled with `javac` and run with `java`, both in an isolated
+  compiled with `javac` and run with `java`; C++ exercises are compiled
+  with `g++` and run as a native binary — all three in an isolated
   subprocess with a timeout.
 - **100% offline and private** — everything runs and stays on your
   machine. No accounts, no network access, no data collection.
 
-C++ and Spring have their execution-engine interfaces defined and
-content directories scaffolded (`content/cpp`, `content/spring`), ready
-to fill in — see `app/execution/cpp_engine.py` and `spring_engine.py`
-for what's left to implement.
+Spring has its execution-engine interface defined and a content
+directory scaffolded (`content/spring`), ready to fill in — see
+`app/execution/spring_engine.py` for what's left to implement (a
+scaffolded Maven project per exercise, run via `mvn test`, rather than a
+single-file compile-and-run).
 
 ## Getting started
 
@@ -70,8 +79,8 @@ itself up; every run after that launches straight into the app.
 - `app/engine/` — content model (`Exercise`, `QuizQuestion`), YAML
   loaders, category/unlock logic.
 - `app/execution/` — one `ExecutionEngine` per language.
-  `python_engine.py` and `java_engine.py` are implemented; `cpp_engine.py`
-  and `spring_engine.py` define the interface and raise
+  `python_engine.py`, `java_engine.py`, and `cpp_engine.py` are
+  implemented; `spring_engine.py` defines the interface and raises
   `NotImplementedError` until built out.
 - `app/progress/` — SQLite-backed XP/streaks/badges/activity log, keyed
   per language track.

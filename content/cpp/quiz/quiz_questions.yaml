@@ -1,0 +1,385 @@
+questions:
+  - id: q01
+    question: "What does int / int produce in C++, even when assigned to a double?"
+    options:
+      - "A double with the fractional part preserved"
+      - "Integer division -- the fractional part is truncated before the assignment happens"
+      - "A compile error"
+      - "It rounds to the nearest integer"
+    correct: 1
+    explanation: "int / int is always integer division; the truncation happens before any conversion to double."
+    concept_tags: [integer_division, type_conversion, gotchas]
+
+  - id: q02
+    question: "Why doesn't a function taking `int x` (by value) modify the caller's variable?"
+    options:
+      - "It does modify it -- this is a myth"
+      - "The parameter is a copy of the argument; changes to the copy don't affect the original"
+      - "C++ passes everything by reference by default"
+      - "Only class types are passed by value"
+    correct: 1
+    explanation: "Pass-by-value copies the argument. To modify the caller's variable, the parameter must be a reference (int&)."
+    concept_tags: [references, pass_by_reference, gotchas]
+
+  - id: q03
+    question: "What does `if (x = 1)` do, as opposed to `if (x == 1)`?"
+    options:
+      - "They're identical"
+      - "It assigns 1 to x, then evaluates the assignment's result (1, truthy) -- the branch always runs"
+      - "It's a compile error"
+      - "It compares x to 1 as a side effect"
+    correct: 1
+    explanation: "= is assignment and returns the assigned value; == is comparison. Confusing them is one of the classic C-family typos."
+    concept_tags: [operators, gotchas]
+
+  - id: q04
+    question: "Why can a loop like `for (size_t i = v.size() - 1; i >= 0; i--)` run forever or crash?"
+    options:
+      - "size_t is signed, so this is fine"
+      - "size_t is unsigned -- once i decrements past 0 it wraps to a huge positive number, so i >= 0 is always true"
+      - "v.size() always throws"
+      - "-- doesn't work on size_t"
+    correct: 1
+    explanation: "size_t is unsigned and can never be negative, so `i >= 0` never becomes false once i wraps around."
+    concept_tags: [unsigned_integers, off_by_one, gotchas]
+
+  - id: q05
+    question: "What is the actual integer value of the char literal '7'?"
+    options:
+      - "7"
+      - "55 -- its ASCII code, not the digit it visually represents"
+      - "0"
+      - "Undefined behavior"
+    correct: 1
+    explanation: "char holds a small integer code. '7' is ASCII 55; converting to the digit 7 requires subtracting '0'."
+    concept_tags: [chars, type_conversion, gotchas]
+
+  - id: q06
+    question: "What's the main advantage of a range-based for loop over an index-based one?"
+    options:
+      - "It's faster in every case"
+      - "It expresses 'do this for every element' directly, without index bookkeeping, when the index itself isn't needed"
+      - "It can modify the container's size safely"
+      - "It works on types that index-based loops can't"
+    correct: 1
+    explanation: "Range-based for removes index/bounds bookkeeping when you only need each element, not its position."
+    concept_tags: [range_based_for, loops]
+
+  - id: q07
+    question: "What does the `auto` keyword do in a variable declaration?"
+    options:
+      - "Makes the variable's type mutable at runtime"
+      - "Lets the compiler deduce the variable's type from its initializer expression"
+      - "Automatically initializes the variable to a default value"
+      - "Marks the variable as thread-local"
+    correct: 1
+    explanation: "auto deduces the type at compile time from the initializer -- useful especially for verbose types like iterators."
+    concept_tags: [auto, type_deduction]
+
+  - id: q08
+    question: "What can a lambda expression replace in most modern C++ code?"
+    options:
+      - "Any class definition"
+      - "A small struct/class defined purely to provide an operator() (a function object / functor)"
+      - "A namespace"
+      - "A template"
+    correct: 1
+    explanation: "A lambda is inline shorthand for a one-off callable, replacing a hand-written functor struct."
+    concept_tags: [lambdas, algorithms]
+
+  - id: q09
+    question: "What does std::unique_ptr provide that manual new/delete doesn't guarantee?"
+    options:
+      - "Faster allocation"
+      - "Automatic deletion when the unique_ptr goes out of scope, even on early returns or exceptions (RAII)"
+      - "Reference counting across multiple owners"
+      - "Thread-safety for the owned object"
+    correct: 1
+    explanation: "unique_ptr ties the owned resource's lifetime to the pointer's own scope -- RAII -- so it can't be forgotten."
+    concept_tags: [smart_pointers, raii]
+
+  - id: q10
+    question: "What do structured bindings (C++17) let you do?"
+    options:
+      - "Bind a variable to multiple types at once"
+      - "Unpack a pair/tuple-like value into named variables directly, e.g. `for (const auto& [key, value] : m)`"
+      - "Merge two structs into one"
+      - "Bind a lambda to a struct"
+    correct: 1
+    explanation: "Structured bindings destructure pair/tuple-like values into named locals instead of reaching through .first/.second."
+    concept_tags: [structured_bindings, modern_cpp]
+
+  - id: q11
+    question: "Why prefer std::sort over a hand-written bubble sort in application code?"
+    options:
+      - "Bubble sort doesn't compile in C++"
+      - "std::sort is a well-tested, highly optimized standard implementation, and far less error-prone to write correctly"
+      - "std::sort is guaranteed stable while bubble sort never is"
+      - "There's no real reason, they're equivalent"
+    correct: 1
+    explanation: "std::sort is a tuned, standard, thoroughly tested algorithm -- there's essentially never a reason to hand-write a sort."
+    concept_tags: [algorithms, sorting]
+
+  - id: q12
+    question: "Why is std::unordered_map preferred over a linear scan through a vector of pairs for key lookups?"
+    options:
+      - "unordered_map is always sorted, making lookups easier to read"
+      - "unordered_map gives O(1) average lookup via hashing, versus O(n) for a linear scan"
+      - "vector of pairs can't hold duplicate keys"
+      - "There's no real performance difference"
+    correct: 1
+    explanation: "A hash table gives O(1) average-case lookup; scanning a vector of pairs is O(n) per lookup."
+    concept_tags: [collections, hashmap, performance]
+
+  - id: q13
+    question: "Why does erasing from the front of a std::vector cost O(n), while std::deque's pop_front() is O(1)?"
+    options:
+      - "vector doesn't support erasing from the front at all"
+      - "vector::erase(begin()) shifts every remaining element left by one slot; deque is designed for O(1) operations at both ends"
+      - "deque is always faster than vector for everything"
+      - "vector::erase is O(1) too, this is a myth"
+    correct: 1
+    explanation: "vector's contiguous storage means removing the first element requires shifting all the rest; deque avoids that by design."
+    concept_tags: [collections, performance]
+
+  - id: q14
+    question: "What does constructing a std::set from a range of values do to duplicates?"
+    options:
+      - "Keeps all duplicates in insertion order"
+      - "Automatically discards duplicates -- std::set enforces uniqueness by construction"
+      - "Throws an exception if any duplicates are found"
+      - "Sets don't accept ranges as a constructor argument"
+    correct: 1
+    explanation: "std::set is a sorted, unique-elements container; constructing one from a range discards duplicates automatically."
+    concept_tags: [collections, sets]
+
+  - id: q15
+    question: "How do you make a std::priority_queue behave as a min-heap instead of the default max-heap?"
+    options:
+      - "It's impossible -- priority_queue is always a max-heap"
+      - "Pass std::greater<T> as its comparator template argument"
+      - "Call .reverse() on it after construction"
+      - "Insert elements in reverse order"
+    correct: 1
+    explanation: "std::priority_queue<T, std::vector<T>, std::greater<T>> flips the default max-heap ordering into a min-heap."
+    concept_tags: [collections, priority_queue, algorithms]
+
+  - id: q16
+    question: "What's the advantage of std::stringstream over manually accumulating digits with value * 10 + digit?"
+    options:
+      - "stringstream is always faster"
+      - "stringstream correctly handles cases like whitespace and sign that a naive digit-accumulation loop doesn't, and is more concise"
+      - "Manual accumulation doesn't compile"
+      - "There's no real advantage"
+    correct: 1
+    explanation: "stringstream's >> extraction already handles the general parsing rules correctly, rather than reinventing them."
+    concept_tags: [strings, streams]
+
+  - id: q17
+    question: "What happens when std::stoi is called on a string with no valid leading number, like \"abc\"?"
+    options:
+      - "It returns 0"
+      - "It throws std::invalid_argument"
+      - "It returns -1"
+      - "It's undefined behavior with no exception"
+    correct: 1
+    explanation: "std::stoi throws std::invalid_argument on unparseable input (and std::out_of_range if the value overflows) rather than returning a sentinel."
+    concept_tags: [strings, exceptions, gotchas]
+
+  - id: q18
+    question: "What's the simplest way to convert a number directly to a std::string?"
+    options:
+      - "Build a std::stringstream and extract .str()"
+      - "std::to_string(value) -- a single direct call for any built-in numeric type"
+      - "Cast the number to a string with static_cast<std::string>"
+      - "Concatenate with an empty string using +"
+    correct: 1
+    explanation: "std::to_string does the number-to-string conversion directly, without needing a whole stringstream."
+    concept_tags: [strings, type_conversion]
+
+  - id: q19
+    question: "What does std::find(v.begin(), v.end(), target) return when the target isn't found?"
+    options:
+      - "nullptr"
+      - "v.end() -- compare the returned iterator against end() to know whether it was found"
+      - "-1"
+      - "It throws an exception"
+    correct: 1
+    explanation: "std::find returns an iterator to the match, or end() if nothing matched -- there's no exception or sentinel value."
+    concept_tags: [algorithms, searching]
+
+  - id: q20
+    question: "What problem does std::optional<T> solve compared to a magic sentinel value like -999?"
+    options:
+      - "It makes the function faster"
+      - "It makes 'maybe there's a value, maybe there isn't' explicit in the type itself, instead of relying on a value that could theoretically be legitimate"
+      - "It removes the need for a return statement"
+      - "optional<T> and a sentinel value are functionally identical"
+    correct: 1
+    explanation: "A sentinel like -999 only works if it can never be a real result; optional<T> makes absence part of the type, checked via has_value()."
+    concept_tags: [optional, modern_cpp]
+
+  - id: q21
+    question: "Why is counter++ unsafe when called concurrently from two threads without synchronization?"
+    options:
+      - "++ doesn't work on shared variables"
+      - "It's not atomic -- it's a read, increment, and write as separate steps, which can interleave between threads and lose updates"
+      - "Threads in C++ can't share variables at all"
+      - "It only fails if the counter starts at 0"
+    correct: 1
+    explanation: "counter++ decomposes into multiple machine instructions; two threads can interleave those steps and lose an increment."
+    concept_tags: [threading, mutex, race_conditions]
+
+  - id: q22
+    question: "What does std::lock_guard<std::mutex> do?"
+    options:
+      - "Prevents a thread from ever being created"
+      - "Locks the mutex on construction and automatically unlocks it when the lock_guard goes out of scope (RAII)"
+      - "Makes a variable atomic"
+      - "Pauses all other threads in the program"
+    correct: 1
+    explanation: "lock_guard is an RAII wrapper: the mutex is locked in its constructor and unlocked in its destructor, so it can't be forgotten."
+    concept_tags: [threading, mutex]
+
+  - id: q23
+    question: "When is std::atomic<int> a better fit than a mutex-locked int for a shared counter?"
+    options:
+      - "Never -- mutex is always required for any shared variable"
+      - "For simple operations like increment on a single value, atomic is typically simpler and faster, with no explicit lock needed"
+      - "atomic only works with floating point types"
+      - "atomic is slower than a mutex in every case"
+    correct: 1
+    explanation: "For a single counter, std::atomic<int> gives lock-free atomic increment/read without a separate mutex."
+    concept_tags: [concurrency, atomic, threading]
+
+  - id: q24
+    question: "What does std::async(std::launch::async, fn, args...) return?"
+    options:
+      - "The result of fn immediately, blocking until it's done"
+      - "A std::future<T> -- a handle to the eventual result, retrieved later via .get()"
+      - "A std::thread object"
+      - "Nothing; it's fire-and-forget"
+    correct: 1
+    explanation: "std::async runs fn asynchronously and returns a future; .get() blocks until the result is ready and returns it."
+    concept_tags: [concurrency, async, futures]
+
+  - id: q25
+    question: "What happens if a joinable std::thread is destroyed without join() or detach() ever being called?"
+    options:
+      - "The thread is silently detached"
+      - "The program calls std::terminate() and crashes -- this is guaranteed behavior, not undefined"
+      - "The destructor blocks until the thread finishes, like an implicit join"
+      - "Nothing; the thread is safely cleaned up"
+    correct: 1
+    explanation: "A std::thread must be joined or detached before destruction; otherwise the destructor terminates the program, by design."
+    concept_tags: [threading, gotchas]
+
+  - id: q26
+    question: "What's the advantage of std::promise/std::future over a variable captured by reference into a thread's lambda?"
+    options:
+      - "There's no advantage; they're identical"
+      - "future.get() blocks until the value is actually set, so there's no way to read it before the worker has produced it"
+      - "promise/future is faster in every case"
+      - "Captured references can't be used inside threads at all"
+    correct: 1
+    explanation: "A captured reference can be read too early; future.get() is a purpose-built channel that blocks until set_value() has run."
+    concept_tags: [concurrency, promise_future, threading]
+
+  - id: q27
+    question: "Why does `int arr[3]; ... arr[3]` compile and run instead of raising a clear error?"
+    options:
+      - "It doesn't compile"
+      - "Raw arrays (and vector's operator[]) do no bounds checking -- arr[3] just reads whatever memory happens to be adjacent"
+      - "C++ automatically resizes the array"
+      - "It always returns 0"
+    correct: 1
+    explanation: "Unlike vector::at(), plain indexing has no bounds check, so an out-of-range index reads garbage instead of throwing."
+    concept_tags: [arrays, off_by_one, gotchas]
+
+  - id: q28
+    question: "What's the key difference between std::vector::operator[] and std::vector::at() regarding out-of-range indices?"
+    options:
+      - "They behave identically"
+      - "at() checks bounds and throws std::out_of_range; operator[] does no check and reads undefined memory"
+      - "operator[] is always slower"
+      - "at() can only be used with const vectors"
+    correct: 1
+    explanation: "at() trades a small runtime check for a clean, catchable std::out_of_range exception instead of undefined behavior."
+    concept_tags: [exceptions, vectors, gotchas]
+
+  - id: q29
+    question: "Why does a plain (non-static) local variable fail to 'remember' a value between calls to the same function?"
+    options:
+      - "Local variables are always shared globally"
+      - "A plain local variable is reinitialized fresh on every call -- there's no memory between invocations"
+      - "It only fails for int types"
+      - "Local variables persist automatically unless explicitly reset"
+    correct: 1
+    explanation: "Only a static local variable is initialized once and persists across calls; a plain local resets every time."
+    concept_tags: [static_variables, gotchas]
+
+  - id: q30
+    question: "What actually happens when a signed int overflows past INT_MAX in C++ (on virtually all mainstream platforms)?"
+    options:
+      - "It throws an exception"
+      - "It silently wraps around to a large negative number via two's-complement arithmetic, with no warning"
+      - "The program crashes immediately"
+      - "It saturates at INT_MAX"
+    correct: 1
+    explanation: "Signed overflow doesn't throw in practice -- it wraps around silently, which is why wide-range computations need a larger type like long long."
+    concept_tags: [integers, overflow, gotchas]
+
+  - id: q31
+    question: "Why does deleting a Derived object through a Base* pointer skip Derived's destructor when Base's destructor isn't virtual?"
+    options:
+      - "It doesn't skip it -- this never happens"
+      - "delete only knows the static type (Base*) without a virtual destructor, so it only calls Base's destructor"
+      - "Derived objects can't be deleted through a base pointer at all"
+      - "Only constructors need to be virtual, destructors are always called correctly"
+    correct: 1
+    explanation: "A non-virtual destructor means delete resolves the call statically -- any class meant to be used polymorphically needs a virtual destructor."
+    concept_tags: [inheritance, destructors, virtual_functions, gotchas]
+
+  - id: q32
+    question: "What's the practical difference between std::vector and std::deque for typical queue-like usage?"
+    options:
+      - "deque can only hold pointers"
+      - "deque supports O(1) insertion/removal at both the front and back; vector is efficient only at the back"
+      - "vector is always the better default for queues"
+      - "There is no difference"
+    correct: 1
+    explanation: "deque is purpose-built for efficient operations at both ends, making it the right container when the front matters."
+    concept_tags: [collections, performance]
+
+  - id: q33
+    question: "Why might std::async with std::launch::async be preferred over calling a function directly for a slow computation?"
+    options:
+      - "It always makes the computation faster"
+      - "It runs the computation on a separate thread, letting the calling code continue and retrieve the result later via future.get()"
+      - "It removes the need to link the threading library"
+      - "It guarantees the computation finishes before async() returns"
+    correct: 1
+    explanation: "std::async offloads work to another thread immediately, returning a future so the caller isn't blocked until it chooses to be."
+    concept_tags: [concurrency, async, futures]
+
+  - id: q34
+    question: "What does RAII (Resource Acquisition Is Initialization) mean in practice?"
+    options:
+      - "Resources should be allocated as late as possible"
+      - "A resource's lifetime is tied to an object's scope: acquired in the constructor, released automatically in the destructor"
+      - "All resources must be acquired inside main()"
+      - "It's a naming convention with no functional effect"
+    correct: 1
+    explanation: "RAII ties cleanup to scope exit via destructors, so resources (memory, locks, files) can't be forgotten on any exit path."
+    concept_tags: [smart_pointers, raii]
+
+  - id: q35
+    question: "Why is std::mutex needed around `counter++` even though the increment looks like a single statement?"
+    options:
+      - "It isn't needed -- single statements are always safe"
+      - "A single C++ statement can still compile to multiple non-atomic machine instructions that another thread can interleave with"
+      - "mutex is only needed for statements spanning multiple lines"
+      - "counter++ is safe as long as counter is declared const"
+    correct: 1
+    explanation: "Statement-level granularity in source code says nothing about atomicity at the machine-instruction level."
+    concept_tags: [threading, mutex, race_conditions]

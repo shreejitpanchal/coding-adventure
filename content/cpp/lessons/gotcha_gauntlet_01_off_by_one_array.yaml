@@ -1,0 +1,46 @@
+id: gotcha_gauntlet_01
+title: "The Array Read That Went One Too Far"
+language: cpp
+level: 26
+objective: "Fix an off-by-one loop bound that reads one element past the end of a fixed-size array."
+explanation: |
+  A 3-element array has valid indices 0, 1, 2 -- `i <= 3` lets i reach 3,
+  one past the last valid index. Unlike std::vector::at(), a raw array
+  (or vector's operator[]) does no bounds checking at all: reading
+  arr[3] doesn't throw, it just reads whatever happens to be in memory
+  right after the array, giving a garbage result instead of a clean
+  error.
+example_code: |
+  int arr[3] = {1, 2, 3};
+  for (int i = 0; i < 3; i++) {
+      // valid: i never reaches 3
+  }
+starter_code: |
+  #include <iostream>
+  int main() {
+      int arr[3] = {10, 20, 30};
+      int sum = 0;
+      for (int i = 0; i <= 3; i++) {
+          sum += arr[i];
+      }
+      std::cout << sum << std::endl;
+      return 0;
+  }
+challenge: |
+  i reaches 3, one past the last valid index (0-2) -- arr[3] reads
+  whatever garbage happens to be in adjacent memory, corrupting the
+  sum. Fix the loop condition so it stops correctly, giving a sum of
+  60.
+expected_output: |
+  60
+hints:
+  - "Valid indices for a 3-element array are 0, 1, 2 -- not 3."
+  - "Change `i <= 3` to `i < 3`."
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "i < 3"
+concept_tags: [arrays, off_by_one, gotchas]

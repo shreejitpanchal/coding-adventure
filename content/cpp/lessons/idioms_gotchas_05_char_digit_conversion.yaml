@@ -1,0 +1,41 @@
+id: idioms_gotchas_05
+title: "The Digit Character That Wasn't a Digit"
+language: cpp
+level: 5
+objective: "Fix code that assigns a char digit directly to an int, getting the character's ASCII code instead of its numeric value."
+explanation: |
+  A `char` is really a small integer type holding an ASCII (or UTF-8
+  byte) code -- `'7'` is the integer 55, not 7. Assigning a char
+  directly to an int gives you that underlying code, not the digit it
+  visually represents. Converting a digit character to its numeric
+  value needs an explicit subtraction: `c - '0'` works because digit
+  characters '0'-'9' are contiguous in ASCII, so the difference from
+  '0' is exactly the digit's value.
+example_code: |
+  char c = '9';
+  int digit = c - '0';
+  std::cout << digit << std::endl;
+starter_code: |
+  #include <iostream>
+  int main() {
+      char digitChar = '7';
+      int digitValue = digitChar;
+      std::cout << digitValue << std::endl;
+      return 0;
+  }
+challenge: |
+  digitValue ends up as 55 (the ASCII code for '7'), not 7. Fix this by
+  subtracting '0' from digitChar before assigning, so the output is 7.
+expected_output: |
+  7
+hints:
+  - "'7' is the integer 55 in ASCII, not the number 7."
+  - "int digitValue = digitChar - '0';"
+xp_reward: 10
+achievement: idioms_gotchas_master
+category: idioms_gotchas
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "digitChar - '0'"
+concept_tags: [chars, type_conversion, gotchas]

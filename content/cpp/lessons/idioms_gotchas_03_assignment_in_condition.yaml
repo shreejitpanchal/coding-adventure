@@ -1,0 +1,45 @@
+id: idioms_gotchas_03
+title: "The if That Assigned Instead of Compared"
+language: cpp
+level: 3
+objective: "Fix an if condition that uses = (assignment) where == (comparison) was intended."
+explanation: |
+  `if (x = 1)` is valid C++ -- it assigns 1 to x, and then the
+  condition evaluates the *result of the assignment* (1, which is
+  truthy), so the branch always runs regardless of x's previous value.
+  This is one of the most common typos in C-family languages, and it
+  compiles cleanly with no error (some compilers warn with `-Wall`, but
+  it's easy to miss).
+example_code: |
+  int flag = 0;
+  if (flag == 1) {
+      std::cout << "set" << std::endl;
+  }
+starter_code: |
+  #include <iostream>
+  int main() {
+      int errorCode = 0;
+      if (errorCode = 1) {
+          std::cout << "error" << std::endl;
+      } else {
+          std::cout << "ok" << std::endl;
+      }
+      return 0;
+  }
+challenge: |
+  `errorCode = 1` assigns 1 (always truthy), so this always prints
+  "error" no matter what errorCode started as. Fix the typo to `==` so
+  it actually compares, printing "ok" (since errorCode is really 0).
+expected_output: |
+  ok
+hints:
+  - "`=` assigns and returns the assigned value; `==` compares. They look almost identical."
+  - "Change `errorCode = 1` to `errorCode == 1`."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "errorCode == 1"
+concept_tags: [operators, gotchas]

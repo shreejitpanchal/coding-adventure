@@ -1,0 +1,46 @@
+id: concurrency_async_04
+title: "The Thread That Was Never Joined"
+language: cpp
+level: 24
+objective: "Fix a crash caused by a joinable std::thread being destroyed without join() or detach() ever being called on it."
+explanation: |
+  If a std::thread object is still \"joinable\" (join() or detach()
+  was never called on it) when its destructor runs, the program calls
+  std::terminate() and crashes -- this is guaranteed behavior, not
+  undefined, specifically to stop a thread from being silently
+  abandoned. Calling t.join() before the thread object goes out of
+  scope both prevents the crash and guarantees the thread's work is
+  actually finished before you use its results.
+example_code: |
+  std::thread t(doWork);
+  t.join();  // must happen before t goes out of scope
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  int result = 0;
+  void compute() {
+      result = 42;
+  }
+  int main() {
+      std::thread t(compute);
+      std::cout << result << std::endl;
+      return 0;
+  }
+challenge: |
+  t is never joined or detached before main returns, so the program
+  crashes via std::terminate() when t's destructor runs. Fix this by
+  calling t.join() before reading result, which both prevents the crash
+  and ensures the value is actually ready. Output should be 42.
+expected_output: |
+  42
+hints:
+  - "A std::thread must have join() or detach() called on it before it's destroyed, or the program terminates."
+  - "Add t.join(); right after constructing t, before reading result."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "t\\.join\\(\\)"
+concept_tags: [threading, gotchas]

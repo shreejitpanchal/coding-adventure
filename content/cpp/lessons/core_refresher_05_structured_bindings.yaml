@@ -1,0 +1,42 @@
+id: core_refresher_05
+title: "Iterator Members to Structured Bindings"
+language: cpp
+level: 10
+objective: "Replace it->first/it->second with a structured binding that names each part directly."
+explanation: |
+  Structured bindings (C++17) let you unpack a pair/tuple-like value
+  into named variables directly in a range-based for loop --
+  `for (const auto& [name, score] : scores)` reads far more clearly
+  than iterating and reaching into `it->first`/`it->second`, since the
+  names describe what each piece actually means.
+example_code: |
+  for (const auto& [key, value] : myMap) {
+      std::cout << key << " -> " << value << std::endl;
+  }
+starter_code: |
+  #include <iostream>
+  #include <map>
+  #include <string>
+  int main() {
+      std::map<std::string, int> scores = {{"Ada", 90}};
+      for (auto it = scores.begin(); it != scores.end(); ++it) {
+          std::cout << it->first << " " << it->second << std::endl;
+      }
+      return 0;
+  }
+challenge: |
+  Rewrite the loop using a range-based for with a structured binding
+  ([name, score]) instead of an iterator and ->first/->second, keeping
+  the same output: "Ada 90".
+expected_output: |
+  Ada 90
+hints:
+  - "for (const auto& [name, score] : scores) { ... } destructures each pair directly."
+xp_reward: 15
+achievement: core_refresher_master
+category: core_refresher
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "\\[name, score\\]"
+concept_tags: [structured_bindings, modern_cpp]

@@ -1,0 +1,52 @@
+id: concurrency_async_05
+title: "Signaling a Result with promise/future"
+language: cpp
+level: 25
+objective: "Use std::promise/std::future to hand a value from a worker thread back to the main thread, instead of a captured-by-reference shared variable."
+explanation: |
+  Capturing a variable by reference into a thread's lambda works, but
+  it's an implicit, easy-to-misuse channel -- nothing stops the main
+  thread from reading it before the worker writes it (see the previous
+  exercise). std::promise/std::future is a purpose-built one-shot
+  channel: the worker calls promise.set_value(...), and future.get() on
+  the other end blocks until that value is actually ready -- there's no
+  way to read it too early.
+example_code: |
+  #include <future>
+  std::promise<int> prom;
+  std::future<int> fut = prom.get_future();
+  std::thread t([&prom]() { prom.set_value(42); });
+  int value = fut.get();  // blocks until set_value() is called
+  t.join();
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  int main() {
+      int sharedValue = 0;
+      std::thread worker([&sharedValue]() {
+          sharedValue = 100;
+      });
+      worker.join();
+      std::cout << sharedValue << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::promise<int> and std::future<int> instead of
+  a captured-by-reference shared variable -- the worker thread calls
+  promise.set_value(100), and main reads it via future.get(). Keep the
+  same output: 100.
+expected_output: |
+  100
+hints:
+  - "#include <future>"
+  - "std::promise<int> prom; std::future<int> fut = prom.get_future();"
+  - "The worker's lambda captures &prom and calls prom.set_value(100); main reads via fut.get()."
+xp_reward: 15
+achievement: concurrency_async_master
+category: concurrency_async
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "std::promise<int>"
+  - "std::future<int>"
+concept_tags: [concurrency, promise_future, threading]

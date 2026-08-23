@@ -1,0 +1,43 @@
+id: stdlib_deep_dive_02
+title: "The Crash from Parsing a Non-Numeric String"
+language: cpp
+level: 17
+objective: "Fix a crash from std::stoi on a string that isn't a valid number, by catching std::invalid_argument."
+explanation: |
+  std::stoi throws std::invalid_argument if the string doesn't start
+  with a valid number, and std::out_of_range if the value is too large
+  to fit -- it doesn't return a sentinel value like some other
+  languages' parse functions do. Code that might see non-numeric input
+  needs to actually catch the exception, not assume the conversion
+  always succeeds.
+example_code: |
+  try {
+      int n = std::stoi(text);
+  } catch (const std::invalid_argument&) {
+      n = 0;
+  }
+starter_code: |
+  #include <iostream>
+  #include <string>
+  int main() {
+      std::string input = "abc";
+      int value = std::stoi(input);
+      std::cout << value << std::endl;
+      return 0;
+  }
+challenge: |
+  std::stoi("abc") throws std::invalid_argument, crashing the program.
+  Fix this by catching std::invalid_argument and defaulting value to 0,
+  so the output is 0.
+expected_output: |
+  0
+hints:
+  - "Wrap the stoi call: try { value = std::stoi(input); } catch (const std::invalid_argument&) { value = 0; }"
+xp_reward: 15
+achievement: null
+category: stdlib_deep_dive
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "catch \\(const std::invalid_argument"
+concept_tags: [strings, exceptions, gotchas]

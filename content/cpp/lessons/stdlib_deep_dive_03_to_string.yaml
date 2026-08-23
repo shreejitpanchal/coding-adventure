@@ -1,0 +1,39 @@
+id: stdlib_deep_dive_03
+title: "stringstream to std::to_string"
+language: cpp
+level: 18
+objective: "Replace a stringstream used purely to convert a number to a string with the more direct std::to_string."
+explanation: |
+  Building a whole std::stringstream just to convert one number to a
+  string is more machinery than the job needs -- std::to_string(value)
+  does exactly that conversion directly, for every built-in numeric
+  type, in one call.
+example_code: |
+  std::string s = std::to_string(42);
+starter_code: |
+  #include <iostream>
+  #include <sstream>
+  int main() {
+      int value = 42;
+      std::stringstream ss;
+      ss << value;
+      std::string result = ss.str();
+      std::cout << result << "!" << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::to_string(value) instead of a stringstream,
+  keeping the same output: "42!".
+expected_output: |
+  42!
+hints:
+  - "#include <string>"
+  - "std::string result = std::to_string(value);"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "std::to_string"
+concept_tags: [strings, type_conversion]

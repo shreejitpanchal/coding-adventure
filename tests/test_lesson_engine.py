@@ -68,3 +68,13 @@ def test_loads_java_content():
     assert len(categories) == 14
     assert "gotcha_gauntlet" in categories
     assert "observability" in categories
+
+
+def test_loads_cpp_content():
+    engine = ExerciseEngine("cpp")
+    assert len(engine) == 30
+    assert engine.has("gotcha_gauntlet_05")
+    categories = engine.categories()
+    assert len(categories) == 6
+    assert "gotcha_gauntlet" in categories
+    assert "concurrency_async" in categories

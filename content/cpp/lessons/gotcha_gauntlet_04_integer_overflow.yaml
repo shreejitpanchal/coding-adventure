@@ -1,0 +1,43 @@
+id: gotcha_gauntlet_04
+title: "The Overflow That Silently Wrapped"
+language: cpp
+level: 29
+objective: "Fix a computation that silently wraps around past INT_MAX instead of raising any error."
+explanation: |
+  Signed integer overflow doesn't throw or crash in C++ -- in practice,
+  on virtually every mainstream platform, it just wraps around via
+  two's-complement arithmetic, turning INT_MAX + 1 into a large negative
+  number with no warning at all. Any computation that might genuinely
+  exceed int's ~2.1 billion range needs a wider type (long long) before
+  the addition happens, the same way int division needs a cast before
+  the division happens.
+example_code: |
+  long long safe = static_cast<long long>(INT_MAX) + 1;
+starter_code: |
+  #include <iostream>
+  #include <climits>
+  int main() {
+      int maxVal = INT_MAX;
+      int result = maxVal + 1;
+      std::cout << result << std::endl;
+      return 0;
+  }
+challenge: |
+  maxVal + 1 silently wraps around to a large negative number instead
+  of raising any error. Fix this by computing the sum as a long long
+  (casting maxVal before adding), so the output correctly shows
+  2147483648.
+expected_output: |
+  2147483648
+hints:
+  - "int arithmetic wraps around silently on overflow -- there's no exception."
+  - "long long result = static_cast<long long>(maxVal) + 1;"
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "long long result"
+  - "static_cast<long long>"
+concept_tags: [integers, overflow, gotchas]

@@ -34,8 +34,8 @@ LANGUAGES: dict[str, LanguageInfo] = {
     ),
     "cpp": LanguageInfo(
         key="cpp", title="C++", icon="⚙️",
-        tagline="Coming soon -- memory, templates, and STL refreshers.",
-        available=False,
+        tagline="Idioms, modern STL, RAII, and concurrency -- keep your instincts sharp.",
+        available=True,
     ),
     "spring": LanguageInfo(
         key="spring", title="Spring", icon="\U0001F343",

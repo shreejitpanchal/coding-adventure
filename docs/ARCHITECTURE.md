@@ -21,7 +21,7 @@ flowchart TB
         ui["Flet UI\n(main.py -> app/ui/*)"]
         core["Shared core\napp/engine, app/progress, app/config"]
         exec_["app/execution\none ExecutionEngine per language"]
-        toolchains[("Local toolchains\npython / javac+java\n(g++, mvn -- not yet used)")]
+        toolchains[("Local toolchains\npython / javac+java / g++\n(mvn -- not yet used)")]
         fsdata[("settings.json +\nprogress.sqlite3\n(local disk)")]
         content[("content/<language>/*.yaml\n(exercises, quiz -- read-only)")]
     end
@@ -65,7 +65,7 @@ flowchart LR
         engine["app/engine\nExerciseEngine, QuizEngine,\nvalidator, categories, languages"]
         progress["app/progress\nProgressStore (SQLite, per-language)"]
         config["app/config\nSettings, load/save,\nplatform data dir"]
-        execution["app/execution\nExecutionEngine ABC +\nPythonEngine / JavaEngine /\nCppEngine (stub) / SpringEngine (stub)"]
+        execution["app/execution\nExecutionEngine ABC +\nPythonEngine / JavaEngine /\nCppEngine / SpringEngine (stub)"]
     end
 
     ui --> shared
@@ -149,9 +149,7 @@ classDiagram
     }
     class PythonEngine
     class JavaEngine
-    class CppEngine {
-        <<not implemented>>
-    }
+    class CppEngine
     class SpringEngine {
         <<not implemented>>
     }
@@ -289,12 +287,22 @@ flowchart TB
     jcompile -->|compile error| jcerr["ExecutionResult(success=False,\nstderr=compiler output)"]
     jcompile -->|ok| jrun["java -cp &lt;dir&gt; &lt;ClassName&gt;\nsubprocess, timeout, stdin piped"]
 
-    lang -->|cpp / spring| notimpl["NotImplementedError\n(interface defined, not built)"]
+    lang -->|cpp| ccheck["check_toolchain('cpp')"]
+    ccheck -->|missing g++| cblocked["ExecutionResult(blocked=True,\ninstall hint)"]
+    ccheck -->|available| ccompile["g++ -O2 -std=c++17 main.cpp -o main\ntemp dir, compile timeout"]
+    ccompile -->|compile error| ccerr["ExecutionResult(success=False,\nstderr=compiler output)"]
+    ccompile -->|ok| crun["run compiled binary\nsubprocess, timeout, stdin piped"]
+    crun -->|crash, empty stderr| ccrash["_describe_crash(returncode)\nNTSTATUS / signal -> synthetic stderr line"]
+
+    lang -->|spring| notimpl["NotImplementedError\n(interface defined, not built)"]
 
     pyrun --> result["ExecutionResult\n(stdout, stderr, success, timed_out)"]
     jrun --> result
     pyerr --> result
     jcerr --> result
+    crun --> result
+    ccrash --> result
+    ccerr --> result
 
     result --> validator["app/engine/validator.py\nvalidate_output() +\nvalidate_contains()"]
     validator --> outcome{"Correct AND uses\nthe taught construct?"}
@@ -351,7 +359,7 @@ sequenceDiagram
     User->>Screen: click Run
     Screen->>Screen: run_button.disabled = true
     Screen->>Engine: run(code, timeout=8.0, handle, stdin_text) (off the UI thread)
-    alt toolchain missing (Java, no JDK)
+    alt toolchain missing (Java: no JDK, C++: no g++)
         Engine-->>Screen: ExecutionResult(blocked=True, blocked_message)
         Screen-->>User: install-hint message
     else timed out
@@ -490,12 +498,14 @@ default.
 - **Category keys are shared across languages, category *lists* are
   derived per language.** `CATEGORY_META` (title/icon/color) is one flat
   dict, not namespaced per language, since "Concurrency & Async" means
-  the same thing whether it's filled with Python or Java content. Which
-  categories actually show up for a given language is derived entirely
-  from what's present in that language's content directory — this is
-  what let the Java-parity content addition just be new YAML files, no
-  app-code change, and what will make the same true for C++ and Spring
-  later.
+  the same thing whether it's filled with Python, Java, or C++ content.
+  Which categories actually show up for a given language is derived
+  entirely from what's present in that language's content directory —
+  this is what let the Java-parity content addition just be new YAML
+  files, no app-code change, and what let C++ ship with its own smaller
+  6-category set (skipping categories like packaging/deployment that fit
+  a framework or package manager better than bare C++) without touching
+  any app code either. Spring, once built, can do the same.
 - **Crash-containment, not a safety sandbox.** The kids' app this one is
   architecturally based on runs an AST-based builtins/import allowlist
   because it has to defend against accidental-or-adversarial child

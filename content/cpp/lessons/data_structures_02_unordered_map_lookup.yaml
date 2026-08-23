@@ -1,0 +1,47 @@
+id: data_structures_02
+title: "Linear Search to unordered_map Lookup"
+language: cpp
+level: 12
+objective: "Replace a linear search through a vector of pairs with a std::unordered_map for O(1) average lookup."
+explanation: |
+  Searching a vector of pairs for a matching key is O(n) -- every
+  lookup scans from the start until it finds a match.
+  std::unordered_map is a hash table: looking up a key is O(1) on
+  average, and the code reads as exactly what it means ("get the value
+  for this key") instead of a manual scan.
+example_code: |
+  std::unordered_map<std::string, int> ages = {{"Ada", 30}};
+  int age = ages["Ada"];
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  #include <string>
+  int main() {
+      std::vector<std::pair<std::string, int>> ages = {{"Ada", 30}, {"Bob", 25}};
+      std::string target = "Bob";
+      int result = -1;
+      for (size_t i = 0; i < ages.size(); i++) {
+          if (ages[i].first == target) {
+              result = ages[i].second;
+              break;
+          }
+      }
+      std::cout << result << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::unordered_map instead of a linear search
+  through a vector of pairs, keeping the same output: 25.
+expected_output: |
+  25
+hints:
+  - "#include <unordered_map>"
+  - "std::unordered_map<std::string, int> ages = {{\"Ada\", 30}, {\"Bob\", 25}}; then just ages[\"Bob\"]."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "unordered_map"
+concept_tags: [collections, hashmap, performance]

@@ -1,0 +1,49 @@
+id: gotcha_gauntlet_03
+title: "The Counter That Forgot Every Call"
+language: cpp
+level: 28
+objective: "Fix a function meant to hand out sequential IDs, but which resets its counter to 0 on every call instead of remembering it."
+explanation: |
+  A plain local variable is reinitialized every time a function is
+  called -- there's no memory between calls. A `static` local variable
+  is the opposite: it's initialized exactly once, the first time
+  control reaches its declaration, and keeps its value across every
+  subsequent call to that function, making it the standard tool for
+  "remember something between calls without a global variable."
+example_code: |
+  int nextId() {
+      static int id = 0;
+      return ++id;
+  }
+starter_code: |
+  #include <iostream>
+  int nextId() {
+      int id = 0;
+      id++;
+      return id;
+  }
+  int main() {
+      std::cout << nextId() << std::endl;
+      std::cout << nextId() << std::endl;
+      std::cout << nextId() << std::endl;
+      return 0;
+  }
+challenge: |
+  id resets to 0 on every call, so nextId() always returns 1 -- printing
+  1, 1, 1. Fix this by making id a static local variable so it persists
+  across calls, giving 1, 2, 3.
+expected_output: |
+  1
+  2
+  3
+hints:
+  - "A plain local variable resets every call. `static int id = 0;` initializes once and persists."
+  - "Change `int id = 0;` to `static int id = 0;`."
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "static int id"
+concept_tags: [static_variables, gotchas]

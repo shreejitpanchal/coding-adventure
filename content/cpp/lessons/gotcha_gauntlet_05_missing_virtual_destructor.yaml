@@ -1,0 +1,52 @@
+id: gotcha_gauntlet_05
+title: "The Destructor That Never Ran"
+language: cpp
+level: 30
+objective: "Fix a base class whose non-virtual destructor means a derived object's own destructor never runs when deleted through a base pointer."
+explanation: |
+  Deleting an object through a pointer to its base class only calls the
+  derived class's destructor if the base class's destructor is
+  `virtual`. Without `virtual`, `delete` only knows the static type
+  (Base*), so only Base's destructor runs -- Derived's cleanup (and any
+  further-derived destructors) is silently skipped. This is one of the
+  most cited rules in C++: any class meant to be used polymorphically
+  through a base pointer needs a virtual destructor.
+example_code: |
+  class Base {
+  public:
+      virtual ~Base() { /* cleanup */ }
+  };
+starter_code: |
+  #include <iostream>
+  class Base {
+  public:
+      ~Base() { std::cout << "Base destroyed" << std::endl; }
+  };
+  class Derived : public Base {
+  public:
+      ~Derived() { std::cout << "Derived destroyed" << std::endl; }
+  };
+  int main() {
+      Base* obj = new Derived();
+      delete obj;
+      return 0;
+  }
+challenge: |
+  Base's destructor isn't virtual, so deleting obj (a Derived, through a
+  Base*) only runs Base's destructor -- Derived's is silently skipped,
+  printing only "Base destroyed". Fix this by making Base's destructor
+  virtual, so both run: "Derived destroyed" then "Base destroyed".
+expected_output: |
+  Derived destroyed
+  Base destroyed
+hints:
+  - "delete through a base pointer only calls the derived destructor if the base destructor is virtual."
+  - "Change `~Base()` to `virtual ~Base()`."
+xp_reward: 15
+achievement: gotcha_gauntlet_master
+category: gotcha_gauntlet
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "virtual ~Base"
+concept_tags: [inheritance, destructors, virtual_functions, gotchas]

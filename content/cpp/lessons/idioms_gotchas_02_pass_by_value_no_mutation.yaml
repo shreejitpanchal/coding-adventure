@@ -1,0 +1,42 @@
+id: idioms_gotchas_02
+title: "Pass-by-Value Silently Ignored the Caller"
+language: cpp
+level: 2
+objective: "Fix a function that's meant to modify the caller's variable but takes its parameter by value, so the caller never sees the change."
+explanation: |
+  Passing by value copies the argument -- any modification inside the
+  function happens to that local copy, and vanishes when the function
+  returns. To actually modify the caller's variable, the parameter needs
+  to be a reference (`int&`), which binds to the caller's variable
+  itself rather than a copy of it.
+example_code: |
+  void doubleIt(int& x) {
+      x = x * 2;
+  }
+starter_code: |
+  #include <iostream>
+  void increment(int x) {
+      x = x + 1;
+  }
+  int main() {
+      int value = 5;
+      increment(value);
+      std::cout << value << std::endl;
+      return 0;
+  }
+challenge: |
+  increment(value) modifies its own local copy of x, not value itself --
+  value stays 5. Fix increment to take its parameter by reference
+  (int&), so the output becomes 6.
+expected_output: |
+  6
+hints:
+  - "Change the parameter type from `int x` to `int& x`."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "int& x"
+concept_tags: [references, pass_by_reference, gotchas]

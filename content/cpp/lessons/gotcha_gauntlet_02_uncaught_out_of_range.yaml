@@ -1,0 +1,45 @@
+id: gotcha_gauntlet_02
+title: "The Score Lookup That Crashed"
+language: cpp
+level: 27
+objective: "Fix a crash from vector::at() on an out-of-range index, by catching std::out_of_range."
+explanation: |
+  Unlike operator[], std::vector::at() actually checks bounds and
+  throws std::out_of_range if the index doesn't exist -- a deliberate
+  trade-off (a small runtime check) in exchange for a clean, catchable
+  error instead of silently reading garbage memory. Code that might be
+  asked for an index that doesn't exist needs to actually catch that
+  exception rather than assume every index is valid.
+example_code: |
+  try {
+      int v = data.at(index);
+  } catch (const std::out_of_range&) {
+      v = -1;
+  }
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int getScore(const std::vector<int>& scores, size_t index) {
+      return scores.at(index);
+  }
+  int main() {
+      std::vector<int> scores = {85, 90, 95};
+      std::cout << getScore(scores, 10) << std::endl;
+      return 0;
+  }
+challenge: |
+  getScore(scores, 10) throws std::out_of_range since index 10 doesn't
+  exist in a 3-element vector. Fix getScore to catch std::out_of_range
+  and return -1 instead of crashing, so the output is -1.
+expected_output: |
+  -1
+hints:
+  - "Wrap the .at() call: try { return scores.at(index); } catch (const std::out_of_range&) { return -1; }"
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "catch \\(const std::out_of_range"
+concept_tags: [exceptions, vectors, gotchas]

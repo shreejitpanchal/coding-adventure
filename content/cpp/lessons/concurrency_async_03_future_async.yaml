@@ -1,0 +1,43 @@
+id: concurrency_async_03
+title: "Running a Computation Asynchronously"
+language: cpp
+level: 23
+objective: "Use std::async to run a computation on a separate thread and retrieve its result via std::future, instead of calling it directly."
+explanation: |
+  std::async(std::launch::async, fn, args...) runs fn on a separate
+  thread and immediately returns a std::future<T> -- a handle to the
+  eventual result. Calling .get() on the future blocks until the result
+  is ready and returns it. It's C++'s core building block for
+  asynchronous, result-producing work, roughly analogous to a
+  Promise/Future in other languages.
+example_code: |
+  #include <future>
+  std::future<int> fut = std::async(std::launch::async, compute, 5);
+  int result = fut.get();
+starter_code: |
+  #include <iostream>
+  int slowSquare(int n) {
+      return n * n;
+  }
+  int main() {
+      int result = slowSquare(7);
+      std::cout << result << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::async(std::launch::async, slowSquare, 7) and
+  .get() on the returned std::future<int> instead of calling
+  slowSquare directly, keeping the same output: 49.
+expected_output: |
+  49
+hints:
+  - "#include <future>"
+  - "std::future<int> fut = std::async(std::launch::async, slowSquare, 7); int result = fut.get();"
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "std::async"
+concept_tags: [concurrency, async, futures]

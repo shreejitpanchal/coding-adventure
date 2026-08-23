@@ -1,0 +1,55 @@
+id: concurrency_async_01
+title: "The Counter Two Threads Corrupted"
+language: cpp
+level: 21
+objective: "Fix a race condition where two threads increment a shared counter without synchronization."
+explanation: |
+  `counter++` isn't atomic -- it's a read, an increment, and a write as
+  separate machine instructions, and the OS can interleave two threads'
+  steps arbitrarily. With enough iterations, some increments get lost
+  when two threads read the same value before either writes back.
+  std::mutex + std::lock_guard makes each increment atomic with respect
+  to other threads, guaranteeing the final count is exact.
+example_code: |
+  #include <mutex>
+  std::mutex mtx;
+  {
+      std::lock_guard<std::mutex> lock(mtx);
+      counter++;
+  }
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  int counter = 0;
+  void increment() {
+      for (int i = 0; i < 100000; i++) {
+          counter++;
+      }
+  }
+  int main() {
+      std::thread t1(increment);
+      std::thread t2(increment);
+      t1.join();
+      t2.join();
+      std::cout << counter << std::endl;
+      return 0;
+  }
+challenge: |
+  counter++ isn't atomic, so two threads incrementing concurrently can
+  lose updates. Fix increment() to lock a std::mutex around the
+  critical section (via std::lock_guard) so the final count is always
+  exactly 200000.
+expected_output: |
+  200000
+hints:
+  - "#include <mutex>, then a global std::mutex mtx;"
+  - "Wrap the increment: std::lock_guard<std::mutex> lock(mtx); counter++;"
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 1
+difficulty: deep_dive
+contains_patterns:
+  - "std::mutex"
+  - "lock_guard"
+concept_tags: [threading, mutex, race_conditions]

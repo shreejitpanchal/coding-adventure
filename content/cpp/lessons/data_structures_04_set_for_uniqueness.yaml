@@ -1,0 +1,52 @@
+id: data_structures_04
+title: "Manual Duplicate Checking to std::set"
+language: cpp
+level: 14
+objective: "Replace a manual nested-loop duplicate check with std::set, which enforces uniqueness by construction."
+explanation: |
+  Manually checking "have I already added this?" against every
+  previously-added element is O(n) per insertion, O(n^2) overall.
+  std::set is a sorted, unique-elements container -- constructing one
+  from a range automatically discards duplicates in O(n log n), and the
+  uniqueness guarantee is enforced by the container itself, not by code
+  you have to get right.
+example_code: |
+  #include <set>
+  std::set<int> unique(nums.begin(), nums.end());
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> nums = {3, 1, 2, 3, 1};
+      std::vector<int> unique;
+      for (size_t i = 0; i < nums.size(); i++) {
+          bool found = false;
+          for (size_t j = 0; j < unique.size(); j++) {
+              if (unique[j] == nums[i]) {
+                  found = true;
+                  break;
+              }
+          }
+          if (!found) {
+              unique.push_back(nums[i]);
+          }
+      }
+      std::cout << unique.size() << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::set to get the count of unique values instead
+  of the manual nested-loop check, keeping the same output: 3.
+expected_output: |
+  3
+hints:
+  - "#include <set>"
+  - "std::set<int> unique(nums.begin(), nums.end()); then unique.size()."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "std::set<int>"
+concept_tags: [collections, sets]

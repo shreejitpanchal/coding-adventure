@@ -1,0 +1,49 @@
+id: core_refresher_04
+title: "Manual new/delete to unique_ptr"
+language: cpp
+level: 9
+objective: "Replace manual new/delete with std::unique_ptr, which frees the resource automatically via RAII."
+explanation: |
+  Manual `new`/`delete` requires remembering to call delete on every
+  path out of a function, including early returns and exceptions --
+  easy to get wrong. std::unique_ptr owns the object and deletes it
+  automatically when the unique_ptr itself goes out of scope (RAII:
+  Resource Acquisition Is Initialization), making the cleanup
+  impossible to forget.
+example_code: |
+  std::unique_ptr<Widget> w = std::make_unique<Widget>();
+  // automatically deleted when w goes out of scope
+starter_code: |
+  #include <iostream>
+  class Resource {
+  public:
+      Resource() { std::cout << "acquired" << std::endl; }
+      ~Resource() { std::cout << "released" << std::endl; }
+  };
+  int main() {
+      Resource* r = new Resource();
+      std::cout << "using" << std::endl;
+      delete r;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::unique_ptr<Resource> and std::make_unique
+  instead of manual new/delete, keeping the same output: "acquired",
+  "using", "released" (with release happening automatically at the end
+  of main, no explicit delete needed).
+expected_output: |
+  acquired
+  using
+  released
+hints:
+  - "std::unique_ptr<Resource> r = std::make_unique<Resource>();"
+  - "No delete call is needed at all -- the destructor runs automatically when r goes out of scope."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "unique_ptr"
+  - "make_unique"
+concept_tags: [smart_pointers, raii]

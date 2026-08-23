@@ -8,9 +8,11 @@ and how to run it, see the main [README](../README.md).
 
 Python and Java tracks are both fully built — same 14 topic categories
 each, real execution against a local `python`/`javac`+`java` toolchain.
-C++ and Spring are scaffolded (content directories exist, the
-`ExecutionEngine` interface is defined) but not implemented — see
-`app/execution/cpp_engine.py` / `spring_engine.py`. The app is
+C++ is also fully built (its own 6 topic categories, since it's a
+general-purpose language subset rather than a framework), executed
+against a local `g++` toolchain. Spring is scaffolded (content directory
+exists, the `ExecutionEngine` interface is defined) but not
+implemented — see `app/execution/spring_engine.py`. The app is
 **desktop-only by design**, not by omission — see "Why no Android build"
 below.
 
@@ -28,8 +30,9 @@ Manually, if you prefer:
 ```
 
 Running Java exercises additionally needs a local JDK (`javac`/`java` on
-PATH) — the language picker shows "Toolchain needed" instead of
-"Available" if one isn't found, rather than failing confusingly the
+PATH); running C++ exercises needs a local `g++` (e.g. MinGW-w64 on
+Windows) on PATH — the language picker shows "Toolchain needed" instead
+of "Available" if one isn't found, rather than failing confusingly the
 first time someone tries to run code.
 
 ## Running the tests
@@ -38,8 +41,9 @@ first time someone tries to run code.
 .venv\Scripts\python.exe -m pytest tests\ -v
 ```
 
-Java-execution tests are skipped automatically (`pytest.mark.skipif`) on
-a machine with no JDK on PATH, rather than failing.
+Java- and C++-execution tests are skipped automatically
+(`pytest.mark.skipif`) on a machine with no JDK / no `g++` on PATH,
+rather than failing.
 
 ## Project layout
 
@@ -66,7 +70,8 @@ content/
     lessons/   # same shape, same category keys as python/lessons/
     quiz/
   cpp/
-    lessons/   # empty (.gitkeep only) -- scaffolded, not built out
+    lessons/   # own 6 category keys (not the full 14 -- see below)
+    quiz/
   spring/
     lessons/   # empty (.gitkeep only) -- scaffolded, not built out
 docs/          # this file + ARCHITECTURE.md
@@ -128,6 +133,19 @@ virtual threads for Java (Java has no native async/await); `recursion`'s
 memoization exercise uses `@lru_cache` for Python but a hand-rolled
 `HashMap` cache for Java (no built-in memoization decorator exists).
 
+C++ deliberately does **not** chase the same 14-category list — several
+of those categories (dependency management, packaging, deployment,
+observability) are ecosystem/tooling concepts more naturally taught via
+a package manager or framework than bare C++ language/stdlib content.
+Instead C++ has its own 6 categories covering general-purpose-language
+ground: `idioms_gotchas`, `core_refresher`, `data_structures`,
+`stdlib_deep_dive`, `concurrency_async` (`std::thread`/`mutex`/`atomic`/
+`async`/`promise`-`future` rather than `asyncio`/virtual threads), and
+`gotcha_gauntlet`. Nothing in the engine assumes a fixed category set
+across languages — `ExerciseEngine.categories()` is still derived purely
+from what's present in each language's own content directory, so C++
+having a different-sized set required zero app-code changes.
+
 ### Daily Refresher
 
 `ExerciseEngine.daily_refresher(completed_ids, count=5)` computes a
@@ -180,11 +198,21 @@ runaway run gets killed).
   contract. `check_toolchain("java")` gates this — if `javac`/`java`
   aren't on PATH, `run()` returns a `blocked` result with an install
   hint instead of crashing.
-- **`cpp_engine.py` / `spring_engine.py`** — interface defined, bodies
-  raise `NotImplementedError`. Spring in particular needs a
-  fundamentally different shape than the other three (a scaffolded
-  Maven project per exercise, run via `mvn test`, not a single-file
-  compile-and-run) — see the docstring in `spring_engine.py`.
+- **`cpp_engine.py`** — compiles the submitted code to a temp `main.cpp`
+  with `g++ -O2 -std=c++17`, then runs the resulting binary under the
+  same timeout/cancel/stdin contract. `check_toolchain("cpp")` gates
+  this the same way Java's does. A crashed C++ binary (segfault,
+  div-by-zero, stack overflow, abort) usually prints nothing to stderr
+  on its own, so `_describe_crash(returncode)` translates the common
+  Windows NTSTATUS codes and POSIX signal numbers into a synthetic
+  stderr line whenever stderr would otherwise be empty — an uncaught
+  `std::exception`'s own `what()` text is left untouched since it's
+  already useful.
+- **`spring_engine.py`** — interface defined, body raises
+  `NotImplementedError`. Spring needs a fundamentally different shape
+  than the other three (a scaffolded Maven project per exercise, run via
+  `mvn test`, not a single-file compile-and-run) — see the docstring in
+  `spring_engine.py`.
 
 **Framing is crash-containment, not child safety.** Unlike the sibling
 kids' app this one's architecture is based on, there's no AST-based
