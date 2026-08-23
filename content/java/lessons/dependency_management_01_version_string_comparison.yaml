@@ -1,0 +1,43 @@
+id: dependency_management_01
+title: "Comparing Version Numbers as Strings"
+language: java
+level: 126
+objective: "Fix a version comparison that's wrong because it compares version strings lexicographically instead of numerically."
+explanation: |
+  "10.0.0".compareTo("9.0.0") is negative -- String.compareTo compares
+  character by character, and '1' sorts before '9', so "10.0.0" looks
+  "smaller" than "9.0.0" even though version 10 is clearly newer. Real
+  version comparisons need to split on the dots and compare each numeric
+  component as an int, not as text.
+example_code: |
+  String[] a = "2.10.0".split("\\.");
+  String[] b = "2.9.0".split("\\.");
+  boolean newer = Integer.parseInt(a[1]) > Integer.parseInt(b[1]);
+starter_code: |
+  public class Solution {
+      static boolean isNewer(String versionA, String versionB) {
+          return versionA.compareTo(versionB) > 0;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isNewer("10.0.0", "9.0.0"));
+      }
+  }
+challenge: |
+  isNewer compares the raw strings, so "10.0.0" incorrectly looks older
+  than "9.0.0" (this prints false). Fix it to split each version on "."
+  and compare the parts as integers, so the output correctly becomes
+  true.
+expected_output: |
+  true
+hints:
+  - "String comparison is character-by-character -- '1' < '9', so \"10.0.0\" < \"9.0.0\" as text."
+  - "Split on \"\\\\.\", parse each part with Integer.parseInt, and compare the first differing part."
+xp_reward: 15
+achievement: null
+category: dependency_management
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "Integer\\.parseInt"
+concept_tags: [dependency_management, versioning, gotchas]

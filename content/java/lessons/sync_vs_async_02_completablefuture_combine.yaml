@@ -1,0 +1,45 @@
+id: sync_vs_async_02
+title: "Combining Two Independent Futures"
+language: java
+level: 112
+objective: "Use thenCombine to combine two independent CompletableFutures instead of blocking on each one sequentially."
+explanation: |
+  Calling join() on one future, then join() on a second, forces them to
+  be waited on one after another even though they were started
+  concurrently and don't depend on each other. thenCombine(other, fn)
+  expresses "combine these two results once both are ready" directly,
+  without an explicit sequential wait on each.
+example_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  CompletableFuture<Integer> a = CompletableFuture.supplyAsync(() -> 2);
+  CompletableFuture<Integer> b = CompletableFuture.supplyAsync(() -> 5);
+  int result = a.thenCombine(b, Integer::sum).join();
+starter_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  public class Solution {
+      public static void main(String[] args) {
+          CompletableFuture<Integer> a = CompletableFuture.supplyAsync(() -> 3);
+          CompletableFuture<Integer> b = CompletableFuture.supplyAsync(() -> 4);
+          int aVal = a.join();
+          int bVal = b.join();
+          System.out.println(aVal + bVal);
+      }
+  }
+challenge: |
+  Rewrite this using a.thenCombine(b, Integer::sum).join() instead of
+  blocking on each future separately, keeping the same output: 7.
+expected_output: |
+  7
+hints:
+  - "thenCombine(other, fn) waits for both futures and applies fn to their two results."
+  - "int result = a.thenCombine(b, Integer::sum).join();"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "thenCombine"
+concept_tags: [concurrency, completable_future, async]

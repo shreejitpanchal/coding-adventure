@@ -1,0 +1,37 @@
+id: thread_scheduling_03
+title: "Setting a Thread's Scheduling Priority"
+language: java
+level: 108
+objective: "Raise a thread's priority above the default, understanding it's a scheduling hint, not a guarantee."
+explanation: |
+  Every thread defaults to Thread.NORM_PRIORITY (5). setPriority() lets
+  you nudge the JVM's scheduler toward favoring one thread over another
+  -- but it's only a hint: the OS scheduler is free to mostly ignore it,
+  and priority values aren't portable in their effect across platforms.
+  It's a real, occasionally useful API, just not a strong guarantee.
+example_code: |
+  Thread t = new Thread(() -> {});
+  t.setPriority(Thread.MIN_PRIORITY);
+  System.out.println(t.getPriority());
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          Thread t = new Thread(() -> {});
+          System.out.println(t.getPriority());
+      }
+  }
+challenge: |
+  This prints the default priority (5). Raise it to the maximum using
+  Thread.MAX_PRIORITY before printing, so the output is 10.
+expected_output: |
+  10
+hints:
+  - "t.setPriority(Thread.MAX_PRIORITY); -- Thread.MAX_PRIORITY is the constant 10."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "setPriority"
+concept_tags: [threading, thread_priority]

@@ -1,0 +1,43 @@
+id: functional_programming_03
+title: "The Immutable List That Refused to Grow"
+language: java
+level: 118
+objective: "Fix an UnsupportedOperationException from mutating a List.of() result -- it's genuinely immutable, not just conventionally so."
+explanation: |
+  List.of(...) returns a truly immutable list -- any mutating call
+  (add, remove, set) throws UnsupportedOperationException unconditionally,
+  regardless of what you're adding. When mutation is actually needed,
+  wrap it in a real mutable copy first: `new ArrayList<>(List.of(...))`.
+example_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  List<Integer> mutable = new ArrayList<>(List.of(1, 2, 3));
+  mutable.add(4);
+starter_code: |
+  import java.util.List;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> numbers = List.of(1, 2, 3);
+          numbers.add(4);
+          System.out.println(numbers);
+      }
+  }
+challenge: |
+  numbers.add(4) throws UnsupportedOperationException -- List.of()
+  returns a genuinely immutable list. Fix this by wrapping it in a
+  mutable ArrayList copy before adding, so the output is [1, 2, 3, 4].
+expected_output: |
+  [1, 2, 3, 4]
+hints:
+  - "List.of() is truly immutable -- there's no mutating call that works on it."
+  - "List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));"
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "new ArrayList<>\\(List\\.of"
+concept_tags: [functional_programming, immutability, gotchas]

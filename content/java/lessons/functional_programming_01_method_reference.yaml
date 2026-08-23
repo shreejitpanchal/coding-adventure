@@ -1,0 +1,44 @@
+id: functional_programming_01
+title: "Lambda to Method Reference"
+language: java
+level: 116
+objective: "Replace a lambda that only forwards to an existing method with a method reference."
+explanation: |
+  When a lambda's entire body is just calling one existing method with
+  the lambda's own argument, a method reference expresses the exact same
+  thing more directly: `String::toUpperCase` instead of
+  `s -> s.toUpperCase()`. Same behavior, less noise.
+example_code: |
+  import java.util.List;
+  import java.util.stream.Collectors;
+
+  List<Integer> lengths = List.of("a", "bb").stream()
+          .map(String::length)
+          .collect(Collectors.toList());
+starter_code: |
+  import java.util.List;
+  import java.util.stream.Collectors;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<String> names = List.of("ada", "bob", "cy");
+          List<String> upper = names.stream().map(s -> s.toUpperCase()).collect(Collectors.toList());
+          System.out.println(upper);
+      }
+  }
+challenge: |
+  Replace `s -> s.toUpperCase()` with the equivalent method reference
+  `String::toUpperCase`, keeping the same output: [ADA, BOB, CY].
+expected_output: |
+  [ADA, BOB, CY]
+hints:
+  - "A lambda that just forwards its argument to one method can always become a method reference."
+  - ".map(String::toUpperCase)"
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "String::toUpperCase"
+concept_tags: [functional_programming, method_references]

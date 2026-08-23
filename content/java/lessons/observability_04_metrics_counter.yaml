@@ -1,0 +1,48 @@
+id: observability_04
+title: "A Minimal Metrics Counter"
+language: java
+level: 144
+objective: "Implement the simplest possible observability primitive: a named counter that increments on each call."
+explanation: |
+  Almost every real metrics system (Micrometer counters, Prometheus,
+  StatsD) boils down to this same core idea: a name maps to a number
+  that only goes up, incremented once per occurrence of the thing being
+  measured. Map.merge(key, 1, Integer::sum) is a concise, correct way to
+  express "increment this key's count, defaulting to 0 if it's new."
+example_code: |
+  Map<String, Integer> counts = new HashMap<>();
+  counts.merge("hits", 1, Integer::sum);
+starter_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+  import java.util.TreeMap;
+
+  public class Solution {
+      static Map<String, Integer> metrics = new HashMap<>();
+
+      static void increment(String name) {
+      }
+
+      public static void main(String[] args) {
+          increment("requests_total");
+          increment("requests_total");
+          increment("errors_total");
+          System.out.println(new TreeMap<>(metrics));
+      }
+  }
+challenge: |
+  increment() doesn't do anything -- metrics stays empty. Fix it to
+  track a per-name counter using metrics.merge(name, 1, Integer::sum),
+  so the output is {errors_total=1, requests_total=2}.
+expected_output: |
+  {errors_total=1, requests_total=2}
+hints:
+  - "metrics.merge(name, 1, Integer::sum) increments the count for name, starting from 0 if it's new."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "\\.merge\\("
+concept_tags: [observability, metrics]

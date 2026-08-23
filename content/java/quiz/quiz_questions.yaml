@@ -383,3 +383,388 @@ questions:
     correct: 1
     explanation: "HashSet/HashMap use hashCode() to find a bucket before ever calling equals() -- without a consistent hashCode(), equal objects can land in different buckets."
     concept_tags: [equals_hashcode, hashset, gotchas]
+
+  - id: q36
+    question: "Why give a thread an explicit name instead of relying on the default Thread-N?"
+    options:
+      - "It runs faster"
+      - "It makes logs and debuggers able to identify which thread did what"
+      - "It's required by the compiler"
+      - "It changes the thread's scheduling priority"
+    correct: 1
+    explanation: "An unnamed thread is nearly impossible to trace through logs -- naming by the work it does pays off when diagnosing issues."
+    concept_tags: [threading, debugging]
+
+  - id: q37
+    question: "What does t.setDaemon(true) do?"
+    options:
+      - "Makes the thread run faster"
+      - "Lets the JVM exit without waiting for that thread to finish"
+      - "Gives the thread elevated permissions"
+      - "Prevents the thread from throwing exceptions"
+    correct: 1
+    explanation: "A daemon thread is abandoned automatically at JVM exit instead of keeping the whole process alive."
+    concept_tags: [threading, daemon_threads]
+
+  - id: q38
+    question: "Is Thread.setPriority() a guarantee of execution order?"
+    options:
+      - "Yes, higher priority always runs first"
+      - "No -- it's only a scheduling hint the OS is free to mostly ignore"
+      - "It guarantees thread-safety"
+      - "It has no effect at all, ever"
+    correct: 1
+    explanation: "Priority nudges the scheduler but isn't a portable guarantee across platforms."
+    concept_tags: [threading, thread_priority]
+
+  - id: q39
+    question: "Why is BlockingQueue.take() safer than ArrayDeque.poll() for a producer/consumer handoff?"
+    options:
+      - "take() is faster in every case"
+      - "take() blocks until an item is actually available; poll() returns immediately, often null, racing the producer"
+      - "ArrayDeque can't hold Integers"
+      - "There's no real difference"
+    correct: 1
+    explanation: "poll() on an empty structure returns immediately (often null) instead of waiting -- take() blocks until there's really something there."
+    concept_tags: [threading, queue, producer_consumer]
+
+  - id: q40
+    question: "What's the correct way to stop a thread cooperatively in Java?"
+    options:
+      - "Call the deprecated Thread.stop()"
+      - "Have the thread check Thread.currentThread().isInterrupted() and exit cleanly after another thread calls interrupt()"
+      - "Kill the JVM process"
+      - "Threads can't be stopped once started"
+    correct: 1
+    explanation: "Thread.stop() is deprecated and unsafe -- cooperative interruption-checking is the correct pattern."
+    concept_tags: [threading, interruption]
+
+  - id: q41
+    question: "What does thenApply do to a CompletableFuture?"
+    options:
+      - "Blocks until the future completes"
+      - "Chains a transformation onto the future's eventual result, returning a new future"
+      - "Cancels the future"
+      - "Runs the future synchronously"
+    correct: 1
+    explanation: "thenApply(fn) attaches fn to run as part of the async pipeline once the original future completes."
+    concept_tags: [concurrency, completable_future, async]
+
+  - id: q42
+    question: "What does thenCombine do?"
+    options:
+      - "Cancels two futures"
+      - "Waits for two independent futures and combines their results with a given function"
+      - "Merges two threads into one"
+      - "Restarts a failed future"
+    correct: 1
+    explanation: "thenCombine(other, fn) expresses \"once both are ready, combine them\" without blocking on each sequentially."
+    concept_tags: [concurrency, completable_future, async]
+
+  - id: q43
+    question: "What does exceptionally do on a CompletableFuture?"
+    options:
+      - "Prevents any exception from ever being thrown"
+      - "Supplies a fallback value used only if the future completed with an exception"
+      - "Logs the exception and re-throws it"
+      - "Retries the computation automatically"
+    correct: 1
+    explanation: "exceptionally(fn) recovers a failed future with a fallback value instead of letting join() re-throw."
+    concept_tags: [concurrency, completable_future, exceptions]
+
+  - id: q44
+    question: "Why pass a custom ExecutorService to supplyAsync instead of using the default?"
+    options:
+      - "supplyAsync requires it"
+      - "The default uses ForkJoinPool.commonPool(), shared by every parallel stream and default-pool future in the JVM -- dedicated work may need its own pool"
+      - "It makes the code shorter"
+      - "There's no functional difference"
+    correct: 1
+    explanation: "The common pool is shared JVM-wide; an explicit executor gives dedicated capacity that doesn't compete with unrelated work."
+    concept_tags: [concurrency, completable_future, executor_service]
+
+  - id: q45
+    question: "What's the benefit of virtual threads over a small fixed platform-thread pool?"
+    options:
+      - "Virtual threads run computations faster"
+      - "Each submitted task gets its own lightweight thread instead of contending for a scarce few real OS threads"
+      - "Virtual threads replace the need for any concurrency at all"
+      - "There's no benefit, they're identical"
+    correct: 1
+    explanation: "A fixed pool of platform threads is genuinely scarce (each maps to a real OS thread); virtual threads can be created by the thousands."
+    concept_tags: [concurrency, virtual_threads]
+
+  - id: q46
+    question: "When can a lambda be replaced by a method reference?"
+    options:
+      - "Never, they're incompatible"
+      - "When the lambda's whole body is just forwarding its argument to one existing method"
+      - "Only for static methods"
+      - "Only inside streams"
+    correct: 1
+    explanation: "s -> s.toUpperCase() and String::toUpperCase are the same thing -- a method reference is shorthand for that exact pattern."
+    concept_tags: [functional_programming, method_references]
+
+  - id: q47
+    question: "What does Stream.reduce(identity, accumulator) do?"
+    options:
+      - "Filters the stream"
+      - "Folds the whole stream into one accumulated value"
+      - "Sorts the stream"
+      - "Removes duplicates"
+    correct: 1
+    explanation: "reduce is the general-purpose fold operation, replacing a manual accumulator loop."
+    concept_tags: [functional_programming, streams, reduce]
+
+  - id: q48
+    question: "Why does calling .add() on a List.of(...) result throw UnsupportedOperationException?"
+    options:
+      - "List.of() has a bug"
+      - "List.of() returns a genuinely immutable list -- every mutating call is unconditionally rejected"
+      - "You can only add Strings"
+      - "It only throws if the list is empty"
+    correct: 1
+    explanation: "Unlike a conventionally-treated-as-immutable list, List.of()'s result truly cannot be mutated -- wrap it in a real ArrayList first if mutation is needed."
+    concept_tags: [functional_programming, immutability, gotchas]
+
+  - id: q49
+    question: "What does f.andThen(g) build?"
+    options:
+      - "g applied first, then f"
+      - "A new function equivalent to applying f first, then passing its result to g"
+      - "A function that runs f and g in parallel"
+      - "A syntax error -- andThen doesn't exist"
+    correct: 1
+    explanation: "andThen composes two functions in the order they're chained: f, then g."
+    concept_tags: [functional_programming, function_composition]
+
+  - id: q50
+    question: "What's Java's equivalent of Python's @lru_cache decorator?"
+    options:
+      - "Java has an identical built-in @Memoize annotation"
+      - "There isn't one -- memoization has to be hand-rolled, typically with a Map cache checked before recursing"
+      - "final fields automatically memoize"
+      - "Streams memoize automatically"
+    correct: 1
+    explanation: "Java has no built-in memoization decorator -- the standard fix is a manual cache (e.g. HashMap<Integer, Long>)."
+    concept_tags: [recursion, memoization]
+
+  - id: q51
+    question: "Why does deep recursion cause a StackOverflowError in Java?"
+    options:
+      - "Java doesn't support recursion"
+      - "Java has no tail-call optimization, and the call stack is finite -- one call per unit of work exhausts it on large inputs"
+      - "It only happens with infinite loops, not recursion"
+      - "StackOverflowError never actually happens in Java"
+    correct: 1
+    explanation: "Each recursive call uses a real stack frame; without tail-call optimization, deep enough recursion exhausts the stack."
+    concept_tags: [recursion, recursion_limit]
+
+  - id: q52
+    question: "What is mutual recursion?"
+    options:
+      - "A method calling itself twice"
+      - "Two or more methods that call each other instead of themselves directly"
+      - "A method with two base cases"
+      - "Recursion inside a lambda"
+    correct: 1
+    explanation: "isEven calling isOdd, which calls isEven, is the classic example of mutual recursion."
+    concept_tags: [recursion, mutual_recursion]
+
+  - id: q53
+    question: "How do you correctly sum every value in a binary tree recursively?"
+    options:
+      - "Just return the root's own value"
+      - "For a null node return 0; otherwise return the node's value plus the recursive sums of both children"
+      - "Trees can't be summed recursively"
+      - "Sum only the left subtree"
+    correct: 1
+    explanation: "The null-node base case (0) plus recursing into both children is what correctly totals every node in the tree."
+    concept_tags: [recursion, data_structures, trees]
+
+  - id: q54
+    question: "Why is String.compareTo unreliable for comparing version numbers like \"10.0.0\" and \"9.0.0\"?"
+    options:
+      - "It isn't unreliable, it always works"
+      - "It compares character by character, so \"10.0.0\" sorts before \"9.0.0\" lexicographically"
+      - "compareTo doesn't work on version strings at all"
+      - "It only works for single-digit versions"
+    correct: 1
+    explanation: "'1' sorts before '9' as a character -- correct version comparison needs to split on '.' and compare parts as integers."
+    concept_tags: [dependency_management, versioning, gotchas]
+
+  - id: q55
+    question: "What does Class.forName(name) throw if the class isn't on the classpath?"
+    options:
+      - "NullPointerException"
+      - "ClassNotFoundException"
+      - "IllegalStateException"
+      - "It returns null silently"
+    correct: 1
+    explanation: "Class.forName is the standard way to check for an optional dependency, and it throws a checked ClassNotFoundException when the class isn't present."
+    concept_tags: [dependency_management, reflection, exceptions]
+
+  - id: q56
+    question: "Why should a classpath conflict resolver check versions instead of always keeping whichever was registered last?"
+    options:
+      - "It shouldn't -- last-write-wins is always correct"
+      - "The most recently registered dependency might be an older transitive one, silently downgrading a newer version already present"
+      - "Checking versions is required by the JVM"
+      - "There's no real risk either way"
+    correct: 1
+    explanation: "Blindly letting the last registration win can downgrade a legitimately newer version to an older one pulled in later by an unrelated dependency."
+    concept_tags: [dependency_management, classpath, conflicts]
+
+  - id: q57
+    question: "What's the shape of a Maven coordinate string?"
+    options:
+      - "name@version"
+      - "groupId:artifactId:version"
+      - "version/artifactId/groupId"
+      - "artifactId-version.jar only"
+    correct: 1
+    explanation: "Maven identifies a dependency as groupId:artifactId:version, e.g. com.google.guava:guava:31.0-jre."
+    concept_tags: [dependency_management, maven]
+
+  - id: q58
+    question: "What does a JAR manifest's Main-Class entry specify?"
+    options:
+      - "The JAR's compression format"
+      - "Which class's main() method the JVM should run when the JAR is executed directly"
+      - "The JAR's file size"
+      - "The author of the JAR"
+    correct: 1
+    explanation: "Main-Class in META-INF/MANIFEST.MF tells `java -jar` which class to launch."
+    concept_tags: [packaging, jar, manifest]
+
+  - id: q59
+    question: "What naming convention do Java package names conventionally follow?"
+    options:
+      - "UPPERCASE_WITH_UNDERSCORES"
+      - "Lowercase, dot-separated, reverse-domain style (e.g. com.example.app)"
+      - "camelCase like method names"
+      - "There's no convention at all"
+    correct: 1
+    explanation: "Lowercase reverse-domain notation avoids collisions and is reserved specifically to distinguish packages from class names (which use PascalCase)."
+    concept_tags: [packaging, naming_conventions]
+
+  - id: q60
+    question: "In a filename like guava-31.0.jar, where's the boundary between the artifact name and the version?"
+    options:
+      - "The first dash in the filename"
+      - "The LAST dash before the .jar extension, since the artifact name itself can contain dashes"
+      - "There's no reliable way to tell"
+      - "Always exactly 5 characters from the end"
+    correct: 1
+    explanation: "Splitting on the first dash breaks for artifact names that themselves contain dashes -- the last dash before .jar is the reliable boundary."
+    concept_tags: [packaging, jar]
+
+  - id: q61
+    question: "What does a service/plugin registry (the pattern behind Java's ServiceLoader) need to actually work?"
+    options:
+      - "Nothing -- registration happens automatically"
+      - "Something has to actually record the name-to-implementation association before it can be looked up later"
+      - "A registry only works with a single implementation"
+      - "It requires a database"
+    correct: 1
+    explanation: "A register() call that doesn't store its arguments anywhere is a no-op, however it looks -- the association has to actually be recorded."
+    concept_tags: [packaging, service_registry]
+
+  - id: q62
+    question: "Why use System.getenv().getOrDefault(name, fallback) instead of System.getenv(name) directly?"
+    options:
+      - "They're identical"
+      - "System.getenv(name) returns null if unset, which crashes downstream parsing; getOrDefault never returns null"
+      - "getOrDefault is faster"
+      - "System.getenv(name) doesn't exist"
+    correct: 1
+    explanation: "Reading a missing env var directly gives null, which crashes something like Integer.parseInt -- getOrDefault degrades gracefully to a default."
+    concept_tags: [deployment, configuration, environment_variables]
+
+  - id: q63
+    question: "Why use equalsIgnoreCase instead of equals for a boolean-ish config value like \"TRUE\"?"
+    options:
+      - "equals() doesn't work on strings"
+      - "equals() is case-sensitive, so \"TRUE\" or \"True\" would silently fail to match \"true\""
+      - "equalsIgnoreCase is required by the compiler"
+      - "There's no difference"
+    correct: 1
+    explanation: "Config values arrive in whatever casing someone wrote them -- case-sensitive comparison silently treats a valid true value as false."
+    concept_tags: [deployment, configuration, gotchas]
+
+  - id: q64
+    question: "What does Runtime.getRuntime().addShutdownHook(thread) do?"
+    options:
+      - "Prevents the JVM from ever exiting"
+      - "Registers a thread to run during JVM shutdown, including a shutdown triggered by System.exit()"
+      - "Schedules the thread to run at a fixed interval"
+      - "Immediately kills the current thread"
+    correct: 1
+    explanation: "Shutdown hooks run during JVM termination -- the standard way to guarantee cleanup code executes even after System.exit()."
+    concept_tags: [deployment, shutdown_hooks, jvm]
+
+  - id: q65
+    question: "Why should a deploy step be idempotent (safe to run more than once)?"
+    options:
+      - "It doesn't matter, deploy steps only ever run once"
+      - "Deploy pipelines get retried, so a non-idempotent step can cause duplicate work or misleading state on a re-run"
+      - "Idempotency makes code run faster"
+      - "It's a legal requirement"
+    correct: 1
+    explanation: "A retried or re-applied deploy pipeline re-runs steps -- idempotency is what keeps that safe."
+    concept_tags: [deployment, idempotency]
+
+  - id: q66
+    question: "Why does real logging code configure an explicit Handler and Formatter for java.util.logging.Logger?"
+    options:
+      - "It's purely optional stylistic preference"
+      - "The default writes verbose, timestamped records to stderr -- explicit configuration controls where and how output actually appears"
+      - "Loggers don't work without one"
+      - "It's required to import the logging package"
+    correct: 1
+    explanation: "Without configuration, java.util.logging's default format and destination (stderr) usually isn't what a deployed service wants."
+    concept_tags: [observability, logging]
+
+  - id: q67
+    question: "If a Logger is set to INFO but its Handler is still set to WARNING, what happens to an INFO-level log call?"
+    options:
+      - "It's emitted normally"
+      - "It's dropped -- a record has to clear both the logger's AND the handler's level threshold"
+      - "It's automatically upgraded to WARNING"
+      - "It throws an exception"
+    correct: 1
+    explanation: "Both the Logger's level and its Handler's level act as independent thresholds -- a record must clear both to be emitted."
+    concept_tags: [observability, logging, gotchas]
+
+  - id: q68
+    question: "What does ThreadLocal provide for something like a correlation ID?"
+    options:
+      - "A value shared identically across every thread"
+      - "A value that's implicitly available anywhere on the same thread, without passing it as an explicit parameter everywhere"
+      - "Automatic encryption of the value"
+      - "A way to pause the current thread"
+    correct: 1
+    explanation: "ThreadLocal is the mechanism real logging frameworks' MDC (Mapped Diagnostic Context) is built on for exactly this purpose."
+    concept_tags: [observability, tracing, threadlocal]
+
+  - id: q69
+    question: "What's the simplest structure for a metrics counter, and what Map operation increments it cleanly?"
+    options:
+      - "A single boolean flag; no operation needed"
+      - "A Map<String, Integer> from name to count; Map.merge(name, 1, Integer::sum) increments it, defaulting to 0 for a new key"
+      - "A single global integer for everything; += 1"
+      - "A List of every event that ever happened"
+    correct: 1
+    explanation: "merge(key, 1, Integer::sum) is a concise, correct way to express \"increment this key, starting from 0 if it's new.\""
+    concept_tags: [observability, metrics]
+
+  - id: q70
+    question: "Why use System.nanoTime() instead of System.currentTimeMillis() for measuring an elapsed duration?"
+    options:
+      - "nanoTime() is always more precise, that's the only reason"
+      - "nanoTime() is guaranteed monotonic and can't be thrown off by a wall-clock adjustment mid-measurement"
+      - "currentTimeMillis() doesn't exist in modern Java"
+      - "There's no real difference"
+    correct: 1
+    explanation: "A wall-clock change (NTP sync, manual adjustment) can make currentTimeMillis() jump mid-measurement; nanoTime() is immune to that."
+    concept_tags: [observability, instrumentation]

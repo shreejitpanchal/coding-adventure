@@ -1,0 +1,60 @@
+id: observability_01
+title: "Using the Logger That's Already Configured"
+language: java
+level: 141
+objective: "Replace a print statement with the already-configured Logger call it should have used."
+explanation: |
+  java.util.logging.Logger supports severity levels and pluggable
+  formatting -- but by default it writes verbose, timestamped records to
+  stderr, so real code configures an explicit Handler and Formatter (as
+  this snippet already does) to control exactly where and how log
+  output appears. Once that's set up, the actual logging calls should go
+  through the logger, not bypass it with println.
+example_code: |
+  Logger logger = Logger.getLogger("app");
+  // ... handler/formatter setup ...
+  logger.info("started");
+starter_code: |
+  import java.util.logging.Formatter;
+  import java.util.logging.Level;
+  import java.util.logging.LogRecord;
+  import java.util.logging.Logger;
+  import java.util.logging.StreamHandler;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Logger logger = Logger.getLogger("app");
+          logger.setUseParentHandlers(false);
+          StreamHandler handler = new StreamHandler(System.out, new Formatter() {
+              public String format(LogRecord record) {
+                  return record.getLevel() + ": " + record.getMessage() + "\n";
+              }
+          });
+          handler.setLevel(Level.ALL);
+          logger.addHandler(handler);
+          logger.setLevel(Level.ALL);
+
+          System.out.println("Processing order 42");
+
+          handler.flush();
+      }
+  }
+challenge: |
+  The logger is fully configured (a handler, a custom formatter, levels
+  set) but never actually used -- the message still goes through a plain
+  println instead. Replace the println call with
+  logger.info("Processing order 42") so the message goes through the
+  logger and its formatter, producing: "INFO: Processing order 42".
+expected_output: |
+  INFO: Processing order 42
+hints:
+  - "The logging setup above is already correct and complete -- only the actual log call needs to change."
+  - "Replace `System.out.println(\"Processing order 42\");` with `logger.info(\"Processing order 42\");`"
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "logger\\.info\\("
+concept_tags: [observability, logging]

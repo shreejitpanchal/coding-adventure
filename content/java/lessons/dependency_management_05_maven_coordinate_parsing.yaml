@@ -1,0 +1,38 @@
+id: dependency_management_05
+title: "Parsing a Maven Coordinate"
+language: java
+level: 130
+objective: "Parse a groupId:artifactId:version Maven coordinate string into its three parts."
+explanation: |
+  Maven identifies every dependency with a coordinate string in the
+  shape groupId:artifactId:version -- e.g.
+  com.google.guava:guava:31.0-jre. Splitting on ":" is all that's needed
+  to pull the three parts apart, since none of them can legally contain
+  a colon themselves.
+example_code: |
+  String[] parts = "org.junit:junit:5.10.0".split(":");
+  System.out.println(parts[1]);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          String coordinate = "com.google.guava:guava:31.0-jre";
+          System.out.println(coordinate);
+      }
+  }
+challenge: |
+  Parse the Maven coordinate string into its groupId, artifactId, and
+  version using split(":"), and print them space-separated instead of
+  the raw coordinate string: "com.google.guava guava 31.0-jre".
+expected_output: |
+  com.google.guava guava 31.0-jre
+hints:
+  - "String[] parts = coordinate.split(\":\");"
+  - "System.out.println(parts[0] + \" \" + parts[1] + \" \" + parts[2]);"
+xp_reward: 15
+achievement: dependency_management_master
+category: dependency_management
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "\\.split\\(\":\"\\)"
+concept_tags: [dependency_management, maven]

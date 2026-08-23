@@ -1,0 +1,45 @@
+id: sync_vs_async_01
+title: "Chaining a Transformation onto a Future"
+language: java
+level: 111
+objective: "Use thenApply to chain a transformation onto a CompletableFuture instead of blocking with join() and computing separately."
+explanation: |
+  Blocking on join() the moment a future completes, then computing
+  something with the result, forces the computation to also happen on
+  the calling thread. thenApply(fn) attaches the transformation to the
+  future itself -- it runs as part of the async pipeline, and you only
+  block (if at all) once, at the very end.
+example_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  int result = CompletableFuture.supplyAsync(() -> 10)
+          .thenApply(n -> n + 1)
+          .join();
+starter_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  public class Solution {
+      public static void main(String[] args) {
+          CompletableFuture<Integer> future = CompletableFuture.supplyAsync(() -> 6);
+          int raw = future.join();
+          int result = raw * 7;
+          System.out.println(result);
+      }
+  }
+challenge: |
+  Rewrite this using .thenApply(n -> n * 7) chained directly onto the
+  future, instead of blocking with join() and then computing separately,
+  keeping the same output: 42.
+expected_output: |
+  42
+hints:
+  - "thenApply(fn) returns a new CompletableFuture whose value is fn applied to the original result."
+  - "CompletableFuture.supplyAsync(() -> 6).thenApply(n -> n * 7).join();"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "thenApply"
+concept_tags: [concurrency, completable_future, async]

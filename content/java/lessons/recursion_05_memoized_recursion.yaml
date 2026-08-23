@@ -1,0 +1,53 @@
+id: recursion_05
+title: "Memoizing a Recursive Method by Hand"
+language: java
+level: 125
+objective: "Speed up an exponential naive-recursive Fibonacci with a HashMap cache, since Java has no built-in memoization decorator."
+explanation: |
+  Naive recursive fib(n) recomputes the same sub-calls exponentially many
+  times -- fib(50) alone makes billions of calls and is far too slow.
+  Unlike Python's @lru_cache, Java has no built-in memoization annotation
+  -- the standard fix is to hand-roll it: check a cache (a Map<Integer,
+  Long>) before computing, and store the result before returning, so
+  each distinct n is only ever computed once.
+example_code: |
+  static Map<Integer, Long> cache = new HashMap<>();
+
+  static long fib(int n) {
+      if (n < 2) return n;
+      if (cache.containsKey(n)) return cache.get(n);
+      long result = fib(n - 1) + fib(n - 2);
+      cache.put(n, result);
+      return result;
+  }
+starter_code: |
+  public class Solution {
+      static long fib(int n) {
+          if (n < 2) {
+              return n;
+          }
+          return fib(n - 1) + fib(n - 2);
+      }
+
+      public static void main(String[] args) {
+          System.out.println(fib(50));
+      }
+  }
+challenge: |
+  fib(50) with naive recursion makes billions of redundant calls and is
+  far too slow. Add a HashMap<Integer, Long> cache -- check it before
+  recursing, store the result before returning -- so each n is computed
+  only once. Keep the same correct result: 12586269025.
+expected_output: |
+  12586269025
+hints:
+  - "static Map<Integer, Long> cache = new HashMap<>(); at class scope."
+  - "Check `if (cache.containsKey(n)) return cache.get(n);` before computing, and `cache.put(n, result);` before returning."
+xp_reward: 15
+achievement: recursion_master
+category: recursion
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "cache\\.containsKey"
+concept_tags: [recursion, memoization, hashmap]

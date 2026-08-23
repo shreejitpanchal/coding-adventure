@@ -1,0 +1,51 @@
+id: recursion_01
+title: "The Countdown That Never Stopped"
+language: java
+level: 121
+objective: "Fix a StackOverflowError caused by a missing base case."
+explanation: |
+  Every recursive method needs at least one base case -- a condition
+  where it stops calling itself and just returns. Without one, each call
+  makes another call, forever, until the call stack is exhausted and a
+  StackOverflowError is thrown. The fix is always the same shape: check
+  the stopping condition first, and return directly instead of recursing
+  further.
+example_code: |
+  static void countdown(int n) {
+      if (n < 0) {
+          return;
+      }
+      System.out.println(n);
+      countdown(n - 1);
+  }
+starter_code: |
+  public class Solution {
+      static void countdown(int n) {
+          System.out.println(n);
+          countdown(n - 1);
+      }
+
+      public static void main(String[] args) {
+          countdown(3);
+      }
+  }
+challenge: |
+  This recurses forever (n keeps decreasing past 0) until it hits a
+  StackOverflowError. Add a base case so it stops right after printing
+  0, producing: 3, 2, 1, 0.
+expected_output: |
+  3
+  2
+  1
+  0
+hints:
+  - "Every recursive method needs a condition that stops it from calling itself again."
+  - "Add `if (n == 0) { return; }` right after printing, before the recursive call."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "if \\(n == 0\\)"
+concept_tags: [recursion, base_case, gotchas]

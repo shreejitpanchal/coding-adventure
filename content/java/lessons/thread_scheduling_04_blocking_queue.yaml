@@ -1,0 +1,59 @@
+id: thread_scheduling_04
+title: "A Producer/Consumer Handoff with BlockingQueue"
+language: java
+level: 109
+objective: "Use a BlockingQueue to hand work off between threads safely, instead of racing a non-blocking Deque."
+explanation: |
+  A plain ArrayDeque isn't thread-safe, and its poll() returns
+  immediately (often null) instead of waiting for an item to arrive --
+  code that assumes an item is always there the instant it asks is
+  racing the producer thread. java.util.concurrent.BlockingQueue's
+  take() blocks until an item is actually available, removing the race
+  entirely.
+example_code: |
+  import java.util.concurrent.BlockingQueue;
+  import java.util.concurrent.LinkedBlockingQueue;
+
+  BlockingQueue<Integer> q = new LinkedBlockingQueue<>();
+  new Thread(() -> q.add(1)).start();
+  System.out.println(q.take());
+starter_code: |
+  import java.util.ArrayDeque;
+  import java.util.Deque;
+
+  public class Solution {
+      public static void main(String[] args) throws InterruptedException {
+          Deque<Integer> queue = new ArrayDeque<>();
+          Thread producer = new Thread(() -> {
+              for (int i = 0; i < 3; i++) {
+                  queue.add(i);
+              }
+          });
+          producer.start();
+          int total = 0;
+          for (int i = 0; i < 3; i++) {
+              total += queue.poll();
+          }
+          System.out.println(total);
+      }
+  }
+challenge: |
+  queue.poll() returns immediately -- often null, since the producer
+  thread hasn't necessarily added anything yet -- racing against the
+  producer instead of waiting. Fix this using a BlockingQueue's take()
+  method, which blocks until an item is actually available, so the
+  output is reliably 3.
+expected_output: |
+  3
+hints:
+  - "import java.util.concurrent.BlockingQueue; import java.util.concurrent.LinkedBlockingQueue;"
+  - "Replace Deque/ArrayDeque with BlockingQueue<Integer> = new LinkedBlockingQueue<>(), and poll() with take()."
+xp_reward: 15
+achievement: null
+category: thread_scheduling
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "BlockingQueue"
+  - "\\.take\\("
+concept_tags: [threading, queue, producer_consumer]

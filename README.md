@@ -20,20 +20,22 @@ through in a few focused minutes, not tutorials to sit through.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
   grinding one category at a time.
-- **Practice by Topic**:
-  - **Python** — 14 categories, 75 exercises: Idioms & Gotchas, Core
-    Language Refresher, Data Structures & Algorithms, Standard Library
-    Deep Dive, Concurrency & Async, Thread Scheduling, Sync vs Async,
-    Functional Programming, Recursion, Dependency Management, Packaging,
-    Deployment, Observability, and the flagship **Gotcha Gauntlet**.
-  - **Java** — 6 categories, 30 exercises: Idioms & Gotchas, Core
-    Language Refresher (streams, lambdas, records, try-with-resources),
-    the Collections Framework, Standard Library Deep Dive, Concurrency
-    (synchronized, ExecutorService, CompletableFuture), and its own
-    **Gotcha Gauntlet** (off-by-one, switch fallthrough,
+- **Practice by Topic** — Python and Java both cover the same 14
+  categories, so switching tracks doesn't change the shape of the app:
+  Idioms & Gotchas, Core Language Refresher, Data Structures &
+  Algorithms, Standard Library Deep Dive, Concurrency & Async, Thread
+  Scheduling, Sync vs Async, Functional Programming, Recursion,
+  Dependency Management, Packaging, Deployment, Observability, and the
+  flagship **Gotcha Gauntlet**.
+  - **Python** — 75 exercises (mutable defaults, race conditions, float
+    precision, silent exception swallowing, GIL vs true parallelism, and
+    more).
+  - **Java** — 70 exercises, each idiomatically Java rather than a
+    literal port (streams/lambdas/records, the Collections Framework,
+    virtual threads and CompletableFuture for concurrency,
     ConcurrentModificationException, silent int overflow, the
-    equals()/hashCode() contract).
-- **Quiz Bank** — 87 Python questions, 35 Java questions, reshuffled
+    equals()/hashCode() contract, and more).
+- **Quiz Bank** — 87 Python questions, 70 Java questions, reshuffled
   every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.

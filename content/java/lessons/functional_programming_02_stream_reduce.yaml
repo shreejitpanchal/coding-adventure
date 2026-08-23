@@ -1,0 +1,43 @@
+id: functional_programming_02
+title: "Folding a Stream with reduce"
+language: java
+level: 117
+objective: "Use Stream.reduce to combine a sequence into one value instead of a manual accumulator loop."
+explanation: |
+  reduce(identity, accumulator) repeatedly applies a two-argument
+  function, carrying an accumulated value forward -- the general-purpose
+  "fold" operation for a stream. It's the right tool whenever a manual
+  loop is just accumulating one running value.
+example_code: |
+  import java.util.List;
+
+  int sum = List.of(1, 2, 3).stream().reduce(0, Integer::sum);
+starter_code: |
+  import java.util.List;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> numbers = List.of(1, 2, 3, 4);
+          int product = 1;
+          for (int n : numbers) {
+              product *= n;
+          }
+          System.out.println(product);
+      }
+  }
+challenge: |
+  Rewrite this using numbers.stream().reduce(1, (a, b) -> a * b) instead
+  of the explicit loop, keeping the same output: 24.
+expected_output: |
+  24
+hints:
+  - "reduce(identity, (acc, item) -> ...) folds the whole stream into one value."
+  - "int product = numbers.stream().reduce(1, (a, b) -> a * b);"
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "\\.reduce\\("
+concept_tags: [functional_programming, streams, reduce]

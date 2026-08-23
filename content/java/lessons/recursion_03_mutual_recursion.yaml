@@ -1,0 +1,57 @@
+id: recursion_03
+title: "Mutual Recursion with a Wrong Base Case"
+language: java
+level: 123
+objective: "Fix a mutually recursive pair of methods whose base case returns the wrong value."
+explanation: |
+  Mutual recursion is two (or more) methods that call each other instead
+  of themselves directly -- isEven(n) calling isOdd(n-1) and vice versa
+  is a classic example. It works the same way ordinary recursion does:
+  each method needs a correct base case, since a wrong one propagates
+  through every level of the mutual call chain.
+example_code: |
+  static boolean isEven(int n) {
+      if (n == 0) {
+          return true;
+      }
+      return isOdd(n - 1);
+  }
+starter_code: |
+  public class Solution {
+      static boolean isEven(int n) {
+          if (n == 0) {
+              return false;
+          }
+          return isOdd(n - 1);
+      }
+
+      static boolean isOdd(int n) {
+          if (n == 0) {
+              return false;
+          }
+          return isEven(n - 1);
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isEven(10));
+          System.out.println(isOdd(7));
+      }
+  }
+challenge: |
+  isEven's base case is wrong -- 0 is even, so isEven(0) should return
+  true, not false. Fix that one base case so both lines print correctly:
+  true, then true (10 is even, 7 is odd).
+expected_output: |
+  true
+  true
+hints:
+  - "0 is even by definition -- isEven(0) should return true."
+  - "Only isEven's base case is wrong; isOdd's base case (false) is already correct."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "return true;"
+concept_tags: [recursion, mutual_recursion]

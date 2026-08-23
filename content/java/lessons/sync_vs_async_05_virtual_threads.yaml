@@ -1,0 +1,60 @@
+id: sync_vs_async_05
+title: "Virtual Threads Instead of a Scarce Fixed Pool"
+language: java
+level: 115
+objective: "Replace a small fixed platform-thread pool with a virtual-thread-per-task executor, so many blocking-style tasks don't have to queue for a scarce few threads."
+explanation: |
+  A fixed pool of platform threads is a genuinely scarce resource --
+  each one maps to a real OS thread, so a pool of 2 can only run 2 tasks
+  at once, however many are submitted. Virtual threads (Java 21+) are
+  lightweight, JVM-managed threads that can be created by the thousands
+  -- Executors.newVirtualThreadPerTaskExecutor() gives every submitted
+  task its own virtual thread instead of contending for a small pool,
+  which is exactly the right fit for blocking-style workloads.
+example_code: |
+  import java.util.concurrent.Executors;
+
+  try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
+      pool.submit(() -> System.out.println("on a virtual thread"));
+  }
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+  import java.util.concurrent.ExecutorService;
+  import java.util.concurrent.Executors;
+  import java.util.concurrent.Future;
+
+  public class Solution {
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newFixedThreadPool(2);
+          List<Future<Integer>> futures = new ArrayList<>();
+          for (int i = 0; i < 4; i++) {
+              final int idx = i;
+              futures.add(pool.submit(() -> idx * idx));
+          }
+          int total = 0;
+          for (Future<Integer> f : futures) {
+              total += f.get();
+          }
+          pool.shutdown();
+          System.out.println(total);
+      }
+  }
+challenge: |
+  Rewrite this using Executors.newVirtualThreadPerTaskExecutor() instead
+  of newFixedThreadPool(2), so each task gets its own lightweight virtual
+  thread instead of contending for 2 platform threads. Keep the same
+  output: 14.
+expected_output: |
+  14
+hints:
+  - "Executors.newVirtualThreadPerTaskExecutor() (Java 21+) is a drop-in ExecutorService replacement."
+  - "Just swap the one line: ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();"
+xp_reward: 15
+achievement: sync_vs_async_master
+category: sync_vs_async
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "newVirtualThreadPerTaskExecutor"
+concept_tags: [concurrency, virtual_threads, executor_service]

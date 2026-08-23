@@ -1,0 +1,45 @@
+id: dependency_management_04
+title: "Does This Version Satisfy the Minimum?"
+language: java
+level: 129
+objective: "Fix a minimum-version check that's wrong because it compares version strings lexicographically instead of numerically, part by part."
+explanation: |
+  "2.9.0".compareTo("2.10.0") is positive -- lexicographically, "2.9.0"
+  sorts after "2.10.0" because '9' > '1' at the first differing
+  character, even though 2.9.0 is actually the older version. Correctly
+  checking "does this satisfy at least version X" needs a numeric,
+  part-by-part comparison, the same fix as comparing two raw version
+  strings anywhere else.
+example_code: |
+  String[] v = "2.9.0".split("\\.");
+  String[] m = "2.10.0".split("\\.");
+  int vMinor = Integer.parseInt(v[1]);
+  int mMinor = Integer.parseInt(m[1]);
+starter_code: |
+  public class Solution {
+      static boolean satisfiesMinimum(String version, String minimum) {
+          return version.compareTo(minimum) >= 0;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(satisfiesMinimum("2.9.0", "2.10.0"));
+      }
+  }
+challenge: |
+  satisfiesMinimum compares the raw strings, so "2.9.0" incorrectly
+  looks like it satisfies a "2.10.0" minimum (this prints true, but
+  2.9.0 is actually older). Fix it to split on "." and compare the parts
+  as integers, so the output correctly becomes false.
+expected_output: |
+  false
+hints:
+  - "Split both on \"\\\\.\", then compare each part with Integer.parseInt, stopping at the first difference."
+  - "If every part is equal, the version does satisfy the minimum (return true)."
+xp_reward: 15
+achievement: null
+category: dependency_management
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "Integer\\.parseInt"
+concept_tags: [dependency_management, versioning, gotchas]

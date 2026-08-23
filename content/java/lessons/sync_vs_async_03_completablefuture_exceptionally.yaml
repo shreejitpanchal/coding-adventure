@@ -1,0 +1,47 @@
+id: sync_vs_async_03
+title: "Recovering from a Failed Async Computation"
+language: java
+level: 113
+objective: "Fix an async pipeline that crashes on join() by recovering from the failure with exceptionally() instead of letting it propagate."
+explanation: |
+  If the function passed to supplyAsync throws, the future completes
+  exceptionally -- calling join() on it re-throws that failure wrapped
+  in a CompletionException. exceptionally(fn) lets you supply a fallback
+  value for exactly that case, turning a crash into a recovered result.
+example_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  int result = CompletableFuture.<Integer>supplyAsync(() -> { throw new RuntimeException(); })
+          .exceptionally(ex -> 0)
+          .join();
+starter_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  public class Solution {
+      public static void main(String[] args) {
+          CompletableFuture<Integer> future = CompletableFuture.supplyAsync(() -> {
+              throw new RuntimeException("boom");
+          });
+          int result = future.join();
+          System.out.println(result);
+      }
+  }
+challenge: |
+  This crashes -- join() re-throws the exception from supplyAsync.
+  Fix this by chaining .exceptionally(ex -> -1) directly onto the
+  supplyAsync call (before assigning to the CompletableFuture<Integer>
+  variable), so a failure recovers to -1 instead of crashing, and the
+  output is -1.
+expected_output: |
+  -1
+hints:
+  - "exceptionally(fn) supplies a fallback value used only if the future completed with an exception."
+  - "Chain it onto supplyAsync directly: CompletableFuture.<Integer>supplyAsync(() -> {...}).exceptionally(ex -> -1) -- the <Integer> type witness is needed once you chain another call, since the throw-only lambda alone can't infer it."
+xp_reward: 15
+achievement: null
+category: sync_vs_async
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "exceptionally"
+concept_tags: [concurrency, completable_future, exceptions]

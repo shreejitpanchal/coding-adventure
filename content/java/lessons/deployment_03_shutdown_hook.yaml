@@ -1,0 +1,44 @@
+id: deployment_03
+title: "Cleanup That Never Ran Before Exit"
+language: java
+level: 138
+objective: "Fix cleanup code that never runs because it's placed after System.exit(), by registering it as a JVM shutdown hook instead."
+explanation: |
+  System.exit() terminates the JVM immediately -- any code written after
+  the call is simply never reached, because the process is already
+  gone. javac doesn't flag this as unreachable (System.exit is just an
+  ordinary method call from the compiler's point of view), so this bug
+  compiles fine and only shows up at runtime. Runtime.getRuntime().
+  addShutdownHook(thread), registered before the exit call, runs
+  during JVM shutdown -- including a shutdown triggered by System.exit().
+example_code: |
+  Runtime.getRuntime().addShutdownHook(new Thread(() -> System.out.println("cleanup")));
+  System.exit(0);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          System.out.println("running");
+          System.exit(0);
+          System.out.println("cleanup");
+      }
+  }
+challenge: |
+  "cleanup" never prints -- System.exit(0) terminates the JVM
+  immediately, so nothing after it ever runs. Fix this by registering a
+  shutdown hook (a Thread that prints "cleanup") with
+  Runtime.getRuntime().addShutdownHook(...) BEFORE calling System.exit,
+  so the output becomes "running" then "cleanup".
+expected_output: |
+  running
+  cleanup
+hints:
+  - "Register the hook before System.exit(0), not after -- code after exit() never runs."
+  - "Runtime.getRuntime().addShutdownHook(new Thread(() -> System.out.println(\"cleanup\")));"
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "addShutdownHook"
+concept_tags: [deployment, shutdown_hooks, jvm]

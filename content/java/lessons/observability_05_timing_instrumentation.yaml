@@ -1,0 +1,60 @@
+id: observability_05
+title: "Instrumenting a Block's Duration"
+language: java
+level: 145
+objective: "Fix a try-with-resources Timer whose close() never actually records the elapsed duration of the block it wraps."
+explanation: |
+  A timing helper built around AutoCloseable is a natural fit for
+  try-with-resources: the constructor records a start timestamp, and
+  close() (called automatically at the end of the block) computes the
+  elapsed time -- using System.nanoTime() rather than
+  System.currentTimeMillis(), since nanoTime() is guaranteed monotonic
+  and can't be thrown off by a wall-clock adjustment mid-measurement.
+example_code: |
+  static class Timer implements AutoCloseable {
+      long start = System.nanoTime();
+      long durationNanos;
+      public void close() {
+          durationNanos = System.nanoTime() - start;
+      }
+  }
+starter_code: |
+  public class Solution {
+      static class Timer implements AutoCloseable {
+          long start = System.nanoTime();
+          Long durationNanos;
+
+          public void close() {
+          }
+      }
+
+      public static void main(String[] args) {
+          Timer t;
+          try (Timer timer = new Timer()) {
+              t = timer;
+              long total = 0;
+              for (int i = 0; i < 1000; i++) {
+                  total += i;
+              }
+          }
+          System.out.println(t.durationNanos != null);
+      }
+  }
+challenge: |
+  close() never records anything, so durationNanos stays null and the
+  output is false. Fix close() to compute
+  durationNanos = System.nanoTime() - start, so the output becomes
+  true.
+expected_output: |
+  true
+hints:
+  - "start was already recorded when the Timer was constructed -- close() just needs to compute the difference."
+  - "durationNanos = System.nanoTime() - start;"
+xp_reward: 15
+achievement: observability_master
+category: observability
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "durationNanos = System\\.nanoTime"
+concept_tags: [observability, instrumentation, try_with_resources]

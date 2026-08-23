@@ -1,0 +1,43 @@
+id: functional_programming_04
+title: "Composing Functions with andThen"
+language: java
+level: 119
+objective: "Use Function.andThen to compose two functions into one instead of nesting the calls manually."
+explanation: |
+  f.andThen(g) builds a new function equivalent to first applying f,
+  then passing its result to g -- expressing "run this, then that" as a
+  named, reusable pipeline instead of nested calls that get harder to
+  read as more steps are added.
+example_code: |
+  import java.util.function.Function;
+
+  Function<Integer, Integer> square = x -> x * x;
+  Function<Integer, Integer> negate = x -> -x;
+  int result = square.andThen(negate).apply(3);
+starter_code: |
+  import java.util.function.Function;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Function<Integer, Integer> doubleIt = x -> x * 2;
+          Function<Integer, Integer> incrementIt = x -> x + 1;
+          int result = incrementIt.apply(doubleIt.apply(5));
+          System.out.println(result);
+      }
+  }
+challenge: |
+  Rewrite this using doubleIt.andThen(incrementIt).apply(5) instead of
+  nesting the calls manually, keeping the same output: 11.
+expected_output: |
+  11
+hints:
+  - "f.andThen(g) means \"apply f first, then g to its result\"."
+  - "Function<Integer, Integer> combined = doubleIt.andThen(incrementIt);"
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "\\.andThen\\("
+concept_tags: [functional_programming, function_composition]

@@ -1,0 +1,42 @@
+id: deployment_04
+title: "A Health Check That Ignores Its Own Dependencies"
+language: java
+level: 139
+objective: "Fix a health-check method that always reports 'ok', regardless of whether its actual dependencies are healthy."
+explanation: |
+  A deployment's readiness/liveness check exists to let an orchestrator
+  (or a human) know whether the process is actually able to do its job --
+  a health check that always reports "ok" defeats its own purpose,
+  since it can't ever catch a real outage (a downed database, a failed
+  connection). It needs to actually reflect the state of what it's
+  checking.
+example_code: |
+  static String healthCheck(boolean dbOk, boolean cacheOk) {
+      return (dbOk && cacheOk) ? "ok" : "unhealthy";
+  }
+starter_code: |
+  public class Solution {
+      static String healthCheck(boolean dependenciesOk) {
+          return "ok";
+      }
+
+      public static void main(String[] args) {
+          System.out.println(healthCheck(false));
+      }
+  }
+challenge: |
+  healthCheck always returns "ok", completely ignoring dependenciesOk.
+  Fix it to return "ok" only when dependenciesOk is true, otherwise
+  "unhealthy" -- so the output for a false input becomes "unhealthy".
+expected_output: |
+  unhealthy
+hints:
+  - "Use a ternary: return dependenciesOk ? \"ok\" : \"unhealthy\";"
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "dependenciesOk \\? \"ok\""
+concept_tags: [deployment, health_checks, observability]

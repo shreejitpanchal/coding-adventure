@@ -1,0 +1,50 @@
+id: recursion_02
+title: "Hitting the Stack Limit"
+language: java
+level: 122
+objective: "Fix a StackOverflowError caused by recursing too deep, by converting the method to an iterative loop."
+explanation: |
+  Java's call stack is finite (a few thousand to tens of thousands of
+  frames, depending on frame size and -Xss), and Java has no tail-call
+  optimization -- a recursive method that needs one call per unit of
+  work will blow the stack on large inputs. Converting the recursion into
+  an explicit loop uses one stack frame no matter how much work it does.
+example_code: |
+  static long sumIterative(int n) {
+      long total = 0;
+      for (int i = 0; i <= n; i++) {
+          total += i;
+      }
+      return total;
+  }
+starter_code: |
+  public class Solution {
+      static long sumToN(int n) {
+          if (n == 0) {
+              return 0;
+          }
+          return n + sumToN(n - 1);
+      }
+
+      public static void main(String[] args) {
+          System.out.println(sumToN(100000));
+      }
+  }
+challenge: |
+  sumToN(100000) recurses 100000 levels deep and throws a
+  StackOverflowError long before it gets there. Rewrite it iteratively
+  (no recursion at all) so it can handle n=100000, keeping the same
+  result: 5000050000.
+expected_output: |
+  5000050000
+hints:
+  - "A loop uses one stack frame regardless of how many iterations it runs -- recursion uses one frame per call."
+  - "long total = 0; for (int i = 0; i <= n; i++) { total += i; } return total;"
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "for \\(int i = 0; i <= n"
+concept_tags: [recursion, recursion_limit, gotchas]

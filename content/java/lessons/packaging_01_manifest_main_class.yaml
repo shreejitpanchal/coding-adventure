@@ -1,0 +1,41 @@
+id: packaging_01
+title: "Reading Main-Class Out of a Manifest"
+language: java
+level: 131
+objective: "Parse a JAR-manifest-style key: value text to find the Main-Class entry."
+explanation: |
+  A JAR's META-INF/MANIFEST.MF is plain "Key: Value" text, one entry per
+  line -- Main-Class tells the JVM which class's main() to run when the
+  JAR is executed directly. Parsing it is just splitting each line on
+  the first ": " and matching the key you want.
+example_code: |
+  for (String line : manifest.split("\n")) {
+      String[] parts = line.split(": ", 2);
+      if (parts[0].equals("Main-Class")) {
+          System.out.println(parts[1]);
+      }
+  }
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          String manifest = "Manifest-Version: 1.0\nMain-Class: com.example.App\n";
+          System.out.println(manifest);
+      }
+  }
+challenge: |
+  Parse the manifest text line by line, and print only the value of the
+  Main-Class entry: "com.example.App" -- not the whole raw manifest
+  text.
+expected_output: |
+  com.example.App
+hints:
+  - "Split the whole text on \"\\n\" to get lines, then each line on \": \" to get its key and value."
+  - "Only print the line whose key equals \"Main-Class\"."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "Main-Class"
+concept_tags: [packaging, jar, manifest]

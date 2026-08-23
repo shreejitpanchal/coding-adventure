@@ -1,0 +1,39 @@
+id: thread_scheduling_02
+title: "Marking a Background Thread as Daemon"
+language: java
+level: 107
+objective: "Set a background thread's daemon flag so it doesn't block the JVM from exiting."
+explanation: |
+  A non-daemon thread keeps the whole JVM alive until it finishes, even
+  after the main thread's work is done -- fine for work that must
+  complete, but wrong for an endless background task (a poller, a
+  heartbeat) that should simply be abandoned when the program exits.
+  setDaemon(true), called before start(), marks a thread as
+  background-only.
+example_code: |
+  Thread t = new Thread(() -> {});
+  t.setDaemon(true);
+  System.out.println(t.isDaemon());
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          Thread t = new Thread(() -> {});
+          System.out.println(t.isDaemon());
+      }
+  }
+challenge: |
+  This background thread isn't marked as a daemon, so it would keep the
+  JVM alive indefinitely if it ran forever. Fix the code so t.isDaemon()
+  prints true.
+expected_output: |
+  true
+hints:
+  - "setDaemon(true) must be called before start() -- it can't be changed after the thread is running."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "setDaemon\\(true\\)"
+concept_tags: [threading, daemon_threads]

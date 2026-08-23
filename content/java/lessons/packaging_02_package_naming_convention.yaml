@@ -1,0 +1,41 @@
+id: packaging_02
+title: "Validating a Package Name Convention"
+language: java
+level: 132
+objective: "Fix a validator that always claims a package name is valid, without actually checking the reverse-domain lowercase convention."
+explanation: |
+  Java package names conventionally follow reverse-domain notation --
+  lowercase letters/digits, dot-separated, no uppercase (the official
+  style guide explicitly reserves uppercase for class names, to avoid a
+  package colliding with a class of the same name). A validator for this
+  needs to actually check the string against that shape.
+example_code: |
+  boolean valid = "com.example.app".matches("[a-z0-9]+(\\.[a-z0-9]+)*");
+starter_code: |
+  public class Solution {
+      static boolean isValidPackageName(String name) {
+          return true;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isValidPackageName("com.Example.App"));
+      }
+  }
+challenge: |
+  isValidPackageName always returns true, never actually checking
+  anything. Fix it to validate the name against the lowercase,
+  dot-separated convention using a regex, so
+  "com.Example.App" (which has uppercase letters) correctly returns
+  false.
+expected_output: |
+  false
+hints:
+  - "name.matches(\"[a-z0-9]+(\\\\.[a-z0-9]+)*\") checks the whole string against the convention."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "\\.matches\\("
+concept_tags: [packaging, naming_conventions, regex]

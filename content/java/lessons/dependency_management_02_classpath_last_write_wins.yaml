@@ -1,0 +1,50 @@
+id: dependency_management_02
+title: "The Classpath Conflict That Picked the Older Version"
+language: java
+level: 127
+objective: "Fix a dependency registry that always keeps whichever version was registered last, even if it's older than what's already there."
+explanation: |
+  A real build tool resolving a version conflict between two
+  dependencies pulling in different versions of the same artifact needs
+  to actually compare versions, not just let the last one registered
+  silently win -- otherwise a legitimate newer version can get quietly
+  downgraded by an unrelated, older transitive dependency that happens
+  to be processed later.
+example_code: |
+  if (existing == null || version.compareTo(existing) > 0) {
+      classpath.put(artifact, version);
+  }
+starter_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+
+  public class Solution {
+      static void register(Map<String, String> classpath, String artifact, String version) {
+          classpath.put(artifact, version);
+      }
+
+      public static void main(String[] args) {
+          Map<String, String> classpath = new HashMap<>();
+          register(classpath, "guava", "31.0");
+          register(classpath, "guava", "28.0");
+          System.out.println(classpath.get("guava"));
+      }
+  }
+challenge: |
+  register() always overwrites with whatever was registered most
+  recently, even though 28.0 is older than the 31.0 already there --
+  this prints 28.0. Fix register() to only overwrite when the new
+  version is actually newer, so the output correctly stays 31.0.
+expected_output: |
+  31.0
+hints:
+  - "Read the existing version first: `String existing = classpath.get(artifact);`"
+  - "Only put() if `existing == null || version.compareTo(existing) > 0`."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "existing == null"
+concept_tags: [dependency_management, classpath, conflicts]

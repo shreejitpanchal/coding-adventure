@@ -1,0 +1,58 @@
+id: thread_scheduling_01
+title: "Naming Threads for Debuggable Logs"
+language: java
+level: 106
+objective: "Give worker threads meaningful names instead of the default Thread-N, so logs and debuggers can identify them."
+explanation: |
+  Every thread gets an auto-generated name like "Thread-0" unless you
+  pass a name to the constructor. In a multi-threaded program, an
+  unnamed thread is nearly impossible to trace through logs or a
+  debugger -- naming threads by the work they do is a small habit that
+  pays off constantly when diagnosing production issues.
+example_code: |
+  Thread t = new Thread(() -> {}, "cache-refresh");
+  System.out.println(t.getName());
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.Collections;
+  import java.util.List;
+
+  public class Solution {
+      static void report(List<String> results) {
+          results.add(Thread.currentThread().getName());
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          List<String> results = Collections.synchronizedList(new ArrayList<>());
+          Thread[] threads = new Thread[3];
+          for (int i = 0; i < 3; i++) {
+              threads[i] = new Thread(() -> report(results));
+          }
+          for (Thread t : threads) {
+              t.start();
+          }
+          for (Thread t : threads) {
+              t.join();
+          }
+          Collections.sort(results);
+          System.out.println(results);
+      }
+  }
+challenge: |
+  Right now every thread gets an auto-generated name like "Thread-0",
+  which tells you nothing about what it does. Give each thread an
+  explicit name "worker-0", "worker-1", "worker-2" (matching its index)
+  so the output is [worker-0, worker-1, worker-2].
+expected_output: |
+  [worker-0, worker-1, worker-2]
+hints:
+  - "Thread(Runnable, String) accepts an explicit name as the second constructor argument."
+  - "Capture the loop index in a final variable first: `final int idx = i;` then use \"worker-\" + idx."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "worker-"
+concept_tags: [threading, debugging]

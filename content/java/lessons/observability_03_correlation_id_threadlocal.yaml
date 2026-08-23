@@ -1,0 +1,53 @@
+id: observability_03
+title: "Threading a Correlation ID Through Log Lines"
+language: java
+level: 143
+objective: "Use ThreadLocal to attach a per-request correlation ID to every log line without passing it as an explicit parameter everywhere."
+explanation: |
+  Tracing a single request through many nested method calls needs a
+  correlation/request ID attached to every log line it touches --
+  threading that as an explicit parameter through every method signature
+  is invasive. ThreadLocal holds a value that's implicitly available
+  anywhere on the same thread, without passing it manually, which is
+  exactly the pattern real logging frameworks' MDC (Mapped Diagnostic
+  Context) is built on.
+example_code: |
+  static ThreadLocal<String> userId = ThreadLocal.withInitial(() -> "anonymous");
+
+  static void log(String msg) {
+      System.out.println("[" + userId.get() + "] " + msg);
+  }
+starter_code: |
+  public class Solution {
+      static ThreadLocal<String> requestId = ThreadLocal.withInitial(() -> "unknown");
+
+      static void log(String message) {
+          System.out.println("[" + requestId.get() + "] " + message);
+      }
+
+      static void handleRequest() {
+          log("handling request");
+      }
+
+      public static void main(String[] args) {
+          handleRequest();
+      }
+  }
+challenge: |
+  requestId is never set before handleRequest logs, so every log line
+  shows the "unknown" default. Fix handleRequest to call
+  requestId.set("req-123") before logging, so the output becomes
+  "[req-123] handling request".
+expected_output: |
+  [req-123] handling request
+hints:
+  - "requestId.set(\"req-123\") stores a value scoped to the current thread."
+  - "Call it at the top of handleRequest, before log(...)."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "requestId\\.set"
+concept_tags: [observability, tracing, threadlocal]

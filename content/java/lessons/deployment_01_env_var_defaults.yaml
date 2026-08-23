@@ -1,0 +1,41 @@
+id: deployment_01
+title: "Configuration with a Safe Default"
+language: java
+level: 136
+objective: "Fix config-loading code that crashes when an environment variable isn't set, instead of falling back to a sensible default."
+explanation: |
+  System.getenv("NAME") returns null if the variable isn't set --
+  parsing that null directly (e.g. with Integer.parseInt) throws a
+  NumberFormatException. System.getenv() (no argument) returns the
+  whole environment as a Map, whose getOrDefault(name, fallback) never
+  returns null.
+example_code: |
+  int timeout = Integer.parseInt(System.getenv().getOrDefault("TIMEOUT_SECONDS", "30"));
+starter_code: |
+  public class Solution {
+      static int getPort() {
+          return Integer.parseInt(System.getenv("PORT"));
+      }
+
+      public static void main(String[] args) {
+          System.out.println(getPort());
+      }
+  }
+challenge: |
+  getPort() crashes with a NumberFormatException when PORT isn't set
+  (System.getenv("PORT") is null). Fix it using
+  System.getenv().getOrDefault("PORT", "8000") with a string default, so
+  the output is 8000.
+expected_output: |
+  8000
+hints:
+  - "System.getenv() with no argument returns the whole environment as a Map<String, String>."
+  - "System.getenv().getOrDefault(\"PORT\", \"8000\") never returns null."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "getOrDefault"
+concept_tags: [deployment, configuration, environment_variables]

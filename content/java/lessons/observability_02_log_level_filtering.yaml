@@ -1,0 +1,60 @@
+id: observability_02
+title: "The Log Level Set Too High"
+language: java
+level: 142
+objective: "Fix a logger and handler both configured at WARNING level, silently swallowing an INFO-level log the code actually needs."
+explanation: |
+  Both the Logger's own level and its Handler's level act as
+  independent thresholds -- a record has to clear both to actually be
+  emitted. Setting either one too high (WARNING when INFO-level
+  visibility is actually needed) is a quiet way to lose exactly the logs
+  you need when debugging a live issue.
+example_code: |
+  logger.setLevel(Level.INFO);
+  handler.setLevel(Level.INFO);
+  logger.info("this now shows, since INFO clears both thresholds");
+starter_code: |
+  import java.util.logging.Formatter;
+  import java.util.logging.Level;
+  import java.util.logging.LogRecord;
+  import java.util.logging.Logger;
+  import java.util.logging.StreamHandler;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Logger logger = Logger.getLogger("app2");
+          logger.setUseParentHandlers(false);
+          StreamHandler handler = new StreamHandler(System.out, new Formatter() {
+              public String format(LogRecord record) {
+                  return record.getLevel() + ": " + record.getMessage() + "\n";
+              }
+          });
+          handler.setLevel(Level.WARNING);
+          logger.addHandler(handler);
+          logger.setLevel(Level.WARNING);
+
+          logger.info("starting up");
+          logger.warning("low disk space");
+
+          handler.flush();
+      }
+  }
+challenge: |
+  Both the logger and the handler are set to WARNING, so the "starting
+  up" info log is silently dropped -- only the warning prints. Fix both
+  Level.WARNING settings to Level.INFO so both lines are emitted:
+  "INFO: starting up" then "WARNING: low disk space".
+expected_output: |
+  INFO: starting up
+  WARNING: low disk space
+hints:
+  - "Both the Logger's level AND the Handler's level are thresholds -- a record has to clear both."
+  - "Change both `Level.WARNING` occurrences to `Level.INFO`."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "Level\\.INFO"
+concept_tags: [observability, logging, gotchas]

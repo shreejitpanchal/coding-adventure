@@ -1,0 +1,57 @@
+id: recursion_04
+title: "Summing an Unbalanced Tree"
+language: java
+level: 124
+objective: "Fix a tree-sum method that ignores both children entirely, only ever returning the root's own value."
+explanation: |
+  A binary tree is a naturally recursive data structure -- summing it
+  needs a recursive method: for a null node, contribute 0; otherwise,
+  contribute the node's own value plus whatever its left and right
+  subtrees sum to (each computed by recursing into them).
+example_code: |
+  static int sum(Node node) {
+      if (node == null) {
+          return 0;
+      }
+      return node.value + sum(node.left) + sum(node.right);
+  }
+starter_code: |
+  public class Solution {
+      static class Node {
+          int value;
+          Node left, right;
+          Node(int value, Node left, Node right) {
+              this.value = value;
+              this.left = left;
+              this.right = right;
+          }
+      }
+
+      static int sum(Node node) {
+          return node.value;
+      }
+
+      public static void main(String[] args) {
+          Node tree = new Node(1, new Node(2, null, null), new Node(3, new Node(4, null, null), null));
+          System.out.println(sum(tree));
+      }
+  }
+challenge: |
+  sum() only ever returns the current node's own value, ignoring its
+  children entirely -- it prints 1 instead of the total across the whole
+  tree. Fix sum() to recursively add the left and right subtree sums
+  (treating a null child as 0), so the output is 10 (1+2+3+4).
+expected_output: |
+  10
+hints:
+  - "Handle the null case first: `if (node == null) { return 0; }`"
+  - "Then: return node.value + sum(node.left) + sum(node.right);"
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "sum\\(node\\.left\\)"
+  - "sum\\(node\\.right\\)"
+concept_tags: [recursion, data_structures, trees]

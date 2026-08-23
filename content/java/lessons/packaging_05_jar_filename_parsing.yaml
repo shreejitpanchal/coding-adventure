@@ -1,0 +1,44 @@
+id: packaging_05
+title: "Parsing a JAR Filename"
+language: java
+level: 135
+objective: "Parse a built artifact's name and version out of its JAR filename, splitting on the last dash before the extension."
+explanation: |
+  A built JAR's filename typically follows artifact-version.jar -- but
+  the artifact name itself can contain dashes, so the version is
+  reliably found by splitting on the LAST dash before ".jar", not the
+  first one. Getting this boundary right is a genuinely practical
+  packaging-tooling skill.
+example_code: |
+  String stem = "my-lib-2.0.jar".substring(0, "my-lib-2.0.jar".length() - 4);
+  int lastDash = stem.lastIndexOf('-');
+  String name = stem.substring(0, lastDash);
+  String version = stem.substring(lastDash + 1);
+starter_code: |
+  public class Solution {
+      static String[] parseJarFilename(String filename) {
+          return new String[]{filename, ""};
+      }
+
+      public static void main(String[] args) {
+          String[] parts = parseJarFilename("guava-31.0.jar");
+          System.out.println(parts[0] + " " + parts[1]);
+      }
+  }
+challenge: |
+  parseJarFilename just returns the raw filename unchanged. Fix it to
+  strip the ".jar" suffix, then split on the LAST "-" to separate the
+  artifact name from the version, so the output is "guava 31.0".
+expected_output: |
+  guava 31.0
+hints:
+  - "filename.substring(0, filename.length() - 4) strips \".jar\"."
+  - "stem.lastIndexOf('-') finds the boundary between name and version -- use substring() on both sides of it."
+xp_reward: 15
+achievement: packaging_master
+category: packaging
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "lastIndexOf"
+concept_tags: [packaging, jar]

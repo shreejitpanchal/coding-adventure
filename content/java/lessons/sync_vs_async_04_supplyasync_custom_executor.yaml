@@ -1,0 +1,45 @@
+id: sync_vs_async_04
+title: "Running Async Work on Your Own Executor"
+language: java
+level: 114
+objective: "Pass an explicit ExecutorService to supplyAsync instead of relying on the shared default common pool."
+explanation: |
+  CompletableFuture.supplyAsync(fn) with no executor runs on
+  ForkJoinPool.commonPool() -- a pool shared by every parallel stream and
+  every other default-pool CompletableFuture in the whole JVM. For work
+  that needs dedicated capacity (or shouldn't compete with unrelated
+  parallel work), supplyAsync(fn, executor) lets you supply your own
+  pool explicitly.
+example_code: |
+  import java.util.concurrent.CompletableFuture;
+  import java.util.concurrent.Executors;
+
+  var pool = Executors.newFixedThreadPool(2);
+  int result = CompletableFuture.supplyAsync(() -> 5, pool).join();
+  pool.shutdown();
+starter_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  public class Solution {
+      public static void main(String[] args) {
+          int result = CompletableFuture.supplyAsync(() -> 21 * 2).join();
+          System.out.println(result);
+      }
+  }
+challenge: |
+  Rewrite this passing an explicit ExecutorService (a fixed pool of 1)
+  as the second argument to supplyAsync, shutting it down afterward,
+  keeping the same output: 42.
+expected_output: |
+  42
+hints:
+  - "import java.util.concurrent.ExecutorService; import java.util.concurrent.Executors;"
+  - "ExecutorService pool = Executors.newFixedThreadPool(1); ... CompletableFuture.supplyAsync(() -> 21 * 2, pool).join(); pool.shutdown();"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "supplyAsync\\(\\(\\) -> 21 \\* 2, pool\\)"
+concept_tags: [concurrency, completable_future, executor_service]

@@ -1,0 +1,52 @@
+id: thread_scheduling_05
+title: "Stopping a Thread Cooperatively with Interrupt"
+language: java
+level: 110
+objective: "Fix a worker thread that ignores interruption entirely, so it can never actually be stopped."
+explanation: |
+  Java has no safe way to forcibly kill a thread from outside it --
+  Thread.stop() is deprecated and dangerous. The correct pattern is
+  cooperative: the worker itself periodically checks
+  Thread.currentThread().isInterrupted() and exits cleanly when it sees
+  the flag set, after another thread calls interrupt() on it. A worker
+  that never checks the flag can't be stopped this way at all.
+example_code: |
+  Thread worker = new Thread(() -> {
+      while (!Thread.currentThread().isInterrupted()) {
+          // work
+      }
+  });
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) throws InterruptedException {
+          Thread worker = new Thread(() -> {
+              while (true) {
+                  // work
+              }
+          });
+          worker.start();
+          Thread.sleep(50);
+          worker.interrupt();
+          worker.join();
+          System.out.println("stopped cleanly");
+      }
+  }
+challenge: |
+  worker's loop condition is `while (true)`, so it never notices
+  interrupt() being called -- worker.join() waits forever and this never
+  finishes. Fix the loop to check
+  Thread.currentThread().isInterrupted() instead, so it exits promptly
+  after being interrupted and the output is "stopped cleanly".
+expected_output: |
+  stopped cleanly
+hints:
+  - "Thread.stop() doesn't exist as a safe option -- cooperative checking of the interrupted flag is the correct pattern."
+  - "Change `while (true)` to `while (!Thread.currentThread().isInterrupted())`."
+xp_reward: 15
+achievement: thread_scheduling_master
+category: thread_scheduling
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "isInterrupted\\(\\)"
+concept_tags: [threading, interruption, gotchas]

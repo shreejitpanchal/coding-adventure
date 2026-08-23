@@ -62,8 +62,9 @@ def test_missing_content_dir_yields_empty_engine(tmp_path):
 
 def test_loads_java_content():
     engine = ExerciseEngine("java")
-    assert len(engine) == 30
+    assert len(engine) == 70
     assert engine.has("gotcha_gauntlet_05")
     categories = engine.categories()
-    assert len(categories) == 6
+    assert len(categories) == 14
     assert "gotcha_gauntlet" in categories
+    assert "observability" in categories

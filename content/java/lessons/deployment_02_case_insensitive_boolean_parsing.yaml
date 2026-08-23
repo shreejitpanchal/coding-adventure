@@ -1,0 +1,39 @@
+id: deployment_02
+title: "The Feature Flag That Only Worked in Lowercase"
+language: java
+level: 137
+objective: "Fix a boolean-flag check that's case-sensitive, so a config value like 'TRUE' is silently treated as disabled."
+explanation: |
+  Config values (environment variables, properties files) often come in
+  whatever casing whoever wrote the deployment config used --
+  value.equals("true") only matches the exact lowercase string, so
+  "TRUE", "True", or "yes" all silently fail the check. Real config
+  parsing should compare case-insensitively.
+example_code: |
+  boolean enabled = "TRUE".equalsIgnoreCase("true");
+starter_code: |
+  public class Solution {
+      static boolean isEnabled(String value) {
+          return value.equals("true");
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isEnabled("TRUE"));
+      }
+  }
+challenge: |
+  isEnabled uses .equals("true"), which is case-sensitive, so "TRUE"
+  doesn't match and this incorrectly prints false. Fix it using
+  .equalsIgnoreCase("true") instead, so the output is true.
+expected_output: |
+  true
+hints:
+  - ".equals() is case-sensitive; .equalsIgnoreCase() is not."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "equalsIgnoreCase"
+concept_tags: [deployment, configuration, gotchas]

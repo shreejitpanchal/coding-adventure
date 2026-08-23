@@ -1,0 +1,47 @@
+id: dependency_management_03
+title: "Detecting an Optional Dependency Gracefully"
+language: java
+level: 128
+objective: "Fix code that crashes with ClassNotFoundException when checking for an optional class that isn't on the classpath."
+explanation: |
+  Class.forName(name) is the standard way to check whether a class (and
+  therefore, typically, the library providing it) is actually available
+  at runtime -- but it throws ClassNotFoundException if it isn't. A
+  feature-detection helper needs to catch that specific exception and
+  report "not available" rather than letting the whole caller crash.
+example_code: |
+  try {
+      Class.forName("com.optional.Library");
+      return true;
+  } catch (ClassNotFoundException e) {
+      return false;
+  }
+starter_code: |
+  public class Solution {
+      static boolean isAvailable(String className) throws Exception {
+          Class.forName(className);
+          return true;
+      }
+
+      public static void main(String[] args) throws Exception {
+          System.out.println(isAvailable("com.definitely.not.a.RealClass"));
+      }
+  }
+challenge: |
+  isAvailable crashes with ClassNotFoundException for any class that
+  isn't on the classpath, instead of reporting that cleanly. Fix it to
+  catch ClassNotFoundException and return false, so the output is
+  false.
+expected_output: |
+  false
+hints:
+  - "Class.forName() throws checked ClassNotFoundException -- catch it specifically."
+  - "try { Class.forName(className); return true; } catch (ClassNotFoundException e) { return false; }"
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "catch \\(ClassNotFoundException"
+concept_tags: [dependency_management, reflection, exceptions]

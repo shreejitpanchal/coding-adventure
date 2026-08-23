@@ -1,0 +1,52 @@
+id: functional_programming_05
+title: "Deferring Work with Supplier"
+language: java
+level: 120
+objective: "Use Supplier to defer an expensive computation until it's actually needed, instead of always computing it eagerly."
+explanation: |
+  A plain method call evaluates eagerly -- the moment expensive() is
+  called, it runs, whether or not the result ends up being used. Wrapping
+  it as a Supplier<T> (a zero-argument functional interface) defers that
+  work: nothing happens until .get() is actually called, so a branch
+  that never needs the value never pays for it.
+example_code: |
+  import java.util.function.Supplier;
+
+  Supplier<Integer> lazy = () -> { System.out.println("computing"); return 42; };
+  // nothing printed yet
+  int value = lazy.get(); // prints "computing" now
+starter_code: |
+  public class Solution {
+      static int expensive() {
+          System.out.println("computing");
+          return 42;
+      }
+
+      public static void main(String[] args) {
+          int value = expensive();
+          boolean useIt = false;
+          if (useIt) {
+              System.out.println(value);
+          } else {
+              System.out.println("skipped");
+          }
+      }
+  }
+challenge: |
+  expensive() always runs and prints "computing", even when useIt is
+  false and the value is never used. Fix this by wrapping expensive as a
+  Supplier<Integer> and only calling .get() when useIt is true, so
+  "computing" is never printed and the output is just "skipped".
+expected_output: |
+  skipped
+hints:
+  - "import java.util.function.Supplier;"
+  - "Supplier<Integer> value = Solution::expensive; -- then only call value.get() inside the true branch."
+xp_reward: 15
+achievement: functional_programming_master
+category: functional_programming
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "Supplier<Integer>"
+concept_tags: [functional_programming, lazy_evaluation, suppliers]

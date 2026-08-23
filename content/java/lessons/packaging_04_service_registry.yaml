@@ -1,0 +1,50 @@
+id: packaging_04
+title: "A Registry That Never Registered Anything"
+language: java
+level: 134
+objective: "Fix a register() call that never actually stores anything, mimicking the kind of registry ServiceLoader uses to discover implementations by name."
+explanation: |
+  A plugin/service registry -- mapping a name to a callable -- is the
+  in-process version of what Java's real ServiceLoader mechanism does
+  via META-INF/services files: something has to actually record the
+  association before it can be looked up later. A register() function
+  that doesn't store its arguments anywhere is a no-op, however it
+  looks.
+example_code: |
+  static Map<String, Runnable> COMMANDS = new HashMap<>();
+
+  static void register(String name, Runnable action) {
+      COMMANDS.put(name, action);
+  }
+starter_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+
+  public class Solution {
+      static Map<String, Runnable> COMMANDS = new HashMap<>();
+
+      static void register(String name, Runnable action) {
+      }
+
+      public static void main(String[] args) {
+          register("greet", () -> System.out.println("hello"));
+          COMMANDS.get("greet").run();
+      }
+  }
+challenge: |
+  register() never stores anything, so COMMANDS stays empty and
+  COMMANDS.get("greet") is null, crashing with a NullPointerException on
+  .run(). Fix register() to store the action under COMMANDS.put(name,
+  action), so the output is "hello".
+expected_output: |
+  hello
+hints:
+  - "register(name, action) needs a side effect: COMMANDS.put(name, action);"
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "COMMANDS\\.put"
+concept_tags: [packaging, service_registry]
