@@ -10,34 +10,44 @@ Developers who already know how to code and want to keep their instincts
 sharp: real-world gotchas, idioms, and standard-library depth to work
 through in a few focused minutes, not tutorials to sit through.
 
-## What's inside (Python track — fully built)
+## What's inside
 
 - **Language picker** — every session starts by choosing a track. Python
-  is fully built out; Java, C++, and Spring are visible as "coming soon"
-  so the shape of the app doesn't change as they're added.
+  and Java are fully built out; C++ and Spring are visible as "coming
+  soon" so the shape of the app doesn't change as they're added. A track
+  whose local toolchain isn't installed (e.g. no JDK) shows "Toolchain
+  needed" with an install hint instead of pretending it's ready.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
   grinding one category at a time.
-- **Practice by Topic** — 14 categories, 75 exercises: Idioms & Gotchas,
-  Core Language Refresher, Data Structures & Algorithms, Standard Library
-  Deep Dive, Concurrency & Async, Thread Scheduling, Sync vs Async,
-  Functional Programming, Recursion, Dependency Management, Packaging,
-  Deployment, Observability, and the flagship **Gotcha Gauntlet** —
-  senior-engineer-trap debugging puzzles (mutable defaults, race
-  conditions, float precision, silent exception swallowing, and more).
-- **Quiz Bank** — 87 multiple-choice questions, reshuffled every session.
+- **Practice by Topic**:
+  - **Python** — 14 categories, 75 exercises: Idioms & Gotchas, Core
+    Language Refresher, Data Structures & Algorithms, Standard Library
+    Deep Dive, Concurrency & Async, Thread Scheduling, Sync vs Async,
+    Functional Programming, Recursion, Dependency Management, Packaging,
+    Deployment, Observability, and the flagship **Gotcha Gauntlet**.
+  - **Java** — 6 categories, 30 exercises: Idioms & Gotchas, Core
+    Language Refresher (streams, lambdas, records, try-with-resources),
+    the Collections Framework, Standard Library Deep Dive, Concurrency
+    (synchronized, ExecutorService, CompletableFuture), and its own
+    **Gotcha Gauntlet** (off-by-one, switch fallthrough,
+    ConcurrentModificationException, silent int overflow, the
+    equals()/hashCode() contract).
+- **Quiz Bank** — 87 Python questions, 35 Java questions, reshuffled
+  every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
-- **Real execution** — Python exercises run against your actual local
-  `python` interpreter in an isolated subprocess with a timeout, not a
-  simulated sandbox.
+- **Real execution, not a simulated sandbox** — Python exercises run
+  against your actual local `python` interpreter; Java exercises are
+  compiled with `javac` and run with `java`, both in an isolated
+  subprocess with a timeout.
 - **100% offline and private** — everything runs and stays on your
   machine. No accounts, no network access, no data collection.
 
-Java, C++, and Spring have their execution-engine interfaces defined and
-content directories scaffolded (`content/java`, `content/cpp`,
-`content/spring`), ready to fill in — see `app/execution/java_engine.py`,
-`cpp_engine.py`, and `spring_engine.py` for what's left to implement.
+C++ and Spring have their execution-engine interfaces defined and
+content directories scaffolded (`content/cpp`, `content/spring`), ready
+to fill in — see `app/execution/cpp_engine.py` and `spring_engine.py`
+for what's left to implement.
 
 ## Getting started
 
@@ -57,9 +67,10 @@ itself up; every run after that launches straight into the app.
 
 - `app/engine/` — content model (`Exercise`, `QuizQuestion`), YAML
   loaders, category/unlock logic.
-- `app/execution/` — one `ExecutionEngine` per language. Only
-  `python_engine.py` is implemented; the others define the interface and
-  raise `NotImplementedError` until built out.
+- `app/execution/` — one `ExecutionEngine` per language.
+  `python_engine.py` and `java_engine.py` are implemented; `cpp_engine.py`
+  and `spring_engine.py` define the interface and raise
+  `NotImplementedError` until built out.
 - `app/progress/` — SQLite-backed XP/streaks/badges/activity log, keyed
   per language track.
 - `app/ui/` — Flet screens.

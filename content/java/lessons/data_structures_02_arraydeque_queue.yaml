@@ -1,0 +1,43 @@
+id: data_structures_02
+title: "O(1) Queue Operations with ArrayDeque"
+language: java
+level: 87
+objective: "Replace an ArrayList used as a queue (remove(0)) with ArrayDeque for O(1) operations at both ends."
+explanation: |
+  ArrayList.remove(0) is O(n) -- every remaining element has to shift
+  left one slot. ArrayDeque supports O(1) addFirst/addLast and
+  removeFirst/removeLast, making it the right structure whenever a list
+  is being used as a queue or stack.
+example_code: |
+  import java.util.ArrayDeque;
+  import java.util.Deque;
+
+  Deque<Integer> d = new ArrayDeque<>(java.util.List.of(1, 2, 3));
+  System.out.println(d.removeFirst());
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> queue = new ArrayList<>(List.of(1, 2, 3));
+          int first = queue.remove(0);
+          System.out.println(first + " " + queue);
+      }
+  }
+challenge: |
+  Rewrite this using ArrayDeque and removeFirst() instead of
+  ArrayList.remove(0), keeping the same output: "1 [2, 3]".
+expected_output: |
+  1 [2, 3]
+hints:
+  - "import java.util.ArrayDeque; import java.util.Deque;"
+  - "Deque<Integer> queue = new ArrayDeque<>(List.of(1, 2, 3)); int first = queue.removeFirst();"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "ArrayDeque"
+concept_tags: [collections, performance]

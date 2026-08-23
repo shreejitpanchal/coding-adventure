@@ -1,0 +1,55 @@
+id: concurrency_async_02
+title: "AtomicInteger Instead of Manual Synchronization"
+language: java
+level: 97
+objective: "Replace a manually synchronized counter with java.util.concurrent.atomic.AtomicInteger, which is lock-free and purpose-built for this."
+explanation: |
+  AtomicInteger provides atomic increment/get operations (backed by
+  hardware compare-and-swap) without needing an explicit lock at all --
+  for a single counter shared across threads, it's simpler and typically
+  faster than hand-rolled synchronized blocks.
+example_code: |
+  import java.util.concurrent.atomic.AtomicInteger;
+
+  AtomicInteger counter = new AtomicInteger(0);
+  counter.incrementAndGet();
+  System.out.println(counter.get());
+starter_code: |
+  public class Solution {
+      static int counter = 0;
+      static final Object lock = new Object();
+
+      static void increment() {
+          for (int i = 0; i < 50000; i++) {
+              synchronized (lock) {
+                  counter++;
+              }
+          }
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          Thread t1 = new Thread(Solution::increment);
+          Thread t2 = new Thread(Solution::increment);
+          t1.start();
+          t2.start();
+          t1.join();
+          t2.join();
+          System.out.println(counter);
+      }
+  }
+challenge: |
+  Rewrite this using AtomicInteger.incrementAndGet() instead of a
+  manually synchronized int counter, keeping the same result: 100000.
+expected_output: |
+  100000
+hints:
+  - "import java.util.concurrent.atomic.AtomicInteger;"
+  - "static AtomicInteger counter = new AtomicInteger(0); then counter.incrementAndGet(); in the loop, counter.get() to read it."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 2
+difficulty: deep_dive
+contains_patterns:
+  - "AtomicInteger"
+concept_tags: [concurrency, atomic, threading]

@@ -1,0 +1,52 @@
+id: core_refresher_02
+title: "Filter and Transform with Streams"
+language: java
+level: 82
+objective: "Rewrite an explicit filter-then-transform loop using the Stream API."
+explanation: |
+  The Stream API expresses "filter, then transform, then collect" as a
+  declarative pipeline instead of an imperative loop with a manual
+  accumulator list -- filter() keeps matching elements, map() transforms
+  each one, and collect(Collectors.toList()) gathers the results.
+example_code: |
+  import java.util.List;
+  import java.util.stream.Collectors;
+
+  List<Integer> squares = List.of(1, 2, 3).stream()
+          .map(n -> n * n)
+          .collect(Collectors.toList());
+  System.out.println(squares);
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> numbers = List.of(1, 2, 3, 4, 5, 6);
+          List<Integer> result = new ArrayList<>();
+          for (int n : numbers) {
+              if (n % 2 == 0) {
+                  result.add(n * 10);
+              }
+          }
+          System.out.println(result);
+      }
+  }
+challenge: |
+  Rewrite this using numbers.stream().filter(...).map(...).collect(...)
+  instead of the explicit loop, keeping the same output: [20, 40, 60].
+expected_output: |
+  [20, 40, 60]
+hints:
+  - "numbers.stream().filter(n -> n % 2 == 0) keeps only the even numbers."
+  - "Chain .map(n -> n * 10).collect(Collectors.toList()) to transform and collect."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "\\.stream\\(\\)"
+  - "\\.filter\\("
+  - "\\.map\\("
+concept_tags: [streams, collections]

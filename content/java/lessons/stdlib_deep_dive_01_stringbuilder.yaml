@@ -1,0 +1,43 @@
+id: stdlib_deep_dive_01
+title: "Building a String in a Loop"
+language: java
+level: 91
+objective: "Replace repeated String += concatenation in a loop with StringBuilder, avoiding a new object allocation on every iteration."
+explanation: |
+  Strings are immutable in Java -- `result += i` doesn't modify result
+  in place, it creates a brand-new String every single time, copying
+  everything built so far. StringBuilder is a mutable buffer designed
+  exactly for building up a string incrementally, making a loop like
+  this O(n) instead of O(n^2).
+example_code: |
+  StringBuilder sb = new StringBuilder();
+  for (int i = 0; i < 3; i++) {
+      sb.append(i);
+  }
+  System.out.println(sb);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          String result = "";
+          for (int i = 0; i < 5; i++) {
+              result += i;
+          }
+          System.out.println(result);
+      }
+  }
+challenge: |
+  Rewrite this using StringBuilder.append() instead of String +=,
+  keeping the same output: 01234.
+expected_output: |
+  01234
+hints:
+  - "StringBuilder result = new StringBuilder();"
+  - "result.append(i); inside the loop, then print(result) (or result.toString())."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "StringBuilder"
+concept_tags: [strings, stringbuilder, performance]

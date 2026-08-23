@@ -1,0 +1,50 @@
+id: concurrency_async_05
+title: "shutdown() Doesn't Wait -- awaitTermination() Does"
+language: java
+level: 100
+objective: "Fix code that reads results right after shutdown(), which only stops new submissions -- it doesn't wait for already-submitted tasks to finish."
+explanation: |
+  ExecutorService.shutdown() is non-blocking: it stops the pool from
+  accepting new tasks, but returns immediately, regardless of whether
+  already-submitted tasks have finished running. Reading shared state
+  right after shutdown() races against those tasks. awaitTermination()
+  actually blocks until every submitted task completes (or a timeout
+  elapses), which is what's needed before it's safe to read the results.
+example_code: |
+  import java.util.concurrent.TimeUnit;
+
+  pool.shutdown();
+  pool.awaitTermination(5, TimeUnit.SECONDS);
+  // safe to read shared results here
+starter_code: |
+  import java.util.concurrent.ExecutorService;
+  import java.util.concurrent.Executors;
+
+  public class Solution {
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newFixedThreadPool(2);
+          int[] total = {0};
+          pool.submit(() -> { total[0] += 10; });
+          pool.submit(() -> { total[0] += 20; });
+          pool.shutdown();
+          System.out.println(total[0]);
+      }
+  }
+challenge: |
+  shutdown() doesn't wait for the two submitted tasks to actually run --
+  reading total[0] right after it is a race. Fix this by calling
+  pool.awaitTermination(5, TimeUnit.SECONDS) after shutdown(), so
+  total[0] is reliably 30 every time.
+expected_output: |
+  30
+hints:
+  - "import java.util.concurrent.TimeUnit;"
+  - "pool.awaitTermination(5, TimeUnit.SECONDS); right after pool.shutdown();"
+xp_reward: 15
+achievement: concurrency_async_master
+category: concurrency_async
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "awaitTermination"
+concept_tags: [concurrency, executor_service, threading]

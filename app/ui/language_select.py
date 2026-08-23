@@ -7,6 +7,7 @@ from __future__ import annotations
 import flet as ft
 
 from app.engine.languages import LANGUAGE_ORDER, get_language
+from app.execution.toolchain_check import check_toolchain
 from app.ui.app_state import AppState
 from app.ui.theme import scaled
 
@@ -54,13 +55,25 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
     theme = state.theme
     fs = lambda base: scaled(base, state.font_scale)  # noqa: E731
 
+    toolchain = check_toolchain(info.key) if info.available else None
+    toolchain_ready = toolchain is None or toolchain.available
+
     subtitle: str
     if info.available:
         level = state.progress.get_player_level(info.key)
         streak = state.progress.get_streak_days(info.key)
         subtitle = f"Level {level.level} · {level.total_xp} XP · {streak}-day streak"
+        if not toolchain_ready:
+            subtitle = f"{toolchain.install_hint}"
     else:
         subtitle = info.tagline
+
+    if not info.available:
+        badge_text, badge_bg, badge_color = "Coming soon", theme.card, theme.text_muted
+    elif not toolchain_ready:
+        badge_text, badge_bg, badge_color = "Toolchain needed", theme.warning, "#FFFFFF"
+    else:
+        badge_text, badge_bg, badge_color = "Available", theme.success, "#FFFFFF"
 
     def on_click(_e: ft.ControlEvent) -> None:
         if not info.available:
@@ -76,12 +89,8 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
                 ft.Text(info.title, size=fs(20), weight=ft.FontWeight.BOLD, color=theme.text),
                 ft.Text(subtitle, size=fs(13), color=theme.text_muted),
                 ft.Container(
-                    content=ft.Text(
-                        "Available" if info.available else "Coming soon",
-                        size=fs(12), weight=ft.FontWeight.BOLD,
-                        color="#FFFFFF" if info.available else theme.text_muted,
-                    ),
-                    bgcolor=theme.success if info.available else theme.card,
+                    content=ft.Text(badge_text, size=fs(12), weight=ft.FontWeight.BOLD, color=badge_color),
+                    bgcolor=badge_bg,
                     border_radius=8, padding=ft.padding.Padding.symmetric(horizontal=10, vertical=4),
                 ),
             ],

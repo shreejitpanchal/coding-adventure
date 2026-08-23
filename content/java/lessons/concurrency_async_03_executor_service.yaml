@@ -1,0 +1,54 @@
+id: concurrency_async_03
+title: "ExecutorService Instead of Raw Threads"
+language: java
+level: 98
+objective: "Replace manually created and joined Thread objects with an ExecutorService thread pool."
+explanation: |
+  Manually creating, starting, and joining Thread objects one by one
+  doesn't scale past a handful of tasks and reuses nothing --
+  ExecutorService manages a pool of worker threads for you: submit()
+  hands off work, and the pool takes care of scheduling it across
+  whatever threads are available.
+example_code: |
+  import java.util.concurrent.ExecutorService;
+  import java.util.concurrent.Executors;
+  import java.util.concurrent.TimeUnit;
+
+  ExecutorService pool = Executors.newFixedThreadPool(2);
+  pool.submit(() -> System.out.println("task"));
+  pool.shutdown();
+  pool.awaitTermination(5, TimeUnit.SECONDS);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) throws InterruptedException {
+          Thread[] threads = new Thread[3];
+          int[] results = new int[3];
+          for (int i = 0; i < 3; i++) {
+              final int idx = i;
+              threads[i] = new Thread(() -> results[idx] = idx * idx);
+              threads[i].start();
+          }
+          for (Thread t : threads) {
+              t.join();
+          }
+          System.out.println(java.util.Arrays.toString(results));
+      }
+  }
+challenge: |
+  Rewrite this using an ExecutorService (a fixed thread pool of 3),
+  submitting each task instead of manually creating/starting/joining
+  Thread objects. Remember to shutdown() and awaitTermination() before
+  printing. Keep the same output: [0, 1, 4].
+expected_output: |
+  [0, 1, 4]
+hints:
+  - "import java.util.concurrent.ExecutorService; import java.util.concurrent.Executors; import java.util.concurrent.TimeUnit;"
+  - "ExecutorService pool = Executors.newFixedThreadPool(3); pool.submit(() -> ...); then pool.shutdown(); pool.awaitTermination(5, TimeUnit.SECONDS);"
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "ExecutorService"
+concept_tags: [concurrency, executor_service, threading]

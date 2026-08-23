@@ -1,0 +1,45 @@
+id: core_refresher_01
+title: "Anonymous Class to Lambda"
+language: java
+level: 81
+objective: "Rewrite a single-method anonymous inner class as a lambda expression."
+explanation: |
+  A functional interface (one abstract method, like java.util.function.
+  Function) can be implemented with a lambda instead of a verbose
+  anonymous inner class -- the lambda is the parameter list, an arrow,
+  and the body, with the interface and method name inferred from
+  context. It's the same behavior with far less boilerplate.
+example_code: |
+  import java.util.function.Function;
+
+  Function<Integer, Integer> triple = x -> x * 3;
+  System.out.println(triple.apply(4));
+starter_code: |
+  import java.util.function.Function;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Function<Integer, Integer> square = new Function<Integer, Integer>() {
+              public Integer apply(Integer x) {
+                  return x * x;
+              }
+          };
+          System.out.println(square.apply(5));
+      }
+  }
+challenge: |
+  Rewrite square using a lambda expression instead of the anonymous
+  inner class, keeping the same output: 25.
+expected_output: |
+  25
+hints:
+  - "A lambda for a Function<Integer, Integer> is just: x -> <expression>"
+  - "Function<Integer, Integer> square = x -> x * x;"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "x -> x \\* x"
+concept_tags: [lambdas, functional_interfaces]

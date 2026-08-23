@@ -29,8 +29,8 @@ LANGUAGES: dict[str, LanguageInfo] = {
     ),
     "java": LanguageInfo(
         key="java", title="Java", icon="☕",
-        tagline="Coming soon -- core language, collections, and streams refreshers.",
-        available=False,
+        tagline="Idioms, streams, the Collections Framework, and concurrency -- keep your instincts sharp.",
+        available=True,
     ),
     "cpp": LanguageInfo(
         key="cpp", title="C++", icon="⚙️",

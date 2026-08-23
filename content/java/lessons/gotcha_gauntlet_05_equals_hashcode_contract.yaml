@@ -1,0 +1,57 @@
+id: gotcha_gauntlet_05
+title: "equals() Without hashCode(): The Broken Contract"
+language: java
+level: 105
+objective: "Fix a class that overrides equals() but not hashCode(), silently breaking HashSet/HashMap deduplication."
+explanation: |
+  Java's contract for equals()/hashCode() requires: if two objects are
+  equal, they MUST have the same hash code. HashSet and HashMap rely on
+  hashCode() first to find the right bucket, and only then call equals()
+  within that bucket -- override equals() alone, and two "equal" objects
+  can land in different buckets, so the set never even compares them
+  and treats them as distinct.
+example_code: |
+  import java.util.Objects;
+
+  public int hashCode() {
+      return Objects.hash(x, y);
+  }
+starter_code: |
+  import java.util.HashSet;
+  import java.util.Set;
+
+  public class Solution {
+      static class Point {
+          int x, y;
+          Point(int x, int y) { this.x = x; this.y = y; }
+          public boolean equals(Object o) {
+              if (!(o instanceof Point p)) return false;
+              return x == p.x && y == p.y;
+          }
+      }
+
+      public static void main(String[] args) {
+          Set<Point> points = new HashSet<>();
+          points.add(new Point(1, 2));
+          points.add(new Point(1, 2));
+          System.out.println(points.size());
+      }
+  }
+challenge: |
+  Point overrides equals() but not hashCode(), so the two "equal" Point
+  objects land in different hash buckets and HashSet treats them as
+  distinct -- printing 2 instead of 1. Fix this by adding a matching
+  hashCode() override (e.g. via Objects.hash(x, y)), so the output is 1.
+expected_output: |
+  1
+hints:
+  - "Equal objects must produce the same hashCode() -- that's the contract HashSet relies on."
+  - "Add: public int hashCode() { return java.util.Objects.hash(x, y); }"
+xp_reward: 15
+achievement: gotcha_gauntlet_master
+category: gotcha_gauntlet
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "hashCode"
+concept_tags: [equals_hashcode, hashset, gotchas]

@@ -1,0 +1,49 @@
+id: core_refresher_04
+title: "Boilerplate Class to record"
+language: java
+level: 84
+objective: "Replace a hand-written immutable data class with a record."
+explanation: |
+  A `record` generates the constructor, accessors, equals(), hashCode(),
+  and toString() for a set of fields automatically -- for a class that's
+  purely an immutable bundle of data (like a Point), this removes
+  exactly the boilerplate this class hand-writes, with identical
+  behavior.
+example_code: |
+  record Coord(double lat, double lon) {}
+
+  Coord c = new Coord(1.0, 2.0);
+  System.out.println(c);
+starter_code: |
+  public class Solution {
+      static final class Point {
+          private final int x;
+          private final int y;
+          Point(int x, int y) { this.x = x; this.y = y; }
+          int x() { return x; }
+          int y() { return y; }
+          public String toString() { return "Point[x=" + x + ", y=" + y + "]"; }
+      }
+
+      public static void main(String[] args) {
+          Point p = new Point(1, 2);
+          System.out.println(p);
+      }
+  }
+challenge: |
+  Rewrite Point as a record with x and y fields, removing the manual
+  constructor/accessors/toString entirely, keeping the same printed
+  output: Point[x=1, y=2].
+expected_output: |
+  Point[x=1, y=2]
+hints:
+  - "record Point(int x, int y) {} generates everything this class hand-writes."
+  - "A record's default toString() already produces exactly \"Point[x=1, y=2]\"."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "record Point"
+concept_tags: [records, immutability]

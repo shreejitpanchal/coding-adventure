@@ -1,0 +1,52 @@
+id: data_structures_03
+title: "Sorting by a Custom Field with Comparator"
+language: java
+level: 88
+objective: "Sort a list of records by a specific field using Comparator.comparingInt instead of relying on natural order."
+explanation: |
+  Comparator.comparingInt (and its comparing()/comparingLong/...
+  siblings) builds a comparator from a key-extractor function, so
+  sorting "by age" or "by name" is a one-liner instead of a hand-written
+  compare() implementation -- and it reads as exactly what it does.
+example_code: |
+  import java.util.Comparator;
+  import java.util.List;
+
+  record Item(String name, int price) {}
+
+  List<Item> items = new java.util.ArrayList<>(List.of(new Item("b", 2), new Item("a", 1)));
+  items.sort(Comparator.comparingInt(Item::price));
+  System.out.println(items);
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  public class Solution {
+      record Person(String name, int age) {}
+
+      public static void main(String[] args) {
+          List<Person> people = new ArrayList<>(List.of(
+              new Person("Carol", 35),
+              new Person("Alice", 30),
+              new Person("Bob", 25)
+          ));
+          System.out.println(people);
+      }
+  }
+challenge: |
+  Sort people by age ascending before printing, using
+  Comparator.comparingInt(Person::age), so the output becomes
+  [Person[name=Bob, age=25], Person[name=Alice, age=30], Person[name=Carol, age=35]].
+expected_output: |
+  [Person[name=Bob, age=25], Person[name=Alice, age=30], Person[name=Carol, age=35]]
+hints:
+  - "import java.util.Comparator;"
+  - "people.sort(Comparator.comparingInt(Person::age)); -- call this before the print."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "Comparator\\.comparingInt"
+concept_tags: [collections, comparator, sorting]

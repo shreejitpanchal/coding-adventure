@@ -1,0 +1,40 @@
+id: gotcha_gauntlet_04
+title: "The Overflow That Never Threw an Error"
+language: java
+level: 104
+objective: "Fix a silent int overflow -- Java wraps around past Integer.MAX_VALUE instead of raising any kind of error."
+explanation: |
+  Unlike some languages, Java's int arithmetic never throws on overflow
+  -- Integer.MAX_VALUE + 1 silently wraps around to
+  Integer.MIN_VALUE, with no warning at all. Any computation that might
+  genuinely exceed int's ~2.1 billion range needs to use `long` (or
+  Math.addExact()/similar, which does throw) instead.
+example_code: |
+  long safe = (long) Integer.MAX_VALUE + 1;
+  System.out.println(safe);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          int max = Integer.MAX_VALUE;
+          int result = max + 1;
+          System.out.println(result);
+      }
+  }
+challenge: |
+  max + 1 silently overflows and wraps to a large negative number
+  instead of raising any error. Fix this by computing the sum as a long
+  (casting max before adding), so the output correctly shows
+  2147483648.
+expected_output: |
+  2147483648
+hints:
+  - "int arithmetic wraps around silently on overflow -- there's no exception."
+  - "Cast to long before adding: `long result = (long) max + 1;`"
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "long result"
+concept_tags: [integers, overflow, gotchas]

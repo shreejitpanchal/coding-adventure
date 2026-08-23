@@ -1,0 +1,59 @@
+id: concurrency_async_01
+title: "The Counter Two Threads Corrupted"
+language: java
+level: 96
+objective: "Fix a race condition where two threads increment a shared counter without synchronization, losing updates."
+explanation: |
+  `counter++` isn't atomic -- it's a read, an increment, and a write as
+  separate steps, and the JVM can interleave two threads' steps
+  arbitrarily. With enough iterations, some increments get lost when
+  two threads read the same value before either writes back.
+  `synchronized` around the critical section makes each increment atomic
+  with respect to other threads, guaranteeing the final count is exact.
+example_code: |
+  static int counter = 0;
+  static final Object lock = new Object();
+
+  static void increment() {
+      synchronized (lock) {
+          counter++;
+      }
+  }
+starter_code: |
+  public class Solution {
+      static int counter = 0;
+
+      static void increment() {
+          for (int i = 0; i < 100000; i++) {
+              counter++;
+          }
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          Thread t1 = new Thread(Solution::increment);
+          Thread t2 = new Thread(Solution::increment);
+          t1.start();
+          t2.start();
+          t1.join();
+          t2.join();
+          System.out.println(counter);
+      }
+  }
+challenge: |
+  counter++ isn't atomic, so two threads incrementing concurrently can
+  lose updates. Fix increment() to synchronize the critical section
+  (e.g. synchronized on a dedicated lock object) so the final count is
+  always exactly 200000.
+expected_output: |
+  200000
+hints:
+  - "counter++ is read-modify-write -- not safe across threads without synchronization."
+  - "Add `static final Object lock = new Object();` and wrap `counter++;` in `synchronized (lock) { ... }`."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 1
+difficulty: deep_dive
+contains_patterns:
+  - "synchronized"
+concept_tags: [threading, synchronized, race_conditions]

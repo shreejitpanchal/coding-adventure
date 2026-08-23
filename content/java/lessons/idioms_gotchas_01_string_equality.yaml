@@ -1,0 +1,45 @@
+id: idioms_gotchas_01
+title: "== vs .equals() for Strings"
+language: java
+level: 76
+objective: "Fix a string comparison that uses == (reference equality) where .equals() (content equality) is what's actually needed."
+explanation: |
+  `==` on objects (including String) compares references -- whether two
+  variables point at the exact same object in memory -- not their
+  content. Two String objects built independently (e.g. via `new
+  String(...)`) can hold identical text but still be different objects,
+  so `==` returns false even though they're "equal" in the everyday
+  sense. `.equals()` is what actually compares content.
+example_code: |
+  public class Demo {
+      public static void main(String[] args) {
+          String a = new String("hi");
+          String b = new String("hi");
+          System.out.println(a.equals(b));
+      }
+  }
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          String a = new String("hello");
+          String b = new String("hello");
+          System.out.println(a == b);
+      }
+  }
+challenge: |
+  a and b hold the same text but are different objects, so a == b is
+  false. Fix the comparison to use .equals() instead, so the output is
+  true.
+expected_output: |
+  true
+hints:
+  - "== compares object references, not content, for non-primitive types."
+  - "Use a.equals(b) instead of a == b."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "a\\.equals\\(b\\)"
+concept_tags: [strings, equality, gotchas]

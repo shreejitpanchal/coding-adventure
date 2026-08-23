@@ -1,0 +1,45 @@
+id: concurrency_async_04
+title: "Async Computation with CompletableFuture"
+language: java
+level: 99
+objective: "Run a computation asynchronously with CompletableFuture.supplyAsync instead of calling it directly, then read the result with join()."
+explanation: |
+  CompletableFuture.supplyAsync(supplier) runs a computation on a
+  background thread (from the common ForkJoinPool by default) and
+  returns immediately with a handle to the eventual result --
+  join() blocks until that result is ready. It's Java's core building
+  block for asynchronous, composable computation, roughly analogous to
+  a Promise/Future in other languages.
+example_code: |
+  import java.util.concurrent.CompletableFuture;
+
+  CompletableFuture<Integer> f = CompletableFuture.supplyAsync(() -> 6 * 7);
+  System.out.println(f.join());
+starter_code: |
+  public class Solution {
+      static int slowSquare(int n) {
+          return n * n;
+      }
+
+      public static void main(String[] args) {
+          int result = slowSquare(6);
+          System.out.println(result);
+      }
+  }
+challenge: |
+  Rewrite this using CompletableFuture.supplyAsync(() -> slowSquare(6))
+  and .join() to compute the result asynchronously instead of calling
+  slowSquare directly, keeping the same output: 36.
+expected_output: |
+  36
+hints:
+  - "import java.util.concurrent.CompletableFuture;"
+  - "CompletableFuture<Integer> future = CompletableFuture.supplyAsync(() -> slowSquare(6)); int result = future.join();"
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "CompletableFuture"
+concept_tags: [concurrency, completable_future, async]

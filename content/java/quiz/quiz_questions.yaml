@@ -1,0 +1,385 @@
+questions:
+  - id: q01
+    question: "What does == compare for objects like String in Java?"
+    options:
+      - "The content of the objects"
+      - "Object references -- whether both variables point at the same object"
+      - "The hash codes of the objects"
+      - "Nothing -- == doesn't work on objects"
+    correct: 1
+    explanation: "== on non-primitive types compares references, not content -- .equals() is what compares content."
+    concept_tags: [strings, equality, gotchas]
+
+  - id: q02
+    question: "Why can == on two boxed Integer values of 1000 return false even though they look equal?"
+    options:
+      - "Integer comparison is always unreliable"
+      - "The autoboxing cache only covers -128 to 127 -- outside that range, boxed values are different objects"
+      - "1000 is too large to store in an Integer"
+      - "It never returns false for equal values"
+    correct: 1
+    explanation: "Java caches boxed Integers in the -128..127 range; == outside that range compares distinct objects."
+    concept_tags: [autoboxing, integer_cache, gotchas]
+
+  - id: q03
+    question: "What happens to a try block's return value if finally also contains a return?"
+    options:
+      - "Both values are returned as an array"
+      - "finally's return silently overrides try's return (or a pending exception)"
+      - "It raises a compile error"
+      - "try's return always wins"
+    correct: 1
+    explanation: "A return inside finally unconditionally overrides whatever try was about to return or throw."
+    concept_tags: [exceptions, finally, gotchas]
+
+  - id: q04
+    question: "What's the default value of an unassigned slot in a String[] array?"
+    options:
+      - "An empty string \"\""
+      - "null"
+      - "0"
+      - "It's a compile error to leave a slot unassigned"
+    correct: 1
+    explanation: "Object arrays default every slot to null -- there's no implicit empty-string default."
+    concept_tags: [arrays, null, gotchas]
+
+  - id: q05
+    question: "What does marking a field static do?"
+    options:
+      - "Makes it read-only"
+      - "Shares that single field across every instance of the class, instead of one copy per instance"
+      - "Makes it thread-safe automatically"
+      - "Nothing observable"
+    correct: 1
+    explanation: "A static field belongs to the class itself -- every instance reads and writes the same underlying value."
+    concept_tags: [static_fields, classes, gotchas]
+
+  - id: q06
+    question: "Which method correctly compares the content of two String objects?"
+    options:
+      - "=="
+      - ".equals()"
+      - ".hashCode()"
+      - ".toString()"
+    correct: 1
+    explanation: ".equals() compares content; == compares references."
+    concept_tags: [strings, equality]
+
+  - id: q07
+    question: "What can a lambda expression replace?"
+    options:
+      - "Any class in Java"
+      - "An anonymous inner class implementing a single-method (functional) interface"
+      - "A for loop"
+      - "An import statement"
+    correct: 1
+    explanation: "Lambdas are shorthand for implementing a functional interface's one abstract method."
+    concept_tags: [lambdas, functional_interfaces]
+
+  - id: q08
+    question: "What does stream().filter(...).map(...) express?"
+    options:
+      - "Sorting a collection"
+      - "A filter-then-transform pipeline, instead of a manual loop with an if and an accumulator"
+      - "Removing duplicates"
+      - "Converting a list to an array"
+    correct: 1
+    explanation: "filter() keeps matching elements, map() transforms each one -- a declarative pipeline replacing the loop."
+    concept_tags: [streams, collections]
+
+  - id: q09
+    question: "What does Optional.ofNullable(x).orElse(y) do?"
+    options:
+      - "Always returns y"
+      - "Returns x if it's non-null, otherwise returns the fallback y"
+      - "Throws if x is null"
+      - "Returns both x and y"
+    correct: 1
+    explanation: "ofNullable wraps a possibly-null value; orElse supplies the fallback used only when it's actually null."
+    concept_tags: [optional, null_handling]
+
+  - id: q10
+    question: "What does a Java record generate automatically?"
+    options:
+      - "Only a constructor"
+      - "Constructor, accessors, equals(), hashCode(), and toString()"
+      - "A database schema"
+      - "Only toString()"
+    correct: 1
+    explanation: "record derives all the common boilerplate methods from its declared fields."
+    concept_tags: [records, immutability]
+
+  - id: q11
+    question: "What does try-with-resources guarantee?"
+    options:
+      - "The code runs faster"
+      - "close() is called automatically on the resource, even if the block throws"
+      - "No exceptions can occur inside the block"
+      - "The resource is reused across multiple blocks"
+    correct: 1
+    explanation: "try-with-resources calls close() when the block exits, exception or not -- unlike a manual close() that's easy to skip on an error path."
+    concept_tags: [try_with_resources, resource_management]
+
+  - id: q12
+    question: "What interface must a class implement to be used in try-with-resources?"
+    options:
+      - "Runnable"
+      - "AutoCloseable"
+      - "Comparable"
+      - "Serializable"
+    correct: 1
+    explanation: "AutoCloseable's close() method is what try-with-resources calls automatically."
+    concept_tags: [try_with_resources, resource_management]
+
+  - id: q13
+    question: "Does HashMap guarantee a specific iteration order?"
+    options:
+      - "Yes, insertion order"
+      - "No -- it's unspecified and can vary by JVM/internal layout"
+      - "Yes, always sorted by key"
+      - "Yes, reverse insertion order"
+    correct: 1
+    explanation: "HashMap makes no ordering promise -- code needing a reproducible order must sort explicitly (or use LinkedHashMap/TreeMap)."
+    concept_tags: [collections, hashmap, gotchas]
+
+  - id: q14
+    question: "Why is ArrayDeque preferred over ArrayList for queue operations?"
+    options:
+      - "ArrayDeque uses less memory always"
+      - "It supports O(1) add/remove at both ends, vs O(n) for ArrayList.remove(0)"
+      - "ArrayList can't hold more than 100 elements"
+      - "There's no real difference"
+    correct: 1
+    explanation: "Removing from the front of an ArrayList shifts every remaining element; ArrayDeque avoids that entirely."
+    concept_tags: [collections, performance]
+
+  - id: q15
+    question: "What does Comparator.comparingInt(Person::age) build?"
+    options:
+      - "A list of ages"
+      - "A comparator that sorts by the value the given key-extractor returns"
+      - "A new Person object"
+      - "A boolean"
+    correct: 1
+    explanation: "comparingInt derives a full Comparator from a key-extractor method reference, avoiding a hand-written compare()."
+    concept_tags: [collections, comparator, sorting]
+
+  - id: q16
+    question: "What's the benefit of TreeMap over HashMap when keys need to stay sorted?"
+    options:
+      - "TreeMap is always faster"
+      - "TreeMap's keys stay sorted automatically -- no need to re-sort a copy every time"
+      - "TreeMap uses less memory"
+      - "There's no benefit"
+    correct: 1
+    explanation: "TreeMap is backed by a sorted tree structure, keeping keys in order at all times."
+    concept_tags: [collections, treemap, sorting]
+
+  - id: q17
+    question: "What does PriorityQueue.peek() return?"
+    options:
+      - "A random element"
+      - "The smallest element (for a min-heap), without removing it"
+      - "The most recently added element"
+      - "null, always"
+    correct: 1
+    explanation: "PriorityQueue is a heap; peek() reads the current minimum without dequeuing it."
+    concept_tags: [collections, priority_queue, algorithms]
+
+  - id: q18
+    question: "What's the time complexity of ArrayList.remove(0)?"
+    options:
+      - "O(1)"
+      - "O(n) -- every remaining element shifts left one slot"
+      - "O(log n)"
+      - "O(n^2)"
+    correct: 1
+    explanation: "Removing from the front requires shifting the rest of the backing array."
+    concept_tags: [collections, performance]
+
+  - id: q19
+    question: "Why is StringBuilder preferred over += in a string-building loop?"
+    options:
+      - "It's required by the compiler"
+      - "String is immutable, so += allocates a brand-new String every iteration; StringBuilder mutates a buffer in place"
+      - "StringBuilder uses less memory for a single string"
+      - "There's no real difference"
+    correct: 1
+    explanation: "Repeated String concatenation is O(n^2) overall due to immutability; StringBuilder.append() is O(n) total."
+    concept_tags: [strings, stringbuilder, performance]
+
+  - id: q20
+    question: "What does String.format's %d placeholder expect?"
+    options:
+      - "A String value"
+      - "An integer value"
+      - "A double value"
+      - "A boolean value"
+    correct: 1
+    explanation: "%d formats an integer; %s formats a string, %f a floating-point value."
+    concept_tags: [strings, formatting]
+
+  - id: q21
+    question: "What does java.util.Objects.equals(a, b) do differently from a.equals(b)?"
+    options:
+      - "Nothing, they're identical"
+      - "It's null-safe -- it doesn't throw if a is null"
+      - "It's faster"
+      - "It only works on numbers"
+    correct: 1
+    explanation: "Objects.equals handles null on either side; a.equals(b) throws NullPointerException if a is null."
+    concept_tags: [null_handling, objects_utility, gotchas]
+
+  - id: q22
+    question: "What does Duration.ofMillis(x).toMinutes() do?"
+    options:
+      - "Converts minutes to milliseconds"
+      - "Converts an elapsed number of milliseconds into whole minutes"
+      - "Returns the current time"
+      - "Throws an exception"
+    correct: 1
+    explanation: "Duration wraps an elapsed time amount and exposes direct unit conversions like toMinutes()."
+    concept_tags: [java_time, duration]
+
+  - id: q23
+    question: "What does \"12a34\".matches(\"\\\\d+\") return?"
+    options:
+      - "true"
+      - "false, since 'a' isn't a digit and \\d+ must match the whole string"
+      - "It throws an exception"
+      - "It returns the matched substring"
+    correct: 1
+    explanation: "matches() requires the entire string to match the pattern; the letter 'a' breaks that."
+    concept_tags: [regex, strings]
+
+  - id: q24
+    question: "Why is manual character-range validation (like checking c < '0') risky compared to a regex?"
+    options:
+      - "It's not risky at all"
+      - "It's easy to get boundary conditions wrong, missing letters or symbols that should be rejected"
+      - "Regex is always faster"
+      - "Character comparisons don't work in Java"
+    correct: 1
+    explanation: "A boundary check like c < '0' doesn't correctly reject every non-digit character -- a regex like \\d+ expresses the intent directly and correctly."
+    concept_tags: [regex, strings, gotchas]
+
+  - id: q25
+    question: "Why isn't counter++ safe across threads without synchronization?"
+    options:
+      - "It's actually always safe"
+      - "It's a non-atomic read-modify-write -- two threads can interleave between the steps"
+      - "++ doesn't work on shared variables"
+      - "It only works on final variables"
+    correct: 1
+    explanation: "counter++ is read, then increment, then write as separate steps -- concurrent threads can lose updates between them."
+    concept_tags: [threading, synchronized, race_conditions]
+
+  - id: q26
+    question: "What does AtomicInteger.incrementAndGet() provide?"
+    options:
+      - "A random number generator"
+      - "A lock-free atomic increment, safe across threads without explicit synchronization"
+      - "A way to decrement instead"
+      - "Nothing different from a regular int++"
+    correct: 1
+    explanation: "AtomicInteger uses hardware compare-and-swap to make increments atomic without needing a lock."
+    concept_tags: [concurrency, atomic, threading]
+
+  - id: q27
+    question: "What does ExecutorService let you avoid managing manually?"
+    options:
+      - "Variable declarations"
+      - "Individual Thread creation, starting, and joining"
+      - "Exception handling"
+      - "Memory allocation"
+    correct: 1
+    explanation: "ExecutorService manages a pool of worker threads -- submit() hands off work instead of manually juggling Thread objects."
+    concept_tags: [concurrency, executor_service, threading]
+
+  - id: q28
+    question: "What does CompletableFuture.supplyAsync() do?"
+    options:
+      - "Runs a computation synchronously on the current thread"
+      - "Runs a computation on a background thread and returns a future for its eventual result"
+      - "Blocks until the JVM shuts down"
+      - "Only works with void methods"
+    correct: 1
+    explanation: "supplyAsync schedules work on a background thread (the common ForkJoinPool by default) and returns immediately with a handle to the result."
+    concept_tags: [concurrency, completable_future, async]
+
+  - id: q29
+    question: "Does ExecutorService.shutdown() wait for already-submitted tasks to finish?"
+    options:
+      - "Yes, it blocks until every task completes"
+      - "No -- it only stops new submissions and returns immediately"
+      - "It cancels all pending tasks immediately"
+      - "It only works after all tasks are done"
+    correct: 1
+    explanation: "shutdown() is non-blocking; awaitTermination() is what actually waits for submitted tasks to finish."
+    concept_tags: [concurrency, executor_service, threading]
+
+  - id: q30
+    question: "What does awaitTermination() do after shutdown()?"
+    options:
+      - "Cancels all remaining tasks"
+      - "Blocks until submitted tasks finish, or a timeout elapses"
+      - "Restarts the thread pool"
+      - "Nothing -- it's optional and has no effect"
+    correct: 1
+    explanation: "awaitTermination() is the blocking wait needed before it's safe to read state that submitted tasks mutate."
+    concept_tags: [concurrency, executor_service, threading]
+
+  - id: q31
+    question: "What happens if a for loop condition uses <= instead of < against arr.length?"
+    options:
+      - "Nothing, both work identically"
+      - "The loop reads one index past the last valid one, throwing ArrayIndexOutOfBoundsException"
+      - "It causes an infinite loop"
+      - "It's a compile error"
+    correct: 1
+    explanation: "Valid indices run from 0 to length-1 -- <= lets i reach length itself, one past the end."
+    concept_tags: [arrays, off_by_one, gotchas]
+
+  - id: q32
+    question: "What happens without a break in a switch case?"
+    options:
+      - "The switch statement raises a compile error"
+      - "Execution falls through into the next case (and beyond), each one overwriting the last"
+      - "Only the first case ever runs"
+      - "Nothing -- break is purely optional stylistic sugar"
+    correct: 1
+    explanation: "A traditional switch doesn't stop at the matching case automatically -- every case needs its own break unless fall-through is intentional."
+    concept_tags: [switch, fallthrough, gotchas]
+
+  - id: q33
+    question: "Why does modifying a list during a for-each loop throw ConcurrentModificationException?"
+    options:
+      - "Lists can never be modified in Java"
+      - "The for-each loop's internal iterator detects the structural change and refuses to continue silently"
+      - "It's a random, unpredictable error"
+      - "It only happens with more than 100 elements"
+    correct: 1
+    explanation: "A for-each loop uses an Iterator that fails fast on structural modification rather than producing unreliable results."
+    concept_tags: [collections, iteration, gotchas]
+
+  - id: q34
+    question: "What happens when an int computation exceeds Integer.MAX_VALUE in Java?"
+    options:
+      - "It throws an ArithmeticException"
+      - "It silently wraps around to a negative number, with no error at all"
+      - "The JVM crashes"
+      - "It's automatically promoted to long"
+    correct: 1
+    explanation: "Java's int arithmetic never checks for overflow by default -- it wraps around silently."
+    concept_tags: [integers, overflow, gotchas]
+
+  - id: q35
+    question: "What's required alongside overriding equals() for correct HashSet/HashMap behavior?"
+    options:
+      - "Nothing else is needed"
+      - "A matching hashCode() override, so equal objects produce the same hash code"
+      - "Making the class final"
+      - "Implementing Comparable"
+    correct: 1
+    explanation: "HashSet/HashMap use hashCode() to find a bucket before ever calling equals() -- without a consistent hashCode(), equal objects can land in different buckets."
+    concept_tags: [equals_hashcode, hashset, gotchas]

@@ -1,0 +1,48 @@
+id: data_structures_04
+title: "Keys That Sort Themselves with TreeMap"
+language: java
+level: 89
+objective: "Replace a HashMap wrapped in a sorted-copy step with a TreeMap, which keeps its keys sorted automatically."
+explanation: |
+  TreeMap maintains its keys in sorted order at all times (backed by a
+  red-black tree) -- if a map's keys need to stay sorted, using TreeMap
+  directly is simpler and clearer than inserting into a HashMap and
+  re-sorting a copy of the keys every time they're read.
+example_code: |
+  import java.util.TreeMap;
+
+  TreeMap<Integer, String> m = new TreeMap<>();
+  m.put(3, "c");
+  m.put(1, "a");
+  System.out.println(m.keySet());
+starter_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+  import java.util.TreeSet;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Map<Integer, String> ages = new HashMap<>();
+          ages.put(30, "Alice");
+          ages.put(10, "Bob");
+          ages.put(20, "Carol");
+          System.out.println(new TreeSet<>(ages.keySet()));
+      }
+  }
+challenge: |
+  Rewrite this using a TreeMap directly instead of a HashMap wrapped by a
+  TreeSet, printing ages.keySet() directly, keeping the same output:
+  [10, 20, 30].
+expected_output: |
+  [10, 20, 30]
+hints:
+  - "import java.util.TreeMap;"
+  - "Map<Integer, String> ages = new TreeMap<>(); -- its keySet() is already sorted."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "TreeMap"
+concept_tags: [collections, treemap, sorting]

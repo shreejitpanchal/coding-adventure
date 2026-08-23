@@ -1,0 +1,42 @@
+id: stdlib_deep_dive_03
+title: "Null-Safe Comparison with Objects.equals"
+language: java
+level: 93
+objective: "Fix a NullPointerException from calling .equals() on a value that might be null, using the null-safe Objects.equals() instead."
+explanation: |
+  `a.equals(b)` throws a NullPointerException the instant `a` is null --
+  there's no object there to call the method on. java.util.Objects.
+  equals(a, b) handles null on either side safely, returning true only
+  if both are null or both are non-null and equal, without ever risking
+  an NPE.
+example_code: |
+  import java.util.Objects;
+
+  System.out.println(Objects.equals(null, "hi"));
+starter_code: |
+  public class Solution {
+      static boolean sameName(String a, String b) {
+          return a.equals(b);
+      }
+
+      public static void main(String[] args) {
+          System.out.println(sameName(null, "Ada"));
+      }
+  }
+challenge: |
+  a is null, so a.equals(b) throws a NullPointerException. Fix
+  sameName to use java.util.Objects.equals(a, b), which is null-safe, so
+  the output is false.
+expected_output: |
+  false
+hints:
+  - "import java.util.Objects;"
+  - "return Objects.equals(a, b); instead of a.equals(b)."
+xp_reward: 15
+achievement: null
+category: stdlib_deep_dive
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "Objects\\.equals"
+concept_tags: [null_handling, objects_utility, gotchas]

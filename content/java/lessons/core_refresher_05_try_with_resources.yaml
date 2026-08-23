@@ -1,0 +1,52 @@
+id: core_refresher_05
+title: "Manual close() to try-with-resources"
+language: java
+level: 85
+objective: "Rewrite a manual try/finally close() as try-with-resources, which guarantees cleanup even if the block throws."
+explanation: |
+  try-with-resources (try (Resource r = ...) { ... }) automatically calls
+  close() on any AutoCloseable when the block exits, even via an
+  exception -- more concise than a manual try/finally, and safer, since
+  it's easy to forget the finally block (or get the ordering wrong) by
+  hand.
+example_code: |
+  class Handle implements AutoCloseable {
+      public void close() { System.out.println("closed"); }
+  }
+
+  try (Handle h = new Handle()) {
+      System.out.println("open");
+  }
+starter_code: |
+  public class Solution {
+      static class Resource implements AutoCloseable {
+          public void use() { System.out.println("using"); }
+          public void close() { System.out.println("closed"); }
+      }
+
+      public static void main(String[] args) {
+          Resource r = new Resource();
+          try {
+              r.use();
+          } finally {
+              r.close();
+          }
+      }
+  }
+challenge: |
+  Rewrite this using try-with-resources instead of a manual try/finally
+  and explicit close() call, keeping the same output: "using" then
+  "closed".
+expected_output: |
+  using
+  closed
+hints:
+  - "try (Resource r = new Resource()) { r.use(); } -- no finally or explicit close() needed."
+xp_reward: 15
+achievement: core_refresher_master
+category: core_refresher
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "try \\(Resource"
+concept_tags: [try_with_resources, resource_management]

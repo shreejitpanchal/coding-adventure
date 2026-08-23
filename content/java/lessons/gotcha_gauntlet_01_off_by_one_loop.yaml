@@ -1,0 +1,45 @@
+id: gotcha_gauntlet_01
+title: "The Loop That Ran One Step Too Far"
+language: java
+level: 101
+objective: "Fix an off-by-one loop bound that reads one element past the end of an array."
+explanation: |
+  `i <= arr.length` lets i reach arr.length itself, which is one past the
+  last valid index (arrays are 0-indexed, so valid indices are 0 through
+  length-1) -- accessing arr[arr.length] throws
+  ArrayIndexOutOfBoundsException. The fix is the classic one: `<`
+  instead of `<=`.
+example_code: |
+  int[] arr = {1, 2, 3};
+  int sum = 0;
+  for (int i = 0; i < arr.length; i++) {
+      sum += arr[i];
+  }
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          int[] arr = {10, 20, 30};
+          int sum = 0;
+          for (int i = 0; i <= arr.length; i++) {
+              sum += arr[i];
+          }
+          System.out.println(sum);
+      }
+  }
+challenge: |
+  This throws an ArrayIndexOutOfBoundsException -- i reaches
+  arr.length, one past the last valid index. Fix the loop condition so
+  it stops correctly, giving a sum of 60.
+expected_output: |
+  60
+hints:
+  - "Valid indices for a 3-element array are 0, 1, 2 -- not 3."
+  - "Change `i <= arr.length` to `i < arr.length`."
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "i < arr\\.length"
+concept_tags: [arrays, off_by_one, gotchas]

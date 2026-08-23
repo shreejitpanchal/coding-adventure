@@ -1,0 +1,51 @@
+id: idioms_gotchas_03
+title: "The finally Block That Ate the Return"
+language: java
+level: 78
+objective: "Fix a finally block that silently overrides the try block's return value, instead of just doing cleanup."
+explanation: |
+  A `return` inside `finally` unconditionally overrides whatever the
+  `try` (or `catch`) block was about to return -- or even an exception
+  it was about to throw -- silently discarding it. This is almost never
+  intentional; `finally` should be used for cleanup work (closing a
+  resource, logging), not for producing the method's actual result.
+example_code: |
+  static int getValue() {
+      try {
+          return 1;
+      } finally {
+          System.out.println("cleanup");
+      }
+  }
+starter_code: |
+  public class Solution {
+      static int getValue() {
+          try {
+              return 1;
+          } finally {
+              return 2;
+          }
+      }
+
+      public static void main(String[] args) {
+          System.out.println(getValue());
+      }
+  }
+challenge: |
+  finally's `return 2` silently overrides try's `return 1` -- getValue()
+  always returns 2, no matter what. Fix finally to just do cleanup (print
+  "cleanup") instead of returning, so the output is "cleanup" then 1.
+expected_output: |
+  cleanup
+  1
+hints:
+  - "A return inside finally always wins, overriding try's return entirely."
+  - "Replace `return 2;` with a cleanup action like System.out.println(\"cleanup\");"
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "cleanup"
+concept_tags: [exceptions, finally, gotchas]

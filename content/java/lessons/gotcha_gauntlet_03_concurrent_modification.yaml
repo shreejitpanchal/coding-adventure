@@ -1,0 +1,52 @@
+id: gotcha_gauntlet_03
+title: "The List That Changed While Being Read"
+language: java
+level: 103
+objective: "Fix a ConcurrentModificationException from removing elements out of an ArrayList during a for-each loop over it."
+explanation: |
+  A for-each loop uses an Iterator internally, and that iterator detects
+  when the underlying list is structurally modified mid-iteration
+  (adding or removing elements) -- it throws
+  ConcurrentModificationException rather than silently producing
+  unreliable results. Collection.removeIf() is the safe, idiomatic way
+  to remove matching elements while iterating.
+example_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  List<Integer> nums = new ArrayList<>(List.of(1, -2, 3));
+  nums.removeIf(n -> n < 0);
+  System.out.println(nums);
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> scores = new ArrayList<>(List.of(10, -5, 8, -3));
+          for (int score : scores) {
+              if (score < 0) {
+                  scores.remove(Integer.valueOf(score));
+              }
+          }
+          System.out.println(scores);
+      }
+  }
+challenge: |
+  Removing from scores while a for-each loop iterates over it throws
+  ConcurrentModificationException. Fix this using
+  scores.removeIf(score -> score < 0) instead of the loop, so the output
+  is [10, 8].
+expected_output: |
+  [10, 8]
+hints:
+  - "You can't structurally modify a list while a for-each loop is iterating over it."
+  - "scores.removeIf(score -> score < 0); replaces the entire loop."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "removeIf"
+concept_tags: [collections, iteration, gotchas]

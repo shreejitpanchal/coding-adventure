@@ -1,0 +1,50 @@
+id: data_structures_01
+title: "HashMap's Unreliable Iteration Order"
+language: java
+level: 86
+objective: "Fix code that prints HashMap keys directly, relying on an iteration order the Map interface never actually guarantees."
+explanation: |
+  HashMap makes no promise about iteration order -- it depends on
+  internal bucket layout, which can change between JVM versions or even
+  between runs. Code that needs a reproducible, human-inspectable
+  order needs to sort explicitly rather than depend on however HashMap
+  happens to lay things out.
+example_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+  import java.util.TreeSet;
+
+  Map<String, Integer> m = new HashMap<>();
+  m.put("b", 2);
+  m.put("a", 1);
+  System.out.println(new TreeSet<>(m.keySet()));
+starter_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Map<String, Integer> scores = new HashMap<>();
+          scores.put("charlie", 3);
+          scores.put("alice", 1);
+          scores.put("bob", 2);
+          System.out.println(scores.keySet());
+      }
+  }
+challenge: |
+  scores.keySet() has no guaranteed order, so printing it directly isn't
+  reproducible. Fix this by sorting the keys before printing (e.g. via a
+  TreeSet), so the output is deterministic: [alice, bob, charlie].
+expected_output: |
+  [alice, bob, charlie]
+hints:
+  - "import java.util.TreeSet;"
+  - "System.out.println(new TreeSet<>(scores.keySet()));"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "TreeSet"
+concept_tags: [collections, hashmap, gotchas]

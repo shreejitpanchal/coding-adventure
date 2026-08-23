@@ -1,0 +1,43 @@
+id: stdlib_deep_dive_04
+title: "Durations with java.time Instead of Raw Millis"
+language: java
+level: 94
+objective: "Replace manual millisecond-to-minutes arithmetic with java.time.Duration, which expresses the unit conversion directly."
+explanation: |
+  Hand-rolled time math (dividing milliseconds by 1000, then by 60...)
+  is error-prone and doesn't self-document its units. java.time.Duration
+  wraps an elapsed amount of time and exposes conversions
+  (toMinutes(), toSeconds(), ...) directly, making the intent explicit
+  and the arithmetic itself impossible to get wrong.
+example_code: |
+  import java.time.Duration;
+
+  long minutes = Duration.ofSeconds(150).toMinutes();
+  System.out.println(minutes);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          long startMillis = 0;
+          long endMillis = 90000;
+          long totalSeconds = (endMillis - startMillis) / 1000;
+          long minutes = totalSeconds / 60;
+          System.out.println(minutes);
+      }
+  }
+challenge: |
+  Rewrite this using java.time.Duration.ofMillis(endMillis - startMillis)
+  .toMinutes() instead of the manual division chain, keeping the same
+  output: 1.
+expected_output: |
+  1
+hints:
+  - "import java.time.Duration;"
+  - "long minutes = Duration.ofMillis(endMillis - startMillis).toMinutes();"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "Duration\\.ofMillis"
+concept_tags: [java_time, duration]

@@ -1,0 +1,39 @@
+id: idioms_gotchas_04
+title: "The Array Slot That Was Never Set"
+language: java
+level: 79
+objective: "Fix a NullPointerException caused by using an object-array slot that was never assigned -- it defaults to null, not an empty instance."
+explanation: |
+  `new String[3]` allocates space for 3 references, but every slot
+  starts out as null -- there's no implicit "empty string" default the
+  way primitive arrays default to 0. Calling a method on an unassigned
+  slot (like .length() on names[0]) throws a NullPointerException until
+  something is actually assigned there.
+example_code: |
+  String[] names = new String[2];
+  names[0] = "Ada";
+  System.out.println(names[0].length());
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          String[] names = new String[3];
+          System.out.println(names[0].length());
+      }
+  }
+challenge: |
+  names[0] was never assigned, so it's null -- calling .length() on it
+  throws a NullPointerException. Fix this by assigning names[0] an empty
+  string before using it, so the output is 0.
+expected_output: |
+  0
+hints:
+  - "Object arrays default every slot to null, not to any kind of empty value."
+  - "Add `names[0] = \"\";` before calling .length() on it."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "names\\[0\\] = "
+concept_tags: [arrays, null, gotchas]

@@ -1,0 +1,38 @@
+id: stdlib_deep_dive_02
+title: "Structured Output with String.format"
+language: java
+level: 92
+objective: "Replace manual string concatenation with String.format for a structured, readable output template."
+explanation: |
+  String.format (and its %s/%d/%f-style placeholders) separates the
+  template from the values being inserted, which reads more clearly
+  than interleaving literal text and variables with +, especially once
+  a message has more than one or two pieces of dynamic content.
+example_code: |
+  String msg = String.format("%s is %d", "Ada", 30);
+  System.out.println(msg);
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          String name = "Ada";
+          int age = 30;
+          System.out.println("Name: " + name + ", Age: " + age);
+      }
+  }
+challenge: |
+  Rewrite this using String.format("Name: %s, Age: %d", name, age)
+  instead of + concatenation, keeping the same output:
+  "Name: Ada, Age: 30".
+expected_output: |
+  Name: Ada, Age: 30
+hints:
+  - "%s is a string placeholder, %d is an integer placeholder."
+  - "System.out.println(String.format(\"Name: %s, Age: %d\", name, age));"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "String\\.format"
+concept_tags: [strings, formatting]

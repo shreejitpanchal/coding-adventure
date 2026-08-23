@@ -1,0 +1,46 @@
+id: stdlib_deep_dive_05
+title: "Validating a Pattern with a Regex, Not a Hand-Rolled Check"
+language: java
+level: 95
+objective: "Fix a broken hand-rolled character-range check by replacing it with a proper regex validation."
+explanation: |
+  Hand-writing character-range logic ("is this a digit?") is easy to get
+  subtly wrong (comparing against just one boundary character, missing
+  the upper bound, etc.), and String.matches("\\d+") already expresses
+  "the whole string is one or more digits" directly and correctly.
+example_code: |
+  boolean allDigits = "482".matches("\\d+");
+  System.out.println(allDigits);
+starter_code: |
+  public class Solution {
+      static boolean isDigitsOnly(String s) {
+          for (char c : s.toCharArray()) {
+              if (c < '0') {
+                  return false;
+              }
+          }
+          return true;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isDigitsOnly("12a34"));
+      }
+  }
+challenge: |
+  isDigitsOnly's check (`c < '0'`) doesn't actually reject letters --
+  'a' has a character code above '0', so it passes, and this incorrectly
+  prints true for "12a34". Fix isDigitsOnly to use s.matches("\\d+")
+  instead, so the output correctly becomes false.
+expected_output: |
+  false
+hints:
+  - "\\d+ matches one or more digit characters -- use s.matches(\"\\\\d+\")."
+  - "Replace the whole loop body with: return s.matches(\"\\\\d+\");"
+xp_reward: 15
+achievement: stdlib_deep_dive_master
+category: stdlib_deep_dive
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "\\.matches\\("
+concept_tags: [regex, strings, gotchas]

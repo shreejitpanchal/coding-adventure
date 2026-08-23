@@ -1,0 +1,49 @@
+id: core_refresher_03
+title: "Optional Instead of a Manual Null Check"
+language: java
+level: 83
+objective: "Rewrite a manual null-check-and-fallback with java.util.Optional."
+explanation: |
+  Optional.ofNullable(value).orElse(fallback) expresses "use this value,
+  or fall back if it's null" in one expression instead of an explicit
+  if-null-return-fallback block -- the same behavior, but as a single
+  declarative pipeline that composes well with further Optional
+  operations (map, filter) if the logic grows.
+example_code: |
+  import java.util.Optional;
+
+  String name = Optional.ofNullable(null).orElse("guest");
+  System.out.println(name);
+starter_code: |
+  import java.util.Map;
+
+  public class Solution {
+      static String findName(Map<Integer, String> map, int id) {
+          String name = map.get(id);
+          if (name == null) {
+              return "unknown";
+          }
+          return name;
+      }
+
+      public static void main(String[] args) {
+          Map<Integer, String> map = Map.of(1, "Ada");
+          System.out.println(findName(map, 2));
+      }
+  }
+challenge: |
+  Rewrite findName using Optional.ofNullable(map.get(id)).orElse("unknown")
+  instead of the manual null check, keeping the same output: "unknown".
+expected_output: |
+  unknown
+hints:
+  - "import java.util.Optional;"
+  - "return Optional.ofNullable(map.get(id)).orElse(\"unknown\");"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "Optional\\.ofNullable"
+concept_tags: [optional, null_handling]

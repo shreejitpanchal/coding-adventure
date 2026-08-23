@@ -1,0 +1,40 @@
+id: idioms_gotchas_02
+title: "Autoboxed Integer Comparison"
+language: java
+level: 77
+objective: "Fix a boxed-Integer comparison that relies on == instead of .equals(), which only works by accident inside the -128..127 cache range."
+explanation: |
+  Java caches boxed Integer objects for values -128 to 127 -- so `==`
+  between two boxed Integers in that range can accidentally appear to
+  work, while the exact same comparison silently breaks for any value
+  outside it. Relying on this is a well-known trap; `.equals()` is the
+  only comparison that's correct for boxed types regardless of value.
+example_code: |
+  Integer a = 1000;
+  Integer b = 1000;
+  System.out.println(a.equals(b));
+starter_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          Integer a = 1000;
+          Integer b = 1000;
+          System.out.println(a == b);
+      }
+  }
+challenge: |
+  1000 is outside the Integer cache range, so a and b are different
+  boxed objects and a == b is false, even though both hold 1000. Fix the
+  comparison to use .equals(), so the output is true.
+expected_output: |
+  true
+hints:
+  - "The Integer cache only covers -128 to 127 -- == is unreliable outside that range."
+  - "Use a.equals(b) instead of a == b for boxed types."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "a\\.equals\\(b\\)"
+concept_tags: [autoboxing, integer_cache, gotchas]

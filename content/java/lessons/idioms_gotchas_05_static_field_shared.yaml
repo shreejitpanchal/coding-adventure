@@ -1,0 +1,51 @@
+id: idioms_gotchas_05
+title: "The Counter Every Instance Shared"
+language: java
+level: 80
+objective: "Fix a field that's marked static (shared by every instance of the class) when it was meant to be per-instance state."
+explanation: |
+  A `static` field belongs to the class itself, not to any one instance
+  -- every object of that class reads and writes the exact same value.
+  If the intent was "each object tracks its own count," the field needs
+  to be an ordinary (non-static) instance field instead, so each `new`
+  object gets its own independent copy.
+example_code: |
+  static class Counter {
+      int count = 0;
+      void increment() { count++; }
+  }
+starter_code: |
+  public class Solution {
+      static class Counter {
+          static int count = 0;
+          void increment() {
+              count++;
+          }
+      }
+
+      public static void main(String[] args) {
+          Counter c1 = new Counter();
+          Counter c2 = new Counter();
+          c1.increment();
+          c2.increment();
+          System.out.println(c1.count);
+      }
+  }
+challenge: |
+  count is static, so c1 and c2 share the exact same counter --
+  c2.increment() affects c1.count too, printing 2. Fix count to be a
+  regular instance field so each Counter has its own independent count,
+  printing 1.
+expected_output: |
+  1
+hints:
+  - "static fields belong to the class, shared by every instance -- not what's wanted here."
+  - "Remove the static keyword: `int count = 0;`"
+xp_reward: 15
+achievement: idioms_gotchas_master
+category: idioms_gotchas
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "    int count = 0;"
+concept_tags: [static_fields, classes, gotchas]

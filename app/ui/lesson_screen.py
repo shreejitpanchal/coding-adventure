@@ -239,7 +239,7 @@ class _ExerciseController:
 
         if not result.success:
             friendly, hint = translate_error(result.stderr, self.exercise.language)
-            line = extract_error_line_number(result.stderr)
+            line = extract_error_line_number(result.stderr, self.exercise.language)
             if line:
                 friendly = f"{friendly} (line {line})"
             self._show_output(f"{friendly}\n{hint}", self.theme.danger, raw=result.stderr)

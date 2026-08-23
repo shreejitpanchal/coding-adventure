@@ -1,0 +1,55 @@
+id: gotcha_gauntlet_02
+title: "The switch That Fell Through Every Case"
+language: java
+level: 102
+objective: "Fix a classic switch statement bug -- a missing break lets execution fall through into the next case instead of stopping."
+explanation: |
+  A traditional Java switch statement doesn't stop at the matching case
+  automatically -- without a `break`, execution falls through into every
+  subsequent case (and the default), each one overwriting whatever the
+  previous case set. Every case needs its own break unless the
+  fall-through is genuinely intentional.
+example_code: |
+  int day = 1;
+  String result;
+  switch (day) {
+      case 1: result = "Mon"; break;
+      default: result = "?";
+  }
+starter_code: |
+  public class Solution {
+      static String describe(int day) {
+          String result = "";
+          switch (day) {
+              case 1:
+                  result = "Monday";
+              case 2:
+                  result = "Tuesday";
+              default:
+                  result = "Unknown";
+          }
+          return result;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(describe(1));
+      }
+  }
+challenge: |
+  Without break statements, case 1 falls through case 2 and into
+  default, so describe(1) ends up "Unknown" instead of "Monday". Add a
+  break after each case's assignment so describe(1) correctly returns
+  "Monday".
+expected_output: |
+  Monday
+hints:
+  - "Each case needs its own break; -- otherwise execution just continues into the next one."
+  - "Add `break;` right after `result = \"Monday\";` and after `result = \"Tuesday\";`."
+xp_reward: 10
+achievement: null
+category: gotcha_gauntlet
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "break;"
+concept_tags: [switch, fallthrough, gotchas]

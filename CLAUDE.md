@@ -43,10 +43,11 @@ Unlike the kids app's "Today's Mission" (a strict `next_lesson_id`-chained seque
 
 `app/execution/` — one `ExecutionEngine` subclass per language (`app/execution/base.py` defines the ABC and the shared `ExecutionResult`/`RunHandle` contract). Framing is deliberately **crash-containment, not child safety**: exercises run the user's own code, on their own machine, on purpose — there's no adversarial threat model to defend against the way the kids app's AST-based builtins/import allowlist had to. A timeout and subprocess isolation exist so a runaway loop can't hang the UI, not to sandbox against malice.
 
-- **`python_engine.py`** — the only fully implemented engine. A fast local `compile()` syntax pre-check, then `python -I <file>` in an isolated subprocess with a timeout (default 8s) and stdin piped through (always fed, even `""`, so a stray `input()` fails fast with `EOFError` instead of hanging). Cancelable mid-run via `RunHandle`.
-- **`java_engine.py` / `cpp_engine.py` / `spring_engine.py`** — interfaces defined, bodies raise `NotImplementedError`. Each has a docstring describing its planned shape (`javac`+`java`; `g++`+run binary; Spring needs a fundamentally different shape — a scaffolded Maven project per exercise run via `mvn test`, not a single-file run). `app/execution/registry.get_engine(language)` is the lookup point once these are built out.
-- **`app/execution/toolchain_check.py`** — `shutil.which()`-based detection of whether a language's real toolchain (javac/java, g++, mvn) is on PATH, meant to gate the UI showing a track as usable vs. a friendly "toolchain not found" message. Python needs nothing (bundled with the app's own venv).
-- **`app/execution/errors.py`** — `translate_error(stderr, language)` maps raw interpreter/compiler output to a concise explanation; only the Python table (`PYTHON_FRIENDLY`) is filled in.
+- **`python_engine.py`** — a fast local `compile()` syntax pre-check, then `python -I <file>` in an isolated subprocess with a timeout (default 8s) and stdin piped through (always fed, even `""`, so a stray `input()` fails fast with `EOFError` instead of hanging). Cancelable mid-run via `RunHandle`.
+- **`java_engine.py`** — detects the submitted code's class name (`public class X`, falling back to the first `class X` found, defaulting to `Solution`), writes it to `<ClassName>.java`, compiles with `javac` (a compile error returns the same `ExecutionResult` shape as a runtime failure — `success=False`, raw compiler output in `stderr`), then runs `java -cp <dir> <ClassName>` under the same timeout/`RunHandle`/stdin contract as the Python engine. Both `javac` and `java` run with `cwd` set to the temp dir and given only the bare filename/class name, so no host path ever leaks into a compiler error or stack trace.
+- **`cpp_engine.py` / `spring_engine.py`** — interfaces defined, bodies raise `NotImplementedError`. Each has a docstring describing its planned shape (`g++`+run binary; Spring needs a fundamentally different shape — a scaffolded Maven project per exercise run via `mvn test`, not a single-file run). `app/execution/registry.get_engine(language)` is the lookup point once these are built out.
+- **`app/execution/toolchain_check.py`** — `shutil.which()`-based detection of whether a language's real toolchain (javac/java, g++, mvn) is on PATH. `language_select.py` calls this per track to show "Toolchain needed" (with an install hint) instead of "Available" when a track has content but the local machine lacks the compiler/runtime — `JavaEngine.run()` also checks it itself and returns a `blocked` `ExecutionResult` rather than crashing if javac/java go missing mid-session. Python needs nothing (bundled with the app's own venv).
+- **`app/execution/errors.py`** — `translate_error(stderr, language)` maps raw interpreter/compiler output to a concise explanation, keyed off the last Python exception name (`PYTHON_FRIENDLY`) or, for Java, a compile-error-vs-runtime-exception split (`_JAVA_COMPILE_ERROR_RE` vs `_JAVA_EXCEPTION_RE` + `JAVA_FRIENDLY`). `extract_error_line_number(stderr, language)` similarly branches on the Python `File "<exercise>", line N` frame vs Java's `.java:N` pattern (which matches both compiler diagnostics and stack frames, since both engines write their source under the exercise's own bare filename with no host path leaked in).
 
 ### Output validation
 
@@ -74,7 +75,7 @@ app/
 content/
   <language>/lessons/       # one YAML file per exercise
   <language>/quiz/          # quiz_questions.yaml
-  # only content/python/ has real content; java/cpp/spring dirs exist but are empty (.gitkeep)
+  # content/python/ and content/java/ have real content; cpp/spring dirs exist but are empty (.gitkeep)
 tests/         # pytest suite, one file per module roughly mirroring app/
 main.py        # Flet entry point (`ft.run(main)`)
 run.bat/run.sh # first-run venv bootstrap + launch

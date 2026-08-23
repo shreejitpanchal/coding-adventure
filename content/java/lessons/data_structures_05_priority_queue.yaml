@@ -1,0 +1,44 @@
+id: data_structures_05
+title: "The Smallest Item Without a Full Sort"
+language: java
+level: 90
+objective: "Use PriorityQueue (a min-heap) to read off the smallest element instead of sorting the entire list just to look at the first item."
+explanation: |
+  Collections.sort() on the whole list is O(n log n) just to read the
+  minimum. PriorityQueue is a heap-backed structure where peek() reads
+  the smallest element in O(1) (after O(n) construction) -- the right
+  tool whenever you need repeated access to the current minimum/maximum
+  without needing the rest fully sorted.
+example_code: |
+  import java.util.PriorityQueue;
+
+  PriorityQueue<Integer> pq = new PriorityQueue<>(java.util.List.of(9, 3, 7));
+  System.out.println(pq.peek());
+starter_code: |
+  import java.util.ArrayList;
+  import java.util.Collections;
+  import java.util.List;
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> nums = new ArrayList<>(List.of(5, 1, 4, 2, 3));
+          Collections.sort(nums);
+          System.out.println(nums.get(0));
+      }
+  }
+challenge: |
+  Rewrite this using a PriorityQueue to get the smallest element instead
+  of sorting the whole list, keeping the same output: 1.
+expected_output: |
+  1
+hints:
+  - "import java.util.PriorityQueue;"
+  - "PriorityQueue<Integer> pq = new PriorityQueue<>(List.of(5, 1, 4, 2, 3)); System.out.println(pq.peek());"
+xp_reward: 15
+achievement: data_structures_master
+category: data_structures
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "PriorityQueue"
+concept_tags: [collections, priority_queue, algorithms]
