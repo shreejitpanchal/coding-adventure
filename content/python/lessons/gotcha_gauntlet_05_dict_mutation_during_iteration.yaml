@@ -1,0 +1,41 @@
+id: gotcha_gauntlet_05
+title: "The Dict That Changed Size Mid-Loop"
+language: python
+level: 34
+objective: "Fix a RuntimeError caused by deleting dict keys while iterating over the dict itself."
+explanation: |
+  Iterating directly over a dict and deleting keys from it in the same
+  loop raises "RuntimeError: dictionary changed size during iteration" --
+  the iterator is walking the live dict's internal structure, which the
+  deletion just invalidated. The fix is to iterate over a snapshot of the
+  keys (list(d)) instead of the live dict, so deletions during the loop
+  don't disturb what you're iterating over.
+example_code: |
+  scores = {"a": 1, "b": -1, "c": 2}
+  for key in list(scores):
+      if scores[key] < 0:
+          del scores[key]
+  print(scores)
+starter_code: |
+  scores = {"alice": 10, "bob": -5, "carol": 8}
+  for name in scores:
+      if scores[name] < 0:
+          del scores[name]
+  print(scores)
+challenge: |
+  This currently raises a RuntimeError. Fix it so it iterates over a
+  snapshot of the keys instead of the live dict, ending with only the
+  non-negative scores: {'alice': 10, 'carol': 8}.
+expected_output: |
+  {'alice': 10, 'carol': 8}
+hints:
+  - "You can't delete dict keys while iterating over the dict directly."
+  - "Iterate over list(scores) instead of scores."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "list\\(scores\\)"
+concept_tags: [dictionaries, iteration, gotchas]

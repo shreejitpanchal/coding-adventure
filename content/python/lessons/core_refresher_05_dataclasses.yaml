@@ -1,0 +1,50 @@
+id: core_refresher_05
+title: "Cutting Boilerplate with @dataclass"
+language: python
+level: 11
+objective: "Replace a hand-written class with a @dataclass to eliminate boilerplate __init__/__repr__/__eq__."
+explanation: |
+  For classes that are mostly a bundle of fields, @dataclass generates
+  __init__, __repr__, and __eq__ automatically from type-annotated class
+  attributes -- removing exactly the kind of repetitive boilerplate this
+  class hand-writes.
+example_code: |
+  from dataclasses import dataclass
+
+  @dataclass
+  class Coord:
+      lat: float
+      lon: float
+
+  print(Coord(1.0, 2.0))
+starter_code: |
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def __repr__(self):
+          return f"Point(x={self.x}, y={self.y})"
+      def __eq__(self, other):
+          return self.x == other.x and self.y == other.y
+
+  p1 = Point(1, 2)
+  p2 = Point(1, 2)
+  print(p1)
+  print(p1 == p2)
+challenge: |
+  Rewrite Point as a @dataclass with x and y fields, keeping the same
+  printed repr and equality behavior.
+expected_output: |
+  Point(x=1, y=2)
+  True
+hints:
+  - "@dataclass reads type-annotated class attributes to build __init__/__repr__/__eq__."
+  - "class Point: x: int; y: int -- no manual __init__ needed."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 5
+difficulty: core
+contains_patterns:
+  - "@dataclass"
+concept_tags: [dataclasses, classes]

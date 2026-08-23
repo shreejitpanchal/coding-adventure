@@ -1,0 +1,40 @@
+id: idioms_gotchas_06
+title: "The Silent None: list.sort() Returns Nothing"
+language: python
+level: 6
+objective: "Fix a function that returns the result of list.sort(), which always returns None."
+explanation: |
+  `list.sort()` sorts in place and returns `None` -- it's a common mistake
+  to write `return some_list.sort()` expecting the sorted list back. The
+  fix is either to sort first and then return the (now-mutated) list on a
+  separate line, or to use the builtin `sorted()`, which returns a new
+  sorted list instead of mutating and returning None.
+example_code: |
+  def top_three(scores):
+      return sorted(scores, reverse=True)[:3]
+
+  print(top_three([5, 9, 1, 7]))
+starter_code: |
+  def sort_scores(scores):
+      return scores.sort()
+
+  scores = [3, 1, 2]
+  result = sort_scores(scores)
+  print(result)
+challenge: |
+  Right now this prints None, because list.sort() sorts in place and
+  returns nothing. Fix sort_scores so it returns the sorted list itself:
+  [1, 2, 3].
+expected_output: |
+  [1, 2, 3]
+hints:
+  - "list.sort() mutates in place and returns None -- it's not chainable."
+  - "Use sorted(scores) instead, which returns a new sorted list."
+xp_reward: 10
+achievement: idioms_gotchas_master
+category: idioms_gotchas
+category_level: 6
+difficulty: gotcha
+contains_patterns:
+  - "sorted\\("
+concept_tags: [lists, sorting, gotchas]

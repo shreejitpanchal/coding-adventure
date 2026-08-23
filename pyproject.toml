@@ -1,0 +1,10 @@
+[project]
+name = "coding-adventure"
+version = "0.1.0"
+description = "An offline, multi-language coding refresher for professionals -- Python, Java, C++, and Spring."
+
+[tool.flet]
+product = "Coding Adventure"
+org = "com.shreejitpanchal"
+company = "Shreejit Panchal"
+copyright = "Copyright (C) 2026 Shreejit Panchal"

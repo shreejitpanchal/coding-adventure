@@ -1,0 +1,52 @@
+id: gotcha_gauntlet_06
+title: "The Subclass That Forgot Its Parent"
+language: python
+level: 35
+objective: "Fix a subclass that overrides __init__ but forgets to call super().__init__(), silently dropping the base class's setup."
+explanation: |
+  Overriding __init__ in a subclass completely replaces the base class's
+  __init__ unless you explicitly call super().__init__(...). Forgetting
+  that call means any attributes the base class sets up (like self.name
+  here) simply never get set -- not a loud error at the point of the
+  mistake, but a quiet AttributeError later wherever that attribute gets
+  used.
+example_code: |
+  class Vehicle:
+      def __init__(self, wheels):
+          self.wheels = wheels
+
+  class Car(Vehicle):
+      def __init__(self, wheels, brand):
+          super().__init__(wheels)
+          self.brand = brand
+
+  print(Car(4, "Volvo").wheels)
+starter_code: |
+  class Animal:
+      def __init__(self, name):
+          self.name = name
+          self.sound = "..."
+
+  class Dog(Animal):
+      def __init__(self, name):
+          self.sound = "Woof"
+
+  d = Dog("Rex")
+  print(d.name)
+challenge: |
+  This raises an AttributeError -- Dog's __init__ never sets self.name
+  because it never calls the parent's __init__. Fix Dog.__init__ to call
+  super().__init__(name) so d.name correctly prints "Rex".
+expected_output: |
+  Rex
+hints:
+  - "Overriding __init__ replaces the parent's entirely unless you call super().__init__()."
+  - "Add super().__init__(name) as the first line of Dog.__init__."
+xp_reward: 15
+achievement: gotcha_gauntlet_master
+category: gotcha_gauntlet
+category_level: 6
+difficulty: gotcha
+contains_patterns:
+  - "super\\(\\)\\.__init__"
+concept_tags: [classes, inheritance, gotchas]

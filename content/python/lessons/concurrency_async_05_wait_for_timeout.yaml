@@ -1,0 +1,55 @@
+id: concurrency_async_05
+title: "Bounding How Long You'll Wait"
+language: python
+level: 29
+objective: "Use asyncio.wait_for to bound how long you'll wait for a slow coroutine, falling back gracefully on timeout."
+explanation: |
+  A coroutine that might hang or take too long shouldn't be allowed to
+  block your program indefinitely. asyncio.wait_for(coro, timeout=...)
+  wraps a coroutine with a deadline, raising asyncio.TimeoutError (and
+  cancelling the coroutine) if it isn't done in time -- so you can catch
+  that and fall back instead of hanging.
+example_code: |
+  import asyncio
+
+  async def slow():
+      await asyncio.sleep(1)
+      return "done"
+
+  async def main():
+      try:
+          print(await asyncio.wait_for(slow(), timeout=0.05))
+      except asyncio.TimeoutError:
+          print("gave up")
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  async def slow_task():
+      await asyncio.sleep(2)
+      return "done"
+
+  async def main():
+      result = await slow_task()
+      print(result)
+
+  asyncio.run(main())
+challenge: |
+  Wrap the call to slow_task() in asyncio.wait_for with a 0.1 second
+  timeout, catching asyncio.TimeoutError and printing "timed out" instead
+  of waiting the full 2 seconds.
+expected_output: |
+  timed out
+hints:
+  - "await asyncio.wait_for(slow_task(), timeout=0.1)"
+  - "except asyncio.TimeoutError: print(\"timed out\")"
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "wait_for"
+  - "TimeoutError"
+concept_tags: [asyncio, timeouts, concurrency]

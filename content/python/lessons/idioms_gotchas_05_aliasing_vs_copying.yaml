@@ -1,0 +1,37 @@
+id: idioms_gotchas_05
+title: "The Backup That Wasn't"
+language: python
+level: 5
+objective: "Fix code that mutates a list through an alias when an independent copy was intended."
+explanation: |
+  `backup = original` doesn't copy a list -- it makes `backup` point at the
+  exact same list object as `original`. Any mutation through either name
+  (append, sort, etc.) is visible through the other. To get an independent
+  copy, use `.copy()`, `list(x)`, or a full slice `x[:]`.
+example_code: |
+  original = ["draft"]
+  backup = original.copy()
+  original.append("final")
+  print(backup)
+starter_code: |
+  original = [1, 2, 3]
+  backup = original
+  original.append(4)
+  print(backup)
+challenge: |
+  backup was meant to be an independent snapshot taken before the append,
+  but right now it's just another name for the same list. Fix the
+  assignment so backup stays [1, 2, 3] after original is modified.
+expected_output: |
+  [1, 2, 3]
+hints:
+  - "`backup = original` doesn't copy anything -- it's just a second name for the same list."
+  - "Use original.copy(), list(original), or original[:] instead."
+xp_reward: 10
+achievement: idioms_gotchas_progress
+category: idioms_gotchas
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "original\\.copy\\(\\)|list\\(original\\)|original\\[:\\]"
+concept_tags: [aliasing, copying, lists, gotchas]

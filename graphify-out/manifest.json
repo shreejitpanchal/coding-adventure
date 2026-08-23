@@ -1,0 +1,506 @@
+{
+  "app/__init__.py": {
+    "mtime": 1787451640.57646,
+    "seen": 1787453473.5757728,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "app/config/__init__.py": {
+    "mtime": 1787451265.7176206,
+    "seen": 1787453473.5757773,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "app/config/platform_paths.py": {
+    "mtime": 1787451267.908962,
+    "seen": 1787453473.5757794,
+    "ast_hash": "6c0e1d4a1d2c46e797f864391de1117a",
+    "semantic_hash": "6c0e1d4a1d2c46e797f864391de1117a"
+  },
+  "app/config/settings.py": {
+    "mtime": 1787451273.1325545,
+    "seen": 1787453473.5757804,
+    "ast_hash": "7659dbc08f0e8aff74b9b0b980d309f1",
+    "semantic_hash": "7659dbc08f0e8aff74b9b0b980d309f1"
+  },
+  "app/engine/__init__.py": {
+    "mtime": 1787451276.2195537,
+    "seen": 1787453473.5757813,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "app/engine/categories.py": {
+    "mtime": 1787451328.0652502,
+    "seen": 1787453473.575782,
+    "ast_hash": "4493d13778b88b35f0b315dfa83f6619",
+    "semantic_hash": "4493d13778b88b35f0b315dfa83f6619"
+  },
+  "app/engine/exercise.py": {
+    "mtime": 1787451281.6823463,
+    "seen": 1787453473.575783,
+    "ast_hash": "4723ee752034ec0bad9268de26528ecd",
+    "semantic_hash": "4723ee752034ec0bad9268de26528ecd"
+  },
+  "app/engine/languages.py": {
+    "mtime": 1787451337.867028,
+    "seen": 1787453473.5757837,
+    "ast_hash": "cdba206625064bc040861d9bbfc4563a",
+    "semantic_hash": "cdba206625064bc040861d9bbfc4563a"
+  },
+  "app/engine/lesson_engine.py": {
+    "mtime": 1787451304.2753518,
+    "seen": 1787453473.5757844,
+    "ast_hash": "6988c9ffae3461826ea1828ce909af91",
+    "semantic_hash": "6988c9ffae3461826ea1828ce909af91"
+  },
+  "app/engine/quiz.py": {
+    "mtime": 1787451283.213043,
+    "seen": 1787453473.5757852,
+    "ast_hash": "2e13bbcfd4fc9bb85ab385b9ba80a7ce",
+    "semantic_hash": "2e13bbcfd4fc9bb85ab385b9ba80a7ce"
+  },
+  "app/engine/quiz_engine.py": {
+    "mtime": 1787451310.2666254,
+    "seen": 1787453473.5757859,
+    "ast_hash": "b39efa10175d0466164f1004c8b0dd41",
+    "semantic_hash": "b39efa10175d0466164f1004c8b0dd41"
+  },
+  "app/engine/validator.py": {
+    "mtime": 1787451315.4488785,
+    "seen": 1787453473.575787,
+    "ast_hash": "ace62dddddbc07255f270c52e93d11d0",
+    "semantic_hash": "ace62dddddbc07255f270c52e93d11d0"
+  },
+  "app/execution/__init__.py": {
+    "mtime": 1787451341.0093427,
+    "seen": 1787453473.5757878,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "app/execution/base.py": {
+    "mtime": 1787451347.0001056,
+    "seen": 1787453473.5757883,
+    "ast_hash": "7c4b82a430d80137366dd9dcf0dbc916",
+    "semantic_hash": "7c4b82a430d80137366dd9dcf0dbc916"
+  },
+  "app/execution/cpp_engine.py": {
+    "mtime": 1787451385.094024,
+    "seen": 1787453473.575789,
+    "ast_hash": "4a7a460c84e7c92bf623fd0736487ec2",
+    "semantic_hash": "4a7a460c84e7c92bf623fd0736487ec2"
+  },
+  "app/execution/errors.py": {
+    "mtime": 1787451377.9995081,
+    "seen": 1787453473.57579,
+    "ast_hash": "ce3a57e2fc733c86abcd9fd116116927",
+    "semantic_hash": "ce3a57e2fc733c86abcd9fd116116927"
+  },
+  "app/execution/java_engine.py": {
+    "mtime": 1787451382.364813,
+    "seen": 1787453473.5757904,
+    "ast_hash": "48b6fe87aa14d029780876b84cbfbca1",
+    "semantic_hash": "48b6fe87aa14d029780876b84cbfbca1"
+  },
+  "app/execution/python_engine.py": {
+    "mtime": 1787451362.678159,
+    "seen": 1787453473.5757911,
+    "ast_hash": "19333e64b8118f8de45160e2435a7c76",
+    "semantic_hash": "19333e64b8118f8de45160e2435a7c76"
+  },
+  "app/execution/registry.py": {
+    "mtime": 1787451394.2925684,
+    "seen": 1787453473.5757918,
+    "ast_hash": "06a65a61f3d13efbbb61bc8cc9a9c7c9",
+    "semantic_hash": "06a65a61f3d13efbbb61bc8cc9a9c7c9"
+  },
+  "app/execution/spring_engine.py": {
+    "mtime": 1787451388.6109242,
+    "seen": 1787453473.5757923,
+    "ast_hash": "2c43bf31c43ce9749bba3284216a83f0",
+    "semantic_hash": "2c43bf31c43ce9749bba3284216a83f0"
+  },
+  "app/execution/toolchain_check.py": {
+    "mtime": 1787451370.3700266,
+    "seen": 1787453473.5757933,
+    "ast_hash": "6c80ddb40c5935274ee499258292efa9",
+    "semantic_hash": "6c80ddb40c5935274ee499258292efa9"
+  },
+  "app/progress/__init__.py": {
+    "mtime": 1787451397.428092,
+    "seen": 1787453473.575794,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "app/progress/store.py": {
+    "mtime": 1787451427.2900348,
+    "seen": 1787453473.575795,
+    "ast_hash": "79d682a418988dbb60e599c0a71bdc38",
+    "semantic_hash": "79d682a418988dbb60e599c0a71bdc38"
+  },
+  "app/ui/__init__.py": {
+    "mtime": 1787451431.1159253,
+    "seen": 1787453473.5757957,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "app/ui/app_state.py": {
+    "mtime": 1787451453.9125407,
+    "seen": 1787453473.5757964,
+    "ast_hash": "8290d136d6dfc85cd7091e55ba3c3755",
+    "semantic_hash": "8290d136d6dfc85cd7091e55ba3c3755"
+  },
+  "app/ui/app_window.py": {
+    "mtime": 1787451634.157767,
+    "seen": 1787453473.575797,
+    "ast_hash": "49714e722e255d149027a959107df3f6",
+    "semantic_hash": "49714e722e255d149027a959107df3f6"
+  },
+  "app/ui/category_levels.py": {
+    "mtime": 1787451524.1506155,
+    "seen": 1787453473.5757978,
+    "ast_hash": "c1ee697961e05afec56b87383abf8d1a",
+    "semantic_hash": "c1ee697961e05afec56b87383abf8d1a"
+  },
+  "app/ui/category_map.py": {
+    "mtime": 1787451512.0912676,
+    "seen": 1787453473.5757985,
+    "ast_hash": "b261e5a63d900b5db8352cca7362e0d7",
+    "semantic_hash": "b261e5a63d900b5db8352cca7362e0d7"
+  },
+  "app/ui/code_editor.py": {
+    "mtime": 1787451460.1931424,
+    "seen": 1787453473.5757992,
+    "ast_hash": "f43ae34cb8a23a90836f48a63fa04aa5",
+    "semantic_hash": "f43ae34cb8a23a90836f48a63fa04aa5"
+  },
+  "app/ui/daily_refresher.py": {
+    "mtime": 1787451529.2292368,
+    "seen": 1787453473.5757997,
+    "ast_hash": "41916d98366242c03a016ac38ebc93f6",
+    "semantic_hash": "41916d98366242c03a016ac38ebc93f6"
+  },
+  "app/ui/language_select.py": {
+    "mtime": 1787452245.7892792,
+    "seen": 1787453473.5758007,
+    "ast_hash": "1ddf6a158f186c099b8018f4af835417",
+    "semantic_hash": "1ddf6a158f186c099b8018f4af835417"
+  },
+  "app/ui/lesson_screen.py": {
+    "mtime": 1787451572.6804144,
+    "seen": 1787453473.5758014,
+    "ast_hash": "1934d61dfe541a15c2f1535cc9f74cf0",
+    "semantic_hash": "1934d61dfe541a15c2f1535cc9f74cf0"
+  },
+  "app/ui/progress_screen.py": {
+    "mtime": 1787451609.393365,
+    "seen": 1787453473.575802,
+    "ast_hash": "45adfe97eed8a5be506b6872ff334c88",
+    "semantic_hash": "45adfe97eed8a5be506b6872ff334c88"
+  },
+  "app/ui/quiz_screen.py": {
+    "mtime": 1787451595.7623694,
+    "seen": 1787453473.5758026,
+    "ast_hash": "5d9817dfe763bd10cb5c6271ba2df04e",
+    "semantic_hash": "5d9817dfe763bd10cb5c6271ba2df04e"
+  },
+  "app/ui/settings_screen.py": {
+    "mtime": 1787451623.240335,
+    "seen": 1787453473.5758033,
+    "ast_hash": "b5e4fb21d8969e80d09e3f45295ca2cc",
+    "semantic_hash": "b5e4fb21d8969e80d09e3f45295ca2cc"
+  },
+  "app/ui/setup_wizard.py": {
+    "mtime": 1787451468.03345,
+    "seen": 1787453473.575804,
+    "ast_hash": "9d578fbb46c2ab1089e88102a262615c",
+    "semantic_hash": "9d578fbb46c2ab1089e88102a262615c"
+  },
+  "app/ui/theme.py": {
+    "mtime": 1787451442.2879548,
+    "seen": 1787453473.5758047,
+    "ast_hash": "2ba4a59327fd5f6846c87e02e833baae",
+    "semantic_hash": "2ba4a59327fd5f6846c87e02e833baae"
+  },
+  "app/ui/track_hub.py": {
+    "mtime": 1787451499.061914,
+    "seen": 1787453473.5758052,
+    "ast_hash": "90abe948ebef097c81238b11aa9f417a",
+    "semantic_hash": "90abe948ebef097c81238b11aa9f417a"
+  },
+  "main.py": {
+    "mtime": 1787451637.3571439,
+    "seen": 1787453473.5758061,
+    "ast_hash": "3dfd5417e972d0e930bf8fbc066fb3b4",
+    "semantic_hash": "3dfd5417e972d0e930bf8fbc066fb3b4"
+  },
+  "pyproject.toml": {
+    "mtime": 1787451256.9058745,
+    "seen": 1787453473.5758066,
+    "ast_hash": "32314b9b13a771bb95cf46882c81cf53",
+    "semantic_hash": "32314b9b13a771bb95cf46882c81cf53"
+  },
+  "run.sh": {
+    "mtime": 1787451647.394311,
+    "seen": 1787453473.5758076,
+    "ast_hash": "e673933eca38a38a6232d4f1c0d121e8",
+    "semantic_hash": "e673933eca38a38a6232d4f1c0d121e8"
+  },
+  "tests/test_execution_python.py": {
+    "mtime": 1787452095.2787302,
+    "seen": 1787453473.5758083,
+    "ast_hash": "a02db9580bb7e2ac6f8df4490a6e4b89",
+    "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
+  },
+  "tests/test_lesson_engine.py": {
+    "mtime": 1787452088.7111855,
+    "seen": 1787453473.575809,
+    "ast_hash": "b781c59ecc224e7f6d724a00ba9bad1f",
+    "semantic_hash": "b781c59ecc224e7f6d724a00ba9bad1f"
+  },
+  "tests/test_progress_store.py": {
+    "mtime": 1787452099.293837,
+    "seen": 1787453473.57581,
+    "ast_hash": "23a9b3ca24bf78a9bcdf0ac0e7bd905c",
+    "semantic_hash": "23a9b3ca24bf78a9bcdf0ac0e7bd905c"
+  },
+  "tests/test_validator.py": {
+    "mtime": 1787452091.4162333,
+    "seen": 1787453473.575811,
+    "ast_hash": "e502b2df2b01a3429cf626483231bc4f",
+    "semantic_hash": "e502b2df2b01a3429cf626483231bc4f"
+  },
+  "CLAUDE.md": {
+    "mtime": 1787452813.216465,
+    "seen": 1787453473.5758114,
+    "ast_hash": "67e32c94418ed17dc54e04839f011850",
+    "semantic_hash": "67e32c94418ed17dc54e04839f011850"
+  },
+  "README.md": {
+    "mtime": 1787452297.0940413,
+    "seen": 1787453473.575812,
+    "ast_hash": "5362783c203fa9a7734b6a537457f330",
+    "semantic_hash": "5362783c203fa9a7734b6a537457f330"
+  },
+  "content/python/lessons/concurrency_async_01_gather_order.yaml": {
+    "mtime": 1787451909.8837602,
+    "seen": 1787453473.5758128,
+    "ast_hash": "8af292cfc89e6e10dbe1cd0f958acf7e",
+    "semantic_hash": "8af292cfc89e6e10dbe1cd0f958acf7e"
+  },
+  "content/python/lessons/concurrency_async_02_thread_lock.yaml": {
+    "mtime": 1787451915.354535,
+    "seen": 1787453473.5758133,
+    "ast_hash": "3591d5b1637fbd2be263f70d1019edf5",
+    "semantic_hash": "3591d5b1637fbd2be263f70d1019edf5"
+  },
+  "content/python/lessons/concurrency_async_03_thread_pool.yaml": {
+    "mtime": 1787451920.2440176,
+    "seen": 1787453473.5758142,
+    "ast_hash": "d5392fbd905b581966bbb587dca61cbd",
+    "semantic_hash": "d5392fbd905b581966bbb587dca61cbd"
+  },
+  "content/python/lessons/concurrency_async_04_asyncio_lock.yaml": {
+    "mtime": 1787451926.2470424,
+    "seen": 1787453473.575815,
+    "ast_hash": "582801f44335b11f93037c98af935ed5",
+    "semantic_hash": "582801f44335b11f93037c98af935ed5"
+  },
+  "content/python/lessons/concurrency_async_05_wait_for_timeout.yaml": {
+    "mtime": 1787451930.9092247,
+    "seen": 1787453473.5758157,
+    "ast_hash": "cf8eb92bfbc1480e986deef253f4e467",
+    "semantic_hash": "cf8eb92bfbc1480e986deef253f4e467"
+  },
+  "content/python/lessons/core_refresher_01_list_comprehension.yaml": {
+    "mtime": 1787451821.196462,
+    "seen": 1787453473.5758164,
+    "ast_hash": "0d23c73aa4d069193e8a00b93ea839ca",
+    "semantic_hash": "0d23c73aa4d069193e8a00b93ea839ca"
+  },
+  "content/python/lessons/core_refresher_02_args_kwargs.yaml": {
+    "mtime": 1787451825.0087433,
+    "seen": 1787453473.575817,
+    "ast_hash": "eeba7834d3b61609a9a0bd0a9a28b17a",
+    "semantic_hash": "eeba7834d3b61609a9a0bd0a9a28b17a"
+  },
+  "content/python/lessons/core_refresher_03_decorators.yaml": {
+    "mtime": 1787451829.9162974,
+    "seen": 1787453473.5758178,
+    "ast_hash": "7a0aeeec68792ca5b88d0eed962530d6",
+    "semantic_hash": "7a0aeeec68792ca5b88d0eed962530d6"
+  },
+  "content/python/lessons/core_refresher_04_context_managers.yaml": {
+    "mtime": 1787451834.8439004,
+    "seen": 1787453473.5758185,
+    "ast_hash": "088d97e2859d7fb0b07c3f09b6ec3965",
+    "semantic_hash": "088d97e2859d7fb0b07c3f09b6ec3965"
+  },
+  "content/python/lessons/core_refresher_05_dataclasses.yaml": {
+    "mtime": 1787451839.212921,
+    "seen": 1787453473.5758193,
+    "ast_hash": "08a30e6df371440e26678a50130fab6a",
+    "semantic_hash": "08a30e6df371440e26678a50130fab6a"
+  },
+  "content/python/lessons/core_refresher_06_enums.yaml": {
+    "mtime": 1787451844.233645,
+    "seen": 1787453473.57582,
+    "ast_hash": "81afe782cd42bf11eb9fb92669b84da6",
+    "semantic_hash": "81afe782cd42bf11eb9fb92669b84da6"
+  },
+  "content/python/lessons/data_structures_01_defaultdict.yaml": {
+    "mtime": 1787451852.3119612,
+    "seen": 1787453473.5758207,
+    "ast_hash": "34de0b3b078fa858c697777df34c8d7e",
+    "semantic_hash": "34de0b3b078fa858c697777df34c8d7e"
+  },
+  "content/python/lessons/data_structures_02_counter.yaml": {
+    "mtime": 1787451856.109299,
+    "seen": 1787453473.5758214,
+    "ast_hash": "8c9d34d566ef5e442fe6576b34290529",
+    "semantic_hash": "8c9d34d566ef5e442fe6576b34290529"
+  },
+  "content/python/lessons/data_structures_03_deque.yaml": {
+    "mtime": 1787451860.530662,
+    "seen": 1787453473.575822,
+    "ast_hash": "69ca65e682304dd7f5b64d3cf6e05827",
+    "semantic_hash": "69ca65e682304dd7f5b64d3cf6e05827"
+  },
+  "content/python/lessons/data_structures_04_heapq.yaml": {
+    "mtime": 1787451864.8700426,
+    "seen": 1787453473.5758226,
+    "ast_hash": "dc2cf176ed57a112fb86dbb8206a417f",
+    "semantic_hash": "dc2cf176ed57a112fb86dbb8206a417f"
+  },
+  "content/python/lessons/data_structures_05_bisect.yaml": {
+    "mtime": 1787451869.2039883,
+    "seen": 1787453473.5758235,
+    "ast_hash": "f0203ea547c223c8dcede90bf0e9bf6f",
+    "semantic_hash": "f0203ea547c223c8dcede90bf0e9bf6f"
+  },
+  "content/python/lessons/data_structures_06_set_operations.yaml": {
+    "mtime": 1787451873.4718497,
+    "seen": 1787453473.5758245,
+    "ast_hash": "03ecbaf577c5fca1f65696c223df1707",
+    "semantic_hash": "03ecbaf577c5fca1f65696c223df1707"
+  },
+  "content/python/lessons/gotcha_gauntlet_01_off_by_one_slice.yaml": {
+    "mtime": 1787451938.0575058,
+    "seen": 1787453473.575825,
+    "ast_hash": "22ebcfb3fff2c14d5e0c44c413c7975d",
+    "semantic_hash": "22ebcfb3fff2c14d5e0c44c413c7975d"
+  },
+  "content/python/lessons/gotcha_gauntlet_02_exception_swallowing.yaml": {
+    "mtime": 1787451943.5716908,
+    "seen": 1787453473.5758257,
+    "ast_hash": "10a72e43a94eac2ee0de45acc1c76cd4",
+    "semantic_hash": "10a72e43a94eac2ee0de45acc1c76cd4"
+  },
+  "content/python/lessons/gotcha_gauntlet_03_mutable_class_attribute.yaml": {
+    "mtime": 1787451949.0059054,
+    "seen": 1787453473.5758262,
+    "ast_hash": "252afc4b99f1ddd7559acab294513735",
+    "semantic_hash": "252afc4b99f1ddd7559acab294513735"
+  },
+  "content/python/lessons/gotcha_gauntlet_04_rounding_precision.yaml": {
+    "mtime": 1787451953.929582,
+    "seen": 1787453473.575827,
+    "ast_hash": "d07850572f121f1672205ddc86f5b2fd",
+    "semantic_hash": "d07850572f121f1672205ddc86f5b2fd"
+  },
+  "content/python/lessons/gotcha_gauntlet_05_dict_mutation_during_iteration.yaml": {
+    "mtime": 1787451958.8256955,
+    "seen": 1787453473.5758276,
+    "ast_hash": "be3f990489ec9433d4d969a8b551ffa7",
+    "semantic_hash": "be3f990489ec9433d4d969a8b551ffa7"
+  },
+  "content/python/lessons/gotcha_gauntlet_06_missing_super_init.yaml": {
+    "mtime": 1787451964.0936332,
+    "seen": 1787453473.5758283,
+    "ast_hash": "24cf9e01fa016eee503b39c2cfd67b26",
+    "semantic_hash": "24cf9e01fa016eee503b39c2cfd67b26"
+  },
+  "content/python/lessons/idioms_gotchas_01_mutable_default_arg.yaml": {
+    "mtime": 1787451789.5368638,
+    "seen": 1787453473.575829,
+    "ast_hash": "9cb655e4a9d494753dbb8f37fe87597f",
+    "semantic_hash": "9cb655e4a9d494753dbb8f37fe87597f"
+  },
+  "content/python/lessons/idioms_gotchas_02_late_binding_closure.yaml": {
+    "mtime": 1787451794.4543428,
+    "seen": 1787453473.5758297,
+    "ast_hash": "9451a1fe299d0a18a4a75e38f8e7d513",
+    "semantic_hash": "9451a1fe299d0a18a4a75e38f8e7d513"
+  },
+  "content/python/lessons/idioms_gotchas_03_is_vs_equals.yaml": {
+    "mtime": 1787451799.4062083,
+    "seen": 1787453473.5758305,
+    "ast_hash": "d68c5cb52098621186a189f56cacc759",
+    "semantic_hash": "d68c5cb52098621186a189f56cacc759"
+  },
+  "content/python/lessons/idioms_gotchas_04_float_precision.yaml": {
+    "mtime": 1787451804.3078744,
+    "seen": 1787453473.5758314,
+    "ast_hash": "2cf953b17a7805e4cb4e1a1e06690ce3",
+    "semantic_hash": "2cf953b17a7805e4cb4e1a1e06690ce3"
+  },
+  "content/python/lessons/idioms_gotchas_05_aliasing_vs_copying.yaml": {
+    "mtime": 1787451809.2221355,
+    "seen": 1787453473.5758321,
+    "ast_hash": "3988da667d93ae2fc2f6c96549b63399",
+    "semantic_hash": "3988da667d93ae2fc2f6c96549b63399"
+  },
+  "content/python/lessons/idioms_gotchas_06_sort_returns_none.yaml": {
+    "mtime": 1787451813.4233649,
+    "seen": 1787453473.5758328,
+    "ast_hash": "747c3c205a896b90475986fa628a7108",
+    "semantic_hash": "747c3c205a896b90475986fa628a7108"
+  },
+  "content/python/lessons/stdlib_deep_dive_01_itertools_chain.yaml": {
+    "mtime": 1787451881.0051544,
+    "seen": 1787453473.5758336,
+    "ast_hash": "8de0cd8eff4fad81835731745f187cb9",
+    "semantic_hash": "8de0cd8eff4fad81835731745f187cb9"
+  },
+  "content/python/lessons/stdlib_deep_dive_02_lru_cache.yaml": {
+    "mtime": 1787451885.365322,
+    "seen": 1787453473.5758343,
+    "ast_hash": "93e27ee3493d52530eee3614597cf776",
+    "semantic_hash": "93e27ee3493d52530eee3614597cf776"
+  },
+  "content/python/lessons/stdlib_deep_dive_03_reduce.yaml": {
+    "mtime": 1787451889.1830597,
+    "seen": 1787453473.575835,
+    "ast_hash": "6d68453979f5da45fee07663ea735bab",
+    "semantic_hash": "6d68453979f5da45fee07663ea735bab"
+  },
+  "content/python/lessons/stdlib_deep_dive_04_pathlib.yaml": {
+    "mtime": 1787451893.0027947,
+    "seen": 1787453473.575836,
+    "ast_hash": "3cddb53793140daed91d58575f566461",
+    "semantic_hash": "3cddb53793140daed91d58575f566461"
+  },
+  "content/python/lessons/stdlib_deep_dive_05_typing_hints.yaml": {
+    "mtime": 1787451897.3680565,
+    "seen": 1787453473.5758364,
+    "ast_hash": "9543323d0d35baa3c4eb7da530016b49",
+    "semantic_hash": "9543323d0d35baa3c4eb7da530016b49"
+  },
+  "content/python/lessons/stdlib_deep_dive_06_contextlib_suppress.yaml": {
+    "mtime": 1787451901.3877559,
+    "seen": 1787453473.5758371,
+    "ast_hash": "346cace5911cc12c9d683b9833ce0095",
+    "semantic_hash": "346cace5911cc12c9d683b9833ce0095"
+  },
+  "content/python/quiz/quiz_questions.yaml": {
+    "mtime": 1787452070.0813065,
+    "seen": 1787453473.5758379,
+    "ast_hash": "4f22641efde876638af8f37e1d84f3c9",
+    "semantic_hash": "4f22641efde876638af8f37e1d84f3c9"
+  },
+  "requirements.txt": {
+    "mtime": 1787451259.4993236,
+    "seen": 1787453473.5758386,
+    "ast_hash": "5aa2d618471b3304652e74e7306007df",
+    "semantic_hash": "5aa2d618471b3304652e74e7306007df"
+  }
+}

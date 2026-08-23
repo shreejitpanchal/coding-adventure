@@ -1,0 +1,33 @@
+id: gotcha_gauntlet_01
+title: "The Off-By-One Slice"
+language: python
+level: 30
+objective: "Fix a negative slice that grabs one element too many."
+explanation: |
+  Negative slice indices count from the end: data[-3:] means "the last 3
+  elements." It's an easy off-by-one to write data[-4:] when you mean the
+  last three -- the negative index and the count you want are one apart,
+  which trips people up under time pressure.
+example_code: |
+  data = [10, 20, 30, 40, 50]
+  print(data[-2:])
+starter_code: |
+  data = [10, 20, 30, 40, 50]
+  last_three = data[-4:]
+  print(last_three)
+challenge: |
+  This currently grabs 4 elements, not 3. Fix the slice so last_three is
+  exactly the last three elements: [30, 40, 50].
+expected_output: |
+  [30, 40, 50]
+hints:
+  - "data[-N:] means the last N elements -- count carefully."
+  - "You want the last 3, so the index should be -3, not -4."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "data\\[-3:\\]"
+concept_tags: [slicing, off_by_one, gotchas]

@@ -1,0 +1,54 @@
+id: concurrency_async_01
+title: "Running Coroutines Concurrently, Keeping Order"
+language: python
+level: 25
+objective: "Use asyncio.gather to run coroutines concurrently while still getting results back in the original order."
+explanation: |
+  Awaiting coroutines one at a time in a loop runs them sequentially --
+  each one waits for the previous to finish. asyncio.gather(*coros)
+  schedules them all to run concurrently, and still returns their results
+  in the order the coroutines were passed in, regardless of which
+  finishes first.
+example_code: |
+  import asyncio
+
+  async def square(n):
+      await asyncio.sleep(0.01)
+      return n * n
+
+  async def main():
+      results = await asyncio.gather(*(square(n) for n in range(4)))
+      print(results)
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  async def fetch(n):
+      await asyncio.sleep(0.01 * (3 - n))
+      return n
+
+  async def main():
+      results = []
+      for n in range(3):
+          results.append(await fetch(n))
+      print(results)
+
+  asyncio.run(main())
+challenge: |
+  Rewrite main() to launch all three fetch() calls concurrently with
+  asyncio.gather instead of awaiting them one at a time in a loop, while
+  still printing results in order: [0, 1, 2].
+expected_output: |
+  [0, 1, 2]
+hints:
+  - "await asyncio.gather(*(fetch(n) for n in range(3)))"
+  - "gather preserves input order in its returned results, independent of completion order."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 1
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.gather"
+concept_tags: [asyncio, concurrency]

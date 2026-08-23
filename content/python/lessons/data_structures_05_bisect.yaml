@@ -1,0 +1,37 @@
+id: data_structures_05
+title: "Inserting Into a Sorted List Without Re-Sorting"
+language: python
+level: 17
+objective: "Use bisect.insort to insert into an already-sorted list in O(n) instead of appending and re-sorting in O(n log n)."
+explanation: |
+  If a list is already sorted, appending a new item and calling .sort()
+  again re-sorts the whole thing, throwing away the fact that it was
+  already sorted. bisect.insort finds the correct insertion point with
+  binary search and inserts there directly, which is asymptotically
+  better and clearly expresses "keep this sorted" as intent.
+example_code: |
+  import bisect
+  values = [1, 4, 9]
+  bisect.insort(values, 6)
+  print(values)
+starter_code: |
+  sorted_nums = [1, 3, 4, 7, 9]
+  sorted_nums.append(5)
+  sorted_nums.sort()
+  print(sorted_nums)
+challenge: |
+  Rewrite this using bisect.insort(sorted_nums, 5) instead of append +
+  sort, keeping the same output.
+expected_output: |
+  [1, 3, 4, 5, 7, 9]
+hints:
+  - "import bisect"
+  - "bisect.insort(sorted_nums, 5) inserts 5 at the correct sorted position directly."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 5
+difficulty: core
+contains_patterns:
+  - "bisect\\.insort"
+concept_tags: [bisect, algorithms]

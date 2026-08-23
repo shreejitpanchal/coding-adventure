@@ -1,0 +1,39 @@
+id: data_structures_01
+title: "Grouping Without Manual Key Checks"
+language: python
+level: 13
+objective: "Use collections.defaultdict to remove the manual 'if key not in dict' boilerplate when grouping items."
+explanation: |
+  defaultdict(list) auto-creates an empty list the first time a new key is
+  accessed, removing the need for an explicit existence check before
+  appending. It's the standard tool for "bucket items by some key" code.
+example_code: |
+  from collections import defaultdict
+  groups = defaultdict(list)
+  for n in [1, 2, 3, 4, 5, 6]:
+      groups[n % 3].append(n)
+  print(dict(groups))
+starter_code: |
+  words = ["a", "bb", "ccc", "dd", "e"]
+  by_length = {}
+  for w in words:
+      if len(w) not in by_length:
+          by_length[len(w)] = []
+      by_length[len(w)].append(w)
+  print(by_length)
+challenge: |
+  Rewrite this using collections.defaultdict(list) instead of the manual
+  existence check, keeping the same output.
+expected_output: |
+  {1: ['a', 'e'], 2: ['bb', 'dd'], 3: ['ccc']}
+hints:
+  - "from collections import defaultdict"
+  - "by_length = defaultdict(list) -- then just by_length[len(w)].append(w), no check needed."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "defaultdict"
+concept_tags: [dictionaries, collections]

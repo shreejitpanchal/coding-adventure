@@ -1,0 +1,43 @@
+id: stdlib_deep_dive_02
+title: "Memoizing a Recursive Function"
+language: python
+level: 20
+objective: "Speed up an exponential naive-recursive function with functools.lru_cache, without changing its logic."
+explanation: |
+  Naive recursive fib(n) recomputes the same sub-calls exponentially many
+  times. @lru_cache transparently memoizes a function's return value per
+  distinct argument tuple, turning this into linear time with a one-line
+  change and no restructuring of the recursion itself.
+example_code: |
+  from functools import lru_cache
+
+  @lru_cache(maxsize=None)
+  def fib(n):
+      if n < 2:
+          return n
+      return fib(n - 1) + fib(n - 2)
+
+  print(fib(30))
+starter_code: |
+  def fib(n):
+      if n < 2:
+          return n
+      return fib(n - 1) + fib(n - 2)
+
+  print(fib(20))
+challenge: |
+  Add @lru_cache above fib to memoize it, without changing fib's body.
+  The output should still be 6765, just computed far faster.
+expected_output: |
+  6765
+hints:
+  - "from functools import lru_cache"
+  - "Put @lru_cache(maxsize=None) directly above def fib(n):"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "lru_cache"
+concept_tags: [functools, memoization, recursion]

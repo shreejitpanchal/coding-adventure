@@ -1,0 +1,36 @@
+id: stdlib_deep_dive_04
+title: "Paths as Objects, Not Strings"
+language: python
+level: 22
+objective: "Use pathlib.Path instead of manual string manipulation to work with filesystem paths."
+explanation: |
+  pathlib.Path represents a filesystem path as a real object with useful
+  properties (.name, .stem, .suffix, .parent) and an overloaded / operator
+  for joining -- far less error-prone than splitting and concatenating
+  strings by hand, and it handles platform path separators correctly.
+example_code: |
+  from pathlib import Path
+  p = Path("data") / "report.csv"
+  print(p.suffix)
+starter_code: |
+  folder = "reports"
+  filename = "summary.txt"
+  name_without_ext = filename.split(".")[0]
+  print(name_without_ext)
+challenge: |
+  Rewrite this using pathlib.Path -- join folder and filename with /, then
+  use .stem to get the filename without its extension, keeping the same
+  output.
+expected_output: |
+  summary
+hints:
+  - "from pathlib import Path"
+  - "full_path = Path(folder) / filename; print(full_path.stem)"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "Path\\("
+concept_tags: [pathlib, filesystem]

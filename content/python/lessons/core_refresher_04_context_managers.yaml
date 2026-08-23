@@ -1,0 +1,52 @@
+id: core_refresher_04
+title: "Turning Manual Cleanup into a Context Manager"
+language: python
+level: 10
+objective: "Convert manual acquire/release calls into a proper context manager used with `with`."
+explanation: |
+  Implementing `__enter__` and `__exit__` on a class makes it usable with
+  `with`, guaranteeing cleanup runs even if the block raises -- unlike a
+  bare pair of manual calls, which skips the release step entirely if an
+  exception happens in between.
+example_code: |
+  class Timer:
+      def __enter__(self):
+          print("start")
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          print("stop")
+
+  with Timer():
+      print("working")
+starter_code: |
+  class Resource:
+      def acquire(self):
+          print("acquire")
+      def release(self):
+          print("release")
+
+  r = Resource()
+  r.acquire()
+  print("using resource")
+  r.release()
+challenge: |
+  Turn Resource into a context manager (__enter__ / __exit__) and use it
+  with a `with` block instead of manual acquire()/release() calls. Keep
+  the same three lines of output: acquire, using resource, release.
+expected_output: |
+  acquire
+  using resource
+  release
+hints:
+  - "__enter__ runs at the top of the with block, __exit__ at the end (even on error)."
+  - "with Resource(): print(\"using resource\")"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "__enter__"
+  - "__exit__"
+  - "with Resource"
+concept_tags: [context_managers, with_statement]

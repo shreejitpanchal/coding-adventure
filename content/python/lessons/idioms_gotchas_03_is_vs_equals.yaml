@@ -1,0 +1,40 @@
+id: idioms_gotchas_03
+title: "Same Contents, Different Objects"
+language: python
+level: 3
+objective: "Fix a comparison that checks object identity (`is`) where it should check equality of contents (`==`)."
+explanation: |
+  `is` asks "are these literally the same object in memory?" `==` asks
+  "do these compare as equal?" Two separately-built lists with identical
+  contents are almost always different objects, so `is` returns False even
+  when the data is what you'd call "the same." This trips up plenty of
+  experienced developers, especially coming from languages where `==`
+  means identity by default.
+example_code: |
+  a = {"id": 1}
+  b = {"id": 1}
+  print(a == b)
+starter_code: |
+  def has_same_items(a, b):
+      return a is b
+
+  list1 = [1, 2, 3]
+  list2 = [1, 2, 3]
+  print(has_same_items(list1, list2))
+challenge: |
+  list1 and list2 have identical contents but are different objects, so
+  `is` returns False. Fix has_same_items to check equality of contents
+  instead, so the output is True.
+expected_output: |
+  True
+hints:
+  - "`is` compares identity (same object in memory), not equality."
+  - "Swap `is` for `==`."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "a == b"
+concept_tags: [equality, identity, gotchas]

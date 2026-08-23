@@ -1,0 +1,63 @@
+id: concurrency_async_02
+title: "Protecting a Shared Counter with a Lock"
+language: python
+level: 26
+objective: "Fix a race condition where multiple threads increment a shared counter without synchronization."
+explanation: |
+  `counter += 1` is not atomic -- it's a read, an add, and a write as
+  separate steps, and CPython can switch threads between any of them.
+  With enough threads and iterations, some increments get lost when two
+  threads read the same value before either writes back. A
+  threading.Lock around the critical section makes each increment atomic
+  with respect to other threads, guaranteeing the final count is exact.
+example_code: |
+  import threading
+
+  counter = 0
+  lock = threading.Lock()
+
+  def increment():
+      global counter
+      with lock:
+          counter += 1
+
+  threads = [threading.Thread(target=increment) for _ in range(10)]
+  for t in threads:
+      t.start()
+  for t in threads:
+      t.join()
+  print(counter)
+starter_code: |
+  import threading
+
+  counter = 0
+
+  def increment():
+      global counter
+      for _ in range(100000):
+          counter += 1
+
+  threads = [threading.Thread(target=increment) for _ in range(4)]
+  for t in threads:
+      t.start()
+  for t in threads:
+      t.join()
+
+  print(counter)
+challenge: |
+  Add a threading.Lock around the increment so the final count is always
+  exactly 400000, no matter how the threads happen to interleave.
+expected_output: |
+  400000
+hints:
+  - "lock = threading.Lock() at module scope, shared by every thread."
+  - "Wrap the increment itself: `with lock: counter += 1`."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 2
+difficulty: deep_dive
+contains_patterns:
+  - "Lock\\(\\)"
+  - "with lock"
+concept_tags: [threading, concurrency, race_conditions]

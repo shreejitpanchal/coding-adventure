@@ -1,0 +1,51 @@
+id: gotcha_gauntlet_03
+title: "The Shopping Cart Shared By Every Customer"
+language: python
+level: 32
+objective: "Fix a mutable class-level attribute that's shared across every instance instead of being per-instance."
+explanation: |
+  `items = []` written directly in the class body is a *class* attribute
+  -- one single list shared by every instance, not a fresh list per
+  object. Mutating it through self.items.append(...) mutates the one
+  shared list, so every instance sees every other instance's changes.
+  The fix is to create the list inside __init__, assigned to self.
+example_code: |
+  class Basket:
+      def __init__(self):
+          self.items = []
+      def add(self, item):
+          self.items.append(item)
+
+  b1 = Basket()
+  b1.add("milk")
+  print(b1.items)
+starter_code: |
+  class ShoppingCart:
+      items = []
+
+      def add(self, item):
+          self.items.append(item)
+
+  cart1 = ShoppingCart()
+  cart2 = ShoppingCart()
+  cart1.add("apple")
+  cart2.add("bread")
+  print(cart1.items)
+challenge: |
+  cart1 and cart2 are sharing the same underlying list, so cart1.items
+  shows both carts' items. Fix ShoppingCart so each instance gets its own
+  independent list, and cart1.items ends up with just ['apple'].
+expected_output: |
+  ['apple']
+hints:
+  - "items = [] in the class body is shared by every instance -- it's a class attribute, not an instance attribute."
+  - "Move it into __init__ as self.items = []."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "def __init__"
+  - "self\\.items = \\[\\]"
+concept_tags: [classes, mutable_defaults, gotchas]

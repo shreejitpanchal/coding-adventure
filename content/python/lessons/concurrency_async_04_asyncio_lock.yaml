@@ -1,0 +1,65 @@
+id: concurrency_async_04
+title: "The Async Equivalent of a Race Condition"
+language: python
+level: 28
+objective: "Fix a lost-update bug in async code by protecting a read-await-write sequence with asyncio.Lock."
+explanation: |
+  asyncio is single-threaded, but coroutines can still interleave at
+  every `await` point -- if several coroutines read a shared value, then
+  `await` something, then write back based on what they read, they can
+  all read the same stale value before any of them writes, and updates
+  get lost. asyncio.Lock serializes the critical section the same way
+  threading.Lock does for threads, just for coroutines instead.
+example_code: |
+  import asyncio
+
+  total = 0
+  lock = asyncio.Lock()
+
+  async def add_one():
+      global total
+      async with lock:
+          current = total
+          await asyncio.sleep(0)
+          total = current + 1
+
+  async def main():
+      await asyncio.gather(*(add_one() for _ in range(5)))
+      print(total)
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  counter = 0
+
+  async def increment():
+      global counter
+      current = counter
+      await asyncio.sleep(0)
+      counter = current + 1
+
+  async def main():
+      await asyncio.gather(*(increment() for _ in range(5)))
+      print(counter)
+
+  asyncio.run(main())
+challenge: |
+  Right now every increment() reads the same stale counter value before
+  any of them writes back, so the final count comes out as 1 instead of
+  5. Add an asyncio.Lock around the read-await-write sequence so all 5
+  increments are applied correctly.
+expected_output: |
+  5
+hints:
+  - "lock = asyncio.Lock() at module scope."
+  - "Wrap the whole read/sleep/write sequence: `async with lock: ...`."
+xp_reward: 15
+achievement: concurrency_async_master
+category: concurrency_async
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.Lock\\(\\)"
+  - "async with lock"
+concept_tags: [asyncio, concurrency, locks]

@@ -1,0 +1,46 @@
+id: idioms_gotchas_01
+title: "The Sticky Shopping Cart"
+language: python
+level: 1
+objective: "Fix a function whose mutable default argument persists across calls instead of starting fresh each time."
+explanation: |
+  Default argument values are evaluated exactly once, at function definition
+  time, not on every call. When that default is a mutable object like a
+  list or dict, every call that doesn't pass its own argument shares the
+  SAME object, and mutations from one call leak into the next. This is one
+  of the most common real-world Python bugs, and linters flag `def f(x=[])`
+  on sight for exactly this reason.
+example_code: |
+  def add_tag(tag, tags=None):
+      if tags is None:
+          tags = []
+      tags.append(tag)
+      return tags
+
+  print(add_tag("urgent"))
+  print(add_tag("review"))
+starter_code: |
+  def add_item(item, cart=[]):
+      cart.append(item)
+      return cart
+
+  print(add_item("apple"))
+  print(add_item("bread"))
+challenge: |
+  Each call to add_item without an explicit cart should start with an empty
+  list. Right now the two calls share one list instead. Fix add_item so the
+  output shows two independent single-item carts.
+expected_output: |
+  ['apple']
+  ['bread']
+hints:
+  - "cart=[] only runs once, at def time -- not once per call."
+  - "Default cart to None, then do `if cart is None: cart = []` inside the function body."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "cart is None"
+concept_tags: [functions, mutable_defaults, gotchas]

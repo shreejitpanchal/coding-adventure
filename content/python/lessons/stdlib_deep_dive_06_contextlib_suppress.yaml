@@ -1,0 +1,38 @@
+id: stdlib_deep_dive_06
+title: "Suppressing an Expected Exception Cleanly"
+language: python
+level: 24
+objective: "Replace a try/except/pass block with contextlib.suppress for a clearer, more explicit idiom."
+explanation: |
+  contextlib.suppress(ExceptionType) reads as exactly what it means:
+  "this specific exception is expected here and can be ignored." It's a
+  more explicit, more restricted alternative to a bare try/except/pass,
+  which can accidentally swallow exceptions you didn't mean to catch.
+example_code: |
+  from contextlib import suppress
+  with suppress(ZeroDivisionError):
+      print(1 / 0)
+  print("still running")
+starter_code: |
+  try:
+      value = int("not a number")
+  except ValueError:
+      value = 0
+  print(value)
+challenge: |
+  Rewrite this using contextlib.suppress(ValueError) instead of
+  try/except, pre-setting value = 0 beforehand so the fallback still
+  applies when the conversion fails. Keep the same output.
+expected_output: |
+  0
+hints:
+  - "from contextlib import suppress"
+  - "Set value = 0 first, then `with suppress(ValueError): value = int(...)`."
+xp_reward: 15
+achievement: stdlib_deep_dive_master
+category: stdlib_deep_dive
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "suppress\\("
+concept_tags: [contextlib, exceptions]

@@ -1,0 +1,37 @@
+id: stdlib_deep_dive_01
+title: "Chaining Iterables Without Concatenating"
+language: python
+level: 19
+objective: "Use itertools.chain to treat multiple iterables as one sequence without building a new combined list."
+explanation: |
+  `a + b` allocates a brand new list containing copies of both. When you
+  only need to *iterate* over both in order (not build a combined list),
+  itertools.chain(a, b) does it lazily with no extra allocation --
+  useful when the inputs are large or aren't even lists (generators,
+  files, etc.).
+example_code: |
+  from itertools import chain
+  a = [1, 2]
+  b = (3, 4)
+  print(list(chain(a, b)))
+starter_code: |
+  a = [1, 2, 3]
+  b = [4, 5]
+  combined = a + b
+  print(list(combined))
+challenge: |
+  Rewrite this using itertools.chain(a, b) instead of the + concatenation,
+  keeping the same printed output.
+expected_output: |
+  [1, 2, 3, 4, 5]
+hints:
+  - "from itertools import chain"
+  - "list(chain(a, b)) walks a then b without building a combined list first."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "chain\\("
+concept_tags: [itertools]

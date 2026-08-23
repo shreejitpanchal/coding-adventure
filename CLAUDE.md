@@ -1,0 +1,81 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+"Coding Adventure" — an offline, GUI-based coding refresher app for **professionals**, not beginners. Covers Python, Java, C++, and Spring, one track at a time, chosen from a language picker shown on every launch (not auto-skipped). Built as a sibling to `../python-adventure-kids` (a kids' Python-learning app), reusing its architecture patterns (YAML-as-content, subprocess execution engine, SQLite progress store, Flet route-dispatcher UI) but retargeted for a professional audience and multi-language from day one. Single UI stack: **Flet only** (the old app's CustomTkinter/Flet dual-stack was a migration artifact, not something worth repeating here).
+
+## Commands
+
+Run all from the repo root, using the project venv at `.venv\Scripts\python.exe` (created by `run.bat`/`run.sh` on first launch).
+
+```powershell
+# Run the app
+.venv\Scripts\python.exe main.py
+
+# Full test suite
+.venv\Scripts\python.exe -m pytest tests\ -v
+
+# A single test file / test
+.venv\Scripts\python.exe -m pytest tests\test_lesson_engine.py -v
+.venv\Scripts\python.exe -m pytest tests\test_lesson_engine.py::test_name -v
+```
+
+There is no linter or formatter configured in this repo (no ruff/flake8/black/mypy config) — don't invent commands for one.
+
+## Architecture
+
+### Content is data, not code
+
+Exercises live as YAML files under `content/<language>/lessons/` (one file per exercise), loaded by `ExerciseEngine._load()` (`app/engine/lesson_engine.py`) into `Exercise` dataclass instances (`app/engine/exercise.py`). **Adding or changing an exercise never requires touching app code** — add a YAML file. One `ExerciseEngine` instance exists per language track (`AppState.exercise_engine()` builds and caches them lazily — see `app/ui/app_state.py`). Key `Exercise` fields beyond the obvious: `language` (which track it belongs to), `category`/`category_level` (topic-browser placement, 1-based position within category), `difficulty` (warmup/core/gotcha/deep_dive, purely descriptive), `expected_output` / `expected_output_pattern` (exact-match vs. regex, for exercises with non-deterministic output), `input_prompt` (stdin-fed answer box), `contains_patterns` (structural check via regex against raw source — a language-agnostic replacement for the kids app's Python-AST-only `ast_contains`, since this app needs the same field to work for Java/C++ content too).
+
+Quiz questions work the same way: `content/<language>/quiz/quiz_questions.yaml`, loaded by `QuizEngine` (`app/engine/quiz_engine.py`) into `QuizQuestion` instances (`app/engine/quiz.py`).
+
+### One flat topic browser, no guided "main path" chaining
+
+Unlike the kids app's "Today's Mission" (a strict `next_lesson_id`-chained sequence), this app has no single guided curriculum order. Two ways to reach an exercise:
+
+1. **Daily Refresher** — `ExerciseEngine.daily_refresher()` computes a small (default 5) cross-topic set live on every call, round-robining the next unlocked/incomplete exercise from each category so a short daily session naturally touches every topic instead of grinding one at a time. Not stored anywhere — recomputed each visit based on current completion state.
+2. **Practice by Topic / Gotcha Gauntlet** — every exercise has a `category` + 1-based `category_level`; `ExerciseEngine.categories()`/`lessons_in_category()` group and order them, `is_unlocked()` derives lock state purely from `completed_lesson_ids` (a level unlocks once every earlier `category_level` in the same category is complete — no separate unlock-tracking schema). Category display metadata (title/icon/color) is in `app/engine/categories.py`'s `CATEGORY_META`; a category with no entry falls back to `DEFAULT_META`, but the category itself still works since the real set of categories is derived entirely from what's present in lesson YAML. The "Gotcha Gauntlet" flagship debug-puzzle track is just a category (`gotcha_gauntlet`) that gets its own top-level card in the track hub instead of being buried in the plain category browser.
+
+### Execution: real local toolchains, not a safety sandbox
+
+`app/execution/` — one `ExecutionEngine` subclass per language (`app/execution/base.py` defines the ABC and the shared `ExecutionResult`/`RunHandle` contract). Framing is deliberately **crash-containment, not child safety**: exercises run the user's own code, on their own machine, on purpose — there's no adversarial threat model to defend against the way the kids app's AST-based builtins/import allowlist had to. A timeout and subprocess isolation exist so a runaway loop can't hang the UI, not to sandbox against malice.
+
+- **`python_engine.py`** — the only fully implemented engine. A fast local `compile()` syntax pre-check, then `python -I <file>` in an isolated subprocess with a timeout (default 8s) and stdin piped through (always fed, even `""`, so a stray `input()` fails fast with `EOFError` instead of hanging). Cancelable mid-run via `RunHandle`.
+- **`java_engine.py` / `cpp_engine.py` / `spring_engine.py`** — interfaces defined, bodies raise `NotImplementedError`. Each has a docstring describing its planned shape (`javac`+`java`; `g++`+run binary; Spring needs a fundamentally different shape — a scaffolded Maven project per exercise run via `mvn test`, not a single-file run). `app/execution/registry.get_engine(language)` is the lookup point once these are built out.
+- **`app/execution/toolchain_check.py`** — `shutil.which()`-based detection of whether a language's real toolchain (javac/java, g++, mvn) is on PATH, meant to gate the UI showing a track as usable vs. a friendly "toolchain not found" message. Python needs nothing (bundled with the app's own venv).
+- **`app/execution/errors.py`** — `translate_error(stderr, language)` maps raw interpreter/compiler output to a concise explanation; only the Python table (`PYTHON_FRIENDLY`) is filled in.
+
+### Output validation
+
+`app/engine/validator.py`: `validate_output()` compares sandboxed stdout against `Exercise.expected_output` (supports a `{input}` placeholder templated from what the user typed) or, for exercises with genuinely non-deterministic output, `expected_output_pattern` (a regex). `validate_contains()` is a language-agnostic replacement for the kids app's Python-AST-only structural check — plain regex search against the raw submitted source, checking `Exercise.contains_patterns` (e.g. requiring a specific stdlib call the exercise is actually teaching, not just a correct-by-coincidence answer).
+
+### Data storage
+
+Fully offline, no network/cloud/accounts. `settings.json` + `progress.sqlite3` live in `%APPDATA%\CodingAdventure` (`app/config/platform_paths.py`), resolved via `app/config/settings.py`. **Progress is tracked per language track** — every table in `app/progress/store.py`'s schema (`profile`, `lesson_completions`, `badges`, `activity_log`, `quiz_attempts`, `player_xp`) is keyed by a `language` column, so switching tracks never mixes XP/streaks/completions between them. `ProgressStore` methods all take `language` as their first argument accordingly (e.g. `complete_lesson(language, lesson_id, xp_reward)`, `get_player_level(language)`).
+
+### UI shell
+
+`app/ui/app_window.py` is the route dispatcher: `page.views.clear()` + `page.views.append(...)` on every route change, rebuilding exactly one view fresh each time (avoids ever showing stale XP/progress numbers from a view built earlier). A Python-side `history: list[str]` stands in for back-navigation since `page.views` is deliberately kept at length 1. `AppState` (`app/ui/app_state.py`) is built once in `main()` and threaded through every view-builder function as an explicit parameter — settings, progress store, and per-language exercise/quiz engines (lazily built and cached per language key). Routing always starts at `/setup` (first run only) then `/languages` — the language picker is shown on **every** launch, not auto-skipped based on the last-selected track (explicit product requirement, not an oversight).
+
+### Directory layout
+
+```
+app/
+  ui/          # Flet screens: app_window (router), app_state, language_select, track_hub,
+               # category_map/category_levels, daily_refresher, lesson_screen, quiz_screen,
+               # progress_screen, settings_screen, setup_wizard, theme, code_editor
+  engine/      # Exercise/QuizQuestion dataclasses, YAML loaders, category logic, validator
+  execution/   # ExecutionEngine ABC + per-language engines (only Python implemented) + registry
+  progress/    # SQLite-backed XP/streaks/badges/activity log, per-language
+  config/      # settings persistence + platform-appropriate data directory resolution
+content/
+  <language>/lessons/       # one YAML file per exercise
+  <language>/quiz/          # quiz_questions.yaml
+  # only content/python/ has real content; java/cpp/spring dirs exist but are empty (.gitkeep)
+tests/         # pytest suite, one file per module roughly mirroring app/
+main.py        # Flet entry point (`ft.run(main)`)
+run.bat/run.sh # first-run venv bootstrap + launch
+```

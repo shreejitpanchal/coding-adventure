@@ -1,0 +1,36 @@
+id: stdlib_deep_dive_05
+title: "Adding Type Hints for Clarity and Tooling"
+language: python
+level: 23
+objective: "Add type hints to a function signature without changing its runtime behavior."
+explanation: |
+  Type hints (PEP 484) don't change what a function does at runtime --
+  Python doesn't enforce them -- but they let type checkers (mypy,
+  pyright) and IDEs catch real bugs before the code ever runs, and they
+  document the contract for anyone reading the signature.
+example_code: |
+  def area(width: float, height: float) -> float:
+      return width * height
+
+  print(area(2.0, 3.0))
+starter_code: |
+  def add(a, b):
+      return a + b
+
+  print(add(2, 3))
+challenge: |
+  Add type hints to add: both parameters and the return value should be
+  annotated as int. Keep the same output.
+expected_output: |
+  5
+hints:
+  - "Parameter hints go after a colon: def add(a: int, b: int)"
+  - "Return hints go after an arrow: -> int:"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 5
+difficulty: core
+contains_patterns:
+  - "def add\\(a: int, b: int\\) -> int"
+concept_tags: [typing]

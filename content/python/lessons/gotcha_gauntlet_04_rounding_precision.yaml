@@ -1,0 +1,37 @@
+id: gotcha_gauntlet_04
+title: "The Price That Rounded the Wrong Way"
+language: python
+level: 33
+objective: "Fix an unreliable float rounding result by switching to Decimal for money-like precision."
+explanation: |
+  2.675 can't be represented exactly as a binary float -- it's actually
+  stored as very slightly less than 2.675, so round(2.675, 2) gives 2.67,
+  not the 2.68 you'd expect from ordinary rounding rules. For money and
+  anything else requiring exact decimal rounding, use the decimal module
+  instead of binary floats.
+example_code: |
+  from decimal import Decimal, ROUND_HALF_UP
+  price = Decimal("9.995")
+  print(price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+starter_code: |
+  price = 2.675
+  rounded = round(price, 2)
+  print(rounded)
+challenge: |
+  round(2.675, 2) unreliably gives 2.67 due to binary float
+  representation. Rewrite this using decimal.Decimal (constructed from
+  the string "2.675") with quantize(..., rounding=ROUND_HALF_UP) so it
+  reliably prints 2.68.
+expected_output: |
+  2.68
+hints:
+  - "from decimal import Decimal, ROUND_HALF_UP"
+  - "Decimal(\"2.675\").quantize(Decimal(\"0.01\"), rounding=ROUND_HALF_UP)"
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "Decimal"
+concept_tags: [floats, decimal, precision, gotchas]

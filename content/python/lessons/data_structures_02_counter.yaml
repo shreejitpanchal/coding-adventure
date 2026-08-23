@@ -1,0 +1,36 @@
+id: data_structures_02
+title: "Tallying with Counter"
+language: python
+level: 14
+objective: "Use collections.Counter instead of a manual tally dict."
+explanation: |
+  Counter is a dict subclass purpose-built for counting hashable items --
+  Counter(iterable) tallies everything in one call, and most_common(n)
+  gives you the top n items by count without writing any sorting code
+  yourself.
+example_code: |
+  from collections import Counter
+  letters = Counter("mississippi")
+  print(letters.most_common(1))
+starter_code: |
+  votes = ["dog", "cat", "dog", "dog", "cat", "fish"]
+  tally = {}
+  for v in votes:
+      tally[v] = tally.get(v, 0) + 1
+  print(tally["dog"])
+challenge: |
+  Rewrite this using collections.Counter, and print the single most common
+  vote as a (name, count) pair via most_common(1).
+expected_output: |
+  [('dog', 3)]
+hints:
+  - "from collections import Counter"
+  - "Counter(votes).most_common(1) returns a list of the top (item, count) pairs."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "Counter\\("
+concept_tags: [collections, counting]

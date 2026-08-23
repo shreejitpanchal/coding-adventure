@@ -1,0 +1,45 @@
+id: core_refresher_03
+title: "Wrapping a Function with a Decorator"
+language: python
+level: 9
+objective: "Write a simple decorator and apply it with @ syntax."
+explanation: |
+  A decorator is a function that takes a function and returns a new
+  function wrapping it -- the `@decorator` syntax above a `def` is just
+  sugar for `func = decorator(func)`. It's the standard pattern for
+  cross-cutting behavior (timing, logging, caching, access control)
+  without touching the wrapped function's own body.
+example_code: |
+  def shout(func):
+      def wrapper(*args, **kwargs):
+          return func(*args, **kwargs).upper()
+      return wrapper
+
+  @shout
+  def greet(name):
+      return f"hi, {name}"
+
+  print(greet("sam"))
+starter_code: |
+  def greet(name):
+      return f"Hello, {name}!"
+
+  print(greet("Ada"))
+challenge: |
+  Write a decorator called shout that uppercases whatever the wrapped
+  function returns, apply it to greet with @shout, and keep the same call
+  site. Output should be "HELLO, ADA!".
+expected_output: |
+  HELLO, ADA!
+hints:
+  - "A decorator returns a wrapper function that calls the original and transforms the result."
+  - "def wrapper(*args, **kwargs): return func(*args, **kwargs).upper()"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "def shout"
+  - "@shout"
+concept_tags: [decorators, functions]

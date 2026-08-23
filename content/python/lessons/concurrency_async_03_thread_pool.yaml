@@ -1,0 +1,46 @@
+id: concurrency_async_03
+title: "Running I/O-Bound Work Concurrently"
+language: python
+level: 27
+objective: "Use concurrent.futures.ThreadPoolExecutor to run independent I/O-bound tasks concurrently instead of sequentially."
+explanation: |
+  Threads release the GIL while blocked on I/O (like time.sleep, network
+  calls, or file reads), so threading genuinely helps for I/O-bound work
+  even though it doesn't help for CPU-bound work. ThreadPoolExecutor.map
+  is the concise way to fan a function out across a pool of worker
+  threads and collect results in order.
+example_code: |
+  import time
+  from concurrent.futures import ThreadPoolExecutor
+
+  def slow_double(n):
+      time.sleep(0.01)
+      return n * 2
+
+  with ThreadPoolExecutor(max_workers=4) as pool:
+      print(list(pool.map(slow_double, range(4))))
+starter_code: |
+  import time
+
+  def fetch(n):
+      time.sleep(0.05)
+      return n * n
+
+  results = [fetch(n) for n in range(4)]
+  print(results)
+challenge: |
+  Rewrite this using ThreadPoolExecutor.map to run the four fetch() calls
+  concurrently instead of one at a time, keeping the same output.
+expected_output: |
+  [0, 1, 4, 9]
+hints:
+  - "from concurrent.futures import ThreadPoolExecutor"
+  - "with ThreadPoolExecutor(max_workers=4) as pool: results = list(pool.map(fetch, range(4)))"
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "ThreadPoolExecutor"
+concept_tags: [concurrency, threading, futures]

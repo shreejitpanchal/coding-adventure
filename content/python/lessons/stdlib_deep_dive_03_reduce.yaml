@@ -1,0 +1,35 @@
+id: stdlib_deep_dive_03
+title: "Folding a List Into One Value"
+language: python
+level: 21
+objective: "Use functools.reduce to combine a sequence into a single accumulated value."
+explanation: |
+  reduce(func, iterable) repeatedly applies a two-argument function,
+  carrying an accumulated value forward -- the general-purpose "fold"
+  operation. It's the right tool whenever a manual for-loop is just
+  accumulating one running value across a sequence.
+example_code: |
+  from functools import reduce
+  print(reduce(lambda acc, n: acc + n, [1, 2, 3, 4], 0))
+starter_code: |
+  numbers = [1, 2, 3, 4]
+  product = 1
+  for n in numbers:
+      product *= n
+  print(product)
+challenge: |
+  Rewrite this using functools.reduce and operator.mul instead of the
+  explicit loop, keeping the same output.
+expected_output: |
+  24
+hints:
+  - "from functools import reduce; from operator import mul"
+  - "reduce(mul, numbers) multiplies every element together."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "reduce\\("
+concept_tags: [functools, reduce]

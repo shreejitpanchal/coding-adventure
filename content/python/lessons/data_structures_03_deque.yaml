@@ -1,0 +1,40 @@
+id: data_structures_03
+title: "O(1) Queue Operations with deque"
+language: python
+level: 15
+objective: "Replace a list-as-queue (with pop(0)) with collections.deque for O(1) operations on both ends."
+explanation: |
+  list.pop(0) is O(n) -- every remaining element has to shift left one
+  slot. collections.deque supports O(1) appendleft/append and
+  popleft/pop, making it the right structure whenever you're using a list
+  as a queue (or a ring buffer, or need fast operations at both ends).
+example_code: |
+  from collections import deque
+  d = deque([1, 2, 3])
+  d.appendleft(0)
+  print(d.popleft())
+  print(list(d))
+starter_code: |
+  queue = []
+  queue.append(1)
+  queue.append(2)
+  queue.append(3)
+  first = queue.pop(0)
+  print(first, queue)
+challenge: |
+  Rewrite this using collections.deque and popleft() instead of
+  list.pop(0), keeping the same output.
+expected_output: |
+  1 [2, 3]
+hints:
+  - "from collections import deque"
+  - "queue = deque(); queue.append(...); first = queue.popleft()"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "deque\\("
+  - "popleft"
+concept_tags: [collections, deque, performance]

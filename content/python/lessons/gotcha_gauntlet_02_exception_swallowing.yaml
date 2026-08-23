@@ -1,0 +1,47 @@
+id: gotcha_gauntlet_02
+title: "The Bare Except That Hid a Real Bug"
+language: python
+level: 31
+objective: "Fix a real bug that a bare except clause was silently swallowing instead of surfacing."
+explanation: |
+  A bare `except:` catches *everything*, including bugs that have
+  nothing to do with the failure you meant to handle -- like a typo'd
+  variable name raising NameError. That gets silently mapped to the same
+  fallback as a genuine parse failure, hiding the real problem. Catching
+  the specific exception you actually expect (ValueError here) lets
+  unrelated bugs surface instead of vanishing.
+example_code: |
+  def parse_count(text):
+      try:
+          return int(text)
+      except ValueError:
+          return 0
+
+  print(parse_count("12"))
+  print(parse_count("oops"))
+starter_code: |
+  def parse_age(text):
+      try:
+          return int(txt)
+      except:
+          return -1
+
+  print(parse_age("25"))
+challenge: |
+  This should print 25, but a typo (txt instead of text) is raising a
+  NameError that the bare except is silently swallowing, hiding the real
+  bug. Fix the typo, and narrow the except to ValueError so a mistake
+  like this can't hide behind it again.
+expected_output: |
+  25
+hints:
+  - "The bare except is catching something other than the parse failure it was meant for."
+  - "Fix `txt` to `text`, and change `except:` to `except ValueError:`."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "except ValueError"
+concept_tags: [exceptions, debugging, gotchas]

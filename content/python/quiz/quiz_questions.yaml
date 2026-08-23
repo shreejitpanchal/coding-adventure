@@ -1,0 +1,550 @@
+questions:
+  - id: q01
+    question: "What's the risk of `def f(x=[])`?"
+    options:
+      - "Nothing, it's perfectly safe"
+      - "The default list is created fresh each call"
+      - "The default list is shared across every call that doesn't pass x"
+      - "It raises a SyntaxError"
+    correct: 2
+    explanation: "Default argument values are evaluated once, at def time -- a mutable default is shared by every call that relies on it."
+    concept_tags: [mutable_defaults, gotchas]
+
+  - id: q02
+    question: "When are Python default argument values evaluated?"
+    options:
+      - "Every time the function is called"
+      - "Once, when the function is defined"
+      - "Only the first time the function is called"
+      - "Never, they're re-evaluated lazily"
+    correct: 1
+    explanation: "Defaults are evaluated once at def time, not per call."
+    concept_tags: [functions, mutable_defaults]
+
+  - id: q03
+    question: "Why does a lambda created inside a for-loop often capture the 'wrong' value?"
+    options:
+      - "Lambdas can't access outer variables"
+      - "The loop variable is captured by reference and reflects its final value"
+      - "Python copies the variable at lambda-creation time"
+      - "Lambdas run before the loop starts"
+    correct: 1
+    explanation: "Closures capture variables by reference, so by the time the lambda runs, the loop variable holds its final value."
+    concept_tags: [closures, late_binding]
+
+  - id: q04
+    question: "How do you fix late-binding in a loop-created lambda?"
+    options:
+      - "Use a global variable instead"
+      - "Give the lambda a default argument bound to the current value"
+      - "Use a while loop instead of for"
+      - "Wrap the lambda in a list comprehension"
+    correct: 1
+    explanation: "A default argument like `lambda i=i: i` is evaluated at definition time, capturing the current value."
+    concept_tags: [closures, late_binding]
+
+  - id: q05
+    question: "What does `is` check in Python?"
+    options:
+      - "Whether two values are equal"
+      - "Whether two names refer to the exact same object"
+      - "Whether two objects have the same type"
+      - "Whether two objects have the same hash"
+    correct: 1
+    explanation: "`is` checks object identity, not equality of contents."
+    concept_tags: [identity, equality]
+
+  - id: q06
+    question: "Two separately built lists with identical contents -- what does `a is b` return?"
+    options:
+      - "Always True"
+      - "False, since they're different objects even with equal contents"
+      - "True only if both are empty"
+      - "It raises a TypeError"
+    correct: 1
+    explanation: "Identity is about the object, not its contents -- two distinct list objects are never `is`-equal even with the same values."
+    concept_tags: [identity, equality, gotchas]
+
+  - id: q07
+    question: "Why does `0.1 + 0.2 == 0.3` return False in Python?"
+    options:
+      - "Python has a bug in float addition"
+      - "Decimal fractions can't be represented exactly in binary floating-point"
+      - "0.1 and 0.2 are strings by default"
+      - "The == operator doesn't work on floats"
+    correct: 1
+    explanation: "Binary floating-point can't exactly represent most decimal fractions, so tiny representation errors accumulate."
+    concept_tags: [floats, precision, gotchas]
+
+  - id: q08
+    question: "What's the right way to compare floats for 'close enough' equality?"
+    options:
+      - "Use =="
+      - "Round both to int first"
+      - "Use math.isclose()"
+      - "Convert both to strings and compare"
+    correct: 2
+    explanation: "math.isclose() compares within a tolerance instead of requiring exact bit-for-bit equality."
+    concept_tags: [floats, precision]
+
+  - id: q09
+    question: "What happens when you write `backup = original` for a list?"
+    options:
+      - "backup becomes an independent copy"
+      - "backup and original point to the same list object"
+      - "Python raises a TypeError"
+      - "backup becomes an empty list"
+    correct: 1
+    explanation: "Assignment binds a new name to the same object -- it doesn't copy."
+    concept_tags: [aliasing, copying, gotchas]
+
+  - id: q10
+    question: "Which of these creates an independent copy of a list?"
+    options:
+      - "new = old"
+      - "new = old.copy()"
+      - "new = old; new.clear()"
+      - "new = old[0]"
+    correct: 1
+    explanation: ".copy() (or list(old), or old[:]) creates a new, independent list object."
+    concept_tags: [aliasing, copying, lists]
+
+  - id: q11
+    question: "What does list.sort() return?"
+    options:
+      - "The sorted list"
+      - "None"
+      - "A new sorted copy"
+      - "The number of elements sorted"
+    correct: 1
+    explanation: "list.sort() mutates in place and returns None -- a common gotcha when someone writes `return x.sort()`."
+    concept_tags: [lists, sorting, gotchas]
+
+  - id: q12
+    question: "Which builtin returns a new sorted list without mutating the original?"
+    options:
+      - "list.sort()"
+      - "sorted()"
+      - "list.reverse()"
+      - "list.copy()"
+    correct: 1
+    explanation: "sorted() returns a brand-new sorted list, leaving the original untouched."
+    concept_tags: [lists, sorting]
+
+  - id: q13
+    question: "What's the general shape of a list comprehension?"
+    options:
+      - "[for item in iterable: expression]"
+      - "[expression for item in iterable if condition]"
+      - "(expression in iterable for item)"
+      - "{item: expression for iterable}"
+    correct: 1
+    explanation: "expression comes first, then the for clause, then an optional if filter."
+    concept_tags: [comprehensions, lists]
+
+  - id: q14
+    question: "What does *args collect inside a function?"
+    options:
+      - "A dict of keyword arguments"
+      - "A tuple of positional arguments"
+      - "A list of default values"
+      - "Nothing, it's just documentation"
+    correct: 1
+    explanation: "*args gathers any extra positional arguments into a tuple."
+    concept_tags: [functions, args]
+
+  - id: q15
+    question: "What does **kwargs collect inside a function?"
+    options:
+      - "A tuple of positional arguments"
+      - "A dict of keyword arguments"
+      - "A set of argument names"
+      - "A list of types"
+    correct: 1
+    explanation: "**kwargs gathers any extra keyword arguments into a dict."
+    concept_tags: [functions, kwargs]
+
+  - id: q16
+    question: "What is `@decorator` syntax sugar for?"
+    options:
+      - "func = decorator(func)"
+      - "decorator = func()"
+      - "func()"
+      - "class Decorator(func)"
+    correct: 0
+    explanation: "The @ syntax is equivalent to reassigning the function name to the decorator's return value."
+    concept_tags: [decorators, functions]
+
+  - id: q17
+    question: "What two dunder methods make a class usable with `with`?"
+    options:
+      - "__init__ and __del__"
+      - "__enter__ and __exit__"
+      - "__start__ and __stop__"
+      - "__open__ and __close__"
+    correct: 1
+    explanation: "__enter__ runs at the top of the with block, __exit__ at the end."
+    concept_tags: [context_managers, with_statement]
+
+  - id: q18
+    question: "Does __exit__ still run if an exception is raised inside a with block?"
+    options:
+      - "No, never"
+      - "Yes, it still runs, even if the block raised"
+      - "Only if you call it manually"
+      - "Only in Python 2"
+    correct: 1
+    explanation: "__exit__ is guaranteed to run for cleanup, exception or not -- that's the whole point of context managers."
+    concept_tags: [context_managers]
+
+  - id: q19
+    question: "What does @dataclass automatically generate from annotated fields?"
+    options:
+      - "Only __init__"
+      - "__init__, __repr__, and __eq__"
+      - "A database schema"
+      - "Only __repr__"
+    correct: 1
+    explanation: "@dataclass generates the common boilerplate methods from type-annotated class attributes."
+    concept_tags: [dataclasses, classes]
+
+  - id: q20
+    question: "Why prefer an Enum over raw string constants for a fixed set of states?"
+    options:
+      - "Enums are faster at runtime"
+      - "A typo referencing an Enum member raises an AttributeError instead of silently failing"
+      - "Enums use less memory"
+      - "Strings can't be compared with =="
+    correct: 1
+    explanation: "A misspelled string constant just silently fails to match; a misspelled Enum member fails loudly."
+    concept_tags: [enums]
+
+  - id: q21
+    question: "What does collections.defaultdict(list) do the first time a new key is accessed?"
+    options:
+      - "Raises a KeyError"
+      - "Automatically creates an empty list for that key"
+      - "Returns None"
+      - "Deletes the key"
+    correct: 1
+    explanation: "defaultdict auto-creates a default value (from the factory) on first access to a missing key."
+    concept_tags: [dictionaries, collections]
+
+  - id: q22
+    question: "What does Counter(iterable).most_common(1) return?"
+    options:
+      - "The single most frequent item and its count, as a list of one tuple"
+      - "A dict of all counts"
+      - "The least frequent item"
+      - "A sorted list of all items"
+    correct: 0
+    explanation: "most_common(n) returns the top n (item, count) pairs, most frequent first."
+    concept_tags: [collections, counting]
+
+  - id: q23
+    question: "Why is collections.deque preferred over a list for pop-from-front operations?"
+    options:
+      - "deque is immutable"
+      - "list.pop(0) is O(n); deque.popleft() is O(1)"
+      - "deque supports negative indexing and list doesn't"
+      - "There's no real difference"
+    correct: 1
+    explanation: "Removing from the front of a list shifts every remaining element; deque avoids that entirely."
+    concept_tags: [collections, deque, performance]
+
+  - id: q24
+    question: "What does heapq.nsmallest(3, data) do compared to sorted(data)[:3]?"
+    options:
+      - "Produces a different, unsorted result"
+      - "Gets the same result more efficiently for large data"
+      - "Only works on tuples"
+      - "Mutates data in place"
+    correct: 1
+    explanation: "nsmallest avoids sorting the entire list just to keep the first few elements."
+    concept_tags: [heapq, algorithms]
+
+  - id: q25
+    question: "What does bisect.insort do?"
+    options:
+      - "Sorts an entire list from scratch"
+      - "Inserts a value into an already-sorted list at the correct position"
+      - "Removes duplicates from a list"
+      - "Reverses a sorted list"
+    correct: 1
+    explanation: "insort uses binary search to find the right spot and inserts there, without re-sorting everything."
+    concept_tags: [bisect, algorithms]
+
+  - id: q26
+    question: "What's the benefit of using a set for membership testing over a list?"
+    options:
+      - "No benefit, both are O(1)"
+      - "Sets give O(1) average membership checks vs O(n) for lists"
+      - "Sets use less memory only"
+      - "Sets preserve insertion order, lists don't"
+    correct: 1
+    explanation: "Set membership is a hash lookup; list membership is a linear scan."
+    concept_tags: [sets, algorithms]
+
+  - id: q27
+    question: "What does itertools.chain(a, b) do?"
+    options:
+      - "Concatenates a and b into a new list immediately"
+      - "Lazily iterates over a then b without building a combined list"
+      - "Zips a and b together"
+      - "Raises an error if a and b differ in length"
+    correct: 1
+    explanation: "chain walks each iterable in turn lazily, without allocating a combined structure."
+    concept_tags: [itertools]
+
+  - id: q28
+    question: "What does @lru_cache do to a function?"
+    options:
+      - "Limits how many times it can be called"
+      - "Caches return values by argument, skipping recomputation on repeat calls"
+      - "Runs it in a separate thread"
+      - "Logs every call to the console"
+    correct: 1
+    explanation: "lru_cache memoizes results keyed by the call's arguments."
+    concept_tags: [functools, memoization]
+
+  - id: q29
+    question: "What does functools.reduce(func, iterable, initial) do?"
+    options:
+      - "Filters iterable down to items matching func"
+      - "Applies func cumulatively across iterable, carrying an accumulator"
+      - "Removes duplicates using func as a key"
+      - "Sorts iterable using func as a comparator"
+    correct: 1
+    explanation: "reduce is the general 'fold' operation, combining a sequence into one accumulated value."
+    concept_tags: [functools, reduce]
+
+  - id: q30
+    question: "What's an advantage of pathlib.Path over manual string concatenation for paths?"
+    options:
+      - "It's the only way to open a file in Python"
+      - "It provides properties like .stem/.suffix and joins paths correctly with /"
+      - "It's faster at runtime"
+      - "It only works on Linux"
+    correct: 1
+    explanation: "Path objects expose structured properties and handle platform separators, unlike raw string joining."
+    concept_tags: [pathlib, filesystem]
+
+  - id: q31
+    question: "Do Python type hints get enforced at runtime by default?"
+    options:
+      - "Yes, TypeError is raised on mismatch"
+      - "No, they're purely for tooling (type checkers, IDEs) unless you add your own checks"
+      - "Only in Python 3.12+"
+      - "Only for builtin types"
+    correct: 1
+    explanation: "Type hints are not checked at runtime by the interpreter itself -- that's the job of a separate type checker."
+    concept_tags: [typing]
+
+  - id: q32
+    question: "What does `with contextlib.suppress(ValueError):` do?"
+    options:
+      - "Logs every ValueError to a file"
+      - "Silently ignores a ValueError raised inside the block"
+      - "Converts ValueError into a warning"
+      - "Prevents ValueError from ever being raised anywhere in the program"
+    correct: 1
+    explanation: "suppress is a scoped, explicit alternative to a bare try/except/pass for one specific exception type."
+    concept_tags: [contextlib, exceptions]
+
+  - id: q33
+    question: "In what order does asyncio.gather(*coros) return results?"
+    options:
+      - "Completion order"
+      - "The same order the coroutines were passed in"
+      - "Random order"
+      - "Reverse order"
+    correct: 1
+    explanation: "gather preserves input order in the returned results, regardless of which coroutine finishes first."
+    concept_tags: [asyncio, concurrency]
+
+  - id: q34
+    question: "Why is `counter += 1` from multiple threads unsafe without a lock?"
+    options:
+      - "+= doesn't work on integers"
+      - "It's not atomic -- threads can interleave between the read and the write"
+      - "Python doesn't allow global variables in threads"
+      - "counter would become a string"
+    correct: 1
+    explanation: "Read-modify-write is several steps; two threads can read the same value before either writes back, losing an update."
+    concept_tags: [threading, race_conditions]
+
+  - id: q35
+    question: "What does a threading.Lock's `with lock:` block guarantee?"
+    options:
+      - "The code runs faster"
+      - "Only one thread executes that block at a time"
+      - "The block runs in a separate process"
+      - "Exceptions inside are automatically retried"
+    correct: 1
+    explanation: "A lock serializes access to the critical section across threads."
+    concept_tags: [threading, concurrency]
+
+  - id: q36
+    question: "Why is asyncio suited to I/O-bound work but not CPU-bound work?"
+    options:
+      - "It has no relation to I/O vs CPU work"
+      - "Coroutines cooperatively yield at await points, but a CPU-bound loop never yields"
+      - "asyncio can only call network functions"
+      - "CPU-bound code raises errors in asyncio"
+    correct: 1
+    explanation: "Concurrency in asyncio comes from yielding at await points -- a tight CPU-bound loop with no awaits blocks everything."
+    concept_tags: [asyncio, concurrency]
+
+  - id: q37
+    question: "What does asyncio.Lock protect against, compared to threading.Lock?"
+    options:
+      - "Nothing different, they're identical"
+      - "The same kind of lost-update bug, but between coroutines interleaving at await points instead of OS threads"
+      - "Only file access races"
+      - "Only network races"
+    correct: 1
+    explanation: "asyncio.Lock serializes a critical section against other coroutines the same way threading.Lock does against threads."
+    concept_tags: [asyncio, concurrency, locks]
+
+  - id: q38
+    question: "What does asyncio.wait_for(coro, timeout=...) do if the timeout elapses?"
+    options:
+      - "Silently returns None"
+      - "Raises asyncio.TimeoutError and cancels the coroutine"
+      - "Retries the coroutine automatically"
+      - "Blocks forever anyway"
+    correct: 1
+    explanation: "wait_for enforces a deadline, cancelling the wrapped coroutine and raising TimeoutError if it isn't done in time."
+    concept_tags: [asyncio, timeouts]
+
+  - id: q39
+    question: "ThreadPoolExecutor is most useful for which kind of workload?"
+    options:
+      - "CPU-bound number crunching"
+      - "I/O-bound work like network calls or sleeping"
+      - "Only GUI applications"
+      - "Only file compression"
+    correct: 1
+    explanation: "Threads release the GIL while blocked on I/O, so threading genuinely helps there -- unlike pure CPU-bound work."
+    concept_tags: [concurrency, threading, futures]
+
+  - id: q40
+    question: "What does data[-3:] mean for a list?"
+    options:
+      - "The first three elements"
+      - "The last three elements"
+      - "Every third element"
+      - "An empty list"
+    correct: 1
+    explanation: "Negative indices count from the end, so -3: means 'from the third-to-last element onward'."
+    concept_tags: [slicing]
+
+  - id: q41
+    question: "What's the risk of a bare `except:` clause?"
+    options:
+      - "It's slower than except Exception"
+      - "It catches unrelated bugs (like a NameError from a typo) along with the exception you meant to handle"
+      - "It's a SyntaxError in Python 3"
+      - "It only catches KeyboardInterrupt"
+    correct: 1
+    explanation: "A bare except silently swallows everything, hiding real bugs behind the same fallback as an expected failure."
+    concept_tags: [exceptions, debugging, gotchas]
+
+  - id: q42
+    question: "A mutable list assigned directly in a class body (not in __init__) is:"
+    options:
+      - "A fresh copy per instance"
+      - "A single object shared by every instance of the class"
+      - "Automatically deep-copied on each access"
+      - "Read-only"
+    correct: 1
+    explanation: "Class-body attributes are class attributes -- one object shared across all instances until an instance shadows it."
+    concept_tags: [classes, mutable_defaults, gotchas]
+
+  - id: q43
+    question: "Where should self.items = [] go to give every instance its own list?"
+    options:
+      - "Directly in the class body"
+      - "Inside __init__"
+      - "Inside a @staticmethod"
+      - "It doesn't matter"
+    correct: 1
+    explanation: "__init__ runs per instance, so assigning there creates a fresh list for each one."
+    concept_tags: [classes, mutable_defaults]
+
+  - id: q44
+    question: "Why can round(2.675, 2) give 2.67 instead of the expected 2.68?"
+    options:
+      - "round() is broken"
+      - "2.675 isn't exactly representable in binary floating-point, so it's actually stored slightly below 2.675"
+      - "Python always rounds down"
+      - "round() only works on integers"
+    correct: 1
+    explanation: "The float literal 2.675 is really a value very slightly less than 2.675, so rounding sees it as closer to 2.67."
+    concept_tags: [floats, decimal, precision, gotchas]
+
+  - id: q45
+    question: "What module gives exact decimal rounding, unlike binary floats?"
+    options:
+      - "fractions"
+      - "decimal"
+      - "math"
+      - "statistics"
+    correct: 1
+    explanation: "decimal.Decimal represents numbers in base 10 exactly, avoiding binary-float representation error."
+    concept_tags: [decimal, precision]
+
+  - id: q46
+    question: "Why does deleting keys while iterating a dict directly raise a RuntimeError?"
+    options:
+      - "Dicts can never be modified"
+      - "The live iterator is invalidated by changing the dict's size mid-iteration"
+      - "del is not allowed inside loops"
+      - "Python requires a lock for all dict access"
+    correct: 1
+    explanation: "Mutating a dict's size while an iterator is walking it invalidates that iterator."
+    concept_tags: [dictionaries, iteration, gotchas]
+
+  - id: q47
+    question: "How do you safely delete dict keys while iterating?"
+    options:
+      - "Iterate over list(d) (a snapshot of the keys) instead of d directly"
+      - "Use a while True loop"
+      - "Convert the dict to a set first"
+      - "It's never safe"
+    correct: 0
+    explanation: "Iterating a snapshot of the keys means deletions from the live dict don't disturb what you're walking."
+    concept_tags: [dictionaries, iteration]
+
+  - id: q48
+    question: "What happens if a subclass overrides __init__ without calling super().__init__()?"
+    options:
+      - "Python raises a SyntaxError"
+      - "The parent class's __init__ logic never runs, so attributes it would have set are missing"
+      - "The parent's __init__ runs automatically afterward anyway"
+      - "It has no effect either way"
+    correct: 1
+    explanation: "Overriding __init__ completely replaces the parent's version unless you explicitly call it via super()."
+    concept_tags: [classes, inheritance, gotchas]
+
+  - id: q49
+    question: "What does super().__init__(...) do inside a subclass's __init__?"
+    options:
+      - "Creates a new unrelated object"
+      - "Calls the parent class's __init__ to run its setup logic"
+      - "Deletes the parent class"
+      - "Only works in Python 2"
+    correct: 1
+    explanation: "super() gives access to the parent class's methods, letting the subclass extend rather than fully replace them."
+    concept_tags: [classes, inheritance]
+
+  - id: q50
+    question: "Which is generally the most idiomatic way to build a filtered, transformed list in Python?"
+    options:
+      - "A manual for-loop with .append() every time, always"
+      - "A list comprehension: [f(x) for x in xs if cond(x)]"
+      - "Recursion, always"
+      - "eval() on a string"
+    correct: 1
+    explanation: "List comprehensions are the idiomatic, readable way to express 'build a new list by filtering/transforming'."
+    concept_tags: [comprehensions, lists]

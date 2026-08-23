@@ -1,0 +1,40 @@
+id: idioms_gotchas_02
+title: "The Closure That Forgot Everything"
+language: python
+level: 2
+objective: "Fix a set of closures that all capture the same loop variable by reference instead of by value."
+explanation: |
+  A closure captures the *variable*, not its value at the time the closure
+  was created. By the time these lambdas actually run, the loop has
+  finished and `i` holds its final value -- so every closure sees the same
+  number. The standard fix is to bind the current value as a default
+  argument, which IS evaluated at definition time.
+example_code: |
+  multipliers = []
+  for n in range(3):
+      multipliers.append(lambda x, n=n: x * n)
+
+  print([m(10) for m in multipliers])
+starter_code: |
+  functions = []
+  for i in range(3):
+      functions.append(lambda: i)
+
+  print([f() for f in functions])
+challenge: |
+  Right now every function in the list returns 2 (the loop's final value of
+  i). Fix it so the output is [0, 1, 2] -- each function remembering the
+  value of i at the point it was created.
+expected_output: |
+  [0, 1, 2]
+hints:
+  - "The lambda body runs later, after the loop has already finished."
+  - "Give the lambda its own default argument, e.g. `lambda i=i: i`, to capture the current value immediately."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "i=i"
+concept_tags: [closures, late_binding, gotchas]

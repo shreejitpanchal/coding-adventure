@@ -1,0 +1,48 @@
+id: core_refresher_06
+title: "Replacing Magic Strings with an Enum"
+language: python
+level: 12
+objective: "Replace raw string constants with a proper Enum to remove the risk of typo-based bugs."
+explanation: |
+  Plain string/int constants like STATUS_DONE = "done" give no protection
+  against typos -- comparing against "dnoe" just silently fails. An Enum
+  is a fixed, checkable set of named values, so a typo becomes an
+  AttributeError at the point of the mistake instead of a silent bug
+  somewhere downstream.
+example_code: |
+  from enum import Enum, auto
+
+  class Direction(Enum):
+      NORTH = auto()
+      SOUTH = auto()
+
+  print(Direction.NORTH)
+starter_code: |
+  STATUS_PENDING = "pending"
+  STATUS_DONE = "done"
+
+  def describe(status):
+      if status == STATUS_PENDING:
+          return "still working"
+      elif status == STATUS_DONE:
+          return "finished"
+      return "unknown"
+
+  print(describe(STATUS_DONE))
+challenge: |
+  Replace the two string constants with an Enum called Status (members
+  PENDING and DONE), and update describe() to compare against the enum
+  members instead. Keep the same output: "finished".
+expected_output: |
+  finished
+hints:
+  - "class Status(Enum): PENDING = auto(); DONE = auto()"
+  - "Compare against Status.PENDING / Status.DONE instead of the old string constants."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "class Status\\(Enum\\)"
+concept_tags: [enums]

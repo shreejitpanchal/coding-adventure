@@ -1,0 +1,38 @@
+id: core_refresher_01
+title: "Loop to Comprehension"
+language: python
+level: 7
+objective: "Rewrite an explicit accumulator loop as a list comprehension."
+explanation: |
+  A list comprehension expresses "build a new list by transforming and
+  filtering an iterable" in one line, and is idiomatic Python for exactly
+  this shape of loop. It's not just shorter -- it also signals intent
+  ("I'm building a list") more clearly than a bare for-loop with an
+  append call buried inside it.
+example_code: |
+  words = ["go", "python", "hi", "rust"]
+  long_words = [w.upper() for w in words if len(w) > 2]
+  print(long_words)
+starter_code: |
+  numbers = [1, 2, 3, 4, 5, 6]
+  evens = []
+  for n in numbers:
+      if n % 2 == 0:
+          evens.append(n * n)
+  print(evens)
+challenge: |
+  Rewrite this as a single-line list comprehension that produces the same
+  output: the squares of the even numbers.
+expected_output: |
+  [4, 16, 36]
+hints:
+  - "The shape is [expression for item in iterable if condition]."
+  - "expression = n * n, condition = n % 2 == 0."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "\\[.*for .* in .*\\]"
+concept_tags: [comprehensions, lists]

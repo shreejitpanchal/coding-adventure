@@ -1,0 +1,38 @@
+id: data_structures_06
+title: "Finding Overlap with Set Operations"
+language: python
+level: 18
+objective: "Replace a nested-loop membership check with a set intersection."
+explanation: |
+  `name in team_b` on a list is O(n) per check, making the whole loop
+  O(n*m). Converting both collections to sets turns "find common
+  elements" into a single O(n+m) intersection (`&`), which is both faster
+  and more directly expresses the intent.
+example_code: |
+  a = {1, 2, 3, 4}
+  b = {3, 4, 5, 6}
+  print(sorted(a & b))
+starter_code: |
+  team_a = ["alice", "bob", "carol"]
+  team_b = ["bob", "dave", "alice"]
+  both = []
+  for name in team_a:
+      if name in team_b:
+          both.append(name)
+  print(sorted(both))
+challenge: |
+  Rewrite team_a and team_b as sets, and use the & operator to find the
+  overlap instead of a nested loop, keeping the same output.
+expected_output: |
+  ['alice', 'bob']
+hints:
+  - "team_a = {\"alice\", \"bob\", \"carol\"} -- curly braces make a set."
+  - "team_a & team_b is the set intersection."
+xp_reward: 15
+achievement: data_structures_master
+category: data_structures
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "&"
+concept_tags: [sets, algorithms]

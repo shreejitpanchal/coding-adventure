@@ -1,0 +1,38 @@
+id: idioms_gotchas_04
+title: "0.1 + 0.2 Is Not Quite 0.3"
+language: python
+level: 4
+objective: "Fix a floating-point equality check that fails due to binary representation error, without changing the numbers involved."
+explanation: |
+  Most decimal fractions can't be represented exactly in binary
+  floating-point, so `0.1 + 0.2` actually evaluates to
+  `0.30000000000000004`, not `0.3`. Comparing floats with `==` is almost
+  always the wrong tool -- use a tolerance-based comparison like
+  `math.isclose` instead.
+example_code: |
+  import math
+  a = 1.1 + 2.2
+  print(math.isclose(a, 3.3))
+starter_code: |
+  total = 0.1 + 0.2
+  if total == 0.3:
+      print("equal")
+  else:
+      print("not equal")
+challenge: |
+  total is actually 0.30000000000000004, so the exact `==` check fails.
+  Fix the comparison (not the numbers) so it correctly recognizes total as
+  close enough to 0.3, printing "equal".
+expected_output: |
+  equal
+hints:
+  - "Binary floats can't represent 0.1 or 0.2 exactly."
+  - "Replace the == comparison with math.isclose(total, 0.3)."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "isclose"
+concept_tags: [floats, precision, gotchas]

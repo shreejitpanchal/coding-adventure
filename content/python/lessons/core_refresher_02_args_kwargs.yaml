@@ -1,0 +1,37 @@
+id: core_refresher_02
+title: "Accepting Any Number of Arguments"
+language: python
+level: 8
+objective: "Generalize a fixed-arity function to accept a variable number of arguments with *args."
+explanation: |
+  `*args` collects any number of positional arguments into a tuple inside
+  the function body. It's the standard way to write a function whose
+  argument count isn't known up front -- like sum(), print(), or a
+  logging wrapper that needs to accept whatever its caller passes along.
+example_code: |
+  def total(*args):
+      return sum(args)
+
+  print(total(1, 2, 3))
+starter_code: |
+  def total(a, b):
+      return a + b
+
+  print(total(1, 2, 3, 4))
+challenge: |
+  This currently raises a TypeError -- total() only accepts two arguments.
+  Rewrite it with *args so it accepts any number of numbers and returns
+  their sum: 10.
+expected_output: |
+  10
+hints:
+  - "Replace the fixed parameters with *args."
+  - "sum(args) adds up every value in the tuple."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "\\*args"
+concept_tags: [functions, args, kwargs]
