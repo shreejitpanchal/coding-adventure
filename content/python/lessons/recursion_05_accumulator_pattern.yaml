@@ -1,0 +1,45 @@
+id: recursion_05
+title: "Reversing a List with an Accumulator"
+language: python
+level: 55
+objective: "Rewrite a recursive function that rebuilds a new list via concatenation on every call to instead carry an accumulator parameter, avoiding repeated O(n) list-concatenation work."
+explanation: |
+  `reverse_list(items[1:]) + [items[0]]` recurses correctly, but list
+  concatenation (`+`) allocates a brand-new list every single call --
+  making the whole function O(n^2) instead of O(n). The accumulator
+  pattern (an extra parameter that carries the "answer so far" through
+  each call) avoids repeated allocation: each call just builds one new
+  small list and passes it forward, and the final call returns the
+  finished accumulator directly.
+example_code: |
+  def sum_list(items, acc=0):
+      if not items:
+          return acc
+      return sum_list(items[1:], acc + items[0])
+
+  print(sum_list([1, 2, 3, 4]))
+starter_code: |
+  def reverse_list(items):
+      if len(items) == 0:
+          return []
+      return reverse_list(items[1:]) + [items[0]]
+
+  print(reverse_list([1, 2, 3, 4, 5]))
+challenge: |
+  This works, but reallocates a new list via + on every single call.
+  Rewrite it to carry an accumulator parameter (starting as an empty
+  list) instead, prepending each item to the accumulator as the
+  recursion unwinds. Keep the same output: [5, 4, 3, 2, 1].
+expected_output: |
+  [5, 4, 3, 2, 1]
+hints:
+  - "Add a second parameter, e.g. acc=None, defaulting to a fresh empty list."
+  - "Each call does: return reverse_list(items[1:], [items[0]] + acc) instead of concatenating at the end."
+xp_reward: 15
+achievement: recursion_master
+category: recursion
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "acc"
+concept_tags: [recursion, accumulator, performance]

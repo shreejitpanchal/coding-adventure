@@ -1,0 +1,58 @@
+id: thread_scheduling_05
+title: "Per-Thread State with threading.local()"
+language: python
+level: 40
+objective: "Give each thread its own independent copy of a value using threading.local(), instead of a single shared variable."
+explanation: |
+  A plain module-level variable is shared by every thread -- if each
+  thread needs to track its own piece of state (a request ID, a
+  per-thread connection, a counter), writes from one thread stomp on the
+  others. threading.local() creates an object whose attributes are
+  automatically separate per thread: each thread sees its own values, no
+  locking required.
+example_code: |
+  import threading
+
+  local_data = threading.local()
+
+  def set_value(v):
+      local_data.value = v
+
+  set_value(1)
+  print(local_data.value)
+starter_code: |
+  import threading
+
+  shared = {}
+
+  def worker(n, results):
+      shared["value"] = n
+      results[n] = shared["value"]
+
+  results = {}
+  threads = [threading.Thread(target=worker, args=(n, results)) for n in range(3)]
+  for t in threads:
+      t.start()
+  for t in threads:
+      t.join()
+  print(sorted(results.values()))
+challenge: |
+  Every thread here writes to the same shared dict key, so later threads
+  can overwrite earlier ones before they read their own value back --
+  the result is unreliable. Rewrite worker to store its value in a
+  threading.local() instance instead of the shared dict, so each thread
+  reliably sees only its own value. Keep the printed result sorted:
+  [0, 1, 2].
+expected_output: |
+  [0, 1, 2]
+hints:
+  - "local_data = threading.local() -- create it once, outside any thread."
+  - "Each thread sets local_data.value = n and reads it right back before storing into results."
+xp_reward: 15
+achievement: thread_scheduling_master
+category: thread_scheduling
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "threading\\.local\\(\\)"
+concept_tags: [threading, thread_local_storage]

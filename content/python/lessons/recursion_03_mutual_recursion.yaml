@@ -1,0 +1,54 @@
+id: recursion_03
+title: "Mutual Recursion with a Wrong Base Case"
+language: python
+level: 53
+objective: "Fix a mutually recursive pair of functions whose base case returns the wrong value."
+explanation: |
+  Mutual recursion is two (or more) functions that call each other
+  instead of themselves directly -- is_even(n) calling is_odd(n-1) and
+  vice versa is a classic example. It works the same way ordinary
+  recursion does: each function needs a correct base case, since a wrong
+  one propagates through every level of the mutual call chain.
+example_code: |
+  def is_even(n):
+      if n == 0:
+          return True
+      return is_odd(n - 1)
+
+  def is_odd(n):
+      if n == 0:
+          return False
+      return is_even(n - 1)
+
+  print(is_even(4))
+starter_code: |
+  def is_even(n):
+      if n == 0:
+          return False
+      return is_odd(n - 1)
+
+  def is_odd(n):
+      if n == 0:
+          return False
+      return is_even(n - 1)
+
+  print(is_even(10))
+  print(is_odd(7))
+challenge: |
+  is_even's base case is wrong -- 0 is even, so is_even(0) should return
+  True, not False. Fix that one base case so both lines print correctly:
+  True, then True (10 is even, 7 is odd).
+expected_output: |
+  True
+  True
+hints:
+  - "0 is even by definition -- is_even(0) should return True."
+  - "Only is_even's base case is wrong; is_odd's base case (False) is already correct."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "return True"
+concept_tags: [recursion, mutual_recursion]

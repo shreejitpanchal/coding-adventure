@@ -1,0 +1,44 @@
+id: functional_programming_03
+title: "Composing Two Functions Into One"
+language: python
+level: 48
+objective: "Write a compose(f, g) helper that combines two functions into a single one, f(g(x))."
+explanation: |
+  Function composition -- building a new function by chaining others
+  together -- is a foundational functional-programming pattern.
+  compose(f, g) returns a new function equivalent to calling g first,
+  then passing its result to f, letting you build complex behavior out
+  of small, independently-testable pieces instead of one large function.
+example_code: |
+  def compose(f, g):
+      return lambda x: f(g(x))
+
+  shout = compose(str.upper, str.strip)
+  print(shout("  hi  "))
+starter_code: |
+  def double(x):
+      return x * 2
+
+  def increment(x):
+      return x + 1
+
+  result = increment(double(5))
+  print(result)
+challenge: |
+  Write a compose(f, g) function that returns a new function equal to
+  f(g(x)), then use it to build one combined function from increment and
+  double, and call that instead of nesting the calls directly. Keep the
+  same output: 11.
+expected_output: |
+  11
+hints:
+  - "def compose(f, g): return lambda x: f(g(x))"
+  - "combined = compose(increment, double); result = combined(5)"
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "def compose"
+concept_tags: [functional_programming, function_composition, higher_order_functions]

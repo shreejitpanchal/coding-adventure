@@ -548,3 +548,410 @@ questions:
     correct: 1
     explanation: "List comprehensions are the idiomatic, readable way to express 'build a new list by filtering/transforming'."
     concept_tags: [comprehensions, lists]
+
+  - id: q51
+    question: "Why does a plain threading.Lock deadlock if the same thread tries to acquire it twice (e.g. via recursion)?"
+    options:
+      - "It's not reentrant -- it can't tell the second acquire is from the same thread"
+      - "Locks always deadlock after 2 acquisitions"
+      - "Python doesn't allow recursive functions to use locks"
+      - "The lock releases itself automatically"
+    correct: 0
+    explanation: "A plain Lock has no notion of ownership -- a second acquire from the same thread just blocks waiting for a release that will never come. RLock tracks the owning thread and a count."
+    concept_tags: [threading, locks]
+
+  - id: q52
+    question: "What's the benefit of giving a thread an explicit name= when creating it?"
+    options:
+      - "It runs faster"
+      - "It makes logs/debuggers able to identify which thread did what"
+      - "It's required by Python"
+      - "It changes the thread's scheduling priority"
+    correct: 1
+    explanation: "Without an explicit name, every thread gets an indistinguishable auto-generated one like 'Thread-4'."
+    concept_tags: [threading, debugging]
+
+  - id: q53
+    question: "What does setting daemon=True on a thread do?"
+    options:
+      - "Makes it run faster"
+      - "Lets the program exit without waiting for that thread to finish"
+      - "Gives it elevated permissions"
+      - "Prevents it from raising exceptions"
+    correct: 1
+    explanation: "A daemon thread is abandoned automatically at interpreter exit instead of keeping the whole process alive."
+    concept_tags: [threading, daemon_threads]
+
+  - id: q54
+    question: "Why is queue.Queue preferred over a plain list for handing work between threads?"
+    options:
+      - "It's thread-safe out of the box; a list needs manual locking"
+      - "It's faster for single-threaded code"
+      - "Lists can't hold more than 100 items"
+      - "Queue automatically parallelizes work"
+    correct: 0
+    explanation: "queue.Queue's get()/put() are safe under concurrent access without any extra locking."
+    concept_tags: [threading, queue]
+
+  - id: q55
+    question: "What does threading.local() provide?"
+    options:
+      - "A lock shared by all threads"
+      - "An object whose attributes are automatically separate per thread"
+      - "A faster version of a regular variable"
+      - "A way to pause a thread"
+    correct: 1
+    explanation: "Each thread sees its own independent values on a threading.local() instance, with no locking required."
+    concept_tags: [threading, thread_local_storage]
+
+  - id: q56
+    question: "Why does calling time.sleep() inside an async function block the entire event loop, not just that coroutine?"
+    options:
+      - "time.sleep() doesn't yield control back to the event loop at all"
+      - "asyncio disables time.sleep()"
+      - "It only blocks for very short durations"
+      - "It actually doesn't block anything"
+    correct: 0
+    explanation: "asyncio's concurrency comes from yielding at await points -- time.sleep() has no await, so it just blocks everything on that event loop."
+    concept_tags: [asyncio, sync_vs_async]
+
+  - id: q57
+    question: "What's the fix for needing to run a genuinely blocking function inside async code?"
+    options:
+      - "Just call it directly, it's fine"
+      - "asyncio.to_thread() runs it in a background thread without blocking the loop"
+      - "Blocking functions can never be used in async code"
+      - "Wrap it in a try/except"
+    correct: 1
+    explanation: "to_thread() offloads a blocking call to a worker thread and awaits its result, keeping the event loop free."
+    concept_tags: [asyncio, sync_vs_async, threading]
+
+  - id: q58
+    question: "What happens if you call an async function without awaiting or running it?"
+    options:
+      - "It runs synchronously anyway"
+      - "It raises a SyntaxError"
+      - "It returns an un-awaited coroutine object, not a result"
+      - "It runs in the background automatically"
+    correct: 2
+    explanation: "Calling an async function just creates a coroutine object -- it has to be driven by await or asyncio.run() to actually execute."
+    concept_tags: [asyncio, sync_vs_async, gotchas]
+
+  - id: q59
+    question: "What two dunder methods does async with require, that a regular with doesn't have?"
+    options:
+      - "__enter__ and __exit__"
+      - "__aenter__ and __aexit__"
+      - "__async_enter__ and __async_exit__"
+      - "__start__ and __stop__"
+    correct: 1
+    explanation: "async with needs the coroutine-based __aenter__/__aexit__ protocol, not the regular sync one."
+    concept_tags: [asyncio, context_managers, sync_vs_async]
+
+  - id: q60
+    question: "Why does a plain for loop over an async generator raise a TypeError?"
+    options:
+      - "Async generators can only be driven by async for, not the regular iteration protocol"
+      - "Async generators can't be iterated at all"
+      - "You need to call list() first"
+      - "There's no real reason, it's a bug in Python"
+    correct: 0
+    explanation: "An async generator implements __aiter__/__anext__, not the regular __iter__/__next__ a plain for loop expects."
+    concept_tags: [asyncio, sync_vs_async, generators]
+
+  - id: q61
+    question: "What makes a function 'pure' in the functional-programming sense?"
+    options:
+      - "It only uses lambda expressions"
+      - "Its only effect is its return value -- no side effects, same inputs always give the same output"
+      - "It never takes arguments"
+      - "It always returns None"
+    correct: 1
+    explanation: "A pure function doesn't mutate anything outside itself and always produces the same output for the same input."
+    concept_tags: [functional_programming, pure_functions]
+
+  - id: q62
+    question: "What does filter(predicate, iterable) do?"
+    options:
+      - "Transforms every item"
+      - "Keeps only items where predicate returns truthy"
+      - "Sorts the iterable"
+      - "Removes duplicates"
+    correct: 1
+    explanation: "filter() keeps only the items for which the predicate function returns something truthy."
+    concept_tags: [functional_programming, higher_order_functions]
+
+  - id: q63
+    question: "What does compose(f, g) typically return?"
+    options:
+      - "f applied then g: g(f(x))"
+      - "A new function equal to f(g(x))"
+      - "A tuple of (f, g)"
+      - "The sum of calling both"
+    correct: 1
+    explanation: "Composition chains g first, then passes its result into f -- f(g(x))."
+    concept_tags: [functional_programming, function_composition]
+
+  - id: q64
+    question: "Why is a mutable object risky to pass into a function meant to be side-effect-free?"
+    options:
+      - "The function might mutate it, silently changing the caller's own reference too"
+      - "Mutable objects can't be passed as arguments"
+      - "It always raises a TypeError"
+      - "It has no risk at all"
+    correct: 0
+    explanation: "Passing a mutable object shares the same underlying object -- any mutation inside the function is visible to the caller too."
+    concept_tags: [functional_programming, immutability, gotchas]
+
+  - id: q65
+    question: "What does functools.partial(func, x=1) return?"
+    options:
+      - "A copy of func with x always set to 1, callable with the rest of the arguments"
+      - "The result of calling func(x=1) immediately"
+      - "A new function that ignores x"
+      - "An error, since partial only works with positional args"
+    correct: 0
+    explanation: "partial() pre-binds some arguments and returns a new callable expecting only the remaining ones."
+    concept_tags: [functional_programming, functools, partial_application]
+
+  - id: q66
+    question: "What happens to a recursive function with no base case?"
+    options:
+      - "Python automatically adds one"
+      - "It recurses forever until it hits RecursionError"
+      - "It runs once and stops"
+      - "It raises a SyntaxError immediately"
+    correct: 1
+    explanation: "Without a stopping condition, each call makes another call until the recursion limit is hit."
+    concept_tags: [recursion, base_case, gotchas]
+
+  - id: q67
+    question: "Does Python optimize tail-recursive calls the way some other languages do?"
+    options:
+      - "Yes, always"
+      - "No -- Python has no tail-call optimization, so deep recursion can hit the recursion limit"
+      - "Only in Python 3.12+"
+      - "Only for functions marked @tailrec"
+    correct: 1
+    explanation: "Every recursive call in Python uses a new stack frame regardless of position, unlike languages with proper tail-call optimization."
+    concept_tags: [recursion, recursion_limit]
+
+  - id: q68
+    question: "What is mutual recursion?"
+    options:
+      - "A function calling itself twice"
+      - "Two or more functions that call each other instead of themselves directly"
+      - "A function with two base cases"
+      - "Recursion inside a lambda"
+    correct: 1
+    explanation: "is_even calling is_odd, which calls is_even, is the classic example of mutual recursion."
+    concept_tags: [recursion, mutual_recursion]
+
+  - id: q69
+    question: "Why does flattening a nested list need recursion (in the general case)?"
+    options:
+      - "It doesn't -- a single loop always works"
+      - "A list can contain sublists to arbitrary depth, so a single loop can't reach all the way down"
+      - "Python lists can't be nested"
+      - "Recursion is required by Python syntax for lists"
+    correct: 1
+    explanation: "A single loop only sees one level -- recursing into each sublist is what reaches arbitrary depth."
+    concept_tags: [recursion, data_structures]
+
+  - id: q70
+    question: "What's the benefit of an accumulator parameter in a recursive function?"
+    options:
+      - "It makes the code shorter"
+      - "It carries the 'answer so far' through calls, avoiding repeated allocation like list concatenation at every level"
+      - "It removes the need for a base case"
+      - "It makes the function pure"
+    correct: 1
+    explanation: "Passing the partial result forward avoids rebuilding a new structure (like a concatenated list) at every level of recursion."
+    concept_tags: [recursion, accumulator, performance]
+
+  - id: q71
+    question: "How do you detect whether Python is running inside a virtual environment?"
+    options:
+      - "Check if sys.prefix != sys.base_prefix"
+      - "Check if os.environ is empty"
+      - "Check the Python version number"
+      - "There's no reliable way to check"
+    correct: 0
+    explanation: "A venv sets sys.prefix to its own directory while sys.base_prefix still points at the real system Python."
+    concept_tags: [dependency_management, virtual_environments]
+
+  - id: q72
+    question: "Why is comparing version strings like \"10.0.0\" > \"9.0.0\" directly a bug?"
+    options:
+      - "It isn't a bug, string comparison always works for versions"
+      - "String comparison is character-by-character, so \"10.0.0\" sorts before \"9.0.0\" lexicographically"
+      - "Python can't compare strings with >"
+      - "Version strings must be converted to floats first"
+    correct: 1
+    explanation: "'1' sorts before '9' as a character, so plain string comparison gets version ordering wrong."
+    concept_tags: [dependency_management, versioning, gotchas]
+
+  - id: q73
+    question: "What does importlib.metadata.version() raise if the package isn't installed?"
+    options:
+      - "ImportError"
+      - "PackageNotFoundError"
+      - "ModuleNotFoundError"
+      - "It returns None silently"
+    correct: 1
+    explanation: "metadata.version() raises importlib.metadata.PackageNotFoundError for an uninstalled distribution."
+    concept_tags: [dependency_management, importlib_metadata]
+
+  - id: q74
+    question: "Why does a lock file (recording exact installed versions) matter for reproducibility?"
+    options:
+      - "It makes installs faster"
+      - "It guarantees a second install resolves to the identical versions, not just whatever satisfies a range today"
+      - "It's only useful for security scanning"
+      - "It replaces the need for a requirements.txt entirely"
+    correct: 1
+    explanation: "An exact pin means the same install command produces the same result months later, on a different machine."
+    concept_tags: [dependency_management, reproducibility, lock_files]
+
+  - id: q75
+    question: "Since which Python version has tomllib been in the standard library?"
+    options:
+      - "3.8"
+      - "3.9"
+      - "3.11"
+      - "3.13"
+    correct: 2
+    explanation: "tomllib was added to the standard library in Python 3.11."
+    concept_tags: [packaging, pyproject_toml, tomllib]
+
+  - id: q76
+    question: "In semantic versioning, what should happen to the patch number when you bump the minor version?"
+    options:
+      - "It stays the same"
+      - "It resets to 0"
+      - "It also increments"
+      - "It gets removed"
+    correct: 1
+    explanation: "Patch numbers are only meaningful relative to a specific minor release, so bumping minor resets patch to 0."
+    concept_tags: [packaging, semantic_versioning]
+
+  - id: q77
+    question: "What's the purpose of a module's __all__ list?"
+    options:
+      - "It lists every function defined in the module"
+      - "It declares the module's public API -- what import * exposes"
+      - "It's required for the module to be importable"
+      - "It lists the module's dependencies"
+    correct: 1
+    explanation: "__all__ controls what `from module import *` exposes and signals which names are meant to be public."
+    concept_tags: [packaging, module_api]
+
+  - id: q78
+    question: "In a wheel filename like flet-0.86.5-py3-none-any.whl, what are the first two dash-separated fields?"
+    options:
+      - "Python version and platform"
+      - "Name and version"
+      - "ABI tag and platform tag"
+      - "Author and license"
+    correct: 1
+    explanation: "The wheel filename convention is {name}-{version}-{python tag}-{abi tag}-{platform tag}.whl."
+    concept_tags: [packaging, wheel]
+
+  - id: q79
+    question: "Why is os.environ[\"NAME\"] risky for reading configuration, compared to os.environ.get(\"NAME\", default)?"
+    options:
+      - "It's not risky, they're identical"
+      - "It raises KeyError if the variable isn't set, instead of degrading to a default"
+      - "It's slower"
+      - "It only works for numeric values"
+    correct: 1
+    explanation: "Direct indexing crashes the moment the variable is missing; .get() with a default degrades gracefully."
+    concept_tags: [deployment, configuration]
+
+  - id: q80
+    question: "Why does bool(\"false\") evaluate to True?"
+    options:
+      - "Python has a bug"
+      - "It's a non-empty string, and bool() on any non-empty string is True regardless of its content"
+      - "\"false\" is a reserved keyword that means True"
+      - "It doesn't -- bool(\"false\") is actually False"
+    correct: 1
+    explanation: "bool() on a string only checks emptiness, not content -- parsing a boolean-ish value needs an explicit content check."
+    concept_tags: [deployment, configuration, gotchas]
+
+  - id: q81
+    question: "What's the standard pattern for handling SIGTERM gracefully in a deployed process?"
+    options:
+      - "Ignore it entirely"
+      - "Register a handler that flips a flag the main loop checks, so it can wind down cleanly"
+      - "Immediately call sys.exit() inside the handler"
+      - "SIGTERM can't be handled in Python"
+    correct: 1
+    explanation: "signal.signal() registers a handler that sets a flag; the main loop notices it and shuts down cleanly instead of being killed mid-request."
+    concept_tags: [deployment, signals, graceful_shutdown]
+
+  - id: q82
+    question: "Why should a deploy step be idempotent (safe to run more than once)?"
+    options:
+      - "It doesn't matter, deploy steps only ever run once"
+      - "Deploy pipelines get retried, so a non-idempotent step can cause duplicate work or misleading state on a re-run"
+      - "Idempotency makes code run faster"
+      - "It's a legal requirement"
+    correct: 1
+    explanation: "A retried or re-applied deploy pipeline re-runs steps -- idempotency is what keeps that safe."
+    concept_tags: [deployment, idempotency]
+
+  - id: q83
+    question: "What can the logging module do that print() can't?"
+    options:
+      - "Nothing, they're equivalent"
+      - "Support severity levels, global filtering, and consistent formatting"
+      - "Print to the screen"
+      - "Accept string arguments"
+    correct: 1
+    explanation: "logging adds levels, filtering by threshold, and configurable formatting -- none of which print() has."
+    concept_tags: [observability, logging]
+
+  - id: q84
+    question: "If a logger is configured at level=logging.WARNING, what happens to logging.info() calls?"
+    options:
+      - "They're buffered and shown later"
+      - "They're silently dropped -- below the configured threshold"
+      - "They raise an exception"
+      - "They're automatically upgraded to WARNING"
+    correct: 1
+    explanation: "The configured level is a minimum severity threshold -- anything below it is dropped, not delayed."
+    concept_tags: [observability, logging, gotchas]
+
+  - id: q85
+    question: "What problem does contextvars.ContextVar solve for correlation/request IDs?"
+    options:
+      - "It makes a value implicitly available through a call chain without passing it as an explicit parameter everywhere"
+      - "It encrypts the ID"
+      - "It's required for any function call in Python"
+      - "It automatically logs every function call"
+    correct: 0
+    explanation: "ContextVar threads a value through nested calls (and correctly isolates it per-task under asyncio) without an explicit parameter."
+    concept_tags: [observability, tracing, contextvars]
+
+  - id: q86
+    question: "What's the simplest structure for a metrics counter?"
+    options:
+      - "A single boolean flag"
+      - "A dict mapping a name to a count that only goes up"
+      - "A list of all timestamps"
+      - "A single global integer for everything"
+    correct: 1
+    explanation: "This is the same core model as real metrics systems (Prometheus counters, StatsD): name -> monotonically increasing count."
+    concept_tags: [observability, metrics]
+
+  - id: q87
+    question: "Why use time.monotonic() instead of time.time() for measuring a duration?"
+    options:
+      - "monotonic() is more precise"
+      - "monotonic() can never jump backward due to a system clock adjustment, unlike time.time()"
+      - "time.time() doesn't exist in Python"
+      - "There's no difference"
+    correct: 1
+    explanation: "A wall-clock adjustment (NTP sync, manual change) can make time.time() jump backward mid-measurement; monotonic() is immune to that."
+    concept_tags: [observability, instrumentation]

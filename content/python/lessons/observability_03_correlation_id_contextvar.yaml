@@ -1,0 +1,53 @@
+id: observability_03
+title: "Threading a Correlation ID Through Log Lines"
+language: python
+level: 73
+objective: "Use contextvars.ContextVar to attach a per-request correlation ID to every log line without passing it as an explicit parameter everywhere."
+explanation: |
+  Tracing a single request through many nested function calls needs a
+  correlation/request ID attached to every log line it touches --
+  threading that as an explicit parameter through every function
+  signature is invasive. contextvars.ContextVar holds a value that's
+  implicitly available anywhere in the same logical call chain (and,
+  critically, correctly isolated per-task under asyncio), without
+  passing it manually.
+example_code: |
+  import contextvars
+
+  user_id = contextvars.ContextVar("user_id", default="anonymous")
+
+  def log(msg):
+      print(f"[{user_id.get()}] {msg}")
+
+  user_id.set("u-42")
+  log("logged in")
+starter_code: |
+  import contextvars
+
+  request_id = contextvars.ContextVar("request_id", default="unknown")
+
+  def log(message):
+      print(f"[{request_id.get()}] {message}")
+
+  def handle_request():
+      log("handling request")
+
+  handle_request()
+challenge: |
+  request_id is never set before handle_request logs, so every log line
+  shows the "unknown" default. Fix handle_request to set the correlation
+  ID to "req-123" before logging, so the output becomes
+  "[req-123] handling request".
+expected_output: |
+  [req-123] handling request
+hints:
+  - "request_id.set(\"req-123\") stores a value for the current context."
+  - "Call it at the top of handle_request, before log(...)."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "request_id\\.set"
+concept_tags: [observability, tracing, contextvars]

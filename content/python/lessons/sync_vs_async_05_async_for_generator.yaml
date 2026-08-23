@@ -1,0 +1,56 @@
+id: sync_vs_async_05
+title: "Iterating an Async Generator"
+language: python
+level: 45
+objective: "Fix a plain `for` loop over an async generator, which needs `async for` instead."
+explanation: |
+  A function with `yield` inside an `async def` is an async generator --
+  its values are only available through the async iteration protocol
+  (`__anext__`, driven by `async for`), not the regular `for` loop
+  protocol. Using a plain `for` on one raises a TypeError, even though
+  the object looks list-like.
+example_code: |
+  import asyncio
+
+  async def counts():
+      for i in range(2):
+          await asyncio.sleep(0)
+          yield i
+
+  async def main():
+      async for n in counts():
+          print(n)
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  async def numbers():
+      for i in range(3):
+          await asyncio.sleep(0)
+          yield i
+
+  async def main():
+      total = 0
+      for n in numbers():
+          total += n
+      print(total)
+
+  asyncio.run(main())
+challenge: |
+  numbers() is an async generator, so the plain `for` loop over it raises
+  a TypeError. Fix main() to use `async for` instead, keeping the same
+  result: 3 (0 + 1 + 2).
+expected_output: |
+  3
+hints:
+  - "An async generator (a `yield` inside `async def`) can only be driven by `async for`."
+  - "Change `for n in numbers():` to `async for n in numbers():`."
+xp_reward: 10
+achievement: sync_vs_async_master
+category: sync_vs_async
+category_level: 5
+difficulty: core
+contains_patterns:
+  - "async for"
+concept_tags: [asyncio, sync_vs_async, generators]

@@ -18,12 +18,14 @@ through in a few focused minutes, not tutorials to sit through.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
   grinding one category at a time.
-- **Practice by Topic** — six categories, ~35 exercises: Idioms & Gotchas,
+- **Practice by Topic** — 14 categories, 75 exercises: Idioms & Gotchas,
   Core Language Refresher, Data Structures & Algorithms, Standard Library
-  Deep Dive, Concurrency & Async, and the flagship **Gotcha Gauntlet** —
+  Deep Dive, Concurrency & Async, Thread Scheduling, Sync vs Async,
+  Functional Programming, Recursion, Dependency Management, Packaging,
+  Deployment, Observability, and the flagship **Gotcha Gauntlet** —
   senior-engineer-trap debugging puzzles (mutable defaults, race
   conditions, float precision, silent exception swallowing, and more).
-- **Quiz Bank** — 50 multiple-choice questions, reshuffled every session.
+- **Quiz Bank** — 87 multiple-choice questions, reshuffled every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
 - **Real execution** — Python exercises run against your actual local

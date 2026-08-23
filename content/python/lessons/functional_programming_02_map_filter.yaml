@@ -1,0 +1,40 @@
+id: functional_programming_02
+title: "Transforming and Filtering with map() and filter()"
+language: python
+level: 47
+objective: "Rewrite an explicit filter-then-transform loop using the functional map() and filter() builtins."
+explanation: |
+  map() and filter() are the functional-style tools for "transform every
+  item" and "keep only matching items" -- composing them (filter, then
+  map) expresses the same logic as a loop with an if-and-append, but as a
+  pipeline of small, reusable, single-purpose functions instead of
+  imperative steps.
+example_code: |
+  names = ["ada", "bob", "cy"]
+  result = list(map(str.upper, filter(lambda n: len(n) > 2, names)))
+  print(result)
+starter_code: |
+  numbers = [1, 2, 3, 4, 5, 6, 7, 8]
+  result = []
+  for n in numbers:
+      if n % 2 == 0:
+          result.append(n * 10)
+  print(result)
+challenge: |
+  Rewrite this using filter() to keep the even numbers and map() to
+  multiply each by 10, instead of the explicit loop. Keep the same
+  output: [20, 40, 60, 80].
+expected_output: |
+  [20, 40, 60, 80]
+hints:
+  - "filter(lambda n: n % 2 == 0, numbers) keeps only the even numbers."
+  - "Wrap that in map(lambda n: n * 10, ...) and convert the result to a list."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "map\\("
+  - "filter\\("
+concept_tags: [functional_programming, higher_order_functions]

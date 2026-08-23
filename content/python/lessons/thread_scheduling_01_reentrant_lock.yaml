@@ -1,0 +1,56 @@
+id: thread_scheduling_01
+title: "The Lock That Locked Itself Out"
+language: python
+level: 36
+objective: "Fix a deadlock caused by a function acquiring a non-reentrant Lock while already holding it."
+explanation: |
+  threading.Lock is not reentrant -- a thread that already holds it will
+  block forever if it tries to acquire it again, even from the same
+  thread (e.g. via recursion or a nested call). threading.RLock (a
+  "reentrant lock") tracks which thread holds it and how many times, so
+  the same thread can acquire it repeatedly without deadlocking, as long
+  as it releases the same number of times.
+example_code: |
+  import threading
+
+  lock = threading.RLock()
+
+  def outer():
+      with lock:
+          inner()
+
+  def inner():
+      with lock:
+          print("inner ran")
+
+  outer()
+starter_code: |
+  import threading
+
+  lock = threading.Lock()
+
+  def factorial(n):
+      with lock:
+          if n <= 1:
+              return 1
+          return n * factorial(n - 1)
+
+  print(factorial(5))
+challenge: |
+  factorial() re-acquires the same Lock on every recursive call, from the
+  same thread -- this deadlocks (times out) instead of ever printing.
+  Fix it by using a threading.RLock instead, so the recursive calls can
+  each acquire it, and the output is 120.
+expected_output: |
+  120
+hints:
+  - "A plain Lock can't be acquired twice by the same thread, even via recursion -- it deadlocks."
+  - "threading.RLock() allows the same thread to acquire it multiple times."
+xp_reward: 15
+achievement: null
+category: thread_scheduling
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "RLock\\(\\)"
+concept_tags: [threading, locks, recursion, gotchas]

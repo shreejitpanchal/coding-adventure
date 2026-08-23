@@ -1,0 +1,58 @@
+id: functional_programming_04
+title: "The Move That Mutated the Original"
+language: python
+level: 49
+objective: "Fix a function that mutates its input in place when it should return a new, independent immutable value."
+explanation: |
+  A mutable object passed into a function can be mutated by that
+  function -- surprising the caller, whose own reference now silently
+  reflects the change too. Functional style favors returning a new value
+  instead of mutating the input, and an immutable type (like
+  typing.NamedTuple, which can't be changed after construction at all)
+  makes that the only option, ruling this class of bug out entirely.
+example_code: |
+  from typing import NamedTuple
+
+  class Vector(NamedTuple):
+      x: int
+      y: int
+
+  def scale(v, factor):
+      return Vector(v.x * factor, v.y * factor)
+
+  print(scale(Vector(2, 3), 2))
+starter_code: |
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  def move(point, dx, dy):
+      point.x += dx
+      point.y += dy
+      return point
+
+  p1 = Point(0, 0)
+  p2 = move(p1, 1, 1)
+  print(p1.x, p1.y)
+  print(p2.x, p2.y)
+challenge: |
+  move() mutates the Point it's given, so p1 changes too even though the
+  caller only meant to create a new moved point. Rewrite Point as an
+  immutable typing.NamedTuple, and rewrite move() to return a brand-new
+  Point instead of mutating its argument, so p1 stays (0, 0) and p2 is
+  the new (1, 1).
+expected_output: |
+  0 0
+  1 1
+hints:
+  - "from typing import NamedTuple, and class Point(NamedTuple): x: int; y: int"
+  - "move() should build and return Point(point.x + dx, point.y + dy) instead of mutating point."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "NamedTuple"
+concept_tags: [functional_programming, immutability, gotchas]

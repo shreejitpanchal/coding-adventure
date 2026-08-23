@@ -1,0 +1,44 @@
+id: deployment_02
+title: "The Feature Flag That Was Always On"
+language: python
+level: 67
+objective: "Fix a boolean-from-string parser that treats any non-empty string -- including the literal text 'false' -- as truthy."
+explanation: |
+  Environment variables are always strings, never real booleans --
+  `bool("false")` is True, because it's a non-empty string, not because
+  Python understands its contents. Parsing a boolean-ish config value
+  correctly means explicitly checking its text against known truthy
+  values ("true", "1", "yes"), not just asking Python whether the string
+  itself is non-empty.
+example_code: |
+  def parse_bool(value):
+      return value.strip().lower() in ("true", "1", "yes")
+
+  print(parse_bool("YES"))
+starter_code: |
+  import os
+
+  def is_enabled(value):
+      return bool(value)
+
+  os.environ["FEATURE_X"] = "false"
+  print(is_enabled(os.environ["FEATURE_X"]))
+challenge: |
+  is_enabled uses bool(value), and bool("false") is True -- the string
+  "false" is non-empty, so it's truthy to Python even though it clearly
+  means "disabled." Fix is_enabled to check the string's actual content
+  (case-insensitively, against "true"/"1"/"yes") instead, so the output
+  becomes False.
+expected_output: |
+  False
+hints:
+  - "bool() on any non-empty string is True, regardless of what the string says."
+  - "value.strip().lower() in (\"true\", \"1\", \"yes\") checks the actual content."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "\\.lower\\(\\)"
+concept_tags: [deployment, configuration, gotchas]

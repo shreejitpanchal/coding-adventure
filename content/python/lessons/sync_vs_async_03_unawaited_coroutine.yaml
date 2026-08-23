@@ -1,0 +1,44 @@
+id: sync_vs_async_03
+title: "Calling an Async Function Without Awaiting It"
+language: python
+level: 43
+objective: "Fix code that calls an async function directly and gets an un-awaited coroutine object back instead of its result."
+explanation: |
+  Calling an async function doesn't run it -- it creates a coroutine
+  object that has to be driven by an event loop (via `await`, or a
+  top-level `asyncio.run()`) before any of its code actually executes.
+  Forgetting that is a very common trap: the call "succeeds" with no
+  error, but silently returns the wrong kind of object.
+example_code: |
+  import asyncio
+
+  async def compute():
+      return 21 * 2
+
+  print(asyncio.run(compute()))
+starter_code: |
+  import asyncio
+
+  async def get_value():
+      return 42
+
+  result = get_value()
+  print(type(result).__name__)
+challenge: |
+  get_value() alone doesn't run the coroutine -- it just creates one,
+  which is why result is a "coroutine" object instead of 42. Fix this
+  using asyncio.run() to actually execute get_value() and capture its
+  real return value, then print result itself (42), not its type.
+expected_output: |
+  42
+hints:
+  - "Calling an async function returns a coroutine object, not a result -- it has to be run."
+  - "result = asyncio.run(get_value())"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "asyncio\\.run"
+concept_tags: [asyncio, sync_vs_async, gotchas]

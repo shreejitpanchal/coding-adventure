@@ -1,0 +1,37 @@
+id: packaging_05
+title: "Parsing a Wheel Filename"
+language: python
+level: 65
+objective: "Parse a distribution's name and version out of its wheel filename, following the standard dash-separated naming convention."
+explanation: |
+  A built wheel's filename follows a fixed convention:
+  {name}-{version}-{python tag}-{abi tag}-{platform tag}.whl. Knowing how
+  to parse that (as install tools and package indexes do) is a genuinely
+  practical packaging skill -- the name and version are always the first
+  two dash-separated fields, once the .whl extension is stripped.
+example_code: |
+  stem = "requests-2.31.0-py3-none-any.whl".removesuffix(".whl")
+  name, version, *_ = stem.split("-")
+  print(name, version)
+starter_code: |
+  def parse_wheel_filename(filename):
+      return filename
+
+  print(parse_wheel_filename("flet-0.86.5-py3-none-any.whl"))
+challenge: |
+  parse_wheel_filename just returns the raw filename. Fix it to strip
+  the .whl suffix, split on "-", and return the (name, version) tuple
+  from the first two fields, so the output is ('flet', '0.86.5').
+expected_output: |
+  ('flet', '0.86.5')
+hints:
+  - "filename.removesuffix(\".whl\") strips the extension cleanly."
+  - "Split the stem on \"-\" and take the first two parts as (name, version)."
+xp_reward: 15
+achievement: packaging_master
+category: packaging
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "removesuffix"
+concept_tags: [packaging, wheel]

@@ -1,0 +1,45 @@
+id: thread_scheduling_03
+title: "Marking a Background Thread as Daemon"
+language: python
+level: 38
+objective: "Set a background thread's daemon flag so it doesn't block the program from exiting."
+explanation: |
+  A non-daemon thread keeps the whole Python process alive until it
+  finishes, even after the main thread's work is done -- fine for work
+  that must complete, but wrong for an endless background task (like a
+  polling loop or heartbeat) that should simply be killed when the
+  program exits. Setting `daemon=True` before `start()` marks a thread
+  as background-only: it's abandoned automatically at interpreter exit
+  instead of keeping the process alive.
+example_code: |
+  import threading
+
+  def heartbeat():
+      pass
+
+  t = threading.Thread(target=heartbeat, daemon=True)
+  print(t.daemon)
+starter_code: |
+  import threading
+
+  def poll_forever():
+      pass
+
+  t = threading.Thread(target=poll_forever)
+  print(t.daemon)
+challenge: |
+  This background polling thread isn't marked as a daemon, so it would
+  keep the whole program alive indefinitely. Fix the Thread construction
+  so t.daemon is True.
+expected_output: |
+  True
+hints:
+  - "daemon=True must be passed to the Thread constructor before start() -- it can't be set after starting."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "daemon=True"
+concept_tags: [threading, daemon_threads]

@@ -1,0 +1,66 @@
+id: sync_vs_async_02
+title: "Running Blocking I/O Without Blocking the Loop"
+language: python
+level: 42
+objective: "Use asyncio.to_thread to run a genuinely blocking function (one you can't rewrite as async) without freezing the event loop."
+explanation: |
+  Sometimes the blocking call isn't yours to rewrite -- a third-party
+  library, a C extension, a legacy function -- so there's no `await`
+  version available. asyncio.to_thread(func, *args) runs it in a
+  background thread and awaits the result, letting the rest of the event
+  loop keep making progress while it runs, instead of calling it inline
+  and freezing everything.
+example_code: |
+  import asyncio, time
+
+  def blocking_call():
+      time.sleep(0.01)
+      return "result"
+
+  async def main():
+      result = await asyncio.to_thread(blocking_call)
+      print(result)
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+  import time
+
+  def blocking_io():
+      time.sleep(0.05)
+      return "io done"
+
+  async def fast_task(log):
+      await asyncio.sleep(0.01)
+      log.append("fast task done")
+
+  async def main():
+      log = []
+
+      async def wrapped():
+          result = blocking_io()
+          log.append(result)
+
+      await asyncio.gather(wrapped(), fast_task(log))
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  wrapped() calls blocking_io() directly, freezing the event loop for
+  its full 0.05s -- so fast_task (which only needs 0.01s) can't run
+  until it's done. Fix wrapped() to run blocking_io via
+  `await asyncio.to_thread(blocking_io)` instead, so fast_task finishes
+  first. The output should become ['fast task done', 'io done'].
+expected_output: |
+  ['fast task done', 'io done']
+hints:
+  - "blocking_io itself can't be rewritten with await -- it's a plain blocking function."
+  - "await asyncio.to_thread(blocking_io) runs it off the event loop's thread."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "asyncio\\.to_thread"
+concept_tags: [asyncio, sync_vs_async, threading]

@@ -1,0 +1,49 @@
+id: observability_04
+title: "A Minimal Metrics Counter"
+language: python
+level: 74
+objective: "Implement the simplest possible observability primitive: a named counter that increments on each call."
+explanation: |
+  Almost every real metrics system (Prometheus counters, StatsD, etc.)
+  boils down to this same core idea: a name maps to a number that only
+  goes up, incremented once per occurrence of the thing being measured
+  (a request, an error, a retry). Building the simplest possible version
+  -- a dict from name to count -- is the same mental model as the real
+  thing, just without a network client attached.
+example_code: |
+  metrics = {}
+
+  def increment(name):
+      metrics[name] = metrics.get(name, 0) + 1
+
+  increment("cache_hits")
+  increment("cache_hits")
+  print(metrics["cache_hits"])
+starter_code: |
+  metrics = {}
+
+  def increment(name):
+      pass
+
+  increment("requests_total")
+  increment("requests_total")
+  increment("errors_total")
+  print(sorted(metrics.items()))
+challenge: |
+  increment() doesn't do anything -- metrics stays empty. Fix it to
+  track a per-name counter, starting at 0 and going up by 1 on each
+  call, so the output is
+  [('errors_total', 1), ('requests_total', 2)].
+expected_output: |
+  [('errors_total', 1), ('requests_total', 2)]
+hints:
+  - "metrics.get(name, 0) reads the current count, defaulting to 0 for a first-time name."
+  - "metrics[name] = metrics.get(name, 0) + 1"
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "metrics\\.get\\(name, 0\\)"
+concept_tags: [observability, metrics]

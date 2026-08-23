@@ -1,0 +1,44 @@
+id: recursion_02
+title: "Hitting Python's Recursion Limit"
+language: python
+level: 52
+objective: "Fix a RecursionError caused by recursing too deep, by converting the function to an iterative loop."
+explanation: |
+  Python has no tail-call optimization, and a default recursion limit
+  (~1000 frames) -- a recursive function that needs one call per unit of
+  work will blow that limit on large inputs, raising RecursionError.
+  Unlike languages with proper tail calls, the fix in Python is usually
+  to convert the recursion into an explicit loop, which uses one stack
+  frame no matter how much work it does.
+example_code: |
+  def factorial_iterative(n):
+      result = 1
+      for i in range(2, n + 1):
+          result *= i
+      return result
+
+  print(factorial_iterative(10))
+starter_code: |
+  def sum_to_n(n):
+      if n == 0:
+          return 0
+      return n + sum_to_n(n - 1)
+
+  print(sum_to_n(10000))
+challenge: |
+  sum_to_n(10000) recurses 10000 levels deep and raises a RecursionError
+  well before it gets there. Rewrite it iteratively (no recursion at
+  all) so it can handle n=10000, keeping the same result: 50005000.
+expected_output: |
+  50005000
+hints:
+  - "A loop uses one stack frame regardless of how many iterations it runs -- recursion uses one frame per call."
+  - "Accumulate a running total with a for loop from 0 to n inclusive."
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "for i in range"
+concept_tags: [recursion, recursion_limit, gotchas]

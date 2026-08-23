@@ -1,0 +1,57 @@
+id: packaging_03
+title: "Building a Plugin Registry with a Decorator"
+language: python
+level: 63
+objective: "Fix a @register decorator that never actually registers the decorated function, mimicking how packaging's console_scripts / plugin entry points work."
+explanation: |
+  Packaging systems expose "entry points" -- a name mapped to a callable
+  -- so other tools can discover and invoke plugins without importing
+  them by exact module path. A decorator-based registry (`@register`)
+  is the in-process version of this idea: the decorator's job is to
+  record the function in a shared registry as a side effect, then return
+  the function unchanged so it still works normally when called directly.
+example_code: |
+  PLUGINS = {}
+
+  def register(name):
+      def wrapper(func):
+          PLUGINS[name] = func
+          return func
+      return wrapper
+
+  @register("shout")
+  def shout(text):
+      return text.upper()
+
+  print(PLUGINS["shout"]("hi"))
+starter_code: |
+  COMMANDS = {}
+
+  def register(name):
+      def wrapper(func):
+          return func
+      return wrapper
+
+  @register("greet")
+  def greet():
+      return "hello"
+
+  print(COMMANDS["greet"]())
+challenge: |
+  register's inner wrapper never stores anything in COMMANDS, so
+  COMMANDS stays empty and COMMANDS["greet"] raises a KeyError. Fix
+  wrapper to store func under COMMANDS[name] before returning it, so
+  the output is "hello".
+expected_output: |
+  hello
+hints:
+  - "wrapper(func) needs to do COMMANDS[name] = func as a side effect before returning func."
+  - "name is available via closure from register's own argument."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "COMMANDS\\[name\\] = func"
+concept_tags: [packaging, entry_points, decorators]

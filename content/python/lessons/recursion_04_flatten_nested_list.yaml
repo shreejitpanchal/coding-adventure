@@ -1,0 +1,44 @@
+id: recursion_04
+title: "Flattening an Arbitrarily Nested List"
+language: python
+level: 54
+objective: "Fix a flatten() function that only copies items one level deep instead of recursively flattening nested lists."
+explanation: |
+  A nested list (a list that can contain other lists, to any depth) is a
+  naturally recursive data structure -- flattening it needs a recursive
+  function: for each item, if it's itself a list, recurse into it and
+  extend the result with what comes back; otherwise, append the item
+  directly.
+example_code: |
+  def depth(items):
+      if not any(isinstance(i, list) for i in items):
+          return 1
+      return 1 + max(depth(i) for i in items if isinstance(i, list))
+
+  print(depth([1, [2, [3]]]))
+starter_code: |
+  def flatten(items):
+      result = []
+      for item in items:
+          result.append(item)
+      return result
+
+  nested = [1, [2, 3, [4, 5]], 6]
+  print(flatten(nested))
+challenge: |
+  flatten() just copies each top-level item as-is, leaving nested lists
+  nested. Fix it so it recurses into any item that's itself a list,
+  producing a fully flat result: [1, 2, 3, 4, 5, 6].
+expected_output: |
+  [1, 2, 3, 4, 5, 6]
+hints:
+  - "Check `isinstance(item, list)` for each item."
+  - "If it's a list, recurse: result.extend(flatten(item)); otherwise result.append(item)."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "isinstance\\(item, list\\)"
+concept_tags: [recursion, data_structures]

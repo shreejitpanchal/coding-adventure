@@ -1,0 +1,63 @@
+id: sync_vs_async_04
+title: "The Async Analog of a Context Manager"
+language: python
+level: 44
+objective: "Fix a class meant for `async with` that implements the sync context manager protocol (__enter__/__exit__) instead of the async one."
+explanation: |
+  `async with` requires `__aenter__`/`__aexit__` (both coroutine
+  methods) -- a class with only the plain `__enter__`/`__exit__` doesn't
+  support the async context manager protocol at all, and using it with
+  `async with` raises a TypeError. This is the async-native equivalent of
+  a regular context manager, used for resources acquired/released with
+  their own async setup/teardown steps (a connection pool, an async lock).
+example_code: |
+  import asyncio
+
+  class AsyncGate:
+      async def __aenter__(self):
+          return self
+      async def __aexit__(self, exc_type, exc_val, exc_tb):
+          return False
+
+  async def main():
+      async with AsyncGate():
+          pass
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  class AsyncResource:
+      def __enter__(self):
+          print("acquire")
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          print("release")
+
+  async def main():
+      async with AsyncResource():
+          print("using resource")
+
+  asyncio.run(main())
+challenge: |
+  AsyncResource only implements the sync context manager protocol, so
+  `async with AsyncResource()` raises a TypeError. Fix it by renaming
+  __enter__/__exit__ to __aenter__/__aexit__ (both as `async def`),
+  keeping the same three lines of output: acquire, using resource,
+  release.
+expected_output: |
+  acquire
+  using resource
+  release
+hints:
+  - "async with needs __aenter__ and __aexit__, both defined with `async def`."
+  - "The bodies stay the same -- only the method names and the async keyword change."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "__aenter__"
+  - "__aexit__"
+concept_tags: [asyncio, context_managers, sync_vs_async]

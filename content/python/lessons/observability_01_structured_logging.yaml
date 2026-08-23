@@ -1,0 +1,40 @@
+id: observability_01
+title: "Replacing print() Debugging with logging"
+language: python
+level: 71
+objective: "Replace ad-hoc print() calls with the logging module, which supports levels, filtering, and structured output that print() can't."
+explanation: |
+  print() has no concept of severity, no way to filter it out in
+  production, and no structured format -- the logging module solves all
+  three: logging.info()/warning()/error() carry a level, can be filtered
+  globally by that level, and can be formatted consistently across an
+  entire application via logging.basicConfig().
+example_code: |
+  import logging, sys
+  logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
+  logging.info("started")
+starter_code: |
+  def process_order(order_id):
+      print(f"Processing order {order_id}")
+      return True
+
+  process_order(42)
+challenge: |
+  Replace the print() call with logging.info(), configured via
+  logging.basicConfig(level=logging.INFO,
+  format="%(levelname)s: %(message)s", stream=sys.stdout) so the log
+  line goes to stdout in a consistent format. Output should be:
+  "INFO: Processing order 42".
+expected_output: |
+  INFO: Processing order 42
+hints:
+  - "import logging, sys at the top, then call logging.basicConfig(...) once before logging anything."
+  - "logging.basicConfig(level=logging.INFO, format=\"%(levelname)s: %(message)s\", stream=sys.stdout)"
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "logging\\.info"
+concept_tags: [observability, logging]

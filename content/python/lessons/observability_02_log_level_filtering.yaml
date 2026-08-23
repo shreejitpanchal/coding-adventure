@@ -1,0 +1,46 @@
+id: observability_02
+title: "The Log Level Set Too High"
+language: python
+level: 72
+objective: "Fix a logger configured at WARNING level that's silently swallowing INFO-level logs the code actually needs."
+explanation: |
+  logging.basicConfig(level=...) sets the *minimum* severity that gets
+  emitted at all -- anything below that threshold is silently dropped,
+  not buffered or delayed, just gone. Setting the level too high (e.g.
+  WARNING when you actually need INFO-level visibility) is a common,
+  quiet way to lose exactly the logs you need when debugging a live
+  issue.
+example_code: |
+  import logging, sys
+  logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s", stream=sys.stdout)
+  logging.debug("this now shows, since DEBUG is the lowest level")
+starter_code: |
+  import logging
+  import sys
+
+  logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s", stream=sys.stdout)
+
+  def run():
+      logging.info("starting up")
+      logging.warning("low disk space")
+
+  run()
+challenge: |
+  The logger's level is WARNING, so the "starting up" info log is
+  silently dropped -- only the warning prints. Fix the basicConfig
+  level to INFO so both lines are emitted:
+  "INFO: starting up" then "WARNING: low disk space".
+expected_output: |
+  INFO: starting up
+  WARNING: low disk space
+hints:
+  - "The configured level is a threshold -- anything below it is dropped, not delayed."
+  - "Change level=logging.WARNING to level=logging.INFO."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "level=logging\\.INFO"
+concept_tags: [observability, logging, gotchas]

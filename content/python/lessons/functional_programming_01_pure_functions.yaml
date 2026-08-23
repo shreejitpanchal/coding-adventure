@@ -1,0 +1,46 @@
+id: functional_programming_01
+title: "The Function with a Hidden Side Effect"
+language: python
+level: 46
+objective: "Remove a hidden side effect (mutating module-level state) so a function becomes pure -- same inputs always produce the same output, nothing else."
+explanation: |
+  A pure function's only effect is its return value -- call it twice with
+  the same arguments and you get the same result, with nothing else in
+  the program changed. A function that quietly mutates shared state on
+  the side (like appending to a module-level log) is much harder to test
+  in isolation and to reason about, since its behavior depends on -- and
+  changes -- things outside its own arguments and return value.
+example_code: |
+  def add_tax(price, rate=0.1):
+      return round(price * (1 + rate), 2)
+
+  print(add_tax(100))
+starter_code: |
+  log = []
+
+  def add_tax(price, rate=0.1):
+      taxed = round(price * (1 + rate), 2)
+      log.append(taxed)
+      return taxed
+
+  result = add_tax(100)
+  print(result)
+challenge: |
+  add_tax has a hidden side effect: it appends to the module-level log
+  list every time it's called, making it impure and hard to test in
+  isolation. Rewrite it as a pure function with no side effects -- remove
+  the log list and the append call entirely, keeping the same result:
+  110.0.
+expected_output: |
+  110.0
+hints:
+  - "A pure function's only effect should be its return value."
+  - "Delete the log list and the log.append(taxed) line -- just compute and return."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "return round\\("
+concept_tags: [functional_programming, pure_functions, side_effects]

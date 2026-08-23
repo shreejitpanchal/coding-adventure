@@ -30,10 +30,10 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "app/engine/categories.py": {
-    "mtime": 1787451328.0652502,
-    "seen": 1787453473.575782,
-    "ast_hash": "4493d13778b88b35f0b315dfa83f6619",
-    "semantic_hash": "4493d13778b88b35f0b315dfa83f6619"
+    "mtime": 1787453908.429394,
+    "seen": 1787454807.4681077,
+    "ast_hash": "f1f6516fb56c4f55603c53c006cf78f0",
+    "semantic_hash": "f1f6516fb56c4f55603c53c006cf78f0"
   },
   "app/engine/exercise.py": {
     "mtime": 1787451281.6823463,
@@ -252,10 +252,10 @@
     "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
   },
   "tests/test_lesson_engine.py": {
-    "mtime": 1787452088.7111855,
-    "seen": 1787453473.575809,
-    "ast_hash": "b781c59ecc224e7f6d724a00ba9bad1f",
-    "semantic_hash": "b781c59ecc224e7f6d724a00ba9bad1f"
+    "mtime": 1787454342.4465325,
+    "seen": 1787454807.4681642,
+    "ast_hash": "76b38402a267fedc88d6dc14e2106452",
+    "semantic_hash": "76b38402a267fedc88d6dc14e2106452"
   },
   "tests/test_progress_store.py": {
     "mtime": 1787452099.293837,
@@ -276,10 +276,10 @@
     "semantic_hash": "67e32c94418ed17dc54e04839f011850"
   },
   "README.md": {
-    "mtime": 1787452297.0940413,
-    "seen": 1787453473.575812,
-    "ast_hash": "5362783c203fa9a7734b6a537457f330",
-    "semantic_hash": "5362783c203fa9a7734b6a537457f330"
+    "mtime": 1787454371.4307723,
+    "seen": 1787454807.4681666,
+    "ast_hash": "9b261202577f19732aec6e45240759a4",
+    "semantic_hash": "9b261202577f19732aec6e45240759a4"
   },
   "content/python/lessons/concurrency_async_01_gather_order.yaml": {
     "mtime": 1787451909.8837602,
@@ -492,15 +492,255 @@
     "semantic_hash": "346cace5911cc12c9d683b9833ce0095"
   },
   "content/python/quiz/quiz_questions.yaml": {
-    "mtime": 1787452070.0813065,
-    "seen": 1787453473.5758379,
-    "ast_hash": "4f22641efde876638af8f37e1d84f3c9",
-    "semantic_hash": "4f22641efde876638af8f37e1d84f3c9"
+    "mtime": 1787454328.9023967,
+    "seen": 1787454807.4682004,
+    "ast_hash": "a54967583751e4197071d9e82bea2390",
+    "semantic_hash": "a54967583751e4197071d9e82bea2390"
   },
   "requirements.txt": {
     "mtime": 1787451259.4993236,
     "seen": 1787453473.5758386,
     "ast_hash": "5aa2d618471b3304652e74e7306007df",
     "semantic_hash": "5aa2d618471b3304652e74e7306007df"
+  },
+  "content/python/lessons/dependency_management_01_detect_virtualenv.yaml": {
+    "mtime": 1787454042.9042633,
+    "seen": 1787454807.4681678,
+    "ast_hash": "66825ccfc980dbd8daddf2f7e916e41c",
+    "semantic_hash": "66825ccfc980dbd8daddf2f7e916e41c"
+  },
+  "content/python/lessons/dependency_management_02_parse_requirement_line.yaml": {
+    "mtime": 1787454047.2026556,
+    "seen": 1787454807.4681687,
+    "ast_hash": "68d74c40edb9e9675692dedb7dfe7fc4",
+    "semantic_hash": "68d74c40edb9e9675692dedb7dfe7fc4"
+  },
+  "content/python/lessons/dependency_management_03_version_string_comparison.yaml": {
+    "mtime": 1787454052.6651156,
+    "seen": 1787454807.4681706,
+    "ast_hash": "470c052cee0416e675bd59f048fce400",
+    "semantic_hash": "470c052cee0416e675bd59f048fce400"
+  },
+  "content/python/lessons/dependency_management_04_importlib_metadata.yaml": {
+    "mtime": 1787454057.6153834,
+    "seen": 1787454807.4681718,
+    "ast_hash": "3c23ad1391afef460116bc318af7b264",
+    "semantic_hash": "3c23ad1391afef460116bc318af7b264"
+  },
+  "content/python/lessons/dependency_management_05_lock_file_pin.yaml": {
+    "mtime": 1787454063.0805652,
+    "seen": 1787454807.4681726,
+    "ast_hash": "b6ed99491a9299ed4dcd7f3848d6a2c9",
+    "semantic_hash": "b6ed99491a9299ed4dcd7f3848d6a2c9"
+  },
+  "content/python/lessons/deployment_01_env_var_defaults.yaml": {
+    "mtime": 1787454099.608508,
+    "seen": 1787454807.4681733,
+    "ast_hash": "d3d9943e65fc41b1a1ecb9b6f9271630",
+    "semantic_hash": "d3d9943e65fc41b1a1ecb9b6f9271630"
+  },
+  "content/python/lessons/deployment_02_feature_flag_boolean_parsing.yaml": {
+    "mtime": 1787454105.662919,
+    "seen": 1787454807.468174,
+    "ast_hash": "287948f4a3f79554c5c5e793993d42ae",
+    "semantic_hash": "287948f4a3f79554c5c5e793993d42ae"
+  },
+  "content/python/lessons/deployment_03_graceful_shutdown_signal.yaml": {
+    "mtime": 1787454111.1087954,
+    "seen": 1787454807.468175,
+    "ast_hash": "9c28cd6649afd50b552f8466ab483ded",
+    "semantic_hash": "9c28cd6649afd50b552f8466ab483ded"
+  },
+  "content/python/lessons/deployment_04_health_check.yaml": {
+    "mtime": 1787454116.0168426,
+    "seen": 1787454807.4681756,
+    "ast_hash": "dc8abe5e82a6a575ec1ff1bafc0c7026",
+    "semantic_hash": "dc8abe5e82a6a575ec1ff1bafc0c7026"
+  },
+  "content/python/lessons/deployment_05_idempotent_deploy_step.yaml": {
+    "mtime": 1787454121.0971227,
+    "seen": 1787454807.4681766,
+    "ast_hash": "12045080490adcd857a34e6c00e4611b",
+    "semantic_hash": "12045080490adcd857a34e6c00e4611b"
+  },
+  "content/python/lessons/functional_programming_01_pure_functions.yaml": {
+    "mtime": 1787453984.5616345,
+    "seen": 1787454807.4681773,
+    "ast_hash": "4e284f175e7ed92b3d627b7dcabdfc04",
+    "semantic_hash": "4e284f175e7ed92b3d627b7dcabdfc04"
+  },
+  "content/python/lessons/functional_programming_02_map_filter.yaml": {
+    "mtime": 1787453989.487103,
+    "seen": 1787454807.4681783,
+    "ast_hash": "0535ec4e0af6a570f1d1dbe4333b4a9d",
+    "semantic_hash": "0535ec4e0af6a570f1d1dbe4333b4a9d"
+  },
+  "content/python/lessons/functional_programming_03_function_composition.yaml": {
+    "mtime": 1787453994.4026191,
+    "seen": 1787454807.468179,
+    "ast_hash": "d9662ffb8da51878fec30824249dbf71",
+    "semantic_hash": "d9662ffb8da51878fec30824249dbf71"
+  },
+  "content/python/lessons/functional_programming_04_immutability.yaml": {
+    "mtime": 1787454000.9337869,
+    "seen": 1787454807.4681797,
+    "ast_hash": "03d1578b76624a246dc10b782f435f55",
+    "semantic_hash": "03d1578b76624a246dc10b782f435f55"
+  },
+  "content/python/lessons/functional_programming_05_partial_application.yaml": {
+    "mtime": 1787454004.6999688,
+    "seen": 1787454807.4681804,
+    "ast_hash": "85a618178540622e2aee157d78f67978",
+    "semantic_hash": "85a618178540622e2aee157d78f67978"
+  },
+  "content/python/lessons/observability_01_structured_logging.yaml": {
+    "mtime": 1787454129.826414,
+    "seen": 1787454807.468181,
+    "ast_hash": "c5fe5fe6abcc8cfbfc50be3afc6c0ab7",
+    "semantic_hash": "c5fe5fe6abcc8cfbfc50be3afc6c0ab7"
+  },
+  "content/python/lessons/observability_02_log_level_filtering.yaml": {
+    "mtime": 1787454135.8476439,
+    "seen": 1787454807.468182,
+    "ast_hash": "59aa4da1e05062a35ba02df70dbb5978",
+    "semantic_hash": "59aa4da1e05062a35ba02df70dbb5978"
+  },
+  "content/python/lessons/observability_03_correlation_id_contextvar.yaml": {
+    "mtime": 1787454141.2828214,
+    "seen": 1787454807.4681826,
+    "ast_hash": "2299374d655ede2efd06824074beeced",
+    "semantic_hash": "2299374d655ede2efd06824074beeced"
+  },
+  "content/python/lessons/observability_04_metrics_counter.yaml": {
+    "mtime": 1787454146.7408607,
+    "seen": 1787454807.4681833,
+    "ast_hash": "1e2716cf12fb7e4ce6091a967040a37f",
+    "semantic_hash": "1e2716cf12fb7e4ce6091a967040a37f"
+  },
+  "content/python/lessons/observability_05_timing_context_manager.yaml": {
+    "mtime": 1787454151.674522,
+    "seen": 1787454807.468184,
+    "ast_hash": "57c66a2a371ba57412430e5a3b476c87",
+    "semantic_hash": "57c66a2a371ba57412430e5a3b476c87"
+  },
+  "content/python/lessons/packaging_01_tomllib_parse_version.yaml": {
+    "mtime": 1787454071.3813715,
+    "seen": 1787454807.468185,
+    "ast_hash": "13007188e1aeab4a30a75d0106d9f241",
+    "semantic_hash": "13007188e1aeab4a30a75d0106d9f241"
+  },
+  "content/python/lessons/packaging_02_semver_bump.yaml": {
+    "mtime": 1787454075.741804,
+    "seen": 1787454807.4681857,
+    "ast_hash": "6ca0c7470a1b1fc2624ad0fbd6c4173f",
+    "semantic_hash": "6ca0c7470a1b1fc2624ad0fbd6c4173f"
+  },
+  "content/python/lessons/packaging_03_entry_point_registry.yaml": {
+    "mtime": 1787454081.7505388,
+    "seen": 1787454807.4681864,
+    "ast_hash": "9c795ba92fa3720c0dee6984e67713d8",
+    "semantic_hash": "9c795ba92fa3720c0dee6984e67713d8"
+  },
+  "content/python/lessons/packaging_04_module_public_api.yaml": {
+    "mtime": 1787454086.1051574,
+    "seen": 1787454807.468187,
+    "ast_hash": "005116667669fa98d48f680d9e5d1dca",
+    "semantic_hash": "005116667669fa98d48f680d9e5d1dca"
+  },
+  "content/python/lessons/packaging_05_wheel_filename_parsing.yaml": {
+    "mtime": 1787454090.875975,
+    "seen": 1787454807.4681878,
+    "ast_hash": "9c7c07924ba8908fe580b9c17348d591",
+    "semantic_hash": "9c7c07924ba8908fe580b9c17348d591"
+  },
+  "content/python/lessons/recursion_01_missing_base_case.yaml": {
+    "mtime": 1787454012.514177,
+    "seen": 1787454807.4681888,
+    "ast_hash": "8440e03dd4dacc5ae63fb8a40f866938",
+    "semantic_hash": "8440e03dd4dacc5ae63fb8a40f866938"
+  },
+  "content/python/lessons/recursion_02_recursion_depth_limit.yaml": {
+    "mtime": 1787454017.41389,
+    "seen": 1787454807.4681895,
+    "ast_hash": "5c855da5649ef9f51277e6672bdf8d57",
+    "semantic_hash": "5c855da5649ef9f51277e6672bdf8d57"
+  },
+  "content/python/lessons/recursion_03_mutual_recursion.yaml": {
+    "mtime": 1787454022.387354,
+    "seen": 1787454807.4681902,
+    "ast_hash": "d36cc1442d10207e1b46e97e350c399c",
+    "semantic_hash": "d36cc1442d10207e1b46e97e350c399c"
+  },
+  "content/python/lessons/recursion_04_flatten_nested_list.yaml": {
+    "mtime": 1787454027.8358407,
+    "seen": 1787454807.468191,
+    "ast_hash": "a4a14afc31265f9549d0ed442f9305f1",
+    "semantic_hash": "a4a14afc31265f9549d0ed442f9305f1"
+  },
+  "content/python/lessons/recursion_05_accumulator_pattern.yaml": {
+    "mtime": 1787454033.7799833,
+    "seen": 1787454807.4681914,
+    "ast_hash": "72d517d0b8b8a8c1a9c466a7727a8e4e",
+    "semantic_hash": "72d517d0b8b8a8c1a9c466a7727a8e4e"
+  },
+  "content/python/lessons/sync_vs_async_01_blocking_call_in_event_loop.yaml": {
+    "mtime": 1787453952.431226,
+    "seen": 1787454807.4681923,
+    "ast_hash": "c96244f51d3549a62c6c3b0acef5774f",
+    "semantic_hash": "c96244f51d3549a62c6c3b0acef5774f"
+  },
+  "content/python/lessons/sync_vs_async_02_to_thread_for_blocking_io.yaml": {
+    "mtime": 1787453958.9589982,
+    "seen": 1787454807.468193,
+    "ast_hash": "797c6dc0713f5a6d59395bc6665700e7",
+    "semantic_hash": "797c6dc0713f5a6d59395bc6665700e7"
+  },
+  "content/python/lessons/sync_vs_async_03_unawaited_coroutine.yaml": {
+    "mtime": 1787453963.9021614,
+    "seen": 1787454807.4681938,
+    "ast_hash": "2e63b20e8ae6aa72c5c09f76a66bbbc0",
+    "semantic_hash": "2e63b20e8ae6aa72c5c09f76a66bbbc0"
+  },
+  "content/python/lessons/sync_vs_async_04_async_context_manager.yaml": {
+    "mtime": 1787453970.4800146,
+    "seen": 1787454807.4681945,
+    "ast_hash": "136cafbd970c086a712f69830f3bd93f",
+    "semantic_hash": "136cafbd970c086a712f69830f3bd93f"
+  },
+  "content/python/lessons/sync_vs_async_05_async_for_generator.yaml": {
+    "mtime": 1787453975.4973116,
+    "seen": 1787454807.4681954,
+    "ast_hash": "8c00e11799b4c482af58e4a71210024c",
+    "semantic_hash": "8c00e11799b4c482af58e4a71210024c"
+  },
+  "content/python/lessons/thread_scheduling_01_reentrant_lock.yaml": {
+    "mtime": 1787453918.8592632,
+    "seen": 1787454807.4681962,
+    "ast_hash": "3c735415c16745687c01c445fc819fd6",
+    "semantic_hash": "3c735415c16745687c01c445fc819fd6"
+  },
+  "content/python/lessons/thread_scheduling_02_thread_naming.yaml": {
+    "mtime": 1787453924.8436894,
+    "seen": 1787454807.468197,
+    "ast_hash": "6c077f05ff6da02dda5fa5e4b1bf4b12",
+    "semantic_hash": "6c077f05ff6da02dda5fa5e4b1bf4b12"
+  },
+  "content/python/lessons/thread_scheduling_03_daemon_flag.yaml": {
+    "mtime": 1787453929.791573,
+    "seen": 1787454807.4681976,
+    "ast_hash": "118519046ebbc32c6b13025225bc5ed8",
+    "semantic_hash": "118519046ebbc32c6b13025225bc5ed8"
+  },
+  "content/python/lessons/thread_scheduling_04_producer_consumer_queue.yaml": {
+    "mtime": 1787453936.8871374,
+    "seen": 1787454807.4681983,
+    "ast_hash": "d7bb9ea096edbd17a7bae891650b51aa",
+    "semantic_hash": "d7bb9ea096edbd17a7bae891650b51aa"
+  },
+  "content/python/lessons/thread_scheduling_05_thread_local_storage.yaml": {
+    "mtime": 1787453943.0357614,
+    "seen": 1787454807.4681995,
+    "ast_hash": "9317c664bb67eedfcffe26132d78fe8a",
+    "semantic_hash": "9317c664bb67eedfcffe26132d78fe8a"
   }
 }

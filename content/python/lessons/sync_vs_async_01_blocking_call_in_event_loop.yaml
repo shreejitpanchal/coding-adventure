@@ -1,0 +1,58 @@
+id: sync_vs_async_01
+title: "The Blocking Call That Froze the Event Loop"
+language: python
+level: 41
+objective: "Fix an async function that calls a blocking function (time.sleep), freezing the entire event loop instead of yielding control."
+explanation: |
+  asyncio's concurrency comes entirely from cooperative yielding at
+  `await` points -- a coroutine that calls a blocking function like
+  time.sleep() never yields, so it blocks every other coroutine on the
+  same event loop for its entire duration, not just itself. The fix for
+  a delay is asyncio.sleep() (which awaits, yielding control); for
+  genuinely blocking I/O or CPU work, it's asyncio.to_thread().
+example_code: |
+  import asyncio
+
+  async def worker():
+      await asyncio.sleep(0.01)
+      return "done"
+
+  print(asyncio.run(worker()))
+starter_code: |
+  import asyncio
+  import time
+
+  async def blocking_worker(log):
+      time.sleep(0.05)
+      log.append("worker done")
+
+  async def fast_task(log):
+      await asyncio.sleep(0.01)
+      log.append("fast task done")
+
+  async def main():
+      log = []
+      await asyncio.gather(blocking_worker(log), fast_task(log))
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  blocking_worker uses time.sleep(), which blocks the whole event loop --
+  so fast_task (which should finish first, since 0.01s < 0.05s) never
+  gets a chance to run until blocking_worker is completely done. Fix
+  blocking_worker to use `await asyncio.sleep(0.05)` instead, so the loop
+  can properly interleave and fast_task finishes first. The output
+  should become ['fast task done', 'worker done'].
+expected_output: |
+  ['fast task done', 'worker done']
+hints:
+  - "time.sleep() inside an async function never yields to the event loop -- it just blocks everything."
+  - "Replace `time.sleep(0.05)` with `await asyncio.sleep(0.05)`."
+xp_reward: 15
+achievement: null
+category: sync_vs_async
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "await asyncio\\.sleep"
+concept_tags: [asyncio, sync_vs_async, gotchas]

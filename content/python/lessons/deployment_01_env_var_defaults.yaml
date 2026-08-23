@@ -1,0 +1,42 @@
+id: deployment_01
+title: "Configuration with a Safe Default"
+language: python
+level: 66
+objective: "Fix config-loading code that crashes when an environment variable isn't set, instead of falling back to a sensible default."
+explanation: |
+  Reading required config with `os.environ["NAME"]` crashes with a
+  KeyError the moment that variable isn't set -- which is exactly what
+  happens in a fresh environment, a local dev machine, or a misconfigured
+  deploy. `os.environ.get("NAME", default)` degrades gracefully instead,
+  and remembering to convert the (always-string) result to the right
+  type is just as important as the default itself.
+example_code: |
+  import os
+
+  timeout = int(os.environ.get("TIMEOUT_SECONDS", "30"))
+  print(timeout)
+starter_code: |
+  import os
+
+  def get_port():
+      return os.environ["PORT"]
+
+  print(get_port())
+challenge: |
+  get_port() crashes with a KeyError when PORT isn't set in the
+  environment. Fix it to use os.environ.get("PORT", "8000") with a
+  string default, converting the result to an int, so the output is
+  8000.
+expected_output: |
+  8000
+hints:
+  - "os.environ.get(name, default) never raises -- it just returns default when the key is missing."
+  - "Wrap the whole expression in int(...) to get a number, not a string."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "os\\.environ\\.get"
+concept_tags: [deployment, configuration, environment_variables]

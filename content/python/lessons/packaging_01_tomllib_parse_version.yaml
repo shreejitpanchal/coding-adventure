@@ -1,0 +1,47 @@
+id: packaging_01
+title: "Reading a Version Out of pyproject.toml"
+language: python
+level: 61
+objective: "Use the stdlib tomllib module to parse a pyproject.toml-style string and extract the project version."
+explanation: |
+  pyproject.toml is the standard, tool-agnostic way modern Python
+  projects declare their metadata (name, version, dependencies). Since
+  Python 3.11, tomllib is in the standard library, so parsing one
+  doesn't need any third-party dependency -- tomllib.loads() turns the
+  text into a plain nested dict you can index into directly.
+example_code: |
+  import tomllib
+
+  text = "[project]\nname = \"demo\"\nversion = \"2.1.0\"\n"
+  data = tomllib.loads(text)
+  print(data["project"]["version"])
+starter_code: |
+  import tomllib
+
+  pyproject_text = """
+  [project]
+  name = "example"
+  version = "1.0.0"
+  """
+
+  def get_version(text):
+      return "unknown"
+
+  print(get_version(pyproject_text))
+challenge: |
+  get_version always returns "unknown" without looking at the text at
+  all. Fix it to parse the TOML with tomllib.loads() and pull out
+  data["project"]["version"], so the output is 1.0.0.
+expected_output: |
+  1.0.0
+hints:
+  - "tomllib.loads(text) parses TOML text into a nested dict."
+  - "The version lives at data[\"project\"][\"version\"]."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "tomllib\\.loads"
+concept_tags: [packaging, pyproject_toml, tomllib]

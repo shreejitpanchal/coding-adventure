@@ -1,0 +1,57 @@
+id: observability_05
+title: "Instrumenting a Block's Duration"
+language: python
+level: 75
+objective: "Fix a Timer context manager that never actually records the elapsed duration of the block it wraps."
+explanation: |
+  A timing context manager is a standard observability building block:
+  __enter__ records a start timestamp, and __exit__ computes the elapsed
+  time and stores it somewhere the caller can read after the `with`
+  block ends -- using time.monotonic() rather than time.time(), since a
+  monotonic clock can't ever jump backward due to a system clock
+  adjustment, which would corrupt a duration measurement.
+example_code: |
+  import time
+
+  class Timer:
+      def __enter__(self):
+          self.start = time.monotonic()
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          self.duration = time.monotonic() - self.start
+
+  with Timer() as t:
+      pass
+  print(t.duration is not None)
+starter_code: |
+  import time
+
+  class Timer:
+      def __enter__(self):
+          self.start = time.monotonic()
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          pass
+
+  with Timer() as t:
+      total = sum(range(1000))
+
+  print(t.duration is not None)
+challenge: |
+  __exit__ never records anything, so t has no .duration attribute at
+  all and this crashes with an AttributeError. Fix __exit__ to compute
+  self.duration = time.monotonic() - self.start, so the output becomes
+  True.
+expected_output: |
+  True
+hints:
+  - "self.start was already recorded in __enter__ -- __exit__ just needs to compute the difference."
+  - "self.duration = time.monotonic() - self.start"
+xp_reward: 15
+achievement: observability_master
+category: observability
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "self\\.duration = time\\.monotonic"
+concept_tags: [observability, instrumentation, context_managers]

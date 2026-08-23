@@ -1,0 +1,47 @@
+id: packaging_04
+title: "Controlling a Package's Public API with __all__"
+language: python
+level: 64
+objective: "Filter a module's defined names down to just what __all__ declares as public."
+explanation: |
+  A module or package's `__all__` list is how it declares its public
+  API -- what `from module import *` actually exposes, and a signal to
+  humans (and tools) about which names are meant to be used from
+  outside versus which are internal implementation details, even if
+  they're technically importable.
+example_code: |
+  __all__ = ["run"]
+
+  def run():
+      pass
+
+  def _internal_helper():
+      pass
+
+  exported = [name for name in ("run", "_internal_helper") if name in __all__]
+  print(exported)
+starter_code: |
+  def public_api(all_names, defined_names):
+      return defined_names
+
+  defined = ["helper", "public_func", "_private_func"]
+  exported = ["public_func"]
+  print(public_api(exported, defined))
+challenge: |
+  public_api returns every defined name, ignoring __all__ entirely --
+  it should only expose what's actually listed there. Fix it to filter
+  defined_names down to just the ones present in all_names, so the
+  output becomes ['public_func'].
+expected_output: |
+  ['public_func']
+hints:
+  - "Use a list comprehension filtering defined_names by membership in all_names."
+  - "[name for name in defined_names if name in all_names]"
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "name in all_names"
+concept_tags: [packaging, module_api]

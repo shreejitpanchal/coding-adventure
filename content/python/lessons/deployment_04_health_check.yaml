@@ -1,0 +1,39 @@
+id: deployment_04
+title: "A Health Check That Ignores Its Own Dependencies"
+language: python
+level: 69
+objective: "Fix a health-check function that always reports 'ok', regardless of whether its actual dependencies are healthy."
+explanation: |
+  A deployment's readiness/liveness check exists to let an orchestrator
+  (or a human) know whether the process is actually able to do its job --
+  a health check that always reports "ok" defeats its own purpose,
+  since it can't ever catch a real outage (a downed database, a failed
+  connection). It needs to actually reflect the state of what it's
+  checking.
+example_code: |
+  def health_check(db_ok, cache_ok):
+      return "ok" if (db_ok and cache_ok) else "unhealthy"
+
+  print(health_check(True, False))
+starter_code: |
+  def health_check(dependencies_ok):
+      return "ok"
+
+  print(health_check(False))
+challenge: |
+  health_check always returns "ok", completely ignoring
+  dependencies_ok. Fix it to return "ok" only when dependencies_ok is
+  True, otherwise "unhealthy" -- so the output for a False input becomes
+  "unhealthy".
+expected_output: |
+  unhealthy
+hints:
+  - "Use a conditional expression: \"ok\" if dependencies_ok else \"unhealthy\"."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "if dependencies_ok else"
+concept_tags: [deployment, health_checks, observability]

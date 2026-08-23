@@ -1,0 +1,44 @@
+id: dependency_management_01
+title: "Detecting Whether a Virtual Environment Is Active"
+language: python
+level: 56
+objective: "Implement the standard check for whether Python is running inside a virtual environment: sys.prefix differing from sys.base_prefix."
+explanation: |
+  When a virtual environment is active, `sys.prefix` points at the venv's
+  own directory while `sys.base_prefix` still points at the real system
+  Python that created it -- outside a venv, they're the same path. That
+  comparison is the standard, dependency-free way to detect "am I
+  running inside a venv right now," used by pip and other tools
+  internally.
+example_code: |
+  def in_virtualenv(prefix, base_prefix):
+      return prefix != base_prefix
+
+  print(in_virtualenv("/opt/project/.venv", "/opt/project/.venv"))
+starter_code: |
+  def detect_virtualenv(prefix, base_prefix):
+      return False
+
+  # Simulates being inside a venv: prefix differs from base_prefix
+  print(detect_virtualenv("/project/.venv", "/usr"))
+  # Simulates NOT being inside a venv: prefix equals base_prefix
+  print(detect_virtualenv("/usr", "/usr"))
+challenge: |
+  detect_virtualenv always returns False, ignoring its arguments
+  entirely. A venv is active exactly when sys.prefix != sys.base_prefix
+  -- fix the function to actually compare the two, so the calls above
+  print True then False.
+expected_output: |
+  True
+  False
+hints:
+  - "sys.prefix != sys.base_prefix is True exactly when a venv is active."
+  - "Just compare the two parameters directly."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "prefix != base_prefix"
+concept_tags: [dependency_management, virtual_environments]

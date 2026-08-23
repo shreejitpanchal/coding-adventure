@@ -1,0 +1,71 @@
+id: thread_scheduling_04
+title: "A Producer/Consumer Handoff with queue.Queue"
+language: python
+level: 39
+objective: "Use queue.Queue to hand work off between threads safely, instead of a plain list with no synchronization."
+explanation: |
+  queue.Queue is thread-safe out of the box (unlike a plain list, which
+  needs manual locking to avoid corruption under concurrent access), and
+  its blocking `get()`/`put()` naturally coordinate a producer thread and
+  a consumer thread without any extra locks. A sentinel value (like None)
+  is the standard way to tell a consumer "no more work is coming."
+example_code: |
+  import queue, threading
+
+  q = queue.Queue()
+
+  def producer():
+      for i in range(3):
+          q.put(i)
+      q.put(None)
+
+  def consumer(total):
+      while True:
+          item = q.get()
+          if item is None:
+              break
+          total.append(item)
+
+  total = []
+  threading.Thread(target=producer).start()
+  consumer(total)
+  print(total)
+starter_code: |
+  import threading
+
+  buffer = []
+
+  def producer():
+      for i in range(5):
+          buffer.append(i)
+
+  def consumer(total):
+      for item in buffer:
+          total.append(item * 10)
+
+  total = []
+  t = threading.Thread(target=producer)
+  t.start()
+  t.join()
+  consumer(total)
+  print(total)
+challenge: |
+  This "works" by accident because of t.join(), but a plain list isn't
+  thread-safe and this pattern doesn't scale to real producer/consumer
+  code. Rewrite it using queue.Queue: the producer puts 0-4 onto the
+  queue then a None sentinel, and the consumer pulls items until it sees
+  the sentinel, multiplying each by 10. Keep the same output:
+  [0, 10, 20, 30, 40].
+expected_output: |
+  [0, 10, 20, 30, 40]
+hints:
+  - "import queue; q = queue.Queue()"
+  - "The producer calls q.put(i) then q.put(None) as a sentinel; the consumer loops on q.get() until it sees None."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "queue\\.Queue\\(\\)"
+concept_tags: [threading, queue, producer_consumer]

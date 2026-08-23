@@ -1,0 +1,52 @@
+id: thread_scheduling_02
+title: "Naming Threads for Debuggable Logs"
+language: python
+level: 37
+objective: "Give worker threads meaningful names instead of the default Thread-N, so logs and debuggers can identify them."
+explanation: |
+  Every thread gets an auto-generated name like "Thread-1" unless you
+  pass `name=` to the constructor. In a multi-threaded program, an
+  unnamed thread is nearly impossible to trace through logs or a
+  debugger -- naming threads by the work they do (e.g. "worker-fetch",
+  "worker-write") is a small habit that pays off constantly when
+  diagnosing production issues.
+example_code: |
+  import threading
+
+  def task():
+      print(threading.current_thread().name)
+
+  t = threading.Thread(target=task, name="cache-refresh")
+  t.start()
+  t.join()
+starter_code: |
+  import threading
+
+  def report(results):
+      results.append(threading.current_thread().name)
+
+  results = []
+  threads = [threading.Thread(target=report, args=(results,)) for _ in range(3)]
+  for t in threads:
+      t.start()
+  for t in threads:
+      t.join()
+  print(sorted(results))
+challenge: |
+  Right now every thread gets an auto-generated name like "Thread-4",
+  making them indistinguishable in logs. Give each thread an explicit
+  name "worker-0", "worker-1", "worker-2" (matching its index) so the
+  output is ['worker-0', 'worker-1', 'worker-2'].
+expected_output: |
+  ['worker-0', 'worker-1', 'worker-2']
+hints:
+  - "Thread(target=..., args=..., name=...) accepts an explicit name."
+  - "Use the loop index to build each name: f\"worker-{i}\"."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "name=f\"worker-\\{i\\}\"|name=\"worker-"
+concept_tags: [threading, debugging]

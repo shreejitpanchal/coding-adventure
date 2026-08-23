@@ -1,0 +1,43 @@
+id: dependency_management_04
+title: "Handling a Missing Package Gracefully"
+language: python
+level: 59
+objective: "Catch importlib.metadata.PackageNotFoundError instead of letting it crash a version lookup."
+explanation: |
+  importlib.metadata.version(name) reads an installed package's version
+  from its distribution metadata without importing the package itself --
+  useful for feature-detection ("is this optional dependency
+  installed?"). It raises PackageNotFoundError if the package isn't
+  installed, which a well-behaved lookup should catch and turn into a
+  clean "not available" signal instead of crashing the caller.
+example_code: |
+  from importlib import metadata
+
+  try:
+      print(metadata.version("pip"))
+  except metadata.PackageNotFoundError:
+      print(None)
+starter_code: |
+  from importlib import metadata
+
+  def get_version(package_name):
+      return metadata.version(package_name)
+
+  print(get_version("definitely_not_a_real_package_xyz"))
+challenge: |
+  get_version crashes with PackageNotFoundError for any package that
+  isn't installed. Fix it to catch that specific exception and return
+  None instead, so the output becomes None rather than crashing.
+expected_output: |
+  None
+hints:
+  - "metadata.version() raises metadata.PackageNotFoundError for an uninstalled package."
+  - "Wrap the call in try/except metadata.PackageNotFoundError: return None."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "PackageNotFoundError"
+concept_tags: [dependency_management, importlib_metadata, exceptions]

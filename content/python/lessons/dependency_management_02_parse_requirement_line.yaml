@@ -1,0 +1,35 @@
+id: dependency_management_02
+title: "Parsing a requirements.txt Pin"
+language: python
+level: 57
+objective: "Split a 'package==version' requirements.txt-style line into its name and version parts."
+explanation: |
+  A requirements.txt file is just plain text -- each pinned line has a
+  simple, predictable shape (name, ==, version) that's easy to parse
+  without pulling in a dependency-parsing library, using str.partition()
+  to split cleanly on the first occurrence of the separator.
+example_code: |
+  name, _, version = "requests==2.31.0".partition("==")
+  print(name, version)
+starter_code: |
+  def parse_requirement(line):
+      return line
+
+  print(parse_requirement("flet==0.86.5"))
+challenge: |
+  parse_requirement just returns the raw line unchanged. Fix it to split
+  a 'package==version' line into a (name, version) tuple using
+  str.partition, so the output is ('flet', '0.86.5').
+expected_output: |
+  ('flet', '0.86.5')
+hints:
+  - "\"flet==0.86.5\".partition(\"==\") returns (\"flet\", \"==\", \"0.86.5\")."
+  - "Return (name, version) as a tuple, discarding the middle separator."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "partition"
+concept_tags: [dependency_management, requirements_txt]

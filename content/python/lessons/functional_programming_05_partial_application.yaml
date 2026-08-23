@@ -1,0 +1,41 @@
+id: functional_programming_05
+title: "Partial Application Instead of a Wrapper Lambda"
+language: python
+level: 50
+objective: "Use functools.partial to pre-fill an argument instead of writing a one-off lambda wrapper."
+explanation: |
+  functools.partial(func, **fixed_kwargs) returns a new callable with
+  some arguments already bound, leaving the rest to be supplied later.
+  It expresses "the same function, with this argument fixed" directly,
+  which is clearer than a lambda that just forwards to the original
+  function with one argument hardcoded.
+example_code: |
+  from functools import partial
+
+  def greet(greeting, name):
+      return f"{greeting}, {name}!"
+
+  hello = partial(greet, "Hello")
+  print(hello("Sam"))
+starter_code: |
+  def power(base, exponent):
+      return base ** exponent
+
+  cube = lambda base: power(base, 3)
+  print(cube(2))
+challenge: |
+  Rewrite cube using functools.partial instead of a lambda wrapper,
+  pre-filling exponent=3, keeping the same output: 8.
+expected_output: |
+  8
+hints:
+  - "from functools import partial"
+  - "cube = partial(power, exponent=3)"
+xp_reward: 15
+achievement: functional_programming_master
+category: functional_programming
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "partial\\("
+concept_tags: [functional_programming, functools, partial_application]

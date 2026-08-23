@@ -1,0 +1,42 @@
+id: dependency_management_05
+title: "Why an Exact Pin Guarantees Reproducibility"
+language: python
+level: 60
+objective: "Fix a version resolver that ignores the requested pin, to understand why lock files matter for reproducible installs."
+explanation: |
+  A lock file records the exact version actually installed, not just an
+  acceptable range -- so a second install, months later, on a different
+  machine, resolves to the identical version instead of "whatever
+  satisfies the range today." A resolver that doesn't honor an exact pin
+  (returning whatever it feels like) defeats that entire guarantee.
+example_code: |
+  def resolve_version(available_versions, pin):
+      if pin not in available_versions:
+          raise ValueError(f"{pin} not available")
+      return pin
+
+  print(resolve_version(["1.0.0", "1.1.0"], "1.1.0"))
+starter_code: |
+  def resolve_version(available_versions, pin):
+      return available_versions[0]
+
+  available = ["1.0.0", "1.2.0", "2.0.0"]
+  print(resolve_version(available, "1.2.0"))
+challenge: |
+  resolve_version ignores the pin entirely and always returns the first
+  available version -- defeating the whole point of pinning. Fix it to
+  return the exact pinned version if it's present in available_versions
+  (raising ValueError if it isn't), so the output becomes 1.2.0.
+expected_output: |
+  1.2.0
+hints:
+  - "Check `if pin not in available_versions` first, raising ValueError if so."
+  - "Otherwise, just return pin directly -- the exact version requested."
+xp_reward: 15
+achievement: dependency_management_master
+category: dependency_management
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "pin not in available_versions"
+concept_tags: [dependency_management, reproducibility, lock_files]

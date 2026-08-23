@@ -1,0 +1,48 @@
+id: deployment_05
+title: "Making a Deploy Step Idempotent"
+language: python
+level: 70
+objective: "Fix a resource-creation step that always claims to 'create', even when re-run against a resource that already exists."
+explanation: |
+  Deploy steps get re-run -- a retried pipeline, a re-applied deployment,
+  a config re-sync. A step that isn't idempotent (safe to run more than
+  once with the same effect) causes duplicate work or misleading
+  reports; a step that checks "does this already exist?" before acting,
+  and reports accordingly, can be re-run safely without surprises.
+example_code: |
+  seen = set()
+
+  def ensure(name):
+      if name in seen:
+          return f"already exists: {name}"
+      seen.add(name)
+      return f"created {name}"
+
+  print(ensure("db"))
+  print(ensure("db"))
+starter_code: |
+  resources = {"web-server"}
+
+  def ensure_resource(name):
+      resources.add(name)
+      return f"created {name}"
+
+  print(ensure_resource("web-server"))
+challenge: |
+  ensure_resource always reports "created", even when web-server already
+  existed in resources before this call -- misleading anyone reading the
+  deploy log. Fix it to check membership first, reporting "already
+  exists: web-server" instead of claiming a fresh creation.
+expected_output: |
+  already exists: web-server
+hints:
+  - "Check `if name in resources` before doing anything else."
+  - "Only call resources.add(name) and report \"created\" for a genuinely new name."
+xp_reward: 15
+achievement: deployment_master
+category: deployment
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "if name in resources"
+concept_tags: [deployment, idempotency]
