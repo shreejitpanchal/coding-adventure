@@ -12,16 +12,16 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "app/config/platform_paths.py": {
-    "mtime": 1787451267.908962,
-    "seen": 1787453473.5757794,
-    "ast_hash": "6c0e1d4a1d2c46e797f864391de1117a",
-    "semantic_hash": "6c0e1d4a1d2c46e797f864391de1117a"
+    "mtime": 1787460777.6099858,
+    "seen": 1787478372.902876,
+    "ast_hash": "bc9c2575270155673a1a1aa73cdac197",
+    "semantic_hash": "bc9c2575270155673a1a1aa73cdac197"
   },
   "app/config/settings.py": {
-    "mtime": 1787451273.1325545,
-    "seen": 1787453473.5757804,
-    "ast_hash": "7659dbc08f0e8aff74b9b0b980d309f1",
-    "semantic_hash": "7659dbc08f0e8aff74b9b0b980d309f1"
+    "mtime": 1787460788.675308,
+    "seen": 1787478372.902877,
+    "ast_hash": "794abcc20e94b842fd90b73a57cf3ded",
+    "semantic_hash": "794abcc20e94b842fd90b73a57cf3ded"
   },
   "app/engine/__init__.py": {
     "mtime": 1787451276.2195537,
@@ -42,10 +42,10 @@
     "semantic_hash": "4723ee752034ec0bad9268de26528ecd"
   },
   "app/engine/languages.py": {
-    "mtime": 1787455711.76063,
-    "seen": 1787456701.301561,
-    "ast_hash": "4c7984e2dd8caa1fc4c4b4f5971b38de",
-    "semantic_hash": "4c7984e2dd8caa1fc4c4b4f5971b38de"
+    "mtime": 1787476931.4076982,
+    "seen": 1787478372.9028819,
+    "ast_hash": "34999b8406037c60dd1bbd7792cd7a69",
+    "semantic_hash": "34999b8406037c60dd1bbd7792cd7a69"
   },
   "app/engine/lesson_engine.py": {
     "mtime": 1787451304.2753518,
@@ -84,16 +84,16 @@
     "semantic_hash": "7c4b82a430d80137366dd9dcf0dbc916"
   },
   "app/execution/cpp_engine.py": {
-    "mtime": 1787451385.094024,
-    "seen": 1787453473.575789,
-    "ast_hash": "4a7a460c84e7c92bf623fd0736487ec2",
-    "semantic_hash": "4a7a460c84e7c92bf623fd0736487ec2"
+    "mtime": 1787476634.0957787,
+    "seen": 1787478372.9028888,
+    "ast_hash": "56454d9c3fb55dbfc194bce292e62c57",
+    "semantic_hash": "56454d9c3fb55dbfc194bce292e62c57"
   },
   "app/execution/errors.py": {
-    "mtime": 1787455675.5243702,
-    "seen": 1787456701.30157,
-    "ast_hash": "3c348500de0ea59c97ec18f8d690b7a9",
-    "semantic_hash": "3c348500de0ea59c97ec18f8d690b7a9"
+    "mtime": 1787476922.8313396,
+    "seen": 1787478372.9028897,
+    "ast_hash": "77c2e2e8b699593acfd63d9978077259",
+    "semantic_hash": "77c2e2e8b699593acfd63d9978077259"
   },
   "app/execution/java_engine.py": {
     "mtime": 1787455649.550705,
@@ -186,10 +186,10 @@
     "semantic_hash": "397b90b8ade59edbe016b681ac73b04f"
   },
   "app/ui/lesson_screen.py": {
-    "mtime": 1787455682.7891774,
-    "seen": 1787456701.3015862,
-    "ast_hash": "f2322398c29b8834e60c1aca63605857",
-    "semantic_hash": "f2322398c29b8834e60c1aca63605857"
+    "mtime": 1787460438.734232,
+    "seen": 1787478372.902905,
+    "ast_hash": "1eccbad0acb086dcfe8622b7c226b5de",
+    "semantic_hash": "1eccbad0acb086dcfe8622b7c226b5de"
   },
   "app/ui/progress_screen.py": {
     "mtime": 1787451609.393365,
@@ -252,10 +252,10 @@
     "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
   },
   "tests/test_lesson_engine.py": {
-    "mtime": 1787459204.865561,
-    "seen": 1787459568.8465164,
-    "ast_hash": "2f605da617f6267feaaaf85857e173f1",
-    "semantic_hash": "2f605da617f6267feaaaf85857e173f1"
+    "mtime": 1787477446.9141245,
+    "seen": 1787478372.9029183,
+    "ast_hash": "8c64d8d78a6a57d47c84d89b2547d714",
+    "semantic_hash": "8c64d8d78a6a57d47c84d89b2547d714"
   },
   "tests/test_progress_store.py": {
     "mtime": 1787452099.293837,
@@ -270,16 +270,16 @@
     "semantic_hash": "e502b2df2b01a3429cf626483231bc4f"
   },
   "CLAUDE.md": {
-    "mtime": 1787456195.8369374,
-    "seen": 1787456701.3016026,
-    "ast_hash": "1b47f1459d60e5739e5a6195c97ff4f3",
-    "semantic_hash": "1b47f1459d60e5739e5a6195c97ff4f3"
+    "mtime": 1787477726.637563,
+    "seen": 1787478372.9029214,
+    "ast_hash": "821c6af4463a6984d2815c6dc3d32c9c",
+    "semantic_hash": "821c6af4463a6984d2815c6dc3d32c9c"
   },
   "README.md": {
-    "mtime": 1787459242.7773905,
-    "seen": 1787459568.8465197,
-    "ast_hash": "e040a756d147dc0a7f9f975e50c51a94",
-    "semantic_hash": "e040a756d147dc0a7f9f975e50c51a94"
+    "mtime": 1787477699.6927793,
+    "seen": 1787478372.9029222,
+    "ast_hash": "da1b2001b91e96423c48b0110311ffe5",
+    "semantic_hash": "da1b2001b91e96423c48b0110311ffe5"
   },
   "content/python/lessons/concurrency_async_01_gather_order.yaml": {
     "mtime": 1787451909.8837602,
@@ -1174,5 +1174,209 @@
     "seen": 1787459568.8465543,
     "ast_hash": "48f2709cc21ed30954950f32de96f081",
     "semantic_hash": "48f2709cc21ed30954950f32de96f081"
+  },
+  "tests/test_execution_cpp.py": {
+    "mtime": 1787477473.0462527,
+    "seen": 1787478372.9029148,
+    "ast_hash": "36f844b60b3676748e202c1170a8e1c3",
+    "semantic_hash": "36f844b60b3676748e202c1170a8e1c3"
+  },
+  "content/cpp/lessons/concurrency_async_01_race_condition_mutex.yaml": {
+    "mtime": 1787477063.663802,
+    "seen": 1787478372.902923,
+    "ast_hash": "a41ca316064cb925c001f3da05de30eb",
+    "semantic_hash": "a41ca316064cb925c001f3da05de30eb"
+  },
+  "content/cpp/lessons/concurrency_async_02_atomic_counter.yaml": {
+    "mtime": 1787477068.558344,
+    "seen": 1787478372.9029238,
+    "ast_hash": "7e7930e887de813c154d888423a4e62f",
+    "semantic_hash": "7e7930e887de813c154d888423a4e62f"
+  },
+  "content/cpp/lessons/concurrency_async_03_future_async.yaml": {
+    "mtime": 1787477072.3730693,
+    "seen": 1787478372.9029248,
+    "ast_hash": "dfdd22b3db380149929353a15cb4a16e",
+    "semantic_hash": "dfdd22b3db380149929353a15cb4a16e"
+  },
+  "content/cpp/lessons/concurrency_async_04_thread_join_missing.yaml": {
+    "mtime": 1787477077.867924,
+    "seen": 1787478372.9029257,
+    "ast_hash": "db34431f06721e68423bf9471c8eb65d",
+    "semantic_hash": "db34431f06721e68423bf9471c8eb65d"
+  },
+  "content/cpp/lessons/concurrency_async_05_promise_future_signal.yaml": {
+    "mtime": 1787477083.83758,
+    "seen": 1787478372.9029267,
+    "ast_hash": "ba678646532b9cd80cce4b33b26ea9f5",
+    "semantic_hash": "ba678646532b9cd80cce4b33b26ea9f5"
+  },
+  "content/cpp/lessons/core_refresher_01_range_based_for.yaml": {
+    "mtime": 1787476982.0699308,
+    "seen": 1787478372.9029274,
+    "ast_hash": "4351a8f0dec667006811b7064528dfa6",
+    "semantic_hash": "4351a8f0dec667006811b7064528dfa6"
+  },
+  "content/cpp/lessons/core_refresher_02_auto_type_deduction.yaml": {
+    "mtime": 1787476986.486727,
+    "seen": 1787478372.9029279,
+    "ast_hash": "0848876070b1e3d260591bcb6b564362",
+    "semantic_hash": "0848876070b1e3d260591bcb6b564362"
+  },
+  "content/cpp/lessons/core_refresher_03_lambda_expression.yaml": {
+    "mtime": 1787476990.847927,
+    "seen": 1787478372.9029288,
+    "ast_hash": "0fe47568d65193808cb1ffac2a34edb0",
+    "semantic_hash": "0fe47568d65193808cb1ffac2a34edb0"
+  },
+  "content/cpp/lessons/core_refresher_04_smart_pointer_unique_ptr.yaml": {
+    "mtime": 1787476996.2991147,
+    "seen": 1787478372.9029298,
+    "ast_hash": "61bc69cef987a9b5bb38be30dbb0ec4d",
+    "semantic_hash": "61bc69cef987a9b5bb38be30dbb0ec4d"
+  },
+  "content/cpp/lessons/core_refresher_05_structured_bindings.yaml": {
+    "mtime": 1787477000.5784125,
+    "seen": 1787478372.9029305,
+    "ast_hash": "cdb5ae76f4acf0f45d593070fdd1eaa1",
+    "semantic_hash": "cdb5ae76f4acf0f45d593070fdd1eaa1"
+  },
+  "content/cpp/lessons/data_structures_01_sort_vector.yaml": {
+    "mtime": 1787477009.0895722,
+    "seen": 1787478372.9029315,
+    "ast_hash": "6c0af3c5973f4e03d571efcf2f4612a2",
+    "semantic_hash": "6c0af3c5973f4e03d571efcf2f4612a2"
+  },
+  "content/cpp/lessons/data_structures_02_unordered_map_lookup.yaml": {
+    "mtime": 1787477014.002173,
+    "seen": 1787478372.9029322,
+    "ast_hash": "302e5f3d1d368580e9472ddd6a2ad017",
+    "semantic_hash": "302e5f3d1d368580e9472ddd6a2ad017"
+  },
+  "content/cpp/lessons/data_structures_03_deque_front_operations.yaml": {
+    "mtime": 1787477018.3636243,
+    "seen": 1787478372.902933,
+    "ast_hash": "d68db26e9b6ce22837aeee90553cb8bf",
+    "semantic_hash": "d68db26e9b6ce22837aeee90553cb8bf"
+  },
+  "content/cpp/lessons/data_structures_04_set_for_uniqueness.yaml": {
+    "mtime": 1787477023.2793071,
+    "seen": 1787478372.9029338,
+    "ast_hash": "8ad09c45589a003bf41399734232cfa9",
+    "semantic_hash": "8ad09c45589a003bf41399734232cfa9"
+  },
+  "content/cpp/lessons/data_structures_05_priority_queue.yaml": {
+    "mtime": 1787477027.830098,
+    "seen": 1787478372.9029348,
+    "ast_hash": "44f20af81991e062ec75a683f961da63",
+    "semantic_hash": "44f20af81991e062ec75a683f961da63"
+  },
+  "content/cpp/lessons/gotcha_gauntlet_01_off_by_one_array.yaml": {
+    "mtime": 1787477093.042638,
+    "seen": 1787478372.9029355,
+    "ast_hash": "7c392f5473a3d4520060bb2254cd8403",
+    "semantic_hash": "7c392f5473a3d4520060bb2254cd8403"
+  },
+  "content/cpp/lessons/gotcha_gauntlet_02_uncaught_out_of_range.yaml": {
+    "mtime": 1787477098.4534037,
+    "seen": 1787478372.9029362,
+    "ast_hash": "d26869ae7e1799aa826e1367a001320d",
+    "semantic_hash": "d26869ae7e1799aa826e1367a001320d"
+  },
+  "content/cpp/lessons/gotcha_gauntlet_03_static_variable_persistence.yaml": {
+    "mtime": 1787477103.9178321,
+    "seen": 1787478372.9029374,
+    "ast_hash": "789635da848a12c1c7f724a2c5ddb696",
+    "semantic_hash": "789635da848a12c1c7f724a2c5ddb696"
+  },
+  "content/cpp/lessons/gotcha_gauntlet_04_integer_overflow.yaml": {
+    "mtime": 1787477108.8254232,
+    "seen": 1787478372.9029381,
+    "ast_hash": "d68a5c67b31e44dbb01bc2722018bfea",
+    "semantic_hash": "d68a5c67b31e44dbb01bc2722018bfea"
+  },
+  "content/cpp/lessons/gotcha_gauntlet_05_missing_virtual_destructor.yaml": {
+    "mtime": 1787477114.6680298,
+    "seen": 1787478372.9029388,
+    "ast_hash": "7d5e633ce4cc94688678433b264045eb",
+    "semantic_hash": "7d5e633ce4cc94688678433b264045eb"
+  },
+  "content/cpp/lessons/idioms_gotchas_01_integer_division_truncation.yaml": {
+    "mtime": 1787476940.24061,
+    "seen": 1787478372.9029396,
+    "ast_hash": "5efed2ed4a6f2d73e4d580c4f21ebd14",
+    "semantic_hash": "5efed2ed4a6f2d73e4d580c4f21ebd14"
+  },
+  "content/cpp/lessons/idioms_gotchas_02_pass_by_value_no_mutation.yaml": {
+    "mtime": 1787476944.5858638,
+    "seen": 1787478372.9029408,
+    "ast_hash": "aec55eb891b3fea71b17acaa1078a36f",
+    "semantic_hash": "aec55eb891b3fea71b17acaa1078a36f"
+  },
+  "content/cpp/lessons/idioms_gotchas_03_assignment_in_condition.yaml": {
+    "mtime": 1787476950.5762448,
+    "seen": 1787478372.9029415,
+    "ast_hash": "ae906e16965db29307bb9a01367ec21e",
+    "semantic_hash": "ae906e16965db29307bb9a01367ec21e"
+  },
+  "content/cpp/lessons/idioms_gotchas_04_unsigned_underflow_loop.yaml": {
+    "mtime": 1787476968.5757024,
+    "seen": 1787478372.9029424,
+    "ast_hash": "4e0f85acb3d199d035a6dec21b1d9f6e",
+    "semantic_hash": "4e0f85acb3d199d035a6dec21b1d9f6e"
+  },
+  "content/cpp/lessons/idioms_gotchas_05_char_digit_conversion.yaml": {
+    "mtime": 1787476973.3547454,
+    "seen": 1787478372.9029434,
+    "ast_hash": "148e583f718cbf7eb8f46fbe113d2edc",
+    "semantic_hash": "148e583f718cbf7eb8f46fbe113d2edc"
+  },
+  "content/cpp/lessons/stdlib_deep_dive_01_string_stream_parsing.yaml": {
+    "mtime": 1787477036.2845004,
+    "seen": 1787478372.9029443,
+    "ast_hash": "70212d20a769b05025cd229d203ceb55",
+    "semantic_hash": "70212d20a769b05025cd229d203ceb55"
+  },
+  "content/cpp/lessons/stdlib_deep_dive_02_stoi_invalid_argument.yaml": {
+    "mtime": 1787477040.6954372,
+    "seen": 1787478372.902945,
+    "ast_hash": "0707672f29730a32916635fb332a89ef",
+    "semantic_hash": "0707672f29730a32916635fb332a89ef"
+  },
+  "content/cpp/lessons/stdlib_deep_dive_03_to_string.yaml": {
+    "mtime": 1787477044.5765982,
+    "seen": 1787478372.9029458,
+    "ast_hash": "df57000c91f6caa9959883c9b34f5994",
+    "semantic_hash": "df57000c91f6caa9959883c9b34f5994"
+  },
+  "content/cpp/lessons/stdlib_deep_dive_04_algorithm_find.yaml": {
+    "mtime": 1787477048.3745093,
+    "seen": 1787478372.9029465,
+    "ast_hash": "009e9542c2bf33cce1b91ee26dfd07dc",
+    "semantic_hash": "009e9542c2bf33cce1b91ee26dfd07dc"
+  },
+  "content/cpp/lessons/stdlib_deep_dive_05_optional_value.yaml": {
+    "mtime": 1787477054.421376,
+    "seen": 1787478372.9029474,
+    "ast_hash": "9eddda40ace7f3a9488a3e47c8b8ac85",
+    "semantic_hash": "9eddda40ace7f3a9488a3e47c8b8ac85"
+  },
+  "content/cpp/quiz/quiz_questions.yaml": {
+    "mtime": 1787477439.3526301,
+    "seen": 1787478372.9029481,
+    "ast_hash": "bd67429523a7e5a279c1b1e4ecebe252",
+    "semantic_hash": "bd67429523a7e5a279c1b1e4ecebe252"
+  },
+  "docs/ARCHITECTURE.md": {
+    "mtime": 1787477803.7601502,
+    "seen": 1787478372.902949,
+    "ast_hash": "c5535d64f26de2839dc6da1ec3646d9e",
+    "semantic_hash": "c5535d64f26de2839dc6da1ec3646d9e"
+  },
+  "docs/DEVELOPMENT.md": {
+    "mtime": 1787477762.0108786,
+    "seen": 1787478372.90295,
+    "ast_hash": "0b5fdfb3d16badf5fd4f419dd99e97fa",
+    "semantic_hash": "0b5fdfb3d16badf5fd4f419dd99e97fa"
   }
 }
