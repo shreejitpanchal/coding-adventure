@@ -78,3 +78,11 @@ itself up; every run after that launches straight into the app.
 - `app/ui/` — Flet screens.
 - `content/<language>/lessons/*.yaml` — one exercise per file; adding or
   changing one never requires touching app code.
+
+For a deeper dive:
+
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — project layout, how each
+  subsystem works, running it/testing it.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system context, class
+  diagrams, sequence diagrams, the persistence model, and the design
+  decisions behind them.
