@@ -30,22 +30,22 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "app/engine/categories.py": {
-    "mtime": 1787453908.429394,
-    "seen": 1787454807.4681077,
-    "ast_hash": "f1f6516fb56c4f55603c53c006cf78f0",
-    "semantic_hash": "f1f6516fb56c4f55603c53c006cf78f0"
+    "mtime": 1787480330.5005388,
+    "seen": 1787481070.4809396,
+    "ast_hash": "d2bbfe4c44a0022e84978ed48e6d738e",
+    "semantic_hash": "d2bbfe4c44a0022e84978ed48e6d738e"
   },
   "app/engine/exercise.py": {
-    "mtime": 1787451281.6823463,
-    "seen": 1787453473.575783,
-    "ast_hash": "4723ee752034ec0bad9268de26528ecd",
-    "semantic_hash": "4723ee752034ec0bad9268de26528ecd"
+    "mtime": 1787479166.4103563,
+    "seen": 1787481070.4809406,
+    "ast_hash": "580f5af785a9ed130cb9d5d6817c496f",
+    "semantic_hash": "580f5af785a9ed130cb9d5d6817c496f"
   },
   "app/engine/languages.py": {
-    "mtime": 1787476931.4076982,
-    "seen": 1787478372.9028819,
-    "ast_hash": "34999b8406037c60dd1bbd7792cd7a69",
-    "semantic_hash": "34999b8406037c60dd1bbd7792cd7a69"
+    "mtime": 1787480335.3922577,
+    "seen": 1787481070.4809415,
+    "ast_hash": "0b0174814ddc57a044c30d9e9f14006c",
+    "semantic_hash": "0b0174814ddc57a044c30d9e9f14006c"
   },
   "app/engine/lesson_engine.py": {
     "mtime": 1787451304.2753518,
@@ -78,34 +78,34 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "app/execution/base.py": {
-    "mtime": 1787451347.0001056,
-    "seen": 1787453473.5757883,
-    "ast_hash": "7c4b82a430d80137366dd9dcf0dbc916",
-    "semantic_hash": "7c4b82a430d80137366dd9dcf0dbc916"
+    "mtime": 1787479127.6012928,
+    "seen": 1787481070.4809475,
+    "ast_hash": "0edc5ec385bdfeb82aef4dd40cea74b6",
+    "semantic_hash": "0edc5ec385bdfeb82aef4dd40cea74b6"
   },
   "app/execution/cpp_engine.py": {
-    "mtime": 1787476634.0957787,
-    "seen": 1787478372.9028888,
-    "ast_hash": "56454d9c3fb55dbfc194bce292e62c57",
-    "semantic_hash": "56454d9c3fb55dbfc194bce292e62c57"
+    "mtime": 1787479157.833871,
+    "seen": 1787481070.4809484,
+    "ast_hash": "a24d960cfc5f2165610c18c656144b11",
+    "semantic_hash": "a24d960cfc5f2165610c18c656144b11"
   },
   "app/execution/errors.py": {
-    "mtime": 1787476922.8313396,
-    "seen": 1787478372.9028897,
-    "ast_hash": "77c2e2e8b699593acfd63d9978077259",
-    "semantic_hash": "77c2e2e8b699593acfd63d9978077259"
+    "mtime": 1787479266.8660774,
+    "seen": 1787481070.4809492,
+    "ast_hash": "eab7514f39e500bfaf7837a12cf94fd8",
+    "semantic_hash": "eab7514f39e500bfaf7837a12cf94fd8"
   },
   "app/execution/java_engine.py": {
-    "mtime": 1787455649.550705,
-    "seen": 1787456701.301571,
-    "ast_hash": "7556fb153bd3ee8a17b8c3509fec88be",
-    "semantic_hash": "7556fb153bd3ee8a17b8c3509fec88be"
+    "mtime": 1787479148.7879164,
+    "seen": 1787481070.4809504,
+    "ast_hash": "3010a55f0f23eb94743eece408bb0db7",
+    "semantic_hash": "3010a55f0f23eb94743eece408bb0db7"
   },
   "app/execution/python_engine.py": {
-    "mtime": 1787451362.678159,
-    "seen": 1787453473.5757911,
-    "ast_hash": "19333e64b8118f8de45160e2435a7c76",
-    "semantic_hash": "19333e64b8118f8de45160e2435a7c76"
+    "mtime": 1787479139.3382232,
+    "seen": 1787481070.480951,
+    "ast_hash": "616c27684a4c2ddc8b9f9e165917d964",
+    "semantic_hash": "616c27684a4c2ddc8b9f9e165917d964"
   },
   "app/execution/registry.py": {
     "mtime": 1787451394.2925684,
@@ -114,10 +114,10 @@
     "semantic_hash": "06a65a61f3d13efbbb61bc8cc9a9c7c9"
   },
   "app/execution/spring_engine.py": {
-    "mtime": 1787451388.6109242,
-    "seen": 1787453473.5757923,
-    "ast_hash": "2c43bf31c43ce9749bba3284216a83f0",
-    "semantic_hash": "2c43bf31c43ce9749bba3284216a83f0"
+    "mtime": 1787479723.8291326,
+    "seen": 1787481070.4809527,
+    "ast_hash": "a36d6f6e697a7016b9b49ce0319903e7",
+    "semantic_hash": "a36d6f6e697a7016b9b49ce0319903e7"
   },
   "app/execution/toolchain_check.py": {
     "mtime": 1787451370.3700266,
@@ -186,10 +186,10 @@
     "semantic_hash": "397b90b8ade59edbe016b681ac73b04f"
   },
   "app/ui/lesson_screen.py": {
-    "mtime": 1787460438.734232,
-    "seen": 1787478372.902905,
-    "ast_hash": "1eccbad0acb086dcfe8622b7c226b5de",
-    "semantic_hash": "1eccbad0acb086dcfe8622b7c226b5de"
+    "mtime": 1787479161.4257958,
+    "seen": 1787481070.4809647,
+    "ast_hash": "b32c2e695f3c66e8ced0bc561e7fd547",
+    "semantic_hash": "b32c2e695f3c66e8ced0bc561e7fd547"
   },
   "app/ui/progress_screen.py": {
     "mtime": 1787451609.393365,
@@ -252,10 +252,10 @@
     "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
   },
   "tests/test_lesson_engine.py": {
-    "mtime": 1787477446.9141245,
-    "seen": 1787478372.9029183,
-    "ast_hash": "8c64d8d78a6a57d47c84d89b2547d714",
-    "semantic_hash": "8c64d8d78a6a57d47c84d89b2547d714"
+    "mtime": 1787480352.846836,
+    "seen": 1787481070.48098,
+    "ast_hash": "31d5c696ea84b53a2b3b5c10f2334f30",
+    "semantic_hash": "31d5c696ea84b53a2b3b5c10f2334f30"
   },
   "tests/test_progress_store.py": {
     "mtime": 1787452099.293837,
@@ -270,16 +270,16 @@
     "semantic_hash": "e502b2df2b01a3429cf626483231bc4f"
   },
   "CLAUDE.md": {
-    "mtime": 1787477726.637563,
-    "seen": 1787478372.9029214,
-    "ast_hash": "821c6af4463a6984d2815c6dc3d32c9c",
-    "semantic_hash": "821c6af4463a6984d2815c6dc3d32c9c"
+    "mtime": 1787480484.9696653,
+    "seen": 1787481070.480984,
+    "ast_hash": "fccf061e0014e0b455c46bb0cd52b4c4",
+    "semantic_hash": "fccf061e0014e0b455c46bb0cd52b4c4"
   },
   "README.md": {
-    "mtime": 1787477699.6927793,
-    "seen": 1787478372.9029222,
-    "ast_hash": "da1b2001b91e96423c48b0110311ffe5",
-    "semantic_hash": "da1b2001b91e96423c48b0110311ffe5"
+    "mtime": 1787480429.3837633,
+    "seen": 1787481070.4809852,
+    "ast_hash": "9cda130bdbaa5f6d9235adf3d71cabbd",
+    "semantic_hash": "9cda130bdbaa5f6d9235adf3d71cabbd"
   },
   "content/python/lessons/concurrency_async_01_gather_order.yaml": {
     "mtime": 1787451909.8837602,
@@ -1368,15 +1368,135 @@
     "semantic_hash": "bd67429523a7e5a279c1b1e4ecebe252"
   },
   "docs/ARCHITECTURE.md": {
-    "mtime": 1787477803.7601502,
-    "seen": 1787478372.902949,
-    "ast_hash": "c5535d64f26de2839dc6da1ec3646d9e",
-    "semantic_hash": "c5535d64f26de2839dc6da1ec3646d9e"
+    "mtime": 1787480595.6797032,
+    "seen": 1787481070.4809985,
+    "ast_hash": "16e7c378b5dde86a0bff05c90e091c7b",
+    "semantic_hash": "16e7c378b5dde86a0bff05c90e091c7b"
   },
   "docs/DEVELOPMENT.md": {
-    "mtime": 1787477762.0108786,
-    "seen": 1787478372.90295,
-    "ast_hash": "0b5fdfb3d16badf5fd4f419dd99e97fa",
-    "semantic_hash": "0b5fdfb3d16badf5fd4f419dd99e97fa"
+    "mtime": 1787480542.5049095,
+    "seen": 1787481070.4809995,
+    "ast_hash": "e444fa111a795451f7b75ca751e5d1ba",
+    "semantic_hash": "e444fa111a795451f7b75ca751e5d1ba"
+  },
+  "content/spring/scaffold/pom.xml": {
+    "mtime": 1787479422.2639618,
+    "seen": 1787481070.4809716,
+    "ast_hash": "007210318cbde0d03d9dec15441f07e7",
+    "semantic_hash": "007210318cbde0d03d9dec15441f07e7"
+  },
+  "tests/test_execution_spring.py": {
+    "mtime": 1787480346.4748988,
+    "seen": 1787481070.4809792,
+    "ast_hash": "4b76b4578d8e7481a87b8d4cc5408aaa",
+    "semantic_hash": "4b76b4578d8e7481a87b8d4cc5408aaa"
+  },
+  ".claude/commands/verify.md": {
+    "mtime": 1787478527.887299,
+    "seen": 1787481070.4809825,
+    "ast_hash": "892f3d50d4a2eb9f0ebfcf1db8c8b0eb",
+    "semantic_hash": "892f3d50d4a2eb9f0ebfcf1db8c8b0eb"
+  },
+  ".claude/skills/add-language-content/SKILL.md": {
+    "mtime": 1787478569.2354147,
+    "seen": 1787481070.4809833,
+    "ast_hash": "caf486264321a91ffb6ecb55734304b8",
+    "semantic_hash": "caf486264321a91ffb6ecb55734304b8"
+  },
+  "content/spring/lessons/bean_lifecycle_01_missing_component_annotation.yaml": {
+    "mtime": 1787479987.0785441,
+    "seen": 1787481070.4809859,
+    "ast_hash": "86dee2544df4c2b1049ed23850f33d6c",
+    "semantic_hash": "86dee2544df4c2b1049ed23850f33d6c"
+  },
+  "content/spring/lessons/bean_lifecycle_02_singleton_shared_state.yaml": {
+    "mtime": 1787479999.3832912,
+    "seen": 1787481070.4809866,
+    "ast_hash": "f30f7fa950bb45dad3ddfca385a52da2",
+    "semantic_hash": "f30f7fa950bb45dad3ddfca385a52da2"
+  },
+  "content/spring/lessons/bean_lifecycle_03_postconstruct_initialization.yaml": {
+    "mtime": 1787480010.8543668,
+    "seen": 1787481070.4809873,
+    "ast_hash": "a5d01e3724ebf76aa0df9c6d5c710cb4",
+    "semantic_hash": "a5d01e3724ebf76aa0df9c6d5c710cb4"
+  },
+  "content/spring/lessons/bean_lifecycle_04_predestroy_cleanup.yaml": {
+    "mtime": 1787480020.775109,
+    "seen": 1787481070.4809883,
+    "ast_hash": "62ce580db9cbf207d4382018f60ee0b2",
+    "semantic_hash": "62ce580db9cbf207d4382018f60ee0b2"
+  },
+  "content/spring/lessons/bean_lifecycle_05_lazy_initialization.yaml": {
+    "mtime": 1787480031.2932332,
+    "seen": 1787481070.480989,
+    "ast_hash": "94fb3687d3753ef58ffacbd0f156bb7d",
+    "semantic_hash": "94fb3687d3753ef58ffacbd0f156bb7d"
+  },
+  "content/spring/lessons/configuration_profiles_01_value_default_placeholder.yaml": {
+    "mtime": 1787480043.9291828,
+    "seen": 1787481070.4809897,
+    "ast_hash": "489abdf90a58e8cae1355a70f6eec07d",
+    "semantic_hash": "489abdf90a58e8cae1355a70f6eec07d"
+  },
+  "content/spring/lessons/configuration_profiles_02_profile_specific_bean.yaml": {
+    "mtime": 1787480055.4029405,
+    "seen": 1787481070.4809904,
+    "ast_hash": "e4e9e19a0e6c511e20a3faeae4f5fd2e",
+    "semantic_hash": "e4e9e19a0e6c511e20a3faeae4f5fd2e"
+  },
+  "content/spring/lessons/configuration_profiles_03_profile_negation.yaml": {
+    "mtime": 1787480077.5479834,
+    "seen": 1787481070.4809911,
+    "ast_hash": "ef9c7eade3108ff4ca94e901d64c459e",
+    "semantic_hash": "ef9c7eade3108ff4ca94e901d64c459e"
+  },
+  "content/spring/lessons/configuration_profiles_04_environment_getproperty.yaml": {
+    "mtime": 1787480088.5600731,
+    "seen": 1787481070.480992,
+    "ast_hash": "3664383224e00b4b6f753534869d1cef",
+    "semantic_hash": "3664383224e00b4b6f753534869d1cef"
+  },
+  "content/spring/lessons/configuration_profiles_05_required_property_no_default.yaml": {
+    "mtime": 1787480103.4922109,
+    "seen": 1787481070.480993,
+    "ast_hash": "58d2891c1fcabaf3ca29c546fc8cc789",
+    "semantic_hash": "58d2891c1fcabaf3ca29c546fc8cc789"
+  },
+  "content/spring/lessons/dependency_injection_01_field_injection_untestable.yaml": {
+    "mtime": 1787479906.4364786,
+    "seen": 1787481070.4809937,
+    "ast_hash": "ede047134e41647d1a047d6a945e92ac",
+    "semantic_hash": "ede047134e41647d1a047d6a945e92ac"
+  },
+  "content/spring/lessons/dependency_injection_02_ambiguous_bean_no_qualifier.yaml": {
+    "mtime": 1787479944.2009358,
+    "seen": 1787481070.4809942,
+    "ast_hash": "712229bdb15c7f3cdf94e2e32d8857d8",
+    "semantic_hash": "712229bdb15c7f3cdf94e2e32d8857d8"
+  },
+  "content/spring/lessons/dependency_injection_03_primary_bean.yaml": {
+    "mtime": 1787479955.6268284,
+    "seen": 1787481070.4809954,
+    "ast_hash": "3aeb4df2e0cd1f51d6bf59c2f0f4b4a5",
+    "semantic_hash": "3aeb4df2e0cd1f51d6bf59c2f0f4b4a5"
+  },
+  "content/spring/lessons/dependency_injection_04_optional_dependency.yaml": {
+    "mtime": 1787479966.245849,
+    "seen": 1787481070.4809961,
+    "ast_hash": "9774ae85390eca0981939097e50e73c6",
+    "semantic_hash": "9774ae85390eca0981939097e50e73c6"
+  },
+  "content/spring/lessons/dependency_injection_05_constructor_injection_final_fields.yaml": {
+    "mtime": 1787479977.489131,
+    "seen": 1787481070.4809966,
+    "ast_hash": "69e228ff70395c5acb519b366bfe1a9c",
+    "semantic_hash": "69e228ff70395c5acb519b366bfe1a9c"
+  },
+  "content/spring/quiz/quiz_questions.yaml": {
+    "mtime": 1787480323.8249543,
+    "seen": 1787481070.4809973,
+    "ast_hash": "510e0b5e3dd584995c651871c3ffd417",
+    "semantic_hash": "510e0b5e3dd584995c651871c3ffd417"
   }
 }
