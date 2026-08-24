@@ -84,6 +84,17 @@ def ensure_self_signed_certificate() -> tuple[str, str]:
     """Returns (cert_path, key_path) as strings, generating a fresh
     self-signed certificate (CN=coding-adventure) if none is cached yet
     or the cached one is expired/near-expiry."""
+    try:
+        import cryptography  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError(
+            "Missing dependency 'cryptography', needed to generate the "
+            "browser preview's HTTPS certificate. This usually means the "
+            "virtual environment predates this requirement -- run:\n"
+            "  .venv\\Scripts\\python.exe -m pip install -r requirements.txt\n"
+            "(or the equivalent .venv/bin/python on macOS/Linux), then try again."
+        ) from exc
+
     cert_path, key_path = _cert_paths()
 
     if not (cert_path.exists() and key_path.exists() and _is_cert_still_valid(cert_path)):

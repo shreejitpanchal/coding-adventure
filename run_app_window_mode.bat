@@ -43,6 +43,20 @@ if not exist ".venv\Scripts\python.exe" (
     echo.
     echo Setup complete!
     echo.
+) else (
+    REM The venv already exists, but requirements.txt may have grown new
+    REM dependencies since it was created (e.g. an update pulled from git)
+    REM -- pip install is a fast no-op when everything's already satisfied,
+    REM so it's cheap to just re-sync on every launch rather than silently
+    REM running with a stale, incomplete venv.
+    ".venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet
+    if errorlevel 1 (
+        echo.
+        echo Warning: could not verify required packages are up to date
+        echo ^(check your internet connection^). Continuing anyway --
+        echo the app may fail to start if a new dependency is missing.
+        echo.
+    )
 )
 
 call "scripts\ensure_toolchains.bat"

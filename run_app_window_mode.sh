@@ -46,6 +46,14 @@ if [ -z "$PYEXE" ]; then
     echo
     echo "Setup complete!"
     echo
+else
+    # The venv already exists, but requirements.txt may have grown new
+    # dependencies since it was created (e.g. an update pulled from git) --
+    # pip install is a fast no-op when everything's already satisfied, so
+    # it's cheap to just re-sync on every launch rather than silently
+    # running with a stale, incomplete venv.
+    "$PYEXE" -m pip install -r requirements.txt --quiet || \
+        echo "Warning: could not verify required packages are up to date (check your internet connection). Continuing anyway."
 fi
 
 bash "scripts/ensure_toolchains.sh" || true
