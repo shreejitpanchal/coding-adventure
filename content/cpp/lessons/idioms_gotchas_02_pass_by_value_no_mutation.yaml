@@ -4,12 +4,58 @@ language: cpp
 level: 2
 objective: "Fix a function that's meant to modify the caller's variable but takes its parameter by value, so the caller never sees the change."
 explanation: |
-  Passing by value copies the argument -- any modification inside the
-  function happens to that local copy, and vanishes when the function
-  returns. To actually modify the caller's variable, the parameter needs
-  to be a reference (`int&`), which binds to the caller's variable
-  itself rather than a copy of it.
+  C++'s default argument-passing convention is pass-by-value: when `
+  increment(value)` is called, the parameter `x` inside `increment` is
+  a brand-new, independent `int` variable, initialized by *copying*
+  whatever `value` currently holds -- `x` and `value` are two entirely
+  separate pieces of storage from that point on, related only by having
+  started with the same value. Anything the function does to `x` --
+  `x = x + 1;` -- modifies only that local copy; `value` back in `main`
+  is never touched at all, and once `increment` returns, its local copy
+  `x` is destroyed along with the rest of the function's stack frame,
+  taking the modification with it. That's why `value` still prints `5`
+  after the call: the function genuinely did increment *something*, just
+  not the thing the caller cares about.
+
+  To actually let a function modify the *caller's* variable, the
+  parameter has to be a reference (`int&`) rather than a plain value
+  type. A reference parameter doesn't create a new, independent
+  variable at all -- it's an alias, binding directly to whatever
+  variable was passed at the call site, so `x` inside the function and `
+  value` in the caller become two names for the *exact same* storage
+  location. `x = x * 2;` inside a `void doubleIt(int& x)` genuinely
+  modifies the caller's own variable, because there was never a copy
+  involved to modify instead. This is the single most fundamental
+  choice to get right when designing any C++ function signature: pass
+  by value (a plain `int x`) when the function should only ever read or
+  compute from a copy, and pass by reference (`int& x`) specifically
+  when the function is meant to modify the caller's own variable as one
+  of its effects.
 example_code: |
+  #include <iostream>
+
+  // The trap: pass-by-value modifies only a local COPY -- the caller sees nothing.
+  void incrementBroken(int x) {
+      x = x + 1;         // modifies the local copy, not the caller's variable
+  }
+
+  int valueBroken = 5;
+  incrementBroken(valueBroken);
+  std::cout << valueBroken << std::endl;   // 5 -- unchanged!
+
+  // Fix: a reference parameter binds directly to the caller's own variable.
+  void increment(int& x) {
+      x = x + 1;          // this IS the caller's variable -- genuinely modified
+  }
+
+  int main() {
+      int value = 5;
+      increment(value);
+      std::cout << value << std::endl;      // 6 -- correctly modified
+
+      return 0;
+  }
+
   void doubleIt(int& x) {
       x = x * 2;
   }

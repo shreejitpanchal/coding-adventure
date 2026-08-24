@@ -4,16 +4,86 @@ language: cpp
 level: 20
 objective: "Replace a magic sentinel value used to mean 'no result' with std::optional, which makes the absence explicit in the type itself."
 explanation: |
-  Returning a sentinel value like -999 to mean "nothing found" only
-  works as long as -999 could never be a legitimate result -- and
-  nothing about the function's signature tells a caller that convention
-  exists at all. std::optional<T> makes "maybe there's a value, maybe
-  there isn't" part of the type itself, checked explicitly with
-  has_value() instead of a fragile magic-number comparison.
+  `return -999;` to mean "nothing found" is a "magic sentinel" -- a
+  special, arbitrarily-chosen value that's overloaded with a second
+  meaning ("absence") beyond its ordinary meaning as a number. This
+  convention has two real weaknesses. First, it's fragile by
+  construction: it only works correctly as long as `-999` could never
+  legitimately be a real answer -- fine for "find the first negative
+  number" where the domain happens to make `-999` implausible in
+  practice, but a landmine waiting to misfire the moment this function
+  is reused in a context where `-999` genuinely could occur, silently
+  misreporting a real value as "not found." Second, and more
+  fundamentally, nothing about the function's *signature* -- `int
+  findFirstNegative(...)` -- tells a caller this convention exists at
+  all; a caller has to already know, from documentation or from reading
+  the implementation, that a particular return value carries a special
+  meaning, rather than that knowledge being encoded in the type system
+  itself where a compiler (and a reader) could rely on it.
+
+  `std::optional<T>` (C++17) fixes both problems by making "maybe
+  there's a value, maybe there isn't" part of the *type* itself: `std::
+  optional<int>` is a distinct type from plain `int`, one that can
+  either hold a genuine `int` value or hold nothing at all (`std::
+  nullopt`), and there's no overloading of any particular `int` value
+  to secretly mean "absent" -- every possible `int`, including
+  extreme or unusual ones, remains available as a genuinely valid
+  result. `findFirstNegative` returning `std::optional<int>` documents
+  its own possible absence directly in its signature, and a caller
+  checks for that absence explicitly with `.has_value()` (or contextual
+  boolean conversion, `if (result)`), rather than needing to remember
+  and compare against an arbitrary sentinel number that lives only in
+  documentation or convention. This mirrors Java's `Optional<T>` (and
+  the general "represent absence in the type system rather than through
+  convention" idea) covered elsewhere in this app, applied here as
+  C++17's own standard-library answer to the same underlying problem.
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: a magic sentinel value only "works" as long as it's never a real result.
+  int findFirstNegativeBroken(const std::vector<int>& nums) {
+      for (int n : nums) {
+          if (n < 0) {
+              return n;
+          }
+      }
+      return -999;      // arbitrary, undocumented in the SIGNATURE -- fragile
+  }
+
+  std::vector<int> numsBroken = {1, 2, 3};
+  int resultBroken = findFirstNegativeBroken(numsBroken);
+  if (resultBroken == -999) {           // caller has to KNOW this convention exists
+      std::cout << "none" << std::endl;
+  }
+
+  // Fix: std::optional makes absence part of the TYPE, not a magic number.
   #include <optional>
+
+  std::optional<int> findFirstNegative(const std::vector<int>& nums) {
+      for (int n : nums) {
+          if (n < 0) {
+              return n;                    // implicitly wraps into optional<int>
+          }
+      }
+      return std::nullopt;                  // explicit "no value" -- no arbitrary number
+  }
+
+  int main() {
+      std::vector<int> nums = {1, 2, 3};
+      std::optional<int> result = findFirstNegative(nums);
+      if (result.has_value()) {
+          std::cout << result.value() << std::endl;
+      } else {
+          std::cout << "none" << std::endl;   // correctly reached -- no sentinel comparison needed
+      }
+      return 0;
+  }
+
   std::optional<int> maybeValue = std::nullopt;
-  if (maybeValue.has_value()) { ... }
+  if (!maybeValue.has_value()) {
+      std::cout << "empty" << std::endl;
+  }
 starter_code: |
   #include <iostream>
   #include <vector>

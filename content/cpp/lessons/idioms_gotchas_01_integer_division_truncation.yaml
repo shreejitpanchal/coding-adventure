@@ -4,17 +4,54 @@ language: cpp
 level: 1
 objective: "Fix an average calculation that silently truncates to an integer instead of producing a fractional result."
 explanation: |
-  Dividing two `int` values always produces an `int` -- the fractional
-  part is discarded (truncated toward zero), even when the result is
-  assigned to a `double`. The division happens first, in `int`
-  arithmetic; only the already-truncated result gets converted. At
-  least one operand needs to be a floating-point type before the
-  division happens.
+  C++ decides the type of an arithmetic expression *before* looking at
+  what it's ultimately being assigned to -- `total / count`, with both
+  operands `int`, is evaluated entirely as integer division: the
+  division happens, the fractional part is silently discarded
+  (truncated toward zero, not rounded), and *only afterward* is that
+  already-truncated integer result implicitly converted to `double` to
+  match `average`'s declared type. `double average = total / count;`
+  therefore computes `7 / 2` as integer division first (`3`, with the
+  `.5` already gone), and only then converts `3` to `3.0` -- the
+  assignment to a `double` variable happens far too late to recover the
+  lost fractional part, since it was never computed in the first place.
+  This is a purely mechanical consequence of C++'s expression-typing
+  rules, not something that depends on the variable being assigned to
+  at all -- `total / count` alone, with no assignment in sight, is
+  already an `int` expression the moment both operands are `int`.
+
+  The fix has to change the type of the *operands* before the division
+  happens, since the division's own result type is determined entirely
+  by what it's dividing, not by what the result is later assigned to.
+  `static_cast<double>(total) / count` converts `total` to `double`
+  *first*; C++'s usual arithmetic conversions then promote `count` to `
+  double` as well to match (mixed-type arithmetic between `int` and `
+  double` always promotes the `int` side), so the division itself
+  happens entirely in floating-point arithmetic, correctly preserving
+  the fractional part. The cast has to sit on one of the two operands,
+  inside the division expression -- casting the *final* result instead
+  (`static_cast<double>(total / count)`) would cast an already-
+  truncated `int` result, producing the exact same wrong answer just
+  with an extra, misleading-looking cast attached.
 example_code: |
+  // The trap: int / int truncates BEFORE the result is ever assigned to a double.
+  int totalBroken = 7;
+  int countBroken = 2;
+  double averageBroken = totalBroken / countBroken;   // int division happens FIRST
+  std::cout << averageBroken << std::endl;              // 3 -- the .5 was already lost
+
+  // The trap within the trap: casting the RESULT is too late.
+  double stillWrong = static_cast<double>(totalBroken / countBroken);   // casts an already-truncated 3
+  std::cout << stillWrong << std::endl;                                  // 3 -- still wrong
+
+  // Fix: cast an OPERAND before the division, so the division itself is floating-point.
   int total = 5;
   int count = 2;
-  double average = static_cast<double>(total) / count;
-  std::cout << average << std::endl;
+  double average = static_cast<double>(total) / count;   // cast happens BEFORE dividing
+  std::cout << average << std::endl;                        // 2.5 -- correct
+
+  double average2 = static_cast<double>(7) / 2;
+  std::cout << average2 << std::endl;                         // 3.5
 starter_code: |
   #include <iostream>
   int main() {

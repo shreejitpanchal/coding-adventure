@@ -4,16 +4,51 @@ language: cpp
 level: 31
 objective: "Fix a crash from calling .get() twice on the same std::future by storing the result after the first call."
 explanation: |
-  std::future::get() doesn't just read the result -- it consumes the
-  future's shared state. Calling .get() a second time on the same
-  future is undefined behavior (in practice, it throws
-  std::future_error), since the value has already been retrieved and
-  the future has nothing left to give. If a result is needed more than
-  once, save it to a variable the first time and reuse that variable --
-  don't call .get() again.
+  `std::future<T>::get()` is easy to mentally model as "read the
+  result," implying it could be called repeatedly the way reading a
+  variable can be -- but that's not actually its contract. `get()` *
+  consumes* the future's shared state: the first call retrieves the
+  computed value and, as part of doing so, leaves the future in a state
+  where it no longer has a valid result to hand out. Calling `.get()` a
+  second time on that same, already-consumed future is explicitly
+  disallowed -- the standard specifies this as invalid usage, and real
+  implementations detect it and throw `std::future_error` (with an
+  error code indicating "no state" or similar) rather than returning
+  the value again or silently producing garbage. `std::cout << fut.get()
+  << " " << fut.get() << std::endl;` calls `.get()` twice on the same `
+  fut` in that one expression, and the second call throws, crashing the
+  program before anything even gets printed.
+
+  This makes `std::future` fundamentally a *single-use* handle to a
+  result -- conceptually closer to a one-shot token you exchange for a
+  value than a readable variable. If the result is genuinely needed
+  more than once, the fix is straightforward: call `.get()` exactly
+  once, store what it returns in an ordinary variable, and reuse *that*
+  variable for every subsequent use -- `int value = fut.get();` followed
+  by using `value` as many times as needed, never calling `.get()` on
+  `fut` again. For the genuinely different situation where *multiple
+  independent pieces of code* each need their own call to retrieve the
+  same result (not just "the same code path uses the value twice," but
+  separate consumers each wanting to `.get()` it), `std::shared_future`
+  -- covered in a neighboring exercise -- is the purpose-built tool that
+  actually supports being read more than once.
 example_code: |
-  int value = fut.get();
-  std::cout << value << " " << value << std::endl;
+  #include <iostream>
+  #include <future>
+
+  // The trap: .get() consumes the future -- a second call throws std::future_error.
+  std::future<int> futBroken = std::async(std::launch::async, []() { return 21; });
+  // std::cout << futBroken.get() << " " << futBroken.get() << std::endl;
+  // -- the second .get() throws: the future's result was already consumed!
+
+  // Fix: call .get() ONCE, store the result, reuse the variable.
+  int main() {
+      std::future<int> fut = std::async(std::launch::async, []() { return 21; });
+      int value = fut.get();          // consumed exactly once, here
+      std::cout << value << " " << value << std::endl;   // reuse the STORED value, not .get() again
+      return 0;
+  }
+  // 21 21
 starter_code: |
   #include <iostream>
   #include <future>

@@ -4,15 +4,59 @@ language: cpp
 level: 49
 objective: "Fix a computation that silently wraps around past INT_MAX instead of raising any error."
 explanation: |
-  Signed integer overflow doesn't throw or crash in C++ -- in practice,
-  on virtually every mainstream platform, it just wraps around via
-  two's-complement arithmetic, turning INT_MAX + 1 into a large negative
-  number with no warning at all. Any computation that might genuinely
-  exceed int's ~2.1 billion range needs a wider type (long long) before
-  the addition happens, the same way int division needs a cast before
-  the division happens.
+  Signed `int` overflow is, formally, *undefined behavior* in C++'s own
+  language standard -- the standard makes no guarantee at all about
+  what happens when a signed integer computation exceeds the type's
+  representable range. In practice, though, on virtually every
+  mainstream platform and compiler, the actual observed behavior is
+  wraparound via two's-complement arithmetic (the same underlying bit
+  representation used for both signed and unsigned integers on
+  essentially all modern hardware): `INT_MAX + 1` doesn't throw,
+  doesn't crash, doesn't trigger any diagnostic by default -- it simply
+  produces `INT_MIN`, the most negative representable `int`, because
+  that's exactly what incrementing `INT_MAX`'s bit pattern by one
+  produces under two's-complement rules. That silent, no-warning-at-all
+  wraparound is what makes signed overflow such a dangerous class of
+  bug: the computation *looks* like it ran successfully, produces *some
+  * plausible-looking integer, and nothing about the program's behavior
+  signals that the actual mathematical result was wildly, silently
+  wrong.
+
+  The fix mirrors the integer-division gotcha covered earlier in this
+  category: the wider type needs to be introduced *before* the
+  operation that might overflow happens, not applied to an already-
+  overflowed result. `static_cast<long long>(maxVal) + 1` converts `
+  maxVal` to `long long` first (a type with a vastly larger
+  representable range, roughly ±9.2 quintillion rather than ~±2.1
+  billion), so the addition itself is carried out entirely in `long
+  long` arithmetic and never overflows in the first place -- casting
+  the *sum* afterward (`static_cast<long long>(maxVal + 1)`) would be
+  too late, since the overflow would already have happened in `int`
+  arithmetic before the cast ever runs. This same "cast an operand
+  before the operation, not the result afterward" discipline applies
+  to both this overflow trap and the earlier truncating-division trap,
+  and it's worth recognizing as one general principle rather than two
+  separate rules to memorize.
 example_code: |
+  #include <iostream>
+  #include <climits>
+
+  // The trap: int arithmetic silently WRAPS on overflow -- no exception, no warning.
+  int maxValBroken = INT_MAX;
+  int resultBroken = maxValBroken + 1;
+  std::cout << resultBroken << std::endl;    // a large NEGATIVE number -- wrapped silently
+
+  // The trap within the trap: casting the RESULT is too late.
+  long long stillWrong = static_cast<long long>(maxValBroken + 1);   // overflow already happened!
+  std::cout << stillWrong << std::endl;                                // still the wrapped value
+
+  // Fix: cast an OPERAND before the operation, so it never overflows at all.
+  int maxVal = INT_MAX;
+  long long result = static_cast<long long>(maxVal) + 1;   // the cast happens FIRST
+  std::cout << result << std::endl;                          // 2147483648 -- correct
+
   long long safe = static_cast<long long>(INT_MAX) + 1;
+  std::cout << safe << std::endl;                              // 2147483648
 starter_code: |
   #include <iostream>
   #include <climits>

@@ -4,18 +4,70 @@ language: cpp
 level: 47
 objective: "Fix a crash from vector::at() on an out-of-range index, by catching std::out_of_range."
 explanation: |
-  Unlike operator[], std::vector::at() actually checks bounds and
-  throws std::out_of_range if the index doesn't exist -- a deliberate
-  trade-off (a small runtime check) in exchange for a clean, catchable
-  error instead of silently reading garbage memory. Code that might be
-  asked for an index that doesn't exist needs to actually catch that
-  exception rather than assume every index is valid.
+  `std::vector<T>` offers two different ways to access an element by
+  index, and the previous exercise's array-bounds gotcha applies
+  identically to `operator[]` (`scores[index]`) -- no bounds checking
+  at all, silent garbage reads on an invalid index. `.at(index)` is the
+  deliberate alternative: it *does* check whether `index` is actually
+  within the vector's current bounds, and if it isn't, throws `std::
+  out_of_range` -- a real, catchable, descriptive exception -- instead
+  of reading undefined memory. This is a genuine, explicit trade-off C+
+  + offers rather than forcing on every access: `.at()` pays a small
+  runtime cost (the bounds check itself) in exchange for turning
+  invalid access from silent corruption into a clean, catchable error;
+  `operator[]` skips that check entirely, favoring raw speed for code
+  that's already certain every index it uses is valid. Neither is
+  universally "correct" -- the choice depends on whether the index
+  being used is genuinely guaranteed valid by the surrounding logic, or
+  might legitimately come from somewhere less certain (external input,
+  a computed value that could be wrong).
+
+  `scores.at(10)` on a 3-element vector throws `std::out_of_range`
+  because that check exists specifically to catch this -- but throwing
+  doesn't automatically mean "handled." `getScore` here has no `try`/`
+  catch` at all, so the exception propagates straight out of the
+  function, out of `main`, and crashes the program. Any code that can't
+  guarantee the index it's given is always valid -- exactly the
+  situation `getScore` is in, since it accepts an arbitrary `index`
+  argument from its caller -- needs to actually catch `std::out_of_
+  range` and decide what to do instead: return a sentinel value (`-1`
+  here), log the problem, or otherwise recover, rather than letting an
+  invalid index crash the whole program.
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: .at() throws, but nothing here catches it -- the program crashes.
+  int getScoreBroken(const std::vector<int>& scores, size_t index) {
+      return scores.at(index);   // throws std::out_of_range if index is invalid
+  }
+  // getScoreBroken(scores, 10) on a 3-element vector -- uncaught, crashes the program
+
+  // Fix: catch the specific exception, substitute a fallback.
+  int getScore(const std::vector<int>& scores, size_t index) {
+      try {
+          return scores.at(index);
+      } catch (const std::out_of_range&) {
+          return -1;               // invalid index handled cleanly, no crash
+      }
+  }
+
+  int main() {
+      std::vector<int> scores = {85, 90, 95};
+      std::cout << getScore(scores, 10) << std::endl;   // -1
+      std::cout << getScore(scores, 1) << std::endl;      // 90 -- valid index, unaffected
+      return 0;
+  }
+
+  std::vector<int> data = {1, 2, 3};
+  size_t index = 10;
+  int v;
   try {
-      int v = data.at(index);
+      v = data.at(index);
   } catch (const std::out_of_range&) {
       v = -1;
   }
+  std::cout << v << std::endl;   // -1
 starter_code: |
   #include <iostream>
   #include <vector>

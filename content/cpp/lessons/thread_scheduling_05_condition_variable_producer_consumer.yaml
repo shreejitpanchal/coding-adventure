@@ -4,18 +4,80 @@ language: cpp
 level: 30
 objective: "Replace a busy-wait polling loop with std::condition_variable, the standard way to block a thread efficiently until another thread signals it."
 explanation: |
-  A consumer thread that repeatedly locks a mutex just to check "is
-  there work yet?" in a tight loop wastes CPU the whole time it waits,
-  the same busy-waiting problem sleep_for and yield address elsewhere --
-  but this time the fix is std::condition_variable, purpose-built for
-  the producer/consumer pattern. The consumer calls
-  cv.wait(lock, predicate), which atomically releases the lock and
-  puts the thread to sleep until notified, checking the predicate again
-  each time it wakes -- no spinning, no wasted cycles, and no
-  lost-wakeup race the way a manual flag check can have.
+  `while (true) { std::lock_guard<std::mutex> lock(mtx); if (finished)
+  break; }` is the same fundamental busy-waiting problem as the two
+  earlier exercises in this category, just wearing a slightly different
+  disguise: instead of spinning on a plain flag or a clock, the
+  consumer thread here repeatedly *locks a mutex* purely to check `
+  finished`, then unlocks it, then immediately re-locks it again, as
+  fast as the CPU allows -- burning an entire core's worth of work on
+  nothing but lock/unlock/check overhead, for the entire duration the
+  producer is still working. A manual flag check like this also has a
+  subtler correctness risk worth knowing about, even beyond the
+  wasted CPU: a naive (non-mutex-protected) flag check can suffer a
+  "lost wakeup," where the flag flips to `true` in the exact narrow
+  window between the consumer's check and it going back to sleep or
+  re-checking, silently missing that the condition became true.
+
+  `std::condition_variable` is purpose-built specifically for the
+  producer/consumer coordination pattern, solving both the wasted-CPU
+  problem and the lost-wakeup risk together. `cv.wait(lock, predicate)`
+  , called by the consumer while already holding a `std::unique_lock<
+  std::mutex>`, does something a manual loop can't: it *atomically*
+  releases the lock and puts the thread to sleep in one indivisible
+  operation, so there's no window where the flag could change
+  unobserved between checking it and actually going to sleep. The
+  thread then wakes only when explicitly notified (the producer calls `
+  cv.notify_one()` after setting `finished = true`), re-acquires the
+  lock automatically, and re-checks the predicate -- if it's now `true`,
+  `wait` returns with the lock held; if a spurious wakeup happened and
+  the predicate is still `false` (a real possibility `condition_
+  variable` explicitly guards against by re-checking rather than
+  assuming one notification means one valid wakeup), it goes back to
+  sleep and waits again. The entire wait consumes essentially zero CPU
+  while genuinely blocked, unlike every busy-wait variant covered
+  elsewhere in this category.
 example_code: |
-  std::unique_lock<std::mutex> lock(mtx);
-  cv.wait(lock, [] { return finished; });
+  #include <iostream>
+  #include <thread>
+  #include <mutex>
+  #include <queue>
+  #include <condition_variable>
+
+  std::mutex mtx;
+  std::queue<int> tasks;
+  bool finished = false;
+  std::condition_variable cv;
+
+  void producer() {
+      for (int i = 1; i <= 5; i++) {
+          std::lock_guard<std::mutex> lock(mtx);
+          tasks.push(i);
+      }
+      {
+          std::lock_guard<std::mutex> lock(mtx);
+          finished = true;
+      }
+      cv.notify_one();      // wake the waiting consumer -- no wasted polling needed
+  }
+
+  int main() {
+      std::thread prod(producer);
+
+      // Fix: wait() atomically sleeps until notified, re-checking the predicate on wake.
+      std::unique_lock<std::mutex> lock(mtx);
+      cv.wait(lock, [] { return finished; });   // no spinning, no wasted CPU
+      lock.unlock();
+
+      prod.join();
+      int total = 0;
+      while (!tasks.empty()) {
+          total += tasks.front();
+          tasks.pop();
+      }
+      std::cout << total << std::endl;   // 15
+      return 0;
+  }
 starter_code: |
   #include <iostream>
   #include <thread>

@@ -4,17 +4,63 @@ language: cpp
 level: 34
 objective: "Write a synchronous wrapper function around an async-only API, so callers who just want a plain result don't have to deal with futures directly."
 explanation: |
-  Not every caller of an asynchronous API actually wants to manage a
-  future -- sometimes the simplest, most honest thing is a thin
-  synchronous wrapper that calls the async version internally and blocks
-  on .get() before returning a plain value. This is a common integration
-  pattern: keep the async primitive available for callers who want real
-  concurrency, but also expose a synchronous entry point for callers who
-  just want an answer.
+  `computeAsync(int n)` returning `std::future<int>` is the right
+  interface for callers who genuinely want to launch the computation
+  and go do other work before eventually retrieving the result -- but
+  not every caller wants that. A caller that just needs "give me the
+  square of 6, right now, and I'll wait" is forced by `computeAsync`
+  's signature to deal with a `std::future` regardless -- receiving the
+  future, then immediately calling `.get()` on it, with no actual
+  concurrency benefit gained from any of that machinery, since the
+  caller was going to block immediately anyway. That's extra ceremony
+  imposed on every caller who has no use for it, purely because the
+  only available entry point happens to be asynchronous.
+
+  A thin synchronous wrapper function solves this directly: `int
+  computeSync(int n) { return computeAsync(n).get(); }` calls the async
+  version internally, blocks on `.get()` right there inside the
+  wrapper, and hands the caller back a plain `int` -- no future to
+  manage, no `.get()` to remember to call, just an ordinary function
+  that returns an ordinary value. This is a genuinely common and
+  legitimate integration pattern, not a workaround: it keeps the async
+  primitive available and unmodified for callers who actually want
+  real concurrency (launch several `computeAsync` calls, do other work,
+  collect results later), while also exposing a synchronous, simpler
+  entry point for callers who just want a straightforward answer and
+  don't care how it's computed internally. Both entry points share the
+  exact same underlying implementation -- `computeSync` isn't a
+  separate, parallel code path, it's a one-line adapter over the async
+  version -- so there's no duplicated logic to keep in sync between the
+  two.
 example_code: |
-  int computeSync(int n) {
-      return computeAsync(n).get();
+  #include <iostream>
+  #include <future>
+
+  std::future<int> computeAsync(int n) {
+      return std::async(std::launch::async, [n]() { return n * n; });
   }
+
+  // The trap: not wrong, but forces EVERY caller to deal with a future directly.
+  void callerHandlesFutureItself() {
+      std::future<int> fut = computeAsync(6);
+      std::cout << fut.get() << std::endl;   // caller manages the future, even though it just wants an int
+  }
+
+  // Fix: a thin synchronous wrapper hides the future for callers who just want a value.
+  int computeSync(int n) {
+      return computeAsync(n).get();          // blocks internally, returns a plain int
+  }
+
+  int main() {
+      std::cout << computeSync(6) << std::endl;   // 36 -- no future handling needed by the caller
+      return 0;
+  }
+
+  // The async entry point is STILL available for callers who genuinely want concurrency:
+  std::future<int> futA = computeAsync(2);
+  std::future<int> futB = computeAsync(3);
+  // ... do other work here, while both computations run concurrently ...
+  std::cout << futA.get() + futB.get() << std::endl;   // 13
 starter_code: |
   #include <iostream>
   #include <future>

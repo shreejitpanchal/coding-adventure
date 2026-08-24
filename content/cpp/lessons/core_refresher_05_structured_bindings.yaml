@@ -4,15 +4,63 @@ language: cpp
 level: 10
 objective: "Replace it->first/it->second with a structured binding that names each part directly."
 explanation: |
-  Structured bindings (C++17) let you unpack a pair/tuple-like value
-  into named variables directly in a range-based for loop --
-  `for (const auto& [name, score] : scores)` reads far more clearly
-  than iterating and reaching into `it->first`/`it->second`, since the
-  names describe what each piece actually means.
+  Iterating a `std::map` with an explicit iterator (`for (auto it =
+  scores.begin(); it != scores.end(); ++it)`) requires reaching into `
+  it->first` and `it->second` to get at the actual key and value --
+  `.first`/`.second` are `std::pair`'s own generic member names, since `
+  pair` has no idea what the two things it's holding *mean* in any
+  particular context. That genericness is exactly the readability cost:
+  `it->first` and `it->second` say nothing about what they represent
+  (a name? a score? something else entirely?) without cross-referencing
+  the surrounding code to figure out which is which, and that
+  ambiguity compounds the more a loop body actually does with those
+  values.
+
+  Structured bindings, introduced in C++17, let a pair/tuple-like value
+  be unpacked directly into *named* variables at the point of
+  iteration: `for (const auto& [name, score] : scores)` binds `name` to
+  each entry's key and `score` to each entry's value, with names chosen
+  by the programmer to describe what each piece actually *means* in
+  context -- no more generic `.first`/`.second` anywhere in the loop
+  body, and no separate iterator variable needed at all, since the
+  structured binding combines range-based iteration (no explicit
+  iterator, covered in the first exercise of this category) with
+  meaningful unpacking (no generic member access) in one syntax. `const
+  auto&` is the conventional qualifier combination here -- `const`
+  since the loop typically only reads each entry, `auto` to deduce the
+  underlying pair type without spelling it out, and `&` to bind by
+  reference rather than copying each key-value pair on every iteration.
+  Structured bindings aren't limited to map iteration either -- they
+  work for unpacking any `std::pair`, `std::tuple`, or even a plain
+  struct with public members, anywhere a value needs to be split into
+  named pieces at the point it's introduced.
 example_code: |
+  #include <iostream>
+  #include <map>
+  #include <string>
+
+  // The trap: iterator access reaches into GENERIC .first/.second, meaning unclear.
+  std::map<std::string, int> scoresVerbose = {{"Ada", 90}};
+  for (auto it = scoresVerbose.begin(); it != scoresVerbose.end(); ++it) {
+      std::cout << it->first << " " << it->second << std::endl;   // what IS first/second here?
+  }
+
+  // Fix: a structured binding names each piece directly, meaningfully.
+  std::map<std::string, int> scores = {{"Ada", 90}};
+  for (const auto& [name, score] : scores) {
+      std::cout << name << " " << score << std::endl;   // self-documenting
+  }
+  // Ada 90
+
+  std::map<std::string, int> myMap = {{"x", 1}, {"y", 2}};
   for (const auto& [key, value] : myMap) {
       std::cout << key << " -> " << value << std::endl;
   }
+
+  // Structured bindings work on any pair/tuple/struct, not just map iteration:
+  std::pair<int, int> point = {3, 4};
+  auto [x, y] = point;
+  std::cout << x << ", " << y << std::endl;   // 3, 4
 starter_code: |
   #include <iostream>
   #include <map>

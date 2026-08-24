@@ -4,18 +4,72 @@ language: cpp
 level: 50
 objective: "Fix a base class whose non-virtual destructor means a derived object's own destructor never runs when deleted through a base pointer."
 explanation: |
-  Deleting an object through a pointer to its base class only calls the
-  derived class's destructor if the base class's destructor is
-  `virtual`. Without `virtual`, `delete` only knows the static type
-  (Base*), so only Base's destructor runs -- Derived's cleanup (and any
-  further-derived destructors) is silently skipped. This is one of the
-  most cited rules in C++: any class meant to be used polymorphically
-  through a base pointer needs a virtual destructor.
+  `Base* obj = new Derived();` is a completely ordinary and idiomatic
+  C++ pattern -- storing a derived object through a pointer to its base
+  class, exactly the kind of polymorphism inheritance exists to enable.
+  But `delete obj;`'s behavior depends critically on one detail that's
+  easy to overlook: whether `~Base()` is declared `virtual`. Without `
+  virtual`, member function calls (destructors included) are resolved
+  *statically*, based purely on the pointer's declared *compile-time*
+  type -- `obj` is declared as `Base*`, so `delete obj` calls exactly `
+  Base::~Base()` and nothing else, regardless of the fact that the
+  object actually pointed at is a `Derived`. `Derived::~Derived()` is
+  never called at all -- not skipped with a warning, not deferred,
+  simply never invoked -- so any cleanup logic specific to `Derived`
+  (releasing resources it owns, running additional derived-class
+  teardown) silently never happens, exactly the same silent-corruption
+  danger pattern as the other gotchas in this category, just
+  manifesting as a skipped destructor instead of an out-of-bounds read.
+
+  `virtual` on `~Base()` changes destructor resolution from static to
+  *dynamic* dispatch -- the same mechanism that makes virtual member
+  functions in general resolve based on the object's actual runtime
+  type rather than the pointer's declared type. With `virtual ~Base()`,
+  `delete obj` looks up the *actual* object's type at runtime, finds
+  it's genuinely a `Derived`, and correctly calls `Derived::~Derived()`
+  first -- which itself, as part of any derived destructor's implicit
+  behavior, automatically calls `Base::~Base()` afterward, so *both*
+  destructors run in the correct derived-then-base order. This is one
+  of the most widely cited rules in all of C++: any class with virtual
+  functions, or any class that's meant to ever be deleted through a
+  pointer to a base type, needs a virtual destructor -- omitting it is
+  a genuine, common source of resource leaks in real C++ codebases,
+  precisely because the compiler doesn't require or even always warn
+  about it, and the bug only manifests as "the derived cleanup silently
+  didn't happen," easy to miss without deliberately checking for it.
 example_code: |
+  #include <iostream>
+
+  // The trap: non-virtual destructor -- deleting through a base pointer skips Derived's cleanup.
+  class BaseBroken {
+  public:
+      ~BaseBroken() { std::cout << "Base destroyed" << std::endl; }   // NOT virtual
+  };
+  class DerivedBroken : public BaseBroken {
+  public:
+      ~DerivedBroken() { std::cout << "Derived destroyed" << std::endl; }
+  };
+
+  BaseBroken* objBroken = new DerivedBroken();
+  delete objBroken;   // only "Base destroyed" prints -- Derived's destructor NEVER runs
+
+  // Fix: a virtual destructor enables correct dynamic dispatch, both destructors run.
   class Base {
   public:
-      virtual ~Base() { /* cleanup */ }
+      virtual ~Base() { std::cout << "Base destroyed" << std::endl; }
   };
+  class Derived : public Base {
+  public:
+      ~Derived() { std::cout << "Derived destroyed" << std::endl; }
+  };
+
+  int main() {
+      Base* obj = new Derived();
+      delete obj;   // correctly calls Derived::~Derived() first, then Base::~Base()
+      return 0;
+  }
+  // Derived destroyed
+  // Base destroyed
 starter_code: |
   #include <iostream>
   class Base {

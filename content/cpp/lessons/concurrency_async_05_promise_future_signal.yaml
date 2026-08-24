@@ -4,20 +4,72 @@ language: cpp
 level: 25
 objective: "Use std::promise/std::future to hand a value from a worker thread back to the main thread, instead of a captured-by-reference shared variable."
 explanation: |
-  Capturing a variable by reference into a thread's lambda works, but
-  it's an implicit, easy-to-misuse channel -- nothing stops the main
-  thread from reading it before the worker writes it (see the previous
-  exercise). std::promise/std::future is a purpose-built one-shot
-  channel: the worker calls promise.set_value(...), and future.get() on
-  the other end blocks until that value is actually ready -- there's no
-  way to read it too early.
+  Capturing a shared variable by reference into a worker thread's
+  lambda (`[&sharedValue]() { sharedValue = 100; }`) does work when
+  followed correctly by `worker.join()` before the value is read -- but
+  the safety here comes entirely from remembering to call `join()`
+  first, at the *call site*, with nothing about the channel itself
+  enforcing that ordering. It's an implicit, easy-to-misuse mechanism:
+  nothing about `sharedValue`'s type prevents the main thread from
+  reading it *before* the worker has written to it (exactly the
+  data-race bug covered in the previous exercise, where `result` was
+  read without any `join()` at all) -- the correctness depends entirely
+  on the surrounding code getting the ordering right by convention,
+  every single time this pattern is used.
+
+  `std::promise<T>` / `std::future<T>` is a purpose-built one-shot
+  communication channel that makes that ordering *structural* rather
+  than conventional: `prom.get_future()` produces a `std::future<T>`
+  linked to the promise, and the worker thread eventually calls `prom.
+  set_value(...)` exactly once to deliver its result. On the receiving
+  side, `fut.get()` doesn't just read whatever value happens to be
+  sitting in shared memory at that moment -- it *blocks* until `set_
+  value()` has actually been called, then returns that value. There is
+  no way to read the future too early and get a stale or uninitialized
+  value, because `.get()` itself won't return until the value is
+  genuinely ready -- the synchronization is built into the channel's
+  own contract, rather than depending on the surrounding code
+  remembering to `join()` at the right moment first. This is the same
+  underlying idea as `CompletableFuture` in Java or a `Future` in
+  Python's `concurrent.futures` (both covered elsewhere in this app) --
+  a dedicated, purpose-built handoff type that structurally prevents
+  reading a result before it exists, rather than a plain shared
+  variable whose safety depends entirely on manual discipline.
 example_code: |
+  #include <iostream>
+  #include <thread>
+
+  // The trap: a shared variable's safety depends ENTIRELY on remembering join() first.
+  int sharedValueBroken = 0;
+  std::thread workerBroken([&sharedValueBroken]() {
+      sharedValueBroken = 100;
+  });
+  workerBroken.join();      // correctness relies on THIS being called before the read
+  std::cout << sharedValueBroken << std::endl;   // 100 -- correct, but fragile by convention
+
+  // Fix: promise/future -- get() structurally can't return before set_value() runs.
   #include <future>
-  std::promise<int> prom;
-  std::future<int> fut = prom.get_future();
-  std::thread t([&prom]() { prom.set_value(42); });
-  int value = fut.get();  // blocks until set_value() is called
+
+  int main() {
+      std::promise<int> prom;
+      std::future<int> fut = prom.get_future();
+
+      std::thread worker([&prom]() {
+          prom.set_value(100);       // delivers the result through the channel
+      });
+
+      int value = fut.get();          // blocks until set_value() is genuinely called
+      std::cout << value << std::endl; // 100 -- can never be read "too early"
+      worker.join();
+      return 0;
+  }
+
+  std::promise<int> prom2;
+  std::future<int> fut2 = prom2.get_future();
+  std::thread t([&prom2]() { prom2.set_value(42); });
+  int value2 = fut2.get();
   t.join();
+  std::cout << value2 << std::endl;    // 42
 starter_code: |
   #include <iostream>
   #include <thread>

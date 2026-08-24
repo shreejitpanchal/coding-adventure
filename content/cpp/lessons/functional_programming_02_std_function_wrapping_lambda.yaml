@@ -4,18 +4,68 @@ language: cpp
 level: 37
 objective: "Use std::function instead of a raw function pointer, so a parameter can hold a lambda that captures variables."
 explanation: |
-  A raw function pointer type like `int (*)(int)` can only point to
-  something with no captured state -- a plain function, or a
-  non-capturing lambda (which can decay to a function pointer). A
-  lambda that captures a variable is a distinct type with its own
-  storage for that capture, and it simply cannot be represented as a
-  bare function pointer. std::function<Signature> is a type-erased
-  wrapper that can hold *any* callable matching that signature --
-  function pointers, capturing lambdas, functors -- uniformly.
+  A raw function pointer, `int (*f)(int)`, is fundamentally just an
+  address -- the memory location of a plain function's compiled code,
+  with nothing else attached to it. That works fine for a plain
+  function or a *non-capturing* lambda (a lambda with an empty `[]`
+  capture list, which has no state of its own to remember, and is
+  specifically permitted by the standard to implicitly convert to a
+  bare function pointer for exactly this reason). But `[bonus](int x) {
+  return x + bonus; }` captures `bonus` -- it needs somewhere to
+  actually *store* that captured value, and a plain function pointer,
+  being just an address with no attached storage, has nowhere to put
+  it. A capturing lambda is, under the hood, its own distinct compiler-
+  generated class type, with `bonus` as one of its (typically hidden)
+  member variables -- it simply cannot be represented as a bare
+  function pointer at all, regardless of how the parameter type is
+  written, which is exactly why `applyTwice`'s `int (*f)(int)`
+  parameter fails to compile against a capturing lambda argument.
+
+  `std::function<Signature>` (from `<functional>`) solves this by being
+  a *type-erased* wrapper -- rather than storing a raw address the way
+  a function pointer does, it can hold any callable at all that matches
+  the given signature (`int(int)` here: takes an `int`, returns an `int`
+  ), regardless of what that callable actually *is* internally --
+  a plain function, a non-capturing lambda, a capturing lambda with its
+  own stored state, even a functor struct with `operator()`. `std::
+  function` manages whatever internal storage the wrapped callable
+  needs (allocating it if necessary) and presents a single, uniform
+  interface (`operator()`) to invoke it, regardless of the concrete
+  type underneath. This is precisely why `std::function<int(int)>` is
+  the right parameter type for `applyTwice` once it needs to accept
+  *any* kind of callable, including ones with captured state -- it's
+  the general-purpose "any callable matching this signature" type,
+  where a raw function pointer only ever covers the narrower "callable
+  with no state" case.
 example_code: |
+  #include <iostream>
+  #include <functional>
+
+  // The trap: a raw function pointer can't hold a lambda that captures anything.
+  int applyTwiceBroken(int (*f)(int), int x) {
+      return f(f(x));
+  }
+  int bonusBroken = 3;
+  // applyTwiceBroken([bonusBroken](int x) { return x + bonusBroken; }, 10);
+  // -- FAILS TO COMPILE: a capturing lambda can't decay to a function pointer
+
+  // Fix: std::function can hold ANY callable matching the signature, capturing or not.
   int applyTwice(std::function<int(int)> f, int x) {
       return f(f(x));
   }
+
+  int main() {
+      int bonus = 3;
+      std::cout << applyTwice([bonus](int x) { return x + bonus; }, 10) << std::endl;
+      // 10+3=13, 13+3=16
+      return 0;
+  }
+  // 16
+
+  // std::function equally accepts a plain function or a non-capturing lambda too:
+  int addOne(int x) { return x + 1; }
+  std::cout << applyTwice(addOne, 5) << std::endl;                   // 7
+  std::cout << applyTwice([](int x) { return x * 2; }, 3) << std::endl;   // 12
 starter_code: |
   #include <iostream>
   int applyTwice(int (*f)(int), int x) {

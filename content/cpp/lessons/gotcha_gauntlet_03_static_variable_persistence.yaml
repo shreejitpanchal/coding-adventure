@@ -4,16 +4,59 @@ language: cpp
 level: 48
 objective: "Fix a function meant to hand out sequential IDs, but which resets its counter to 0 on every call instead of remembering it."
 explanation: |
-  A plain local variable is reinitialized every time a function is
-  called -- there's no memory between calls. A `static` local variable
-  is the opposite: it's initialized exactly once, the first time
-  control reaches its declaration, and keeps its value across every
-  subsequent call to that function, making it the standard tool for
-  "remember something between calls without a global variable."
+  A plain local variable's lifetime is scoped entirely to one single
+  function call -- `int id = 0; id++;` inside `nextId()` allocates
+  fresh storage for `id` every time `nextId()` is invoked, initializes
+  it to `0` again, increments it to `1`, and then that storage (and the
+  value in it) is destroyed the moment the function returns. There is
+  no memory carried between calls at all: `nextId()` called three times
+  in a row runs this exact same fresh-initialize-increment-destroy
+  sequence three independent times, which is precisely why it prints
+  `1, 1, 1` instead of the sequential `1, 2, 3` its name promises --
+  every call genuinely starts over from scratch.
+
+  A `static` local variable inverts this: `static int id = 0;`
+  declared inside a function is initialized exactly *once*, the first
+  time control reaches that declaration during the entire program's
+  execution -- not once per call, but once, ever. On every subsequent
+  call to the same function, that initialization is *skipped entirely*
+  (the variable already exists and already holds whatever value the
+  previous call left it at), and the function operates on the exact
+  same persistent storage each time. `static int id = 0; return ++id;`
+  therefore genuinely remembers its value across calls: the first call
+  initializes `id` to `0` and increments it to `1`; the second call
+  skips the now-already-done initialization and increments the
+  *existing* `1` to `2`; and so on. This makes a `static` local
+  variable the standard, idiomatic tool for "a function needs to
+  remember something between calls" without reaching for a full global
+  variable -- it gets persistence across calls while still keeping the
+  variable's *visibility* scoped to just that one function, exactly
+  like an ordinary local variable, rather than exposing it to the rest
+  of the program the way a true global would.
 example_code: |
+  #include <iostream>
+
+  // The trap: a plain local variable resets to 0 on EVERY call -- no memory at all.
+  int nextIdBroken() {
+      int id = 0;          // fresh storage, every single call
+      id++;
+      return id;
+  }
+  std::cout << nextIdBroken() << std::endl;   // 1
+  std::cout << nextIdBroken() << std::endl;   // 1 -- reset again, not remembered!
+  std::cout << nextIdBroken() << std::endl;   // 1
+
+  // Fix: static initializes ONCE, then persists across every subsequent call.
   int nextId() {
-      static int id = 0;
+      static int id = 0;   // initialized ONCE, ever -- skipped on later calls
       return ++id;
+  }
+
+  int main() {
+      std::cout << nextId() << std::endl;   // 1
+      std::cout << nextId() << std::endl;    // 2 -- remembers the previous value
+      std::cout << nextId() << std::endl;     // 3
+      return 0;
   }
 starter_code: |
   #include <iostream>

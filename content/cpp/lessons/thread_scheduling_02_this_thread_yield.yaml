@@ -4,18 +4,64 @@ language: cpp
 level: 27
 objective: "Use std::this_thread::yield() inside a spin-wait loop so the thread offers the scheduler a chance to run other work instead of hogging the core."
 explanation: |
-  Spinning on a flag with a bare `while (!ready) {}` keeps re-checking
-  as fast as the CPU allows, using 100% of a core the entire time even
-  though there's nothing useful to do until the flag flips.
-  `std::this_thread::yield()` is a hint to the scheduler: "I have
-  nothing productive to do right now, let another ready thread run
-  instead." It doesn't sleep for any fixed duration -- it just steps
-  aside briefly, which is the right tool when the wait is expected to be
-  very short (unlike sleep_for, which is better for longer, known
-  waits).
+  `while (!ready) { }` -- spinning on a flag with a completely empty
+  loop body -- has the exact same busy-waiting problem as the fixed-
+  duration spin loop in the previous exercise, just applied to an
+  *unknown*-length wait instead of a known one: the thread re-checks `
+  ready` as fast as the CPU can possibly execute that check, fully
+  occupying its core the entire time, even though there's genuinely
+  nothing useful to compute until the worker thread flips the flag.
+  `sleep_for`, the fix for a known-duration wait, isn't quite the right
+  tool here, though -- picking a sleep duration for an unknown-length
+  wait means guessing: too short and the loop is still mostly spinning
+  anyway (just with slightly less waste), too long and the waiting
+  thread responds sluggishly even after the condition becomes true,
+  since it might be mid-sleep when that happens.
+
+  `std::this_thread::yield()` is a different, complementary tool suited
+  to exactly this situation: it's a hint to the OS scheduler that says
+  "I have nothing productive to do *right now*, please let some other
+  ready-to-run thread have this core instead" -- but unlike `sleep_for`
+  , it doesn't request any particular duration at all. The yielding
+  thread simply steps aside briefly, and control returns to it again
+  relatively soon (exactly when depends on the scheduler and what else
+  is runnable), at which point it re-checks the condition and yields
+  again if it's still not met. This makes `yield()` the better choice
+  specifically when the wait is expected to be *very short* -- a few
+  microseconds to milliseconds, waiting on another thread that's about
+  to finish something quick -- where a `sleep_for` with any nonzero
+  duration would likely oversleep relative to how quickly the condition
+  actually becomes true, while `yield()`'s "step aside briefly, then
+  immediately re-check" behavior tracks a fast-resolving condition much
+  more responsively.
 example_code: |
-  while (!ready) {
-      std::this_thread::yield();
+  #include <iostream>
+  #include <thread>
+  #include <atomic>
+
+  std::atomic<bool> ready(false);
+  void worker() { ready = true; }
+
+  // The trap: a bare spin loop with no yield -- hogs the CPU checking `ready` continuously.
+  void brokenExample() {
+      std::thread t(worker);
+      while (!ready) {
+          // nothing here -- burns CPU re-checking `ready` as fast as possible
+      }
+      t.join();
+      std::cout << "ready (busy)" << std::endl;
+  }
+
+  // Fix: yield() steps aside briefly on each failed check, letting other work run.
+  int main() {
+      std::atomic<bool> readyFlag(false);
+      std::thread t([&readyFlag]() { readyFlag = true; });
+      while (!readyFlag) {
+          std::this_thread::yield();   // "nothing to do right now -- let something else run"
+      }
+      t.join();
+      std::cout << "ready" << std::endl;
+      return 0;
   }
 starter_code: |
   #include <iostream>

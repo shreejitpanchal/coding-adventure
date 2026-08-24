@@ -4,15 +4,63 @@ language: cpp
 level: 15
 objective: "Use std::priority_queue (a min-heap) to read off the smallest element instead of sorting the entire vector first."
 explanation: |
-  Sorting the whole vector just to read the first element is O(n log
-  n) work to answer a question that only needs the minimum.
-  std::priority_queue is a heap-backed adapter -- by default a max-heap,
-  but passing std::greater<int> flips it into a min-heap -- giving O(1)
-  access to the current minimum after O(n) construction.
+  `std::sort(nums.begin(), nums.end())` followed by `nums[0]` is doing
+  considerably more work than the actual goal requires: sorting is O(n
+  log n), fully ordering *every* element in the vector, just to look at
+  the single smallest one -- everything about the rest of that sorted
+  order goes completely unused if the minimum is genuinely all that's
+  needed. `std::priority_queue<T, Container, Compare>` is a container
+  *adapter* (it wraps an underlying container -- `std::vector` by
+  default -- and restricts access to it through a heap-ordered
+  interface) purpose-built for exactly this: it maintains just enough
+  internal heap structure to always know which element is currently
+  "top," without fully sorting everything else. Constructing one from
+  an existing range is O(n) (heapifying is cheaper than fully sorting),
+  and once built, `.top()` reads the extreme element in O(1) -- no
+  further work needed.
+
+  By default, `std::priority_queue` is a *max*-heap -- `.top()` returns
+  the *largest* element. Getting the *smallest* instead means
+  explicitly supplying `std::greater<int>` as the third template
+  argument (replacing the default `std::less<int>`), which inverts the
+  heap's ordering: `std::priority_queue<int, std::vector<int>, std::
+  greater<int>>` is a min-heap, and `.top()` on it returns the current
+  smallest element. This three-argument template signature (`element
+  type`, `underlying container type`, `comparison type`) is worth
+  understanding rather than memorizing as a fixed incantation --
+  swapping the third argument is the general mechanism for controlling
+  which "direction" the heap orders in, the same underlying idea as
+  passing a comparator to `std::sort` for custom ordering elsewhere in
+  this category. Beyond the initial O(n) construction, `.push()` and `
+  .pop()` on a `priority_queue` are both O(log n), making it the right
+  structure whenever a program needs *repeated* access to a changing
+  minimum (or maximum) as elements are added and removed over time, not
+  just a one-time answer.
 example_code: |
+  #include <iostream>
+  #include <vector>
+  #include <algorithm>
   #include <queue>
+
+  // The trap: sorting the WHOLE vector just to read the minimum once.
+  std::vector<int> numsSlow = {5, 1, 4, 2, 3};
+  std::sort(numsSlow.begin(), numsSlow.end());   // O(n log n) -- fully sorts, but only [0] is used
+  std::cout << numsSlow[0] << std::endl;           // 1
+
+  // Fix: priority_queue with std::greater<int> gives O(1) access to the minimum.
+  std::vector<int> nums = {5, 1, 4, 2, 3};
   std::priority_queue<int, std::vector<int>, std::greater<int>> minHeap(nums.begin(), nums.end());
-  int smallest = minHeap.top();
+  std::cout << minHeap.top() << std::endl;          // 1 -- no full sort needed
+
+  // Repeated access stays cheap -- O(log n) per pop(), not a full re-sort:
+  minHeap.push(0);
+  std::cout << minHeap.top() << std::endl;           // 0 -- new minimum
+  minHeap.pop();
+  std::cout << minHeap.top() << std::endl;            // 1 -- next smallest
+
+  // Default (no third argument) is a MAX-heap instead:
+  std::priority_queue<int> maxHeap(nums.begin(), nums.end());
+  std::cout << maxHeap.top() << std::endl;             // 5 -- largest first
 starter_code: |
   #include <iostream>
   #include <vector>

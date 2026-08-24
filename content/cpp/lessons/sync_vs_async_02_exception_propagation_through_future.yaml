@@ -4,19 +4,60 @@ language: cpp
 level: 32
 objective: "Catch an exception thrown inside an async task, which propagates when .get() is called rather than being lost."
 explanation: |
-  An exception thrown inside a function running via std::async isn't
-  lost just because it happened on a background thread -- it's captured
-  and stored in the future's shared state, and re-thrown the moment
-  .get() is called on that future. This means ordinary try/catch around
-  the .get() call works exactly like it would for a synchronous call --
-  the asynchronous boundary doesn't need any special exception-handling
-  machinery.
+  An exception is normally something the calling thread catches
+  directly, at the point the throwing call is made -- but a task
+  running via `std::async(std::launch::async, ...)` executes on a
+  *separate* thread entirely, physically distinct from the thread that
+  eventually calls `.get()`. That raises a real question: what happens
+  to an exception thrown on the *async task's* thread, given that
+  there's no `try`/`catch` around the throwing call *on that thread*?
+  It isn't lost, and it doesn't crash silently in the background --
+  `std::future`'s machinery specifically catches the exception where it
+  was thrown, stores it inside the future's shared state (the same
+  internal channel that would otherwise be holding the computed return
+  value), and then *re-throws* that exact exception the moment `.get()`
+  is called on the corresponding future, on whatever thread happens to
+  call it.
+
+  That re-throw-on-`.get()` behavior is exactly what makes ordinary `
+  try`/`catch` work correctly around an async call, with no special
+  cross-thread exception machinery needed in the calling code at all: `
+  try { int value = fut.get(); } catch (const std::runtime_error& e) {
+  ...}` catches the exception exactly as it would for a plain
+  synchronous function call that threw directly -- the asynchronous
+  boundary in between is effectively invisible from the exception-
+  handling code's point of view. `int value = fut.get();` with no
+  surrounding `try`/`catch` at all, as in the buggy version here, lets
+  that re-thrown exception propagate straight out of `main`,
+  terminating the program -- exactly the same outcome as any other
+  uncaught exception, just originating from work that happened to run
+  on a different thread first.
 example_code: |
-  try {
-      int value = fut.get();
-  } catch (const std::runtime_error& e) {
-      std::cout << "caught: " << e.what() << std::endl;
+  #include <iostream>
+  #include <future>
+  #include <stdexcept>
+
+  // The trap: no try/catch -- the re-thrown exception crashes the program.
+  std::future<int> futBroken = std::async(std::launch::async, []() -> int {
+      throw std::runtime_error("boom");
+  });
+  // int valueBroken = futBroken.get();   // re-throws "boom" here -- uncaught, crashes
+
+  // Fix: ordinary try/catch around .get() works, exactly like a synchronous call.
+  int main() {
+      std::future<int> fut = std::async(std::launch::async, []() -> int {
+          throw std::runtime_error("boom");
+      });
+
+      try {
+          int value = fut.get();       // the exception re-surfaces HERE
+          std::cout << value << std::endl;
+      } catch (const std::runtime_error& e) {
+          std::cout << "caught: " << e.what() << std::endl;
+      }
+      return 0;
   }
+  // caught: boom
 starter_code: |
   #include <iostream>
   #include <future>

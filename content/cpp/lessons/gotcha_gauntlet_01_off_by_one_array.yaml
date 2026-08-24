@@ -4,14 +4,56 @@ language: cpp
 level: 46
 objective: "Fix an off-by-one loop bound that reads one element past the end of a fixed-size array."
 explanation: |
-  A 3-element array has valid indices 0, 1, 2 -- `i <= 3` lets i reach 3,
-  one past the last valid index. Unlike std::vector::at(), a raw array
-  (or vector's operator[]) does no bounds checking at all: reading
-  arr[3] doesn't throw, it just reads whatever happens to be in memory
-  right after the array, giving a garbage result instead of a clean
-  error.
+  A fixed-size C-style array declared `int arr[3]` allocates exactly 3
+  contiguous `int` slots, with valid indices `0`, `1`, and `2` -- there
+  is no slot at index `3` at all. `i <= 3` as a loop condition lets `i`
+  reach `3` on its final iteration, since `<=` includes equality, and
+  `arr[3]` then reads memory that sits *right past* the array's actual
+  allocation. The critical thing to understand about what happens next
+  is what makes this particular gotcha genuinely dangerous rather than
+  merely annoying: unlike `std::vector::at()` (covered in the next
+  exercise) or Python/Java's automatic bounds checking, a raw C-style
+  array (and `std::vector`'s own `operator[]`) performs *no bounds
+  checking whatsoever* -- `arr[3]` doesn't throw, doesn't crash, doesn't
+  produce any error at all. It simply reads whatever bits happen to
+  occupy that memory location, which might be another variable's data,
+  uninitialized stack memory, or something else entirely -- the result
+  is a *garbage value*, silently incorporated into the computation as
+  if it were legitimate data, with nothing about the program's
+  execution flagging that anything went wrong.
+
+  This is precisely why off-by-one array bugs are considered
+  particularly serious in C++ specifically, compared to languages with
+  built-in bounds checking: the failure mode isn't a loud, immediate,
+  easy-to-locate crash -- it's silently, plausibly wrong output (or,
+  in more serious cases, actual memory corruption if the out-of-bounds
+  access happens to be a *write* rather than a read), which can
+  propagate through the rest of the program before anyone notices
+  something is off, far removed from the actual off-by-one mistake that
+  caused it. The fix is the same classic correction as the equivalent
+  Java exercise elsewhere in this app: `<` instead of `<=`, so the loop
+  stops correctly at the true last valid index rather than reading one
+  slot past the end.
 example_code: |
-  int arr[3] = {1, 2, 3};
+  #include <iostream>
+
+  // The trap: i <= 3 reads arr[3] -- one past the end, silently reading garbage.
+  int arrBroken[3] = {10, 20, 30};
+  int sumBroken = 0;
+  for (int i = 0; i <= 3; i++) {
+      sumBroken += arrBroken[i];   // arrBroken[3] reads whatever memory sits right after
+  }
+  std::cout << sumBroken << std::endl;   // unpredictable -- NOT a clean error, just wrong
+
+  // Fix: < stops the loop at the correct final valid index.
+  int arr[3] = {10, 20, 30};
+  int sum = 0;
+  for (int i = 0; i < 3; i++) {
+      sum += arr[i];               // valid indices only: 0, 1, 2
+  }
+  std::cout << sum << std::endl;    // 60
+
+  int arr2[3] = {1, 2, 3};
   for (int i = 0; i < 3; i++) {
       // valid: i never reaches 3
   }

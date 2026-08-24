@@ -4,13 +4,66 @@ language: cpp
 level: 11
 objective: "Replace a hand-written bubble sort with std::sort from <algorithm>."
 explanation: |
-  std::sort is a highly optimized (typically introsort) implementation
-  provided by the standard library -- there's essentially never a good
-  reason to hand-write a sort in application code. It's also far less
-  error-prone than a manual nested-loop swap implementation.
+  Bubble sort, hand-written with nested loops and a manual swap, is a
+  correct sorting algorithm -- but it's O(n²), it's easy to get the
+  inner loop's bound subtly wrong (as the `nums.size() - i - 1`
+  expression here shows, `size()`'s unsigned return type makes that
+  kind of arithmetic a genuine hazard, echoing the unsigned-underflow
+  gotcha covered elsewhere in this app), and it's solving a problem the
+  standard library has already solved, thoroughly, decades ago.
+  `std::sort` (from `<algorithm>`) is the standard library's own
+  general-purpose sorting function, and real implementations typically
+  use *introsort* -- a hybrid algorithm that starts with quicksort for
+  its typically-excellent average performance, falls back to heapsort
+  if quicksort's recursion depth gets suspiciously deep (guarding
+  against quicksort's worst-case O(n²) blowup on adversarial input),
+  and switches to insertion sort for small sub-ranges where its low
+  constant-factor overhead beats quicksort's. That's meaningfully more
+  sophisticated than any sort a typical application would hand-roll,
+  and it's been extensively tested and tuned by the standard library's
+  implementers across a huge range of real-world inputs.
+
+  Beyond the performance gap, there's essentially never a good reason
+  to hand-write a general-purpose sort in application code: `std::sort(
+  nums.begin(), nums.end())` is a single, unambiguous line that states
+  the intent directly ("sort this range"), with none of the
+  opportunities for an off-by-one bound, a wrong comparison direction,
+  or a broken swap that a hand-written nested-loop implementation
+  introduces. The standard library's sorting algorithms are also
+  customizable via an optional comparator argument for non-default
+  ordering, which a hand-rolled bubble sort would need entirely
+  separate logic to replicate -- reaching for `std::sort` by default,
+  and only implementing a custom sort when there's a genuinely
+  specialized requirement `std::sort` can't express, is the right
+  default in essentially all real C++ code.
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: correct, but O(n^2), and easy to get subtly wrong.
+  std::vector<int> numsSlow = {5, 2, 8, 1, 9};
+  for (size_t i = 0; i < numsSlow.size(); i++) {
+      for (size_t j = 0; j < numsSlow.size() - i - 1; j++) {   // easy to get this bound wrong
+          if (numsSlow[j] > numsSlow[j + 1]) {
+              int temp = numsSlow[j];
+              numsSlow[j] = numsSlow[j + 1];
+              numsSlow[j + 1] = temp;
+          }
+      }
+  }
+  std::cout << numsSlow[0] << std::endl;   // 1
+
+  // Fix: std::sort -- one line, highly optimized, battle-tested.
   #include <algorithm>
+
+  std::vector<int> nums = {5, 2, 8, 1, 9};
   std::sort(nums.begin(), nums.end());
+  std::cout << nums[0] << std::endl;         // 1
+
+  // Custom ordering, via an optional comparator -- no hand-rolled logic needed:
+  std::vector<int> descending = {5, 2, 8, 1, 9};
+  std::sort(descending.begin(), descending.end(), std::greater<int>());
+  std::cout << descending[0] << std::endl;    // 9
 starter_code: |
   #include <iostream>
   #include <vector>

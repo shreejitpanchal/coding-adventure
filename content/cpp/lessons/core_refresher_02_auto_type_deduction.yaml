@@ -4,15 +4,55 @@ language: cpp
 level: 7
 objective: "Replace a verbose, fully-spelled-out iterator type with auto."
 explanation: |
-  `auto` lets the compiler deduce a variable's type from its
-  initializer -- for a type as verbose as
-  `std::map<std::string, int>::iterator`, spelling it out is pure noise
-  that also has to be kept in sync if the container type ever changes.
-  `auto` says exactly the same thing more concisely, and stays correct
-  automatically.
+  `auto`, introduced in C++11, tells the compiler to deduce a
+  variable's type directly from its initializer expression, rather than
+  the programmer spelling that type out explicitly. For a type as
+  genuinely verbose as `std::map<std::string, int>::iterator`, writing
+  it out in full is almost pure noise: the type is already fully
+  determined by the right-hand side (`ages.begin()` can only ever
+  return exactly that iterator type), so restating it on the left adds
+  length and visual clutter without adding any information the
+  compiler didn't already have. `auto it = ages.begin();` says exactly
+  the same thing -- "`it` is whatever type `ages.begin()` returns" --
+  far more concisely, and lets the actual logic of the loop (the
+  comparison, the increment, the dereference) stand out rather than
+  being buried after a long type name.
+
+  Beyond brevity, `auto` has a real maintenance advantage: a fully
+  spelled-out type has to be *kept in sync by hand* if the underlying
+  container type ever changes -- switching `ages` from a `std::map` to
+  a `std::unordered_map`, say, would silently leave every explicitly-
+  typed `std::map<std::string, int>::iterator` declaration wrong (and
+  a compile error to fix, at every call site) until updated to match,
+  whereas every `auto it = ages.begin();` declaration would simply
+  re-deduce the new correct type automatically, with zero changes
+  needed. `auto` isn't a dynamic or untyped variable, worth being clear
+  about -- `it`'s type is still fixed, concrete, and determined entirely
+  at compile time; `auto` is purely a notational convenience that lets
+  the compiler write out (and keep correct) a type the programmer would
+  otherwise have to spell out and maintain by hand.
 example_code: |
+  #include <iostream>
+  #include <map>
+  #include <string>
+
+  // The trap: not wrong, just verbose AND fragile if the container type ever changes.
+  std::map<std::string, int> agesVerbose;
+  agesVerbose["Ada"] = 30;
+  for (std::map<std::string, int>::iterator it = agesVerbose.begin(); it != agesVerbose.end(); ++it) {
+      std::cout << it->first << " " << it->second << std::endl;
+  }
+
+  // Fix: auto deduces the exact same type from the initializer, concisely.
+  std::map<std::string, int> ages;
+  ages["Ada"] = 30;
+  for (auto it = ages.begin(); it != ages.end(); ++it) {
+      std::cout << it->first << " " << it->second << std::endl;
+  }
+  // Ada 30
+
   std::map<std::string, int> m;
-  auto it = m.begin();
+  auto it2 = m.begin();   // deduced as std::map<std::string, int>::iterator, exactly
 starter_code: |
   #include <iostream>
   #include <map>

@@ -4,18 +4,70 @@ language: cpp
 level: 35
 objective: "Understand std::launch::deferred: the task doesn't run at all until .get()/.wait() is called, unlike std::launch::async."
 explanation: |
-  std::launch::async guarantees the task starts running on a separate
-  thread essentially immediately. std::launch::deferred is the opposite:
-  the standard guarantees the task does *not* run until .get() or
-  .wait() is called on the future -- and when it finally does run, it
-  runs synchronously on the thread that called .get(), not in the
-  background at all. Code that assumes "the task is already running in
-  the background" right after calling std::async is only safe with the
-  async policy; with deferred, nothing has happened yet.
+  `std::launch::async` and `std::launch::deferred` are the two explicit
+  launch policies `std::async` supports, and they make genuinely
+  opposite guarantees about *when* a task actually runs. `std::launch::
+  async` guarantees the task begins running on a separate thread
+  essentially immediately -- by the time `std::async(std::launch::async,
+  ...)` returns, the task has already started (though *when exactly* it
+  finishes relative to other code is still not guaranteed, only that it
+  has begun). `calls` in the starter code could plausibly already be `1`
+  by the time it's first printed, or still `0`, depending purely on
+  timing between the spawned thread and the main thread's own
+  execution -- that race makes the exact printed output genuinely
+  nondeterministic, which is precisely the problem this exercise
+  surfaces.
+
+  `std::launch::deferred` is the opposite guarantee, and it's a real,
+  standard-mandated guarantee, not just "usually runs later": the
+  task does *not* run at all -- not on a background thread, not
+  partially, not at any point -- until `.get()` or `.wait()` is
+  explicitly called on the resulting future. And when it finally does
+  run, it runs *synchronously*, on whichever thread calls `.get()`,
+  not in the background at all -- `deferred` is really closer to "lazy
+  evaluation" than to genuine concurrency. That "does not run until
+  asked" guarantee is exactly what makes the deferred version's output
+  deterministic where the async version's wasn't: `calls` is
+  guaranteed to still be `0` at the first print (the lambda genuinely
+  hasn't executed yet), and only becomes `1` after `fut.get()` is
+  called, which is the point where the deferred task finally,
+  synchronously runs. Recognizing which policy a piece of code actually
+  needs -- genuine background concurrency (`async`) versus "run this
+  lazily, only if and when the result is actually asked for" (`
+  deferred`) -- is a real design decision, not just a technicality, and
+  leaving the policy unspecified (covered in a neighboring exercise)
+  means giving up the ability to reason about either guarantee at all.
 example_code: |
-  auto fut = std::async(std::launch::deferred, task);
+  #include <iostream>
+  #include <future>
+
+  int callsBroken = 0;
+
+  // The trap: std::launch::async gives no guarantee about WHEN it starts relative to this code.
+  void brokenExample() {
+      auto futBroken = std::async(std::launch::async, []() { callsBroken++; return 5; });
+      std::cout << callsBroken << std::endl;   // could be 0 OR 1 -- genuinely a race, unpredictable
+      int value = futBroken.get();
+      std::cout << callsBroken << " " << value << std::endl;
+  }
+
+  // Fix: std::launch::deferred GUARANTEES the task hasn't run until get()/wait() is called.
+  int calls = 0;
+
+  int main() {
+      auto fut = std::async(std::launch::deferred, []() { calls++; return 5; });
+      std::cout << calls << std::endl;         // guaranteed 0 -- deferred hasn't run yet
+      int value = fut.get();                     // task runs NOW, synchronously, right here
+      std::cout << calls << " " << value << std::endl;   // 1 5
+      return 0;
+  }
+  // 0
+  // 1 5
+
+  auto task = []() { return 42; };
+  auto fut2 = std::async(std::launch::deferred, task);
   // task has NOT run yet here
-  int value = fut.get();
+  int value2 = fut2.get();
   // task runs now, synchronously, then returns
 starter_code: |
   #include <iostream>

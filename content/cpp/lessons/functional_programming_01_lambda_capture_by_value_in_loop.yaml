@@ -4,17 +4,63 @@ language: cpp
 level: 36
 objective: "Capture a loop variable by value instead of by reference, so each lambda freezes its own iteration's value instead of sharing one final value."
 explanation: |
-  Capturing by reference ([&i]) means the lambda doesn't store its own
-  copy of i -- it stores a reference to the *variable* i, which keeps
-  changing (and eventually goes out of scope) as the loop continues.
-  By the time any of these lambdas actually run, they all see whatever
-  i's final value was, not the value it had when each lambda was
-  created. Capturing by value ([i]) copies the current value into the
-  lambda at the moment it's created, so each one keeps its own
-  independent snapshot.
+  A lambda's capture list determines what it *remembers* about its
+  surrounding scope, and `[&i]` versus `[i]` make fundamentally
+  different promises about that. `[&i]` (capture by reference) means
+  the lambda doesn't store its own independent copy of `i` at all -- it
+  stores a reference to the *one single variable* `i`, the exact same
+  loop-control variable that keeps getting mutated (`i++`) on every
+  iteration of the enclosing `for` loop. Every lambda created inside
+  that loop, across all three iterations, ends up holding a reference
+  to that *same* variable -- there were never three separate `i`s to
+  begin with, just one, changing over time. By the time any of these
+  lambdas is actually *called* (in the second loop, after the first
+  loop has already finished), `i` has already reached its final,
+  post-loop value -- every lambda dereferences the same reference and
+  sees that same final value, which is exactly why all three calls
+  print the identical number instead of each reflecting its own
+  iteration.
+
+  `[i]` (capture by value) fixes this by copying `i`'s *current* value
+  into the lambda's own private storage at the exact moment the lambda
+  object is constructed -- each of the three lambdas, created on
+  separate iterations, captures a genuinely independent snapshot of
+  whatever `i` happened to be *at that specific point in time*,
+  entirely decoupled from `i`'s later mutations. This is one of the
+  single most common lambda-closure traps across every language that
+  has closures (JavaScript's classic `var i` in a loop has the
+  identical failure mode, fixed there by `let`'s per-iteration
+  binding) -- the underlying question to always ask about a captured
+  loop variable is "does this closure need to see the variable's
+  value *now*, or its value *whenever it's eventually called*," and
+  capture-by-value versus capture-by-reference is exactly the choice
+  that answers it.
 example_code: |
+  #include <iostream>
+  #include <vector>
+  #include <functional>
+
+  // The trap: [&i] captures a REFERENCE to the one shared loop variable.
+  std::vector<std::function<int()>> makersBroken;
   for (int i = 0; i < 3; i++) {
-      makers.push_back([i]() { return i; });
+      makersBroken.push_back([&i]() { return i; });   // all three reference the SAME i
+  }
+  for (auto& m : makersBroken) {
+      std::cout << m() << " ";   // 3 3 3 -- all see i's FINAL post-loop value
+  }
+  std::cout << std::endl;
+
+  // Fix: [i] captures a VALUE -- each lambda's own independent snapshot.
+  int main() {
+      std::vector<std::function<int()>> makers;
+      for (int i = 0; i < 3; i++) {
+          makers.push_back([i]() { return i; });   // each copies i's value AT THIS MOMENT
+      }
+      for (auto& m : makers) {
+          std::cout << m() << " ";   // 0 1 2 -- each keeps its own snapshot
+      }
+      std::cout << std::endl;
+      return 0;
   }
 starter_code: |
   #include <iostream>

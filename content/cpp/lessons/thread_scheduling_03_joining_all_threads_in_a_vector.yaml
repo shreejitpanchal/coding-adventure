@@ -4,16 +4,62 @@ language: cpp
 level: 28
 objective: "Join every thread in a std::vector<std::thread>, not just the first one, before the vector goes out of scope."
 explanation: |
-  A std::vector<std::thread> is a natural way to manage a group of
-  worker threads, but joining only requires calling .join() on each
-  individual thread object -- the vector itself doesn't do that for
-  you. Any thread left joinable when its std::thread object is
-  destroyed (including when the whole vector is destroyed at the end of
-  main) crashes the program via std::terminate(), the same guaranteed
-  behavior as forgetting to join a single thread.
+  `std::vector<std::thread>` is a natural, common way to manage a whole
+  group of worker threads -- push a new `std::thread` into the vector
+  for each unit of concurrent work, and the vector holds onto all of
+  them. But the vector is just a *container*; it has no special
+  awareness that the objects it holds are threads with their own
+  lifecycle requirements, and it certainly doesn't automatically call `.
+  join()` on each one for you. `workers[0].join();` joins exactly one
+  thread -- `workers[1]` and `workers[2]` are left completely untouched,
+  still joinable, when execution reaches the end of `main`. And a
+  vector's own destructor, running as `main` returns, destroys every `
+  std::thread` object it holds in turn -- which means `workers[1]` and `
+  workers[2]`'s destructors run while they're still joinable, and
+  (exactly the rule covered in the earlier "thread never joined"
+  exercise) a joinable `std::thread` being destroyed triggers `std::
+  terminate()` and crashes the program.
+
+  The fix is simply to make sure *every* thread in the vector actually
+  gets joined before the vector itself is destroyed -- a range-based
+  `for` loop over `workers`, calling `.join()` on each one, covers
+  exactly that: `for (auto& t : workers) { t.join(); }`. The `auto&`
+  (a reference, not a copy) matters here specifically because `std::
+  thread` objects aren't copyable at all -- a `std::thread` uniquely
+  owns the underlying OS thread it manages, so the loop has to bind to
+  each actual thread object in the vector by reference, not attempt to
+  copy it (which wouldn't even compile). This generalizes cleanly:
+  whenever a program manages a *collection* of threads rather than one
+  individually-named thread variable, the responsibility to join (or
+  detach) every single one still applies to each thread individually --
+  the container itself never absorbs that responsibility automatically.
 example_code: |
-  for (auto& t : workers) {
-      t.join();
+  #include <iostream>
+  #include <thread>
+  #include <vector>
+
+  // The trap: only the FIRST thread gets joined -- the rest crash the program.
+  void brokenExample() {
+      std::vector<std::thread> workers;
+      for (int i = 0; i < 3; i++) {
+          workers.push_back(std::thread([i]() { }));
+      }
+      workers[0].join();     // only this one is joined
+      std::cout << "all done (broken)" << std::endl;
+      // workers[1] and workers[2] are STILL joinable here -- std::terminate() when the vector is destroyed!
+  }
+
+  // Fix: loop over EVERY thread in the vector, joining each one.
+  int main() {
+      std::vector<std::thread> workers;
+      for (int i = 0; i < 3; i++) {
+          workers.push_back(std::thread([i]() { }));
+      }
+      for (auto& t : workers) {   // auto& -- threads aren't copyable, must bind by reference
+          t.join();
+      }
+      std::cout << "all done" << std::endl;
+      return 0;
   }
 starter_code: |
   #include <iostream>

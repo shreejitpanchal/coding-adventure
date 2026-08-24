@@ -4,17 +4,55 @@ language: cpp
 level: 42
 objective: "Fix a base case that only checks for exact equality (n == 0), so a value that skips past it never actually stops the recursion."
 explanation: |
-  A base case like `if (n == 0)` only stops the recursion if n hits
-  exactly 0 at some point. If n starts negative, or decreases by more
-  than 1 per call, or is otherwise never exactly 0, the recursion keeps
-  going past where it should have stopped -- straight into a stack
-  overflow. A range check like `n <= 0` is more robust: it stops the
-  recursion the moment n reaches OR passes the intended boundary,
-  regardless of the exact value.
+  Having *a* base case at all (unlike the missing-base-case gotcha
+  covered in the previous exercise) doesn't automatically mean the
+  recursion is safe -- the base case's *condition* also has to actually
+  be reachable from every input the function might be called with.
+  `if (n == 0) return 0;` only stops the recursion at the exact instant
+  `n` equals `0` -- if the recursive step (`n - 1` here) ever skips
+  past `0` without landing on it exactly, that base case is never
+  triggered at all, and the recursion continues indefinitely past where
+  it was clearly *intended* to stop. `countdown(-1)` demonstrates this
+  precisely: starting at `-1` and decrementing by `1` each call
+  produces `-1, -2, -3, ...` -- a sequence that steps steadily further
+  from `0` and can never land exactly on it, since it started on the
+  wrong side of the boundary to begin with. The base case exists, and
+  is even logically correct for the *intended* usage (`n` counting down
+  from a non-negative start), but it's fragile against any input that
+  breaks the specific assumption that `n` will pass through exactly `0`
+  on its way down.
+
+  `if (n <= 0) return 0;` -- a *range* check instead of an exact-
+  equality check -- is more robust precisely because it stops the
+  recursion the moment `n` reaches *or passes* the intended boundary,
+  regardless of the exact value it happens to land on. Whether `n`
+  hits exactly `0`, skips straight to `-3` because of some larger
+  decrement, or starts already negative, `n <= 0` catches all of those
+  cases uniformly. This is a genuinely useful general habit for writing
+  recursive base cases defensively: prefer a range check (`<=`, `>=`)
+  over an exact equality check (`==`) whenever there's any possibility
+  the recursive step might not land precisely on the intended boundary
+  value -- the range check degrades gracefully where the exact-equality
+  check fails catastrophically.
 example_code: |
+  #include <iostream>
+
+  // The trap: exact equality only stops the recursion if n hits EXACTLY 0.
+  int countdownBroken(int n) {
+      if (n == 0) return 0;
+      return 1 + countdownBroken(n - 1);
+  }
+  // countdownBroken(-1) -- goes -1, -2, -3, ... FOREVER, never hits exactly 0
+
+  // Fix: a range check stops the recursion regardless of the exact value reached.
   int countdown(int n) {
-      if (n <= 0) return 0;
+      if (n <= 0) return 0;               // stops at OR past the boundary, any value
       return 1 + countdown(n - 1);
+  }
+
+  int main() {
+      std::cout << countdown(0) << std::endl;   // 0 -- safe, terminates correctly
+      return 0;
   }
 starter_code: |
   #include <iostream>

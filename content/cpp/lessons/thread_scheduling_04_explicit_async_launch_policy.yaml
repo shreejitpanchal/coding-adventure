@@ -4,17 +4,65 @@ language: cpp
 level: 29
 objective: "Pass std::launch::async explicitly to std::async, since the default launch policy is implementation-defined and might run everything sequentially instead."
 explanation: |
-  std::async(fn, args...) without an explicit launch policy lets the
-  implementation choose between std::launch::async (a genuinely new
-  thread) and std::launch::deferred (runs later, on the calling thread,
-  when .get()/.wait() is called) -- and that choice is unspecified by
-  the standard. Code written expecting real concurrent execution across
-  a "pool" of async tasks can silently end up running every task
-  sequentially on one thread instead, defeating the entire point of
-  using async in the first place. Passing std::launch::async explicitly
-  guarantees an actual separate thread every time.
+  `std::async(fn, args...)`, called with *no* explicit launch policy
+  argument, doesn't actually guarantee that `fn` runs on a new,
+  genuinely concurrent thread at all -- the C++ standard deliberately
+  leaves that choice up to the implementation, permitting either `std::
+  launch::async` (a real separate thread, launched immediately) or `
+  std::launch::deferred` (the call is postponed entirely, and only
+  actually executed later, synchronously, on whichever thread first
+  calls `.get()` or `.wait()` on the resulting future) -- or some
+  implementation-specific mix of the two depending on system load. This
+  is *unspecified behavior*, not merely "unlikely to matter" -- a
+  standard-conforming implementation is entirely free to always choose `
+  deferred`, always choose `async`, or pick dynamically, and different
+  standard library implementations genuinely do make different choices
+  here in practice.
+
+  The consequence: code that pushes several `std::async(fn, args...)`
+  calls into a "pool" of futures, expecting them to run concurrently
+  across multiple threads, can silently end up running every single one
+  *sequentially*, on the one thread that eventually calls `.get()` on
+  each future in turn -- the code still produces a *correct* final
+  result (the loop here still sums to 30 either way), but the intended
+  concurrency -- the entire reason `std::async` was reached for instead
+  of just calling the function directly -- may not have happened at
+  all, with nothing in the program's output revealing that difference.
+  Passing `std::launch::async` explicitly as the first argument removes
+  the ambiguity entirely: it forces the implementation to launch a
+  genuine new thread for that task, every time, guaranteeing the
+  concurrent execution the code actually intends rather than leaving it
+  to chance (or to whichever implementation happens to be compiling the
+  code).
 example_code: |
-  std::async(std::launch::async, [i]() { return i * i; });
+  #include <iostream>
+  #include <vector>
+  #include <future>
+
+  // The trap: no explicit policy -- might run sequentially, defeating the point of async.
+  std::vector<std::future<int>> resultsAmbiguous;
+  for (int i = 0; i < 5; i++) {
+      resultsAmbiguous.push_back(std::async([i]() { return i * i; }));   // policy UNSPECIFIED
+  }
+  int totalAmbiguous = 0;
+  for (auto& f : resultsAmbiguous) {
+      totalAmbiguous += f.get();
+  }
+  std::cout << totalAmbiguous << std::endl;   // 30 -- correct result, but maybe NO real concurrency at all
+
+  // Fix: std::launch::async guarantees a genuine separate thread, every time.
+  int main() {
+      std::vector<std::future<int>> results;
+      for (int i = 0; i < 5; i++) {
+          results.push_back(std::async(std::launch::async, [i]() { return i * i; }));
+      }
+      int total = 0;
+      for (auto& f : results) {
+          total += f.get();
+      }
+      std::cout << total << std::endl;   // 30 -- same result, GENUINELY concurrent this time
+      return 0;
+  }
 starter_code: |
   #include <iostream>
   #include <vector>

@@ -4,16 +4,65 @@ language: cpp
 level: 3
 objective: "Fix an if condition that uses = (assignment) where == (comparison) was intended."
 explanation: |
-  `if (x = 1)` is valid C++ -- it assigns 1 to x, and then the
-  condition evaluates the *result of the assignment* (1, which is
-  truthy), so the branch always runs regardless of x's previous value.
-  This is one of the most common typos in C-family languages, and it
-  compiles cleanly with no error (some compilers warn with `-Wall`, but
-  it's easy to miss).
+  In C++, the single `=` (assignment) is itself an *expression*, not
+  just a statement -- `x = 1` both assigns `1` to `x` and evaluates,
+  as a whole expression, to the value that was just assigned (`1`).
+  That means `if (x = 1)` is entirely valid, legal C++: it performs the
+  assignment as a side effect, and then the `if` evaluates the
+  *result* of that assignment expression (`1`) as its condition, which
+  is truthy (any nonzero value is truthy in a boolean context) --
+  so the branch runs *unconditionally*, every single time, completely
+  independent of whatever `x` held before the assignment overwrote it.
+  This makes `if (errorCode = 1)` doubly wrong: it silently discards
+  whatever `errorCode` actually was, replaces it with `1`, and then
+  branches on that freshly-assigned `1` as if it were meaningful
+  information about the *original* state.
+
+  This is one of the single most common typos across the entire C-family
+  of languages, precisely because `=` and `==` are visually one
+  character apart and keyboard-adjacent, and the mistake produces code
+  that's *syntactically valid* rather than a compile error -- there's
+  no error to catch it at compile time by default, only a warning from
+  some compilers under stricter flags (like `-Wall`, which many projects
+  don't even enable, or don't treat as fatal). The fix is purely
+  textual once spotted: `errorCode = 1` becomes `errorCode == 1`, a
+  genuine equality comparison that reads `errorCode`'s existing value
+  without modifying it, evaluating to `true` or `false` based on what
+  it actually finds. A defensive habit some codebases adopt
+  specifically to catch this class of typo at compile time: writing
+  the literal on the left (`if (1 == errorCode)`) -- accidentally
+  typing `if (1 = errorCode)` is a compile error, since `1` isn't a
+  modifiable value that can be assigned to, whereas `if (errorCode = 1)`
+  compiles silently either way.
 example_code: |
+  #include <iostream>
+
+  // The trap: = assigns AND evaluates to the assigned value -- always truthy here.
+  int errorCodeBroken = 0;
+  if (errorCodeBroken = 1) {           // assigns 1, then branches on that 1 (truthy)
+      std::cout << "error" << std::endl;   // ALWAYS runs, regardless of errorCodeBroken's original value
+  } else {
+      std::cout << "ok" << std::endl;
+  }
+  // Output: "error" -- even though errorCodeBroken started at 0
+
+  // Fix: == compares without modifying anything.
+  int errorCode = 0;
+  if (errorCode == 1) {
+      std::cout << "error" << std::endl;
+  } else {
+      std::cout << "ok" << std::endl;       // correctly runs -- errorCode really is 0
+  }
+
   int flag = 0;
   if (flag == 1) {
       std::cout << "set" << std::endl;
+  }
+
+  // A defensive habit: literal on the LEFT catches the typo as a compile error.
+  // if (1 = errorCode) { ... }   // compile error -- can't assign to a literal
+  if (1 == errorCode) {
+      std::cout << "matches" << std::endl;
   }
 starter_code: |
   #include <iostream>

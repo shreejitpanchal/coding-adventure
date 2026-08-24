@@ -4,12 +4,58 @@ language: cpp
 level: 8
 objective: "Replace a hand-written function-object struct with a lambda expression."
 explanation: |
-  A struct with just an `operator()` exists purely to be passed as a
-  callable -- a lambda expresses the exact same thing inline, at the
-  point it's actually used, without a separate named type cluttering
-  the surrounding scope.
+  Before C++11, the standard way to pass a small piece of custom
+  behavior into an algorithm like `std::count_if` was a "functor" -- a
+  struct or class defining `operator()`, so instances of it can be
+  *called* like a function. `struct IsEven { bool operator()(int n)
+  const { return n % 2 == 0; } };` exists purely to be instantiated
+  (`IsEven()`) and passed as a callable to `count_if` -- it has no other
+  purpose, no meaningful state, no reason to exist as a separate named
+  type in the surrounding scope other than to carry that one `operator
+  ()` definition to the one call site that actually needs it. That
+  separation is exactly the overhead a lambda expression removes:
+  instead of declaring an entire named struct somewhere else in the
+  file purely to define a tiny predicate, a lambda writes the same
+  logic *inline*, directly at the point where it's actually used.
+
+  `[](int n) { return n % 2 == 0; }` is a complete, anonymous callable
+  written in place -- `[]` is the capture list (empty here, since the
+  lambda doesn't need to reference anything from its surrounding
+  scope), `(int n)` is the parameter list, and the body computes and
+  returns the same boolean `IsEven::operator()` did. Passed directly as
+  `count_if`'s third argument, it eliminates the entire `IsEven` struct
+  declaration, its separate definition elsewhere in the code, and the
+  extra step of naming and instantiating it -- the logic lives exactly
+  where it's used, with nothing extra to read or maintain elsewhere.
+  This is the same underlying shift several languages went through
+  around the same era (Java's lambdas replacing single-method anonymous
+  classes, covered elsewhere in this app, is the direct analogue) --
+  once a language has first-class inline callables, a named type
+  whose entire purpose is wrapping one small function becomes pure
+  ceremony.
 example_code: |
-  std::count_if(v.begin(), v.end(), [](int n) { return n > 0; });
+  #include <iostream>
+  #include <algorithm>
+  #include <vector>
+
+  // The trap: a whole named struct, purely to wrap one small predicate.
+  struct IsEven {
+      bool operator()(int n) const { return n % 2 == 0; }
+  };
+
+  std::vector<int> numsVerbose = {1, 2, 3, 4, 5, 6};
+  int countVerbose = std::count_if(numsVerbose.begin(), numsVerbose.end(), IsEven());
+  std::cout << countVerbose << std::endl;   // 3
+
+  // Fix: a lambda expresses the identical logic INLINE, at the point of use.
+  std::vector<int> nums = {1, 2, 3, 4, 5, 6};
+  int count = std::count_if(nums.begin(), nums.end(),
+          [](int n) { return n % 2 == 0; });    // no separate struct needed at all
+  std::cout << count << std::endl;                // 3
+
+  std::vector<int> v = {-2, -1, 0, 1, 2};
+  auto positiveCount = std::count_if(v.begin(), v.end(), [](int n) { return n > 0; });
+  std::cout << positiveCount << std::endl;          // 2
 starter_code: |
   #include <iostream>
   #include <algorithm>

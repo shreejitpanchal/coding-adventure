@@ -4,15 +4,70 @@ language: cpp
 level: 14
 objective: "Replace a manual nested-loop duplicate check with std::set, which enforces uniqueness by construction."
 explanation: |
-  Manually checking "have I already added this?" against every
-  previously-added element is O(n) per insertion, O(n^2) overall.
-  std::set is a sorted, unique-elements container -- constructing one
-  from a range automatically discards duplicates in O(n log n), and the
-  uniqueness guarantee is enforced by the container itself, not by code
-  you have to get right.
+  The manual nested-loop approach here answers "have I already added
+  this value?" by scanning through every element added *so far*, for
+  every new element being considered -- an inner loop nested inside an
+  outer loop, which is the classic shape of O(n²) work: each of the n
+  outer iterations potentially scans up to n elements in the inner
+  loop. It's also easy to get subtly wrong in ways that aren't
+  immediately obvious from reading it (the `found` flag has to be reset
+  correctly, the `break` has to be placed correctly, the comparison has
+  to check the right things) -- correctness here depends entirely on
+  the programmer getting several small pieces of manual bookkeeping
+  right simultaneously.
+
+  `std::set<T>` is a container whose *core contract* is uniqueness --
+  it's fundamentally a sorted collection of *distinct* elements, backed
+  internally by a balanced binary search tree (typically a red-black
+  tree), and that uniqueness isn't something application code has to
+  implement and maintain correctly; it's enforced by the container
+  itself as a structural guarantee. Constructing `std::set<int> unique(
+  nums.begin(), nums.end())` from a range inserts every element from `
+  nums` one at a time internally, and the set's own insertion logic
+  silently discards anything that's already present -- the whole
+  process runs in O(n log n) (n insertions, each O(log n) thanks to the
+  underlying balanced tree), a genuine asymptotic improvement over the
+  manual O(n²) approach, and with the uniqueness guarantee coming from
+  the container's own design rather than from application code that has
+  to get several details right to actually enforce it. This is the same
+  "reach for the container whose built-in contract matches the actual
+  requirement" principle as choosing `unordered_map` for key lookup or
+  `deque` for front-removal elsewhere in this category -- picking the
+  right structure often eliminates entire categories of hand-written
+  logic, and the bugs that logic could otherwise contain.
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: O(n^2) nested-loop duplicate checking -- and easy to get subtly wrong.
+  std::vector<int> numsSlow = {3, 1, 2, 3, 1};
+  std::vector<int> uniqueSlow;
+  for (size_t i = 0; i < numsSlow.size(); i++) {
+      bool found = false;
+      for (size_t j = 0; j < uniqueSlow.size(); j++) {
+          if (uniqueSlow[j] == numsSlow[i]) {
+              found = true;
+              break;
+          }
+      }
+      if (!found) {
+          uniqueSlow.push_back(numsSlow[i]);
+      }
+  }
+  std::cout << uniqueSlow.size() << std::endl;   // 3
+
+  // Fix: std::set enforces uniqueness as a structural guarantee, O(n log n).
   #include <set>
-  std::set<int> unique(nums.begin(), nums.end());
+
+  std::vector<int> nums = {3, 1, 2, 3, 1};
+  std::set<int> unique(nums.begin(), nums.end());   // duplicates silently discarded
+  std::cout << unique.size() << std::endl;            // 3
+
+  // The set is also automatically SORTED -- a bonus of the underlying tree structure:
+  for (int n : unique) {
+      std::cout << n << " ";     // 1 2 3 -- sorted order, not insertion order
+  }
+  std::cout << std::endl;
 starter_code: |
   #include <iostream>
   #include <vector>

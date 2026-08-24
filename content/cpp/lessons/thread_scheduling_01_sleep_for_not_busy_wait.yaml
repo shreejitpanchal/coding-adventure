@@ -4,16 +4,57 @@ language: cpp
 level: 26
 objective: "Replace a busy-wait spin loop with std::this_thread::sleep_for, so waiting doesn't burn 100% of a CPU core."
 explanation: |
-  A `while` loop that just re-checks the clock as fast as possible --
-  a busy-wait -- keeps the CPU core it's running on fully occupied for
-  the entire wait, doing no useful work. `std::this_thread::sleep_for`
-  tells the OS scheduler this thread has nothing to do for a while,
-  letting the core run other work (or idle/save power) instead, and
-  waking this thread back up when the duration elapses.
+  `while (std::chrono::steady_clock::now() - start < ...) { }` -- a
+  "busy-wait" or "spin loop" -- accomplishes the goal of waiting, but by
+  doing so in the most CPU-wasteful way possible: it re-evaluates the
+  current time and re-checks the comparison as fast as the processor
+  can possibly execute those instructions, over and over, for the
+  entire duration of the wait. From the operating system's perspective,
+  this thread looks like it's doing genuine, continuous work the whole
+  time -- the OS scheduler has no way to distinguish "spinning
+  uselessly, checking a clock" from "performing an actual expensive
+  computation," so it keeps that thread's CPU core fully allocated,
+  running at 100% utilization, for a duration that produces literally
+  zero useful output. On a single-core system, or under real load, this
+  actively starves other work of CPU time that could otherwise be doing
+  something productive.
+
+  `std::this_thread::sleep_for(duration)` (from `<thread>` and `
+  <chrono>`) is the correct tool for a known, fixed-length wait: it
+  tells the OS scheduler directly, "this thread has nothing useful to
+  do for at least this long" -- the scheduler can then genuinely
+  deschedule the thread, freeing its CPU core to run other ready work
+  (or, on an otherwise-idle system, actually power down or idle that
+  core to save energy), and it wakes the thread back up automatically
+  once the requested duration has elapsed. This is a difference in
+  *how* the wait happens, not *whether* it happens -- both approaches
+  eventually let execution continue after roughly the same amount of
+  time, but one does it by wasting an entire CPU core's worth of work
+  for nothing, and the other does it by genuinely stepping aside and
+  letting the scheduler use that core for something else in the
+  meantime.
 example_code: |
-  #include <thread>
+  #include <iostream>
   #include <chrono>
+
+  // The trap: a busy-wait spins as fast as possible, pegging a CPU core for nothing.
+  auto startBroken = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - startBroken < std::chrono::milliseconds(50)) {
+      // does NOTHING useful -- just burns CPU re-checking the clock continuously
+  }
+  std::cout << "done waiting (busy)" << std::endl;
+
+  // Fix: sleep_for tells the scheduler to genuinely deschedule this thread.
+  #include <thread>
+
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  std::cout << "done waiting" << std::endl;
+
+  int main() {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));   // frees the core while waiting
+      std::cout << "done waiting" << std::endl;
+      return 0;
+  }
 starter_code: |
   #include <iostream>
   #include <chrono>

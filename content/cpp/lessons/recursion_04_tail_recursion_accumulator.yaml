@@ -4,21 +4,64 @@ language: cpp
 level: 44
 objective: "Convert a non-tail-recursive factorial into tail-recursive style using an accumulator parameter."
 explanation: |
-  In `n * factorial(n - 1)`, the multiplication happens *after* the
-  recursive call returns -- there's still work left to do at each level
-  on the way back up, so this isn't tail recursion. An accumulator
-  parameter flips this: instead of multiplying after the call returns,
-  the running product is computed *before* the recursive call and
-  passed forward as an argument, so the recursive call is the very last
-  thing the function does. That "last thing the function does is call
-  itself" shape is what tail recursion means, and it's the pattern some
-  languages/compilers can optimize into a plain loop with no growing
-  call stack (C++ doesn't guarantee this optimization, but the
-  accumulator style is the same technique those languages rely on).
+  `return n * factorial(n - 1);` is correct, but examine exactly what
+  happens at each level of the recursion: `factorial(n)` calls `factorial
+  (n - 1)`, waits for that call to fully return a value, and *then*
+  multiplies that returned value by `n` -- the multiplication genuinely
+  happens *after* the recursive call comes back, on the way back up the
+  call chain. There's real, pending work left to do at every single
+  level once the recursive call returns, which means each level's stack
+  frame has to stay alive, holding onto its own `n`, until its
+  recursive call finishes and the multiplication can actually happen.
+  That's precisely what "not tail recursion" means: the recursive call
+  isn't the *last* thing the function does; there's a multiplication
+  still queued up after it.
+
+  A tail-recursive version restructures the computation so the
+  recursive call genuinely is the very last operation, with nothing
+  left to do once it returns -- achieved here by adding an accumulator
+  parameter that carries the running product *forward*, computed
+  *before* each recursive call rather than combined *after* it returns.
+  `factorialHelper(int n, long long acc)` computes `acc * n` first,
+  then immediately passes that updated product into the next recursive
+  call as its new `acc` -- by the time `factorialHelper` reaches its
+  base case, `acc` already holds the complete, final answer, and the
+  base case simply returns it directly with no further combination
+  step needed anywhere in the unwind. This "compute before recursing,
+  not after" shape is exactly what "tail call" describes, and it's the
+  specific pattern that some languages and compilers can optimize into
+  a genuine loop with no growing call stack at all (tail-call
+  optimization, reusing one stack frame instead of allocating a new one
+  per call). C++ doesn't *guarantee* this optimization the way some
+  functional languages do -- a compiler *may* perform it under
+  optimization flags, but it's not part of the language's own
+  guarantees -- but writing code in accumulator/tail-recursive style is
+  still the same underlying technique those languages rely on, and
+  it's a useful restructuring to recognize even when C++ itself doesn't
+  promise to exploit it.
 example_code: |
+  #include <iostream>
+
+  // The trap: work happens AFTER the recursive call returns -- not tail recursion.
+  long long factorialBroken(int n) {
+      if (n <= 1) return 1;
+      return n * factorialBroken(n - 1);   // multiplication happens on the way BACK UP
+  }
+  std::cout << factorialBroken(6) << std::endl;   // 720 -- correct, but not tail-recursive
+
+  // Fix: an accumulator computes the product BEFORE recursing -- the call IS the last step.
   long long factorialHelper(int n, long long acc) {
-      if (n <= 1) return acc;
-      return factorialHelper(n - 1, acc * n);
+      if (n <= 1) return acc;                      // base case: acc already holds the answer
+      return factorialHelper(n - 1, acc * n);        // recursive call is the LAST operation
+  }
+
+  long long factorial(int n) {
+      return factorialHelper(n, 1);
+  }
+
+  int main() {
+      std::cout << factorial(6) << std::endl;   // 720 -- same result, tail-recursive style
+      return 0;
   }
 starter_code: |
   #include <iostream>

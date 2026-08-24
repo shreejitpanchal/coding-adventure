@@ -4,15 +4,63 @@ language: cpp
 level: 38
 objective: "Replace a manual index-based loop with std::transform, the standard library's functional map operation."
 explanation: |
-  Applying the same transformation to every element of a range and
-  writing the results somewhere else is exactly what std::transform
-  does -- it's the C++ standard library's equivalent of "map" from
-  functional programming. Passing a lambda as the transformation makes
-  the intent ("apply this function to every element") explicit at the
-  call site, instead of being implied by the shape of a hand-written
-  loop.
+  `for (size_t i = 0; i < nums.size(); i++) { doubled.push_back(nums[i]
+  * 2); }` performs a genuinely common shape of operation -- apply the
+  same transformation to every element of one range, writing the
+  results into another -- but it expresses that intent only implicitly,
+  through the *shape* of the loop, rather than stating it directly.
+  `std::algorithm`'s `std::transform` is the standard library's own
+  direct expression of exactly this operation: it's C++'s equivalent of
+  "map" from functional programming, taking a source range (`nums.begin
+  ()`, `nums.end()`), a destination iterator to start writing results
+  at (`doubled.begin()`), and a transformation function, and applying
+  that function to each source element in turn, writing each result to
+  the destination. `std::transform(nums.begin(), nums.end(), doubled.
+  begin(), [](int n) { return n * 2; })` reads as exactly what it does
+  -- "transform every element of `nums` by doubling it, writing into `
+  doubled`" -- with the transformation itself isolated in the lambda,
+  separate from the mechanics of iterating and writing.
+
+  One detail that trips people up on first use: `std::transform` writes
+  into *existing positions* at the destination -- it doesn't append or
+  grow the destination container the way `push_back` does. That means
+  the destination needs to already have enough valid, writable slots
+  before `transform` runs, which is why `doubled` needs to be
+  pre-sized (`std::vector<int> doubled(nums.size());`, constructing a
+  vector with `nums.size()` default-initialized elements already
+  present) rather than starting empty -- writing to `doubled.begin()`
+  when `doubled` is empty would be writing past the end of a
+  zero-element vector, undefined behavior. (A separate idiom, `std::
+  back_inserter(doubled)`, exists specifically to let `transform` *
+  append* instead of overwrite, for situations where pre-sizing isn't
+  convenient -- but the pre-sized-destination form shown here is the
+  most direct mapping from the manual loop's behavior.)
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: a manual indexed loop -- correct, but the intent is only implicit.
+  std::vector<int> numsSlow = {1, 2, 3, 4};
+  std::vector<int> doubledSlow;
+  for (size_t i = 0; i < numsSlow.size(); i++) {
+      doubledSlow.push_back(numsSlow[i] * 2);
+  }
+  for (int n : doubledSlow) std::cout << n << " ";   // 2 4 6 8
+  std::cout << std::endl;
+
+  // Fix: std::transform states the intent directly -- "map this function over the range."
+  #include <algorithm>
+
+  std::vector<int> nums = {1, 2, 3, 4};
+  std::vector<int> doubled(nums.size());   // MUST be pre-sized -- transform writes, not appends
   std::transform(nums.begin(), nums.end(), doubled.begin(),
+                  [](int n) { return n * 2; });
+  for (int n : doubled) std::cout << n << " ";   // 2 4 6 8
+  std::cout << std::endl;
+
+  // Alternative: back_inserter lets transform APPEND instead, no pre-sizing needed.
+  std::vector<int> appended;
+  std::transform(nums.begin(), nums.end(), std::back_inserter(appended),
                   [](int n) { return n * 2; });
 starter_code: |
   #include <iostream>

@@ -4,13 +4,61 @@ language: cpp
 level: 19
 objective: "Replace a manual search loop with std::find from <algorithm>."
 explanation: |
-  A manual loop checking each element against a target reinvents
-  std::find, which does the same linear scan but expresses the intent
-  directly ("find this value") and returns an iterator you can compare
-  against `.end()` to know whether it was found.
+  The manual loop here -- iterate with an index, compare each element
+  against `target`, set a flag and `break` on a match -- performs
+  exactly the same linear scan `std::find` (from `<algorithm>`) already
+  implements, just spelled out explicitly rather than expressed as a
+  single call. `std::find(first, last, value)` walks the range from `
+  first` to `last`, comparing each element to `value` with `==`, and
+  returns an iterator pointing at the first match -- or, if nothing
+  matches, it returns `last` itself (the same "one past the end"
+  iterator `.end()` produces), which is the standard-library convention
+  for "not found" across essentially every searching algorithm in `
+  <algorithm>`. That convention is exactly what makes `std::find(nums.
+  begin(), nums.end(), target) != nums.end()` a complete "was it found"
+  check: comparing the returned iterator against `.end()` tells you
+  whether a real match was found (not equal to `.end()`) or the whole
+  range was scanned with nothing matching (equal to `.end()`).
+
+  Beyond eliminating the manual index/flag/break bookkeeping, `std::
+  find` states the actual intent directly -- "find this value in this
+  range" -- rather than the step-by-step mechanism for achieving it,
+  the same readability benefit `std::sort` and `std::count_if` provide
+  elsewhere in this app's C++ content. It's also a genuinely reusable
+  building block: the returned iterator, when a match *is* found, can
+  be dereferenced to get the actual matching element, or used to
+  compute its position (`std::distance(nums.begin(), it)`), capabilities
+  a boolean-only manual loop like the one here doesn't expose at all
+  without additional bookkeeping.
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: a manual loop reimplements what std::find already does.
+  std::vector<int> numsSlow = {10, 20, 30, 40};
+  int targetSlow = 30;
+  bool foundSlow = false;
+  for (size_t i = 0; i < numsSlow.size(); i++) {
+      if (numsSlow[i] == targetSlow) {
+          foundSlow = true;
+          break;
+      }
+  }
+  std::cout << foundSlow << std::endl;   // 1
+
+  // Fix: std::find expresses the same search directly, as one call.
   #include <algorithm>
-  bool found = std::find(v.begin(), v.end(), target) != v.end();
+
+  std::vector<int> nums = {10, 20, 30, 40};
+  int target = 30;
+  bool found = std::find(nums.begin(), nums.end(), target) != nums.end();
+  std::cout << found << std::endl;         // 1
+
+  // The returned iterator is useful beyond just a boolean check:
+  auto it = std::find(nums.begin(), nums.end(), target);
+  if (it != nums.end()) {
+      std::cout << "found at position " << std::distance(nums.begin(), it) << std::endl;   // 2
+  }
 starter_code: |
   #include <iostream>
   #include <vector>

@@ -4,16 +4,59 @@ language: cpp
 level: 23
 objective: "Use std::async to run a computation on a separate thread and retrieve its result via std::future, instead of calling it directly."
 explanation: |
-  std::async(std::launch::async, fn, args...) runs fn on a separate
-  thread and immediately returns a std::future<T> -- a handle to the
-  eventual result. Calling .get() on the future blocks until the result
-  is ready and returns it. It's C++'s core building block for
-  asynchronous, result-producing work, roughly analogous to a
-  Promise/Future in other languages.
+  Calling `slowSquare(7)` directly runs it synchronously on the calling
+  thread -- the caller blocks until it finishes before doing anything
+  else, which is fine for something genuinely fast but wasteful once
+  the computation might take real time (a slow calculation, an I/O-
+  bound operation), during which the caller has other useful work it
+  could be doing. `std::async(std::launch::async, fn, args...)` runs `
+  fn` on a *separate* thread and returns immediately with a `std::
+  future<T>` -- not the actual result yet, but a handle representing
+  "the eventual result, whenever it's ready." The calling thread is
+  free to do other work right away rather than blocking for the
+  computation's full duration.
+
+  `.get()`, called on the `future` later, is what reconnects with the
+  actual result: it blocks the calling thread until the async
+  computation has genuinely finished, then returns the value it
+  produced (or re-throws whatever exception the async computation
+  itself threw, propagating it to whoever calls `.get()`). `std::
+  future<T>` and `std::async` together are C++'s core building block
+  for this "start now, retrieve the result later" style of asynchronous
+  programming -- conceptually the same shape as a Promise/Future in
+  other languages (Java's `CompletableFuture`, JavaScript's `Promise`),
+  just expressed through C++'s own `<future>` header. The explicit `std
+  ::launch::async` policy argument matters: without it, `std::async`'s
+  default launch policy leaves the implementation free to choose
+  whether the task actually runs on a separate thread or gets deferred
+  until `.get()` is called and run synchronously right there instead --
+  passing `std::launch::async` explicitly forces genuine concurrent
+  execution rather than leaving that choice ambiguous.
 example_code: |
+  #include <iostream>
+
+  int slowSquare(int n) {
+      return n * n;               // imagine this is genuinely slow
+  }
+
+  // The trap: calling directly blocks the caller for the full duration.
+  int resultSync = slowSquare(7);   // caller blocks here, can't do anything else meanwhile
+  std::cout << resultSync << std::endl;   // 49
+
+  // Fix: std::async runs it on a separate thread, returns a future immediately.
   #include <future>
-  std::future<int> fut = std::async(std::launch::async, compute, 5);
-  int result = fut.get();
+
+  int main() {
+      std::future<int> fut = std::async(std::launch::async, slowSquare, 7);
+      // ... the calling thread could do other work HERE, before calling get() ...
+      int result = fut.get();     // blocks only when the result is actually needed
+      std::cout << result << std::endl;   // 49
+      return 0;
+  }
+
+  std::future<int> fut2 = std::async(std::launch::async, slowSquare, 5);
+  int result2 = fut2.get();
+  std::cout << result2 << std::endl;        // 25
 starter_code: |
   #include <iostream>
   int slowSquare(int n) {

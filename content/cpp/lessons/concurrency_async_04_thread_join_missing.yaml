@@ -4,16 +4,71 @@ language: cpp
 level: 24
 objective: "Fix a crash caused by a joinable std::thread being destroyed without join() or detach() ever being called on it."
 explanation: |
-  If a std::thread object is still \"joinable\" (join() or detach()
-  was never called on it) when its destructor runs, the program calls
-  std::terminate() and crashes -- this is guaranteed behavior, not
-  undefined, specifically to stop a thread from being silently
-  abandoned. Calling t.join() before the thread object goes out of
-  scope both prevents the crash and guarantees the thread's work is
-  actually finished before you use its results.
+  A `std::thread` object has to be explicitly told what should happen
+  to the actual OS thread it manages once the `std::thread` object
+  itself is done being used -- either `join()` (the calling thread
+  waits for the spawned thread to finish before continuing) or `detach
+  ()` (the spawned thread is allowed to keep running fully independently,
+  disconnected from the `std::thread` object that created it). A `std::
+  thread` for which *neither* has been called is called "joinable," and
+  if a joinable `std::thread` object's destructor runs -- which happens
+  automatically the moment it goes out of scope, exactly like any other
+  local variable -- the C++ standard mandates that the program calls `
+  std::terminate()`, crashing immediately. This is deliberate, specified
+  behavior, not undefined behavior left to chance: the standard
+  committee decided that silently abandoning a still-joinable thread
+  (letting it keep running with no way to ever know when it finishes,
+  or destroying the `std::thread` handle while genuinely losing track of
+  it) is dangerous enough that it should be a loud, unconditional crash
+  rather than a quiet, easy-to-miss resource leak.
+
+  `std::thread t(compute); std::cout << result << std::endl;` with no `
+  join()` or `detach()` anywhere before `main` returns hits exactly
+  this case -- `t`'s destructor runs as `main` exits, `t` is still
+  joinable, and the program terminates via `std::terminate()`. Worse,
+  even setting the crash aside, the program has a second, independent
+  bug: `result` is read by the main thread with no guarantee the
+  spawned thread has actually finished writing to it yet -- a genuine
+  data race, since there's no synchronization at all between the two
+  threads' access to `result`. `t.join()`, called before `result` is
+  read, fixes both problems at once: it makes `t` no longer joinable
+  (satisfying the destructor's requirement, avoiding the crash), and it
+  blocks the main thread until `compute()` has genuinely finished
+  running, guaranteeing `result` has actually been written before it's
+  read.
 example_code: |
-  std::thread t(doWork);
-  t.join();  // must happen before t goes out of scope
+  #include <iostream>
+  #include <thread>
+
+  // The trap: t is still joinable when its destructor runs -- std::terminate() crashes.
+  int resultBroken = 0;
+  void computeBroken() {
+      resultBroken = 42;
+  }
+
+  void brokenExample() {
+      std::thread t(computeBroken);
+      std::cout << resultBroken << std::endl;   // ALSO a data race -- t might not have run yet
+      // t's destructor runs here, still joinable -- std::terminate()!
+  }
+
+  // Fix: join() before the thread object goes out of scope.
+  int result = 0;
+  void compute() {
+      result = 42;
+  }
+
+  int main() {
+      std::thread t(compute);
+      t.join();                     // waits for compute() to finish AND avoids the crash
+      std::cout << result << std::endl;   // 42 -- safe, guaranteed to be written by now
+      return 0;
+  }
+
+  // Alternative: detach() explicitly lets the thread run fully independently
+  // (rarely the right choice for work whose result you actually need back).
+  // std::thread t2(doBackgroundWork);
+  // t2.detach();
 starter_code: |
   #include <iostream>
   #include <thread>

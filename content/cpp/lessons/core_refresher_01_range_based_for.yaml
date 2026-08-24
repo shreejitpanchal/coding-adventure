@@ -4,16 +4,59 @@ language: cpp
 level: 6
 objective: "Rewrite an index-based loop as a range-based for loop."
 explanation: |
-  A range-based for loop (`for (int n : nums)`) expresses "do this for
-  every element" directly, without the index bookkeeping (`size_t i`,
-  bounds checking, `nums[i]`) an index-based loop needs -- it's the
-  modern C++ default whenever you don't actually need the index itself.
+  `for (size_t i = 0; i < nums.size(); i++) { sum += nums[i]; }` works,
+  but every piece of it beyond `sum += nums[i]` is bookkeeping that
+  exists purely to answer "which element am I on, and when do I stop" --
+  the loop variable's type has to be chosen correctly (`size_t`, to
+  match `.size()`'s return type, itself a detail covered as a gotcha
+  elsewhere in this app), the bound has to be checked every iteration,
+  and the actual element is reached only indirectly, through an
+  index-based lookup (`nums[i]`) rather than being named directly.
+  None of that machinery expresses anything about the loop's actual
+  *purpose* -- "add up every element" -- it's infrastructure the loop
+  needs regardless of what it's actually computing.
+
+  A range-based for loop, introduced in C++11, strips all of that
+  bookkeeping away for the common case where the index itself is never
+  actually needed: `for (int n : nums)` directly names each element in
+  turn as `n`, with no index variable, no manual bound check, no
+  subscript operator anywhere in sight -- the loop's own header says
+  exactly what it does ("for each `n` in `nums`"), and the body is free
+  to focus purely on what to do with each element. This is the modern
+  C++ default specifically because it removes an entire category of
+  possible index-bookkeeping bugs (off-by-one bounds, wrong index
+  variable type, forgetting to increment) by construction -- there's no
+  index to get wrong, because there's no index at all. It's only worth
+  reaching back for an explicit index-based loop when the index itself
+  is genuinely needed as data (comparing adjacent elements by position,
+  building a companion array keyed by position) rather than merely
+  being incidental loop-control machinery.
 example_code: |
-  std::vector<int> nums = {1, 2, 3};
-  int total = 0;
+  #include <iostream>
+  #include <vector>
+
+  // The trap: not wrong, but every piece beyond "sum += ..." is index bookkeeping.
+  std::vector<int> numsVerbose = {1, 2, 3, 4};
+  int sumVerbose = 0;
+  for (size_t i = 0; i < numsVerbose.size(); i++) {
+      sumVerbose += numsVerbose[i];    // the actual work is buried in indexing
+  }
+  std::cout << sumVerbose << std::endl;   // 10
+
+  // Fix: a range-based for names each element directly -- no index at all.
+  std::vector<int> nums = {1, 2, 3, 4};
+  int sum = 0;
   for (int n : nums) {
+      sum += n;                          // the loop body IS the actual work
+  }
+  std::cout << sum << std::endl;           // 10
+
+  std::vector<int> smallNums = {1, 2, 3};
+  int total = 0;
+  for (int n : smallNums) {
       total += n;
   }
+  std::cout << total << std::endl;          // 6
 starter_code: |
   #include <iostream>
   #include <vector>

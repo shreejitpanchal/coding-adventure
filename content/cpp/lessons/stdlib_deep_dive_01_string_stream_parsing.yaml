@@ -4,15 +4,65 @@ language: cpp
 level: 16
 objective: "Replace a manual digit-by-digit parse loop with std::stringstream."
 explanation: |
-  Parsing a numeric string character by character, accumulating
-  `value * 10 + digit`, reinvents what std::stringstream already does
-  correctly (including handling of leading whitespace and sign) --
-  extracting into an int with `>>` is both shorter and more robust.
+  `value = value * 10 + (c - '0')`, applied to each character in turn,
+  is a genuinely correct way to parse a simple positive integer string
+  -- it's the standard "shift left a decimal place, add the next digit"
+  accumulation pattern, using the `c - '0'` digit-conversion idiom
+  covered elsewhere in this app. But it's also a hand-rolled
+  reimplementation of something the standard library already does,
+  more completely and more robustly: `std::stringstream` wraps a string
+  in a stream interface, letting `operator>>` extract typed values from
+  it the same way `std::cin >> value` would read from standard input.
+  `std::stringstream ss("42"); int value; ss >> value;` performs the
+  identical logical operation -- converting the text `"42"` into the
+  integer `42` -- in far fewer lines, and it correctly handles cases the
+  manual character-by-character loop doesn't even attempt to: leading
+  whitespace before the number, an optional leading `+`/`-` sign, and
+  stopping cleanly at the first non-numeric character rather than
+  producing garbage output from trying to convert it as a digit.
+
+  This is the same underlying tradeoff seen throughout this category:
+  a manual loop that reimplements a well-known parsing or conversion
+  operation is more code to maintain, more edge cases to potentially
+  get wrong, and less immediately readable than the equivalent standard
+  -library call, which states the actual intent ("parse this as an
+  int") directly rather than the low-level mechanism for achieving it.
+  `<sstream>`'s stream-based parsing is the standard, idiomatic way to
+  convert between strings and numeric types across all of C++'s
+  built-in numeric types, not just `int` -- the same `>>` extraction
+  works identically for `double`, `long`, and others, without needing a
+  separate hand-written accumulation loop for each.
 example_code: |
+  #include <iostream>
+  #include <string>
+
+  // The trap: correct, but a hand-rolled reimplementation of stream extraction.
+  std::string dataSlow = "42";
+  int valueSlow = 0;
+  for (char c : dataSlow) {
+      valueSlow = valueSlow * 10 + (c - '0');   // doesn't handle whitespace, signs, etc.
+  }
+  std::cout << valueSlow << std::endl;            // 42
+
+  // Fix: stringstream extraction handles the general case correctly, in one line.
   #include <sstream>
-  std::stringstream ss("42");
-  int value;
+
+  std::string data = "42";
+  std::stringstream ss(data);
+  int value = 0;
   ss >> value;
+  std::cout << value << std::endl;                  // 42
+
+  std::stringstream ss2("42");
+  int value2;
+  ss2 >> value2;
+  std::cout << value2 << std::endl;                   // 42
+
+  // Handles leading whitespace and a sign correctly, unlike the manual loop:
+  std::stringstream ss3("  -17");
+  int value3;
+  ss3 >> value3;
+  std::cout << value3 << std::endl;                    // -17
 starter_code: |
   #include <iostream>
   #include <string>

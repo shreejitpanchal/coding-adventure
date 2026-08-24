@@ -4,14 +4,57 @@ language: cpp
 level: 13
 objective: "Replace vector::erase(begin()) -- O(n), shifting every remaining element -- with std::deque's O(1) pop_front()."
 explanation: |
-  Erasing from the front of a std::vector shifts every remaining
-  element left by one slot: O(n). std::deque is designed for O(1)
-  insertion/removal at both ends -- the right container whenever
-  something is being used as a queue.
+  `std::vector<T>` stores its elements contiguously in a single
+  block of memory, which is exactly what makes indexed access fast, but
+  it's also exactly what makes removing from the *front* expensive: `
+  queue.erase(queue.begin())` has to shift every single remaining
+  element one position to the left, to keep the vector's storage
+  contiguous with no gap left where the removed element used to be --
+  that's O(n) work for a vector of n elements, on *every* front
+  removal. Using a `vector` as a queue (repeatedly popping from the
+  front) means paying that O(n) shifting cost on every dequeue
+  operation, which compounds badly as more elements accumulate in the
+  queue before being drained.
+
+  `std::deque<T>` ("double-ended queue," typically implemented as a
+  sequence of fixed-size memory chunks rather than one single
+  contiguous block) is specifically designed to support cheap insertion
+  and removal at *both* ends -- `push_front`/`push_back` and `
+  pop_front`/`pop_back` are all O(1), since removing from the front
+  just adjusts an internal pointer to the new logical start, with no
+  shifting of the remaining elements required at all. This makes `deque
+  ` the right container any time something is genuinely being used as a
+  queue (FIFO access, add at one end, remove from the other) rather
+  than as a general-purpose growable array -- the choice between `
+  vector` and `deque` should generally be driven by the actual access
+  pattern: `vector` when elements are mostly appended and accessed by
+  index, `deque` when elements need to be added or removed from the
+  front as a matter of course.
 example_code: |
+  #include <iostream>
+  #include <vector>
   #include <deque>
+
+  // The trap: vector::erase(begin()) shifts EVERY remaining element -- O(n).
+  std::vector<int> queueSlow = {1, 2, 3};
+  int firstSlow = queueSlow.front();
+  queueSlow.erase(queueSlow.begin());   // shifts 2 and 3 left, every call
+  std::cout << firstSlow << " " << queueSlow.size() << std::endl;   // 1 2
+
+  // Fix: deque gives O(1) removal from the front (and the back).
+  std::deque<int> queue = {1, 2, 3};
+  int first = queue.front();
+  queue.pop_front();                     // O(1) -- no shifting needed
+  std::cout << first << " " << queue.size() << std::endl;             // 1 2
+
   std::deque<int> q = {1, 2, 3};
   q.pop_front();
+  std::cout << q.size() << std::endl;      // 2
+
+  // deque supports O(1) at the BACK too, unlike removing from a vector's front:
+  q.push_back(4);
+  q.push_front(0);
+  std::cout << q.front() << " " << q.back() << std::endl;   // 0 4
 starter_code: |
   #include <iostream>
   #include <vector>

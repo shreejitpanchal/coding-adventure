@@ -4,14 +4,63 @@ language: cpp
 level: 12
 objective: "Replace a linear search through a vector of pairs with a std::unordered_map for O(1) average lookup."
 explanation: |
-  Searching a vector of pairs for a matching key is O(n) -- every
-  lookup scans from the start until it finds a match.
-  std::unordered_map is a hash table: looking up a key is O(1) on
-  average, and the code reads as exactly what it means ("get the value
-  for this key") instead of a manual scan.
+  A `std::vector<std::pair<std::string, int>>` has no built-in notion
+  of "look this key up" at all -- finding an entry means manually
+  scanning from the beginning, comparing each pair's `.first` against
+  the target, and stopping (or reaching the end, unfound) -- that's
+  O(n) work per lookup, since in the worst case every single element
+  has to be checked. For a small, fixed collection this is
+  unnoticeable, but it scales linearly with size and gets called
+  repeatedly in most real usage, so the total cost of many lookups
+  against a growing collection compounds badly. `std::unordered_map<
+  K, V>` is a hash-table-backed container purpose-built to answer
+  "what's the value for this key" directly: it computes a hash of the
+  key, uses that hash to jump nearly straight to the right internal
+  bucket, and finds the matching entry there -- O(1) on *average*
+  (worst-case degrades to O(n) only under pathological hash collisions,
+  which real hash functions are designed to make exceedingly rare in
+  practice).
+
+  Beyond the performance difference, the code itself reads as exactly
+  what it *means* rather than exactly *how* to compute it: `ages["Bob"]`
+  states the intent directly ("the value associated with `Bob`"), while
+  the manual linear scan states an entire procedure (loop, compare,
+  break) that a reader has to trace through to arrive at the same
+  understanding. This mirrors the same underlying idea as replacing a
+  hand-rolled bubble sort with `std::sort` in the previous exercise --
+  a well-chosen standard-library container or algorithm both performs
+  better *and* communicates intent more directly than a manual
+  implementation of the same idea, and reaching for the appropriate
+  container (`unordered_map` for "look up by key," `set` for "track
+  unique values," and so on) rather than a generic `vector` plus
+  hand-rolled search logic is one of the highest-value habits in
+  writing idiomatic, efficient C++.
 example_code: |
+  #include <iostream>
+  #include <vector>
+  #include <string>
+
+  // The trap: a manual linear scan through a vector of pairs -- O(n) per lookup.
+  std::vector<std::pair<std::string, int>> agesSlow = {{"Ada", 30}, {"Bob", 25}};
+  std::string targetSlow = "Bob";
+  int resultSlow = -1;
+  for (size_t i = 0; i < agesSlow.size(); i++) {
+      if (agesSlow[i].first == targetSlow) {
+          resultSlow = agesSlow[i].second;
+          break;
+      }
+  }
+  std::cout << resultSlow << std::endl;   // 25 -- correct, but scans linearly
+
+  // Fix: unordered_map -- O(1) average lookup, and reads as exactly what it means.
+  #include <unordered_map>
+
+  std::unordered_map<std::string, int> agesFast = {{"Ada", 30}, {"Bob", 25}};
+  std::cout << agesFast["Bob"] << std::endl;   // 25 -- direct lookup, no scan
+
   std::unordered_map<std::string, int> ages = {{"Ada", 30}};
   int age = ages["Ada"];
+  std::cout << age << std::endl;                // 30
 starter_code: |
   #include <iostream>
   #include <vector>

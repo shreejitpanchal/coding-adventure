@@ -4,17 +4,70 @@ language: cpp
 level: 17
 objective: "Fix a crash from std::stoi on a string that isn't a valid number, by catching std::invalid_argument."
 explanation: |
-  std::stoi throws std::invalid_argument if the string doesn't start
-  with a valid number, and std::out_of_range if the value is too large
-  to fit -- it doesn't return a sentinel value like some other
-  languages' parse functions do. Code that might see non-numeric input
-  needs to actually catch the exception, not assume the conversion
-  always succeeds.
+  `std::stoi` (string-to-int) doesn't have a designated "conversion
+  failed" return value the way some other languages' parsing functions
+  do -- there's no sentinel like `-1` or `0` it falls back to for
+  invalid input, because any such sentinel could itself collide with a
+  genuinely valid input. Instead, `std::stoi` signals failure through
+  exceptions: `std::invalid_argument` if the string doesn't begin with
+  anything parseable as a number at all (`"abc"` has no leading digits
+  whatsoever), and `std::out_of_range` if the numeric text is valid but
+  represents a value too large to fit in an `int`. `int value = std::
+  stoi(input);` with `input = "abc"` and no surrounding `try`/`catch`
+  simply crashes the program -- an uncaught exception propagates out of
+  `main`, terminating execution -- the moment `stoi` encounters input
+  it can't interpret as a number.
+
+  Any code that can't *guarantee* its input is always a valid number
+  before calling `stoi` needs to actually handle that possibility
+  explicitly, by wrapping the call in `try`/`catch`: `catch (const std
+  ::invalid_argument&)` catches specifically the "not a number at all"
+  case, letting the code substitute a sensible fallback (`0` here)
+  instead of crashing. Catching by `const reference` (`const std::
+  invalid_argument&`, not by value) is the idiomatic way to catch C++
+  exceptions -- it avoids an unnecessary copy of the exception object
+  and correctly preserves polymorphic behavior if the actual thrown
+  type happens to be a subclass. A thorough implementation would
+  typically also catch `std::out_of_range` separately, since it
+  represents a genuinely different failure mode (valid-looking number,
+  wrong magnitude) that might deserve different handling than "not a
+  number at all" -- but catching at least `invalid_argument` is the
+  minimum needed to stop unpredictable, unvalidated input from
+  crashing the whole program outright.
 example_code: |
+  #include <iostream>
+  #include <string>
+
+  // The trap: no exception handling -- invalid input crashes the whole program.
+  std::string inputBroken = "abc";
+  // int valueBroken = std::stoi(inputBroken);   // throws std::invalid_argument -- CRASHES
+
+  // Fix: catch the specific expected exception, substitute a fallback.
+  std::string input = "abc";
+  int value = 0;
   try {
-      int n = std::stoi(text);
+      value = std::stoi(input);
+  } catch (const std::invalid_argument&) {
+      value = 0;         // "abc" isn't a number at all -- fall back cleanly
+  }
+  std::cout << value << std::endl;   // 0
+
+  std::string text = "abc";
+  int n = 0;
+  try {
+      n = std::stoi(text);
   } catch (const std::invalid_argument&) {
       n = 0;
+  }
+  std::cout << n << std::endl;         // 0
+
+  // A thorough version also handles the SEPARATE "valid but too large" case:
+  try {
+      int big = std::stoi("999999999999999999999");
+  } catch (const std::invalid_argument&) {
+      std::cout << "not a number" << std::endl;
+  } catch (const std::out_of_range&) {
+      std::cout << "number too large for int" << std::endl;
   }
 starter_code: |
   #include <iostream>

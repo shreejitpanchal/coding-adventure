@@ -4,17 +4,58 @@ language: cpp
 level: 5
 objective: "Fix code that assigns a char digit directly to an int, getting the character's ASCII code instead of its numeric value."
 explanation: |
-  A `char` is really a small integer type holding an ASCII (or UTF-8
-  byte) code -- `'7'` is the integer 55, not 7. Assigning a char
-  directly to an int gives you that underlying code, not the digit it
-  visually represents. Converting a digit character to its numeric
-  value needs an explicit subtraction: `c - '0'` works because digit
-  characters '0'-'9' are contiguous in ASCII, so the difference from
-  '0' is exactly the digit's value.
+  A `char` in C++ isn't a distinct "text character" type conceptually
+  separate from numbers -- it's genuinely a small integer type (typically
+  one byte), and a character literal like `'7'` is just syntax for
+  writing that integer's ASCII (or, more broadly, the execution
+  character set's) numeric code directly: `'7'` is the integer `55`,
+  `'0'` is `48`, `'A'` is `65`, and so on. `int digitValue = digitChar;`
+  where `digitChar` holds `'7'` doesn't extract "the digit 7" in any
+  semantic sense -- it just copies the underlying integer value `55`
+  into an `int`, which is exactly the number that prints, and exactly
+  why the naive assignment produces `55` instead of the `7` a reader
+  might expect.
+
+  Recovering the actual numeric value a digit character represents
+  needs an explicit computation, not a direct assignment: `c - '0'`.
+  This works because the ASCII standard deliberately assigns the digit
+  characters `'0'` through `'9'` to *ten consecutive integer codes*
+  (`48` through `57`) -- `'7'` is exactly `7` positions after `'0'` in
+  that sequence, so subtracting `'0'`'s code from `c`'s code yields
+  exactly the digit's numeric value, for any digit character. `c - '0'`
+  is arithmetic on the underlying integer codes (`char` participates in
+  ordinary integer arithmetic just like any other integral type), and
+  the result -- `55 - 48 = 7` -- is the actual digit, correctly. This
+  exact `c - '0'` idiom is genuinely common in real C++ code that parses
+  digits out of strings one character at a time (building up a
+  multi-digit number by repeatedly multiplying an accumulator by 10 and
+  adding each digit's value, for instance), so recognizing both the
+  trap and the standard fix is worth internalizing rather than treating
+  as a one-off gotcha.
 example_code: |
+  #include <iostream>
+
+  // The trap: assigning a char digit directly gives its ASCII CODE, not its value.
+  char digitCharBroken = '7';
+  int digitValueBroken = digitCharBroken;   // just copies the underlying integer code
+  std::cout << digitValueBroken << std::endl;   // 55 -- the ASCII code for '7', not 7
+
+  // Fix: subtract '0' -- digit characters are CONSECUTIVE in ASCII.
+  char digitChar = '7';
+  int digitValue = digitChar - '0';           // 55 - 48 = 7
+  std::cout << digitValue << std::endl;         // 7 -- correct
+
   char c = '9';
   int digit = c - '0';
-  std::cout << digit << std::endl;
+  std::cout << digit << std::endl;              // 9
+
+  // The same idiom, building a multi-digit number one character at a time:
+  std::string numStr = "482";
+  int parsed = 0;
+  for (char ch : numStr) {
+      parsed = parsed * 10 + (ch - '0');        // shift left a decimal place, add the digit
+  }
+  std::cout << parsed << std::endl;               // 482
 starter_code: |
   #include <iostream>
   int main() {

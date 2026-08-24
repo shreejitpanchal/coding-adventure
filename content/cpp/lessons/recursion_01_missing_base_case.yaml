@@ -4,17 +4,52 @@ language: cpp
 level: 41
 objective: "Add the missing base case to a recursive function, since without one it recurses forever until the stack overflows."
 explanation: |
-  Every recursive function needs a base case -- a condition that stops
-  the recursion and returns directly, without calling itself again.
-  Without one, each call makes another call, which makes another, and
-  so on, consuming one more stack frame every time until the call stack
-  is exhausted and the program crashes with a stack overflow. The base
-  case is what turns "infinite recursion" into "recursion that
-  eventually finishes."
+  Every recursive function needs two cooperating parts: a recursive
+  case (calling itself with a "smaller" version of the problem) and at
+  least one base case -- a condition simple enough to answer directly,
+  stopping the recursion rather than calling itself again. `sumDown(int
+  n) { return n + sumDown(n - 1); }` only has the recursive case; there
+  is no condition anywhere that ever stops it. Each call to `sumDown`
+  makes another call, unconditionally, consuming one more stack frame
+  every single time -- `n` decreases from `5` through `0`, straight
+  through into negative numbers, with nothing to halt it. The call
+  stack is a genuinely finite resource, and once enough frames pile up,
+  the program crashes with a stack overflow -- not a clean, catchable
+  C++ exception, but a hard crash (typically a segmentation fault or
+  the platform's equivalent), since stack exhaustion corrupts memory
+  the runtime can't safely recover from.
+
+  The fix is always the same shape, regardless of what the recursive
+  function actually computes: identify the input simple enough to
+  answer directly (here, "there's nothing left to sum once `n` reaches
+  0 or below"), check for that condition *before* making the recursive
+  call, and `return` immediately when it's met rather than recursing
+  further. `if (n <= 0) return 0;` placed as the very first check inside
+  `sumDown` gives the recursion an actual stopping point: `sumDown(0)`
+  returns `0` directly with no further recursive call, `sumDown(1)`
+  computes `1 + sumDown(0)` which resolves to `1 + 0`, and the chain
+  unwinds correctly back up to `sumDown(5)`'s final answer of `15`.
+  Without that base case, there was never any point where the recursion
+  could stop -- adding it is what converts "infinite recursion,
+  guaranteed to crash" into "recursion that provably terminates."
 example_code: |
+  #include <iostream>
+
+  // The trap: no base case at all -- n decrements forever past 0.
+  int sumDownBroken(int n) {
+      return n + sumDownBroken(n - 1);   // never checks for a stopping condition
+  }
+  // sumDownBroken(5) -- recurses 4, 3, 2, 1, 0, -1, -2, ... until the stack overflows
+
+  // Fix: check the stopping condition FIRST, return directly when met.
   int sumDown(int n) {
-      if (n <= 0) return 0;
-      return n + sumDown(n - 1);
+      if (n <= 0) return 0;              // base case: nothing left to sum
+      return n + sumDown(n - 1);          // recursive case: smaller problem
+  }
+
+  int main() {
+      std::cout << sumDown(5) << std::endl;   // 15 (5+4+3+2+1)
+      return 0;
   }
 starter_code: |
   #include <iostream>

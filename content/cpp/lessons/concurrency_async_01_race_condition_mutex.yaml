@@ -4,18 +4,71 @@ language: cpp
 level: 21
 objective: "Fix a race condition where two threads increment a shared counter without synchronization."
 explanation: |
-  `counter++` isn't atomic -- it's a read, an increment, and a write as
-  separate machine instructions, and the OS can interleave two threads'
-  steps arbitrarily. With enough iterations, some increments get lost
-  when two threads read the same value before either writes back.
-  std::mutex + std::lock_guard makes each increment atomic with respect
-  to other threads, guaranteeing the final count is exact.
+  `counter++` compiles down to three separate machine-level steps: read
+  the current value of `counter` from memory into a register,
+  increment that register's value, write the result back to memory.
+  With genuine hardware threads running in parallel on multiple CPU
+  cores, nothing inherently protects those three steps from being
+  interleaved with another thread's identical three steps -- two
+  threads can both read the same value of `counter` before either has
+  written its incremented result back, and both then write back the
+  same "+1" result, silently losing one of the two increments. Two
+  threads each doing 100,000 unsynchronized increments typically
+  produce a final count noticeably below the expected 200,000, by a
+  different amount on different runs -- a genuine, nondeterministic
+  race condition, not a fixed, reproducible bug.
+
+  `std::mutex` ("mutual exclusion") plus `std::lock_guard` fixes this
+  by making the critical section atomic *with respect to any other
+  thread locking the same mutex*: `std::lock_guard<std::mutex> lock
+  (mtx);` acquires the mutex immediately when constructed, and its
+  destructor releases it automatically when the `lock_guard` itself
+  goes out of scope -- an RAII-based lock, exactly the same pattern as
+  `std::unique_ptr`'s automatic cleanup covered earlier in this app,
+  applied here to a lock instead of a heap allocation. As long as one
+  thread holds the mutex, any other thread attempting to lock the *same
+  * mutex simply blocks until it's released, which serializes the
+  read-increment-write sequence completely and eliminates the
+  interleaving that caused lost updates. Using `lock_guard` (or its
+  more flexible sibling `std::unique_lock`) rather than manually calling
+  `mtx.lock()`/`mtx.unlock()` matters for the same reason RAII matters
+  everywhere else in C++: the lock is guaranteed to be released even if
+  an exception is thrown inside the critical section, where a manual
+  unlock call could easily be skipped, permanently deadlocking every
+  other thread waiting on that mutex.
 example_code: |
+  #include <iostream>
+  #include <thread>
+
+  // The trap: counter++ isn't atomic -- concurrent increments can be lost.
+  int counterBroken = 0;
+  void incrementBroken() {
+      for (int i = 0; i < 100000; i++) {
+          counterBroken++;              // read, add, write -- not thread-safe
+      }
+  }
+  // two threads running incrementBroken() concurrently usually produce LESS than 200000
+
+  // Fix: mutex + lock_guard makes the critical section atomic across threads.
   #include <mutex>
+
+  int counter = 0;
   std::mutex mtx;
-  {
-      std::lock_guard<std::mutex> lock(mtx);
-      counter++;
+
+  void increment() {
+      for (int i = 0; i < 100000; i++) {
+          std::lock_guard<std::mutex> lock(mtx);   // acquired here, released at scope exit
+          counter++;
+      }
+  }
+
+  int main() {
+      std::thread t1(increment);
+      std::thread t2(increment);
+      t1.join();
+      t2.join();
+      std::cout << counter << std::endl;   // always exactly 200000
+      return 0;
   }
 starter_code: |
   #include <iostream>

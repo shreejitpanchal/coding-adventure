@@ -4,12 +4,55 @@ language: cpp
 level: 18
 objective: "Replace a stringstream used purely to convert a number to a string with the more direct std::to_string."
 explanation: |
-  Building a whole std::stringstream just to convert one number to a
-  string is more machinery than the job needs -- std::to_string(value)
-  does exactly that conversion directly, for every built-in numeric
-  type, in one call.
+  `std::stringstream` is a genuinely powerful, general-purpose tool for
+  building up complex formatted strings incrementally -- chaining `<<`
+  for multiple pieces of text and numbers together, applying stream
+  manipulators for formatting (field width, precision, base) -- but for
+  the single, specific job of "convert this one number to a string,
+  nothing else," constructing a whole `stringstream` object, streaming
+  the value into it with `<<`, and then extracting the result with `.
+  str()` is considerably more machinery than the job actually calls
+  for. Each of those three steps exists to support the *general*
+  stream-building capability, none of which is being used here beyond
+  a single insertion.
+
+  `std::to_string(value)` (introduced in C++11, in `<string>`) does
+  exactly this one specific conversion directly, in a single function
+  call: it's overloaded for every built-in numeric type (`int`, `long`,
+  `float`, `double`, and others), returning a `std::string` containing
+  that value's default textual representation with no intermediate
+  stream object, no manipulator setup, and no extraction step required.
+  This is the same "reach for the tool whose job matches the actual
+  requirement, rather than a more general tool bent to fit" principle
+  that runs through this whole category -- `stringstream` remains the
+  right choice when genuinely building a complex, multi-part formatted
+  string, but a bare numeric-to-string conversion is exactly what `to_
+  string` exists for, and using it says that intent directly rather
+  than through three lines of stream machinery.
 example_code: |
+  #include <iostream>
+  #include <sstream>
+
+  // The trap: a whole stringstream, used for a SINGLE number-to-string conversion.
+  int valueSlow = 42;
+  std::stringstream ssSlow;
+  ssSlow << valueSlow;
+  std::string resultSlow = ssSlow.str();
+  std::cout << resultSlow << "!" << std::endl;   // 42!
+
+  // Fix: to_string does exactly this conversion, directly, in one call.
+  #include <string>
+
+  int value = 42;
+  std::string result = std::to_string(value);
+  std::cout << result << "!" << std::endl;         // 42!
+
   std::string s = std::to_string(42);
+  std::cout << s << std::endl;                       // 42
+
+  // Works for every built-in numeric type, not just int:
+  std::cout << std::to_string(3.14) << std::endl;     // 3.140000
+  std::cout << std::to_string(100L) << std::endl;       // 100
 starter_code: |
   #include <iostream>
   #include <sstream>

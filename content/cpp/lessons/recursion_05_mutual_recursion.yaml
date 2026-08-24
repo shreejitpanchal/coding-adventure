@@ -4,20 +4,70 @@ language: cpp
 level: 45
 objective: "Fix a mutual recursion where isEven's recursive call skips isOdd, breaking the alternation between the two functions."
 explanation: |
-  Mutual recursion is two (or more) functions that call each other
-  recursively instead of a single function calling itself --
-  isEven(n) delegates to isOdd(n - 1), and isOdd(n) delegates to
-  isEven(n - 1), alternating back and forth until one of them hits its
-  base case. C++ needs a forward declaration for whichever function is
-  defined second, since each one references the other before both
-  definitions exist. If one function's recursive call skips calling the
-  other (calling itself, or the wrong function), the alternation breaks
-  and the result is wrong.
+  Mutual recursion is two (or more) functions that call *each other*
+  instead of each calling itself directly -- `isEven(n)` delegating to
+  `isOdd`, which delegates back to `isEven`, alternating between the
+  two on each step until one of them hits its base case. In C++
+  specifically, mutual recursion requires a *forward declaration* for
+  whichever of the two functions is defined second in the source file
+  (`bool isOdd(int n);` before `isEven`'s definition here) -- since `
+  isEven`'s body references `isOdd` before `isOdd`'s actual definition
+  has been seen by the compiler, the compiler needs at least the
+  function's signature declared in advance to know such a function
+  exists and what it looks like, even though the full definition comes
+  later.
+
+  Beyond the forward-declaration mechanics, mutual recursion's actual
+  *correctness* depends on each call genuinely alternating between the
+  two functions *and* genuinely making progress toward a base case on
+  every step -- both properties have to hold together. `isOdd(n)`'s own
+  recursive call, `return isEven(n - 1);`, does both correctly: it
+  hands off to the *other* function, and it decrements `n`. `isEven`'s
+  broken version, `return isOdd(n);`, only does the first half right --
+  it does hand off to `isOdd`, but it passes `n` *unchanged*, with no
+  decrement at all. That means `isEven(8)` calls `isOdd(8)`, which
+  (correctly) calls `isEven(7)`, which then calls `isOdd(7)` again
+  (correctly handing off, but still not decrementing from `isEven`'s
+  own side) -- the two functions are alternating correctly turn by
+  turn, but `isEven`'s failure to decrement means the overall value
+  being tracked doesn't actually shrink the way it's supposed to on
+  each full "isEven then isOdd" round trip, breaking the intended
+  countdown and producing a wrong final answer even though the
+  alternation pattern itself looks superficially fine. The fix is
+  simply matching `isOdd`'s pattern: `isEven`'s recursive call needs to
+  decrement too, `return isOdd(n - 1);`, so both sides of the mutual
+  recursion make consistent progress toward `0`.
 example_code: |
+  #include <iostream>
+
+  bool isOddDecl(int n);
+
+  // The trap: isEven hands off to isOdd correctly, but forgets to decrement n.
+  bool isEvenBroken(int n) {
+      if (n == 0) return true;
+      return isOddDecl(n);          // BUG: should be isOddDecl(n - 1) -- n never shrinks here
+  }
+  bool isOddDecl(int n) {
+      if (n == 0) return false;
+      return isEvenBroken(n - 1);    // this side decrements correctly
+  }
+  // isEvenBroken(8) doesn't reliably reach the right answer -- the two sides fall out of sync
+
+  // Fix: both sides of the mutual recursion decrement consistently.
   bool isOdd(int n);
+
   bool isEven(int n) {
       if (n == 0) return true;
-      return isOdd(n - 1);
+      return isOdd(n - 1);           // hands off AND decrements, matching isOdd's own pattern
+  }
+  bool isOdd(int n) {
+      if (n == 0) return false;
+      return isEven(n - 1);
+  }
+
+  int main() {
+      std::cout << isEven(8) << " " << isOdd(8) << std::endl;   // 1 0
+      return 0;
   }
 starter_code: |
   #include <iostream>

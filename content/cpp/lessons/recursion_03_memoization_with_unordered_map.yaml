@@ -4,20 +4,63 @@ language: cpp
 level: 43
 objective: "Add memoization via std::unordered_map to a naive recursive Fibonacci, avoiding exponential recomputation of overlapping subproblems."
 explanation: |
-  Naive recursive Fibonacci recomputes the same subproblems over and
-  over -- fib(30) calls fib(28) twice, fib(27) three times, and so on,
-  giving exponential time complexity. Memoization caches each result
-  the first time it's computed (in a std::unordered_map keyed by n), so
-  every subsequent call for that same n is an O(1) lookup instead of a
-  full recursive recomputation, turning exponential time into linear.
+  `fib(n) = fib(n-1) + fib(n-2)` is a correct recurrence, but each call
+  branches into *two* further recursive calls, and those calls'
+  subproblems overlap massively: computing `fib(n)` recomputes `fib(n-2)`
+  as part of `fib(n-1)`'s own call tree *and* directly, and that
+  duplication compounds at every level of the recursion -- `fib(30)`
+  calls `fib(28)` twice, `fib(27)` three times, and the total number of
+  calls grows exponentially with `n`. Each of those repeated calls
+  performs the exact same computation, arriving at the exact same
+  result every time, for no new information gained -- the underlying
+  insight that fixes this is that `fib(n)`, for any given `n`, is
+  always the same value no matter how many times or from how many
+  different call paths in the tree it's asked for, so once computed, it
+  never needs to be recomputed again, only looked up.
+
+  Memoization is exactly this technique: cache a function's result
+  keyed by its input, so a repeat call with the same input is answered
+  from the cache instead of recomputing. `std::unordered_map<int, long
+  long> memo;` at file or class scope holds every `n` already computed;
+  `fib(n)` checks that map *before* doing any recursive work (`if (memo.
+  count(n)) return memo[n];`), and stores its result into the map
+  *right before* returning, immediately after computing it (`memo[n] =
+  result;`). With that cache in place, each distinct value of `n` is
+  computed at most once across the entire program's execution -- every
+  subsequent request for that same `n`, from anywhere in the call tree,
+  is answered by an O(1) average-case hash-map lookup instead of
+  re-deriving it recursively, turning the exponential blowup into work
+  proportional to `n` itself. This mirrors exactly the same technique
+  covered for Java's hand-rolled memoization elsewhere in this app (C++
+  , like Java, has no built-in memoization decorator the way Python's `
+  @lru_cache` provides) -- the "check the cache first, populate it
+  before returning" shape is identical across languages, differing only
+  in the specific cache type used.
 example_code: |
-  std::unordered_map<int, long long> memo;
-  long long fib(int n) {
+  #include <iostream>
+  #include <unordered_map>
+
+  // The trap: naive recursion recomputes the SAME sub-calls exponentially many times.
+  long long fibBroken(int n) {
       if (n <= 1) return n;
-      if (memo.count(n)) return memo[n];
+      return fibBroken(n - 1) + fibBroken(n - 2);   // fib(n-2) recomputed from scratch, repeatedly
+  }
+  // fibBroken(30) -- technically correct, but a very large number of redundant calls
+
+  // Fix: a cache checked BEFORE recursing, populated AFTER computing.
+  std::unordered_map<int, long long> memo;
+
+  long long fib(int n) {
+      if (n <= 1) return n;                    // base case
+      if (memo.count(n)) return memo[n];        // check cache FIRST
       long long result = fib(n - 1) + fib(n - 2);
-      memo[n] = result;
+      memo[n] = result;                          // store BEFORE returning
       return result;
+  }
+
+  int main() {
+      std::cout << fib(30) << std::endl;   // 832040 -- fast, each n computed once
+      return 0;
   }
 starter_code: |
   #include <iostream>

@@ -4,19 +4,67 @@ language: cpp
 level: 4
 objective: "Fix a reverse loop that never terminates because its index is an unsigned type, which can never compare less than zero."
 explanation: |
-  `std::vector::size()` returns `size_t`, an *unsigned* type -- it can
-  never be negative. A loop like `for (size_t i = ...; i >= 0; i--)`
-  looks like it should stop at 0, but once `i` decrements past 0 it
-  wraps around to an enormous positive number instead of going
-  negative, so `i >= 0` is always true. In this sandbox that shows up
-  as a timeout (it keeps indexing far out of bounds instead of ever
-  reaching a check that stops it); on some systems it crashes instead --
-  either way, the loop condition itself is the bug. Using a signed index
-  avoids the wraparound entirely.
+  `std::vector<T>::size()` returns `size_t`, which is an *unsigned*
+  integer type -- by definition, an unsigned type has no representation
+  for negative numbers at all, so decrementing it below zero doesn't
+  produce a negative value the way a signed type would; it *wraps
+  around* to the largest representable value instead (on a typical
+  64-bit system, `size_t(0) - 1` becomes something close to 18
+  quintillion, not `-1`). `for (size_t i = ...; i >= 0; i--)` looks like
+  it should stop once `i` reaches `0`, but the condition `i >= 0` is
+  checking something that's *always true for an unsigned type* -- there
+  is no unsigned value that could ever fail that comparison, since
+  every possible value of `size_t` is, by construction, greater than or
+  equal to zero. Once the loop body decrements `i` from `0`, it doesn't
+  become `-1` and fail the check; it wraps to that enormous positive
+  number, the loop condition still evaluates true, and the loop
+  continues indexing `values[i]` with `i` now far, far outside the
+  vector's actual bounds. Depending on the platform and what memory
+  happens to sit at those wildly out-of-range addresses, this manifests
+  as anything from reading garbage values, to a crash, to (in a
+  timeout-limited environment) simply running until the time limit is
+  hit, since the loop's own stopping condition can genuinely never
+  become false.
+
+  The fix is to use a *signed* index type instead, which has an actual
+  representable `-1` to decrement into and stop at: `for (int i = static
+  _cast<int>(values.size()) - 1; i >= 0; i--)` lets `i` count down
+  through every valid index and then genuinely become `-1` once it's
+  exhausted them, at which point `i >= 0` correctly evaluates to `false`
+  and the loop stops as intended. The explicit `static_cast<int>(...)`
+  around `.size()` matters too -- without it, `values.size() - 1` is
+  still computed in unsigned arithmetic *before* ever being assigned to
+  `i`, which would itself underflow to a huge number for an *empty*
+  vector (`size() == 0`, so `size() - 1` wraps before the cast ever
+  gets a chance to help) -- the cast needs to happen on `.size()`
+  itself, before the subtraction, mirroring the "cast the operand, not
+  the final result" lesson from the integer-division exercise elsewhere
+  in this category.
 example_code: |
-  for (int i = static_cast<int>(v.size()) - 1; i >= 0; i--) {
-      // safe: i is signed, can actually reach -1 and stop
+  #include <iostream>
+  #include <vector>
+
+  // The trap: size_t (unsigned) can never satisfy i >= 0 becoming false.
+  std::vector<int> valuesBroken = {10, 20, 30};
+  int sumBroken = 0;
+  // for (size_t i = valuesBroken.size() - 1; i >= 0; i--) {
+  //     sumBroken += valuesBroken[i];   // i wraps to a huge number instead of stopping at -1
+  // }
+  // -- runs far out of bounds; never terminates via the loop condition itself
+
+  // Fix: a SIGNED index can actually reach -1 and stop.
+  std::vector<int> values = {10, 20, 30};
+  int sum = 0;
+  for (int i = static_cast<int>(values.size()) - 1; i >= 0; i--) {
+      sum += values[i];      // safe: i genuinely reaches -1 and the loop stops
   }
+  std::cout << sum << std::endl;   // 60
+
+  // The cast must apply to size() BEFORE subtracting -- an empty vector
+  // would underflow the SAME way if the subtraction stayed unsigned:
+  std::vector<int> empty;
+  // size_t badLen = empty.size() - 1;        // underflows even before any cast!
+  int safeLen = static_cast<int>(empty.size()) - 1;   // -1, correctly signed
 starter_code: |
   #include <iostream>
   #include <vector>

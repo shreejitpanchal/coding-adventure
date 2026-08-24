@@ -4,16 +4,61 @@ language: cpp
 level: 40
 objective: "Write a function that returns a std::function -- a closure factory -- instead of hardcoding one fixed behavior."
 explanation: |
-  A higher-order function is one that takes or returns another
-  function. Returning a lambda from a function turns that function into
-  a *factory*: makeMultiplier(3) doesn't compute a result directly, it
-  builds and returns a new callable that remembers 3 and multiplies by
-  it whenever it's later invoked. This is the closure-as-value pattern
-  at the heart of functional-style C++ -- configuration captured once,
-  reused as a first-class value.
+  `int multiplyByThree(int x) { return x * 3; }` has its behavior
+  permanently baked in at compile time -- the `3` is hardcoded, so
+  getting a "multiply by 5" version means writing an entirely separate,
+  near-identical function, and so on for every factor that's ever
+  needed. A higher-order function -- one that takes or *returns*
+  another function -- sidesteps this by turning the multiplier factor
+  itself into a runtime parameter: `makeMultiplier(int factor)` doesn't
+  compute a multiplication result directly at all; it *builds and
+  returns a new callable*, `[factor](int x) { return x * factor; }`,
+  that closes over the specific `factor` it was given and remembers it
+  for as long as that returned callable exists. Calling `makeMultiplier
+  (3)` produces a distinct function-like value that always multiplies by
+  `3`; calling `makeMultiplier(5)` separately would produce an
+  independent one that always multiplies by `5` -- both built from the
+  exact same `makeMultiplier` code, just configured differently at the
+  moment each was created.
+
+  This is the closure-as-value pattern -- capturing configuration once,
+  at construction time, and reusing the resulting callable as an
+  ordinary first-class value afterward -- at the heart of functional-
+  style C++. `std::function<int(int)>` as `makeMultiplier`'s return
+  type is what makes this possible to express cleanly: the actual
+  concrete type of `[factor](int x) { return x * factor; }` is an
+  anonymous, compiler-generated closure type unique to that specific
+  lambda expression, which can't be named or written out directly as a
+  return type -- `std::function<int(int)>`'s type erasure (the same
+  mechanism covered in the earlier `std::function` exercise) lets `
+  makeMultiplier` return "some callable matching `int(int)`," without
+  needing to name the actual underlying closure type at all. This
+  pattern generalizes well beyond a toy multiplier -- factory functions
+  that build configured validators, comparators, or event handlers all
+  follow this same "take configuration as a parameter, return a closure
+  that remembers it" shape.
 example_code: |
+  #include <iostream>
+  #include <functional>
+
+  // The trap: behavior is hardcoded -- a different factor needs a whole new function.
+  int multiplyByThree(int x) {
+      return x * 3;
+  }
+  std::cout << multiplyByThree(7) << std::endl;   // 21 -- but ONLY ever by 3
+
+  // Fix: a higher-order function returns a closure configured at call time.
   std::function<int(int)> makeMultiplier(int factor) {
-      return [factor](int x) { return x * factor; };
+      return [factor](int x) { return x * factor; };   // remembers `factor`, reused later
+  }
+
+  int main() {
+      auto triple = makeMultiplier(3);
+      std::cout << triple(7) << std::endl;   // 21 -- same result, but genuinely configurable
+
+      auto quintuple = makeMultiplier(5);      // an independent closure, remembers 5 instead
+      std::cout << quintuple(7) << std::endl;    // 35
+      return 0;
   }
 starter_code: |
   #include <iostream>

@@ -4,14 +4,78 @@ language: cpp
 level: 22
 objective: "Replace a manually mutex-locked counter with std::atomic<int>, which is lock-free and purpose-built for this."
 explanation: |
-  std::atomic<int> provides atomic increment/read (backed by hardware
-  compare-and-swap on most platforms) without needing an explicit lock
-  at all -- for a single counter shared across threads, it's simpler,
-  and typically faster, than a hand-rolled mutex.
+  A `std::mutex` locked around every single `counter++` (the previous
+  exercise's fix) correctly solves the lost-update race, but a full
+  lock is genuinely heavyweight machinery for protecting something as
+  small as one integer's increment -- every thread wanting to increment
+  has to acquire and release the mutex, potentially blocking behind
+  whichever thread currently holds it, purely to protect three machine
+  instructions' worth of work. `std::atomic<int>` provides a
+  lighter-weight alternative purpose-built for exactly this common
+  case: it wraps a single `int` and guarantees that operations on it --
+  `++`, `+=`, direct reads and writes -- are atomic *without requiring
+  an explicit lock at all*. On most modern platforms, this is
+  implemented using a hardware-level compare-and-swap (CAS) instruction
+  or similar atomic CPU primitive, letting the processor itself
+  guarantee "read the current value and write the incremented result
+  back, with no other thread's operation able to interleave in between"
+  as a single indivisible hardware operation, rather than relying on OS
+  -level lock/unlock machinery.
+
+  The practical result is a counter just as safe under concurrent
+  access as the mutex-locked version, but typically faster under
+  contention -- a mutex forces waiting threads to genuinely block
+  (potentially involving an OS-level context switch in the worst case),
+  while lock-free atomics let contending threads retry a cheap
+  hardware-level operation instead, which tends to win when the
+  protected operation itself is small and fast, exactly the situation a
+  single counter increment represents. `std::atomic<int>` is also
+  simpler code -- no separate `std::mutex` object to declare, no `lock_
+  guard` wrapping the increment, since the atomicity is built directly
+  into the type. The tradeoff to understand: atomics protect exactly
+  one variable's individual operations; the moment multiple related
+  pieces of shared state need to be updated together as one atomic
+  unit, a mutex (or a higher-level synchronization structure) is still
+  the correct tool, since no single atomic type can express a
+  multi-variable invariant on its own.
 example_code: |
+  #include <iostream>
+  #include <thread>
+  #include <mutex>
+
+  // The trap: correct, but a full mutex is heavier than a single counter needs.
+  int counterLocked = 0;
+  std::mutex mtx;
+  void incrementLocked() {
+      for (int i = 0; i < 50000; i++) {
+          std::lock_guard<std::mutex> lock(mtx);
+          counterLocked++;
+      }
+  }
+
+  // Fix: std::atomic -- lock-free, hardware CAS under the hood.
   #include <atomic>
+
   std::atomic<int> counter(0);
-  counter++;
+
+  void increment() {
+      for (int i = 0; i < 50000; i++) {
+          counter++;              // atomic, no explicit lock needed
+      }
+  }
+
+  int main() {
+      std::thread t1(increment);
+      std::thread t2(increment);
+      t1.join();
+      t2.join();
+      std::cout << counter << std::endl;   // 100000, reliably
+      return 0;
+  }
+
+  std::atomic<int> c(0);
+  c++;
+  std::cout << c.load() << std::endl;        // 1 -- .load() reads the current value explicitly
 starter_code: |
   #include <iostream>
   #include <thread>

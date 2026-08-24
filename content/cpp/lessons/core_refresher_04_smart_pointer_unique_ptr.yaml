@@ -4,14 +4,71 @@ language: cpp
 level: 9
 objective: "Replace manual new/delete with std::unique_ptr, which frees the resource automatically via RAII."
 explanation: |
-  Manual `new`/`delete` requires remembering to call delete on every
-  path out of a function, including early returns and exceptions --
-  easy to get wrong. std::unique_ptr owns the object and deletes it
-  automatically when the unique_ptr itself goes out of scope (RAII:
-  Resource Acquisition Is Initialization), making the cleanup
-  impossible to forget.
+  `Resource* r = new Resource(); ... delete r;` places the cleanup
+  responsibility entirely on the programmer, at every single point
+  where control might leave the function -- the normal fall-through
+  path shown here, but also any early `return` that might get added
+  later, and critically, any exception that might propagate through the
+  code between the `new` and the `delete`. Miss cleanup on even one of
+  those paths and the object is *leaked* -- its destructor never runs,
+  its memory is never reclaimed, and nothing about the program crashes
+  or warns that this happened; it simply degrades resource usage over
+  time, sometimes only becoming visible as a slow memory-usage climb
+  in production, far removed from the actual missing `delete`.
+
+  `std::unique_ptr<T>` (typically constructed via `std::make_unique<T>(
+  ...)`, which is safer than a bare `new` since it can't leak memory in
+  the moment before construction if an exception happens to be thrown
+  during argument evaluation) fixes this entire category of bug through
+  RAII -- Resource Acquisition Is Initialization, one of C++'s most
+  foundational idioms: tie a resource's lifetime directly to an
+  object's own lifetime, so acquiring the resource happens in the
+  object's constructor and releasing it happens automatically in the
+  object's destructor. A `unique_ptr` *owns* the object it points at,
+  and its destructor calls `delete` on that object automatically,
+  unconditionally, the moment the `unique_ptr` itself goes out of scope
+  -- whether that's normal fall-through at the end of a function, an
+  early `return`, or stack unwinding triggered by an exception. There's
+  no explicit `delete` call left to forget anywhere in the code, because
+  the cleanup isn't something the programmer has to remember to write
+  at every exit path -- it's guaranteed by the language's own object
+  lifetime rules instead.
 example_code: |
-  std::unique_ptr<Widget> w = std::make_unique<Widget>();
+  #include <iostream>
+  #include <memory>
+
+  class Resource {
+  public:
+      Resource() { std::cout << "acquired" << std::endl; }
+      ~Resource() { std::cout << "released" << std::endl; }
+      void use() { std::cout << "using" << std::endl; }
+  };
+
+  // The trap: delete has to be remembered on EVERY exit path -- easy to miss.
+  void manualBroken() {
+      Resource* r = new Resource();
+      std::cout << "using" << std::endl;
+      // if (someCondition) return;   // an early return here would LEAK r -- delete never runs!
+      delete r;
+  }
+
+  // Fix: unique_ptr guarantees cleanup automatically, on EVERY exit path.
+  void withUniquePtr() {
+      std::unique_ptr<Resource> r = std::make_unique<Resource>();
+      r->use();
+      // no delete needed -- destructor runs automatically when r goes out of scope,
+      // including via an early return or an exception, with no extra code required
+  }
+
+  int main() {
+      withUniquePtr();
+      return 0;
+  }
+  // acquired
+  // using
+  // released
+
+  std::unique_ptr<Resource> w = std::make_unique<Resource>();
   // automatically deleted when w goes out of scope
 starter_code: |
   #include <iostream>

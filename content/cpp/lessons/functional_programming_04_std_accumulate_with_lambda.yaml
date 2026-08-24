@@ -4,16 +4,67 @@ language: cpp
 level: 39
 objective: "Replace a manual reduction loop with std::accumulate and a custom combining lambda -- the standard library's fold operation."
 explanation: |
-  std::accumulate is C++'s general-purpose "fold" (or "reduce"): given a
-  starting value and a binary operation, it combines every element of a
-  range into a single result. By default it sums, but passing a custom
-  binary lambda (like multiplication) lets it express any fold -- a
-  manual loop that starts an accumulator, updates it every iteration,
-  and returns it at the end is exactly the pattern std::accumulate
-  captures directly.
+  `int product = 1; for (...) { product *= nums[i]; }` follows a
+  recognizable, general shape: start an accumulator at some initial
+  value, combine it with each element in turn using some fixed
+  operation, and the final accumulator value is the answer. That shape
+  -- start with an identity value, repeatedly fold in the next element
+  -- is exactly what `std::accumulate` (from `<numeric>`) captures
+  directly, as C++'s general-purpose "fold" (or "reduce") operation:
+  given a range, a starting value, and a binary combining operation, it
+  applies that combination across every element, threading the running
+  result forward, and returns the final accumulated value. By default (
+  called with only three arguments, no explicit operation) it sums --
+  the fourth, optional argument is what lets it express *any* fold at
+  all, not just addition: `std::accumulate(nums.begin(), nums.end(), 1,
+  [](int a, int b) { return a * b; })` reads as "fold `nums` starting
+  from `1`, combining with multiplication" -- the exact same computation
+  the manual loop performs, expressed as one declarative call rather
+  than an explicit accumulator variable and loop body.
+
+  This mirrors `Stream.reduce` in Java and `functools.reduce` in
+  Python, both covered elsewhere in this app -- the same underlying
+  "fold" concept, expressed through each language's own idiom.
+  `std::accumulate` is worth reaching for specifically when a loop's
+  *entire* job is combining a range into one running value -- the
+  moment a loop needs to do more than that (branching per element,
+  multiple independent accumulators, side effects beyond the fold
+  itself), forcing it into `std::accumulate` usually produces code
+  that's harder to follow, not easier. The starting value matters for
+  correctness the same way it does for any fold: it must be a genuine
+  identity for the combining operation (`1` for multiplication, `0` for
+  addition) so that folding it with the first real element contributes
+  exactly that element's own value, unmodified -- an incorrect starting
+  value (like `0` for a product fold) silently collapses every result
+  to the wrong answer.
 example_code: |
+  #include <iostream>
+  #include <vector>
+
+  // The trap: not wrong, just a manual accumulator loop for a common fold shape.
+  std::vector<int> numsSlow = {1, 2, 3, 4};
+  int productSlow = 1;
+  for (size_t i = 0; i < numsSlow.size(); i++) {
+      productSlow *= numsSlow[i];
+  }
+  std::cout << productSlow << std::endl;   // 24
+
+  // Fix: std::accumulate expresses the same fold declaratively.
+  #include <numeric>
+
+  std::vector<int> nums = {1, 2, 3, 4};
   int product = std::accumulate(nums.begin(), nums.end(), 1,
                                  [](int a, int b) { return a * b; });
+  std::cout << product << std::endl;         // 24
+
+  // Default (no lambda) is a SUM:
+  int sum = std::accumulate(nums.begin(), nums.end(), 0);
+  std::cout << sum << std::endl;               // 10
+
+  // Getting the starting value WRONG silently breaks the result:
+  int wrongStart = std::accumulate(nums.begin(), nums.end(), 0,
+                                    [](int a, int b) { return a * b; });   // starts from 0!
+  std::cout << wrongStart << std::endl;          // 0 -- every product collapses to 0
 starter_code: |
   #include <iostream>
   #include <vector>
