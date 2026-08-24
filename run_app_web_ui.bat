@@ -47,6 +47,13 @@ if not exist ".venv\Scripts\python.exe" (
 
 if "%CODING_ADVENTURE_WEB_PORT%"=="" set CODING_ADVENTURE_WEB_PORT=8550
 
+REM Ctrl+C on a previous run doesn't always kill the underlying Python
+REM process cleanly on Windows -- it can be left listening on the port,
+REM which then makes the next launch fail with a confusing asyncio
+REM traceback instead of a clear "port in use" message. Self-heal: if a
+REM leftover Python process still owns the port, stop it before we start.
+powershell -NoProfile -Command "$conns = Get-NetTCPConnection -LocalPort %CODING_ADVENTURE_WEB_PORT% -State Listen -ErrorAction SilentlyContinue; foreach ($procId in ($conns.OwningProcess | Sort-Object -Unique)) { $p = Get-Process -Id $procId -ErrorAction SilentlyContinue; if ($p -and $p.ProcessName -match '^python') { Write-Host ('Stopping a leftover Coding Adventure instance on port %CODING_ADVENTURE_WEB_PORT% (PID ' + $procId + ')...'); Stop-Process -Id $procId -Force } elseif ($p) { Write-Host ('Warning: port %CODING_ADVENTURE_WEB_PORT% is already in use by PID ' + $procId + ' (' + $p.ProcessName + '), which is not a Python process -- leaving it alone. Set CODING_ADVENTURE_WEB_PORT to a free port instead.') } }"
+
 echo ============================================
 echo   Coding Adventure web UI starting on port %CODING_ADVENTURE_WEB_PORT%
 echo   Open http://localhost:%CODING_ADVENTURE_WEB_PORT% in your browser.

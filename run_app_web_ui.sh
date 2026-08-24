@@ -54,6 +54,43 @@ fi
 : "${CODING_ADVENTURE_WEB_PORT:=8550}"
 export CODING_ADVENTURE_WEB_PORT
 
+# Ctrl+C on a previous run doesn't always kill the underlying Python
+# process cleanly -- it can be left listening on the port, which then
+# makes the next launch fail with a confusing asyncio traceback instead
+# of a clear "port in use" message. Self-heal: if a leftover Python
+# process still owns the port, stop it before we start.
+port_owner_pid() {
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -ti tcp:"$1" -sTCP:LISTEN 2>/dev/null | head -n1
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -ano 2>/dev/null | awk -v p=":$1" '$0 ~ p && $0 ~ /LISTENING/ {print $NF; exit}'
+    fi
+}
+
+is_python_process() {
+    if command -v ps >/dev/null 2>&1 && ps -p "$1" -o comm= >/dev/null 2>&1; then
+        ps -p "$1" -o comm= | grep -qi python
+    elif command -v powershell.exe >/dev/null 2>&1; then
+        powershell.exe -NoProfile -Command "(Get-Process -Id $1 -ErrorAction SilentlyContinue).ProcessName" 2>/dev/null | grep -qi python
+    else
+        return 1
+    fi
+}
+
+EXISTING_PID="$(port_owner_pid "$CODING_ADVENTURE_WEB_PORT")"
+if [ -n "$EXISTING_PID" ]; then
+    if is_python_process "$EXISTING_PID"; then
+        echo "Stopping a leftover Coding Adventure instance on port $CODING_ADVENTURE_WEB_PORT (PID $EXISTING_PID)..."
+        kill -9 "$EXISTING_PID" 2>/dev/null \
+            || (command -v powershell.exe >/dev/null 2>&1 && powershell.exe -NoProfile -Command "Stop-Process -Id $EXISTING_PID -Force" 2>/dev/null) \
+            || true
+        sleep 1
+    else
+        echo "Warning: port $CODING_ADVENTURE_WEB_PORT is already in use by PID $EXISTING_PID, which is not a Python process -- leaving it alone."
+        echo "Set CODING_ADVENTURE_WEB_PORT to a free port instead."
+    fi
+fi
+
 echo "============================================"
 echo "  Coding Adventure web UI starting on port $CODING_ADVENTURE_WEB_PORT"
 echo "  Open http://localhost:$CODING_ADVENTURE_WEB_PORT in your browser."
