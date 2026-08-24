@@ -35,6 +35,7 @@ CATEGORY_META: dict[str, CategoryMeta] = {
     "configuration_profiles": CategoryMeta("Configuration & Profiles", "\U0001F39B️", "#FFC857"),
     "events": CategoryMeta("Application Events", "\U0001F4E3", "#5DE8FF"),
     "aop": CategoryMeta("Aspect-Oriented Programming", "\U0001F578️", "#FF8A5B"),
+    "resilience": CategoryMeta("Resilience Patterns", "\U0001F6E1️", "#F97316"),
 }
 
 DEFAULT_META = CategoryMeta("More Practice", "⭐", "#8A93C7")

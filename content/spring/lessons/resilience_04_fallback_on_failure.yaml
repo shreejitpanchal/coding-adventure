@@ -1,0 +1,65 @@
+id: resilience_04
+title: "Degrading Gracefully Instead of Failing Loudly"
+language: spring
+level: 29
+objective: "Use Resilience4j's Decorators.ofSupplier(...).withFallback(...) to return a sensible default when a call fails, instead of propagating the exception."
+explanation: |
+  Not every failure needs to become the caller's problem -- if a
+  pricing service is briefly unavailable, returning a cached or default
+  price is often a better user experience than an error page.
+  Decorators.ofSupplier(risky).withFallback(exceptionTypes, handler)
+  builds a decorated supplier that, when the wrapped call throws one of
+  the listed exception types, calls the fallback function instead and
+  returns its result -- the caller never even sees the exception. This
+  composes cleanly with circuit breakers and retries too (a fallback is
+  often the last decorator in the chain, catching whatever gets through).
+example_code: |
+  Supplier<String> decorated = Decorators.ofSupplier(risky)
+      .withFallback(List.of(RuntimeException.class), e -> "cached-price")
+      .decorate();
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class PaymentGateway {
+      public String fetchPrice(boolean shouldFail) {
+          if (shouldFail) throw new RuntimeException("pricing service down");
+          return "live-price";
+      }
+  }
+challenge: |
+  fetchPrice() propagates the exception straight to the caller when the
+  pricing service is down, with no graceful degradation. Fix this by
+  wrapping the risky logic with
+  Decorators.ofSupplier(risky).withFallback(List.of(RuntimeException.class),
+  e -> "cached-price").decorate(), so a failure returns "cached-price"
+  instead of throwing.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "import io.github.resilience4j.decorators.Decorators; and java.util.List."
+  - "Decorators.ofSupplier(risky).withFallback(List.of(RuntimeException.class), e -> \"cached-price\").decorate();"
+xp_reward: 10
+achievement: null
+category: resilience
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "\\.withFallback\\("
+  - "Decorators\\.ofSupplier"
+concept_tags: [resilience, fallback, resilience4j]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class PaymentGatewayTest {
+      @Test
+      void fallsBackToCachedPriceOnFailure() {
+          PaymentGateway gw = new PaymentGateway();
+          assertThat(gw.fetchPrice(false)).isEqualTo("live-price");
+          assertThat(gw.fetchPrice(true)).isEqualTo("cached-price");
+      }
+  }

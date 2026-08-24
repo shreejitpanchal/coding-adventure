@@ -372,3 +372,113 @@ questions:
     correct: 1
     explanation: "Spring automatically falls back to CGLIB class-based proxying when the target bean doesn't implement any interface."
     concept_tags: [aop, proxy, cglib]
+
+  - id: q35
+    question: "What does a Resilience4j CircuitBreaker do once its failure rate threshold is crossed within its sliding window?"
+    options:
+      - "It slows down every subsequent call instead of rejecting them"
+      - "It \"opens\": for a configured duration, calls are rejected immediately with CallNotPermittedException instead of reaching the real function"
+      - "It automatically restarts the failing dependency"
+      - "It logs a warning but otherwise has no effect on call behavior"
+    correct: 1
+    explanation: "An open circuit breaker fails fast, protecting an already-struggling downstream dependency from more traffic while it recovers."
+    concept_tags: [resilience, circuit_breaker, resilience4j]
+
+  - id: q36
+    question: "What kind of failure is Resilience4j's Retry decorator meant to address?"
+    options:
+      - "Permanent failures like a missing configuration value"
+      - "Transient failures -- momentary blips that are likely to succeed if simply attempted again shortly after"
+      - "Compile-time errors"
+      - "Failures caused by invalid user input"
+    correct: 1
+    explanation: "Retry automatically re-attempts a call up to a bounded number of times, appropriate for failures expected to resolve on their own."
+    concept_tags: [resilience, retry, resilience4j]
+
+  - id: q37
+    question: "What does RateLimiterConfig's timeoutDuration control?"
+    options:
+      - "How long the entire application waits before starting"
+      - "How long a call will wait for a permit to become available before giving up, with Duration.ZERO meaning reject immediately instead of waiting"
+      - "How often the rate limiter's configuration is reloaded"
+      - "The maximum lifetime of the RateLimiter object itself"
+    correct: 1
+    explanation: "A zero timeout makes an over-limit call fail fast with RequestNotPermitted rather than blocking until a permit frees up."
+    concept_tags: [resilience, rate_limiter, resilience4j]
+
+  - id: q38
+    question: "What does Decorators.ofSupplier(risky).withFallback(exceptionTypes, handler) do?"
+    options:
+      - "Retries the call automatically on failure"
+      - "Calls the fallback handler and returns its result when the wrapped call throws one of the listed exception types, instead of propagating the exception"
+      - "Logs the exception without changing the call's behavior"
+      - "Converts every exception into a checked exception"
+    correct: 1
+    explanation: "A fallback lets code degrade gracefully -- e.g. returning a cached value -- instead of surfacing every failure to the caller."
+    concept_tags: [resilience, fallback, resilience4j]
+
+  - id: q39
+    question: "Why does CircuitBreaker.decorateSupplier(cb, Retry.decorateSupplier(retry, risky)) (circuit breaker wrapping retry) fail to protect the dependency the way intended?"
+    options:
+      - "This ordering isn't valid and won't compile"
+      - "The circuit breaker only sees ONE outcome per logical call -- the retry absorbs every individual attempt internally, so the breaker's window never fills fast enough to open in time"
+      - "It works identically to the opposite ordering"
+      - "The circuit breaker takes priority and prevents the retry from running at all"
+    correct: 1
+    explanation: "With the circuit breaker outermost, retries happen entirely inside it, and it only records the final result -- every attempt still reaches the real dependency."
+    concept_tags: [resilience, circuit_breaker, retry, decorator_order]
+
+  - id: q40
+    question: "What changes when the decoration order is flipped to Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(cb, risky)) (retry wrapping circuit breaker)?"
+    options:
+      - "Nothing -- decoration order never matters for Resilience4j decorators"
+      - "Each individual attempt is separately recorded by the circuit breaker, so once it opens, later retry attempts fail fast with CallNotPermittedException instead of reaching the dependency"
+      - "The retry stops working entirely"
+      - "The circuit breaker is bypassed completely"
+    correct: 1
+    explanation: "With the circuit breaker innermost, it observes every individual call attempt, letting it open mid-retry-sequence and stop further attempts from reaching a failing dependency."
+    concept_tags: [resilience, circuit_breaker, retry, decorator_order]
+
+  - id: q41
+    question: "What's the practical benefit of a circuit breaker opening, from the perspective of the failing downstream dependency?"
+    options:
+      - "None -- circuit breakers only benefit the calling code"
+      - "It stops sending additional traffic to a dependency that's already struggling, giving it room to recover instead of piling on more load"
+      - "It automatically fixes whatever caused the dependency to fail"
+      - "It permanently disables calls to that dependency"
+    correct: 1
+    explanation: "A circuit breaker protects the callee as much as the caller -- reducing load on something already failing is often what lets it recover."
+    concept_tags: [resilience, circuit_breaker, resilience4j]
+
+  - id: q42
+    question: "In Resilience4j, what does slidingWindowSize control on a CircuitBreakerConfig?"
+    options:
+      - "How many threads the circuit breaker can use"
+      - "How many of the most recent call outcomes are considered when calculating the current failure rate"
+      - "The maximum number of calls allowed per second"
+      - "How long the circuit breaker stays open before testing recovery"
+    correct: 1
+    explanation: "The sliding window is the recent-history sample the failure rate threshold is evaluated against -- e.g. a window of 4 means the last 4 outcomes."
+    concept_tags: [resilience, circuit_breaker, resilience4j]
+
+  - id: q43
+    question: "Why might combining resilience patterns (retry, circuit breaker, fallback) around the same call require care about ordering?"
+    options:
+      - "It doesn't -- Resilience4j automatically picks the correct order"
+      - "Each decorator only observes what the decorator(s) inside it let through, so the same set of patterns can behave very differently depending on which one is applied last (outermost)"
+      - "Only one resilience pattern can be applied to a given call at all"
+      - "Ordering only matters for performance, never for correctness"
+    correct: 1
+    explanation: "Decoration order changes what each pattern actually observes -- e.g. whether a circuit breaker sees each retry attempt or just the final outcome."
+    concept_tags: [resilience, decorator_order, resilience4j]
+
+  - id: q44
+    question: "What do CircuitBreaker, Retry, and RateLimiter all have in common in Resilience4j's functional API?"
+    options:
+      - "They all require Spring Boot autoconfiguration to work"
+      - "Each provides a decorateSupplier(instance, supplier) method that wraps a plain Supplier<T> with its behavior, usable in plain Spring (or no framework at all)"
+      - "They can only be used with void-returning methods"
+      - "They all require a running network connection to function"
+    correct: 1
+    explanation: "Resilience4j's core decorators work against plain functional interfaces, independent of any framework -- no Spring Boot autoconfiguration required."
+    concept_tags: [resilience, resilience4j]

@@ -10,7 +10,7 @@ All four tracks are fully built. Python and Java share the same 14 topic
 categories, real execution against a local `python`/`javac`+`java`
 toolchain. C++ has its own 10 topic categories (a general-purpose
 language subset rather than a framework), executed against a local
-`g++` toolchain. Spring has its own 5 topic categories, executed against
+`g++` toolchain. Spring has its own 6 topic categories, executed against
 a local Maven + JDK toolchain via a scaffolded Maven project run through
 `mvn test` — see `app/execution/spring_engine.py` and "Execution
 engines" below for how that differs from the other three. The app is
@@ -174,20 +174,33 @@ in each language's own content directory, so C++ having a
 different-sized set required zero app-code changes.
 
 Spring goes further still: it's a framework, not a general-purpose
-language, so even C++'s category shape doesn't fit. Its 5 categories —
+language, so even C++'s category shape doesn't fit. Its 6 categories —
 `dependency_injection`, `bean_lifecycle`, `configuration_profiles`,
-`events`, `aop` — are Spring-specific concerns with no equivalent in the
-other tracks at all. All five deliberately stay within plain Spring
-Framework territory (dependency injection, bean scopes/lifecycle hooks,
-`@Value`/`@Profile` configuration, `ApplicationEvent`/`@EventListener`,
-`@Aspect`/`@Before`/`@AfterReturning`/`@Around` advice) rather than
-reaching for Spring Boot's web/data layers — see "Execution engines"
-below for why. Adding `events` and `aop` only needed two new
-dependencies in the shared scaffold (`spring-aop` + `aspectjweaver`, both
-already bundled with plain Spring, not Boot-specific) and one scaffold
-tweak: the compiler plugin needed `<parameters>true</parameters>` so
-`@EventListener`'s SpEL `condition` expressions can resolve a listener
-parameter by name (e.g. `#event.amount`) via reflection.
+`events`, `aop`, `resilience` — are Spring-specific concerns with no
+equivalent in the other tracks at all. All six deliberately stay within
+plain Spring Framework territory (dependency injection, bean
+scopes/lifecycle hooks, `@Value`/`@Profile` configuration,
+`ApplicationEvent`/`@EventListener`,
+`@Aspect`/`@Before`/`@AfterReturning`/`@Around` advice,
+CircuitBreaker/Retry/RateLimiter/fallback decorators) rather than
+reaching for Spring Boot's web/data layers or the parts of "Spring
+Cloud" that are inherently multi-process (service discovery, API
+gateway, config server) — those genuinely can't be exercised by a single
+scaffolded Maven project running `mvn test`, since they need multiple
+running services to mean anything, not just a library import. Resilience
+patterns (`resilience` category) are the part of the "Spring Cloud"
+umbrella that's actually just a library — Resilience4j's core decorators
+(`CircuitBreaker.decorateSupplier`, `Retry.decorateSupplier`, etc.) wrap
+a plain `Supplier<T>` in a single JVM, no network or second process
+involved, so they fit this engine's execution model exactly the same way
+AOP or events do. See "Execution engines" below for why Boot/multi-process
+territory is out of scope. Adding `events`/`aop`/`resilience` only needed
+new dependencies in the shared scaffold (`spring-aop`+`aspectjweaver` for
+AOP, `resilience4j-all` for resilience — all plain-Spring/plain-Java, not
+Boot-specific) and one scaffold tweak: the compiler plugin needed
+`<parameters>true</parameters>` so `@EventListener`'s SpEL `condition`
+expressions can resolve a listener parameter by name (e.g.
+`#event.amount`) via reflection.
 
 ### Daily Refresher
 
@@ -270,7 +283,7 @@ was added.
   timeout (`MVN_TIMEOUT_SECONDS = 45.0`) rather than the 8s the UI
   passes in, since JVM+Maven+Spring context startup needs more headroom.
   Deliberately uses plain Spring Framework (`spring-context`/
-  `spring-test`/`spring-aop`+`aspectjweaver`), not Spring Boot — no embedded server or
+  `spring-test`/`spring-aop`+`aspectjweaver`/`resilience4j-all`), not Spring Boot — no embedded server or
   autoconfiguration to boot, which keeps a cold `mvn -o test` run around
   4 seconds and fully offline once the scaffold's dependencies are
   warmed into `~/.m2` once. Maven's own logger writes everything

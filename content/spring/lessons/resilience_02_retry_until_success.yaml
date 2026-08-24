@@ -1,0 +1,69 @@
+id: resilience_02
+title: "Giving a Flaky Call a Second (and Third) Chance"
+language: spring
+level: 27
+objective: "Wrap a transiently-failing call in Resilience4j's Retry decorator so it's automatically retried up to a bounded number of attempts before giving up."
+explanation: |
+  Some failures are transient -- a momentary network blip, a downstream
+  service that's briefly overloaded -- and succeed if simply tried
+  again a moment later. Retry.decorateSupplier(retry, supplier) wraps a
+  call so that, on failure, it's automatically retried according to a
+  configured policy (a maximum attempt count, a wait duration between
+  attempts) instead of failing on the very first hiccup. The caller
+  only ever sees the final outcome: success, or the last failure once
+  every attempt is exhausted.
+example_code: |
+  Retry retry = Retry.of("payment", config);
+  Supplier<String> decorated = Retry.decorateSupplier(retry, () -> {
+      ...
+  });
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class PaymentGateway {
+      public int attempts = 0;
+
+      public String flakyThenSucceeds() {
+          attempts++;
+          if (attempts < 3) throw new RuntimeException("transient failure");
+          return "charged";
+      }
+  }
+challenge: |
+  flakyThenSucceeds() fails on its first two calls and only succeeds on
+  the third -- but with no retry logic, the very first failure
+  propagates straight up and the caller never gets a result. Fix this by
+  creating a Retry field (maxAttempts 3, a short wait duration between
+  attempts) and wrapping the logic with Retry.decorateSupplier(retry,
+  ...) inside flakyThenSucceeds(), so calling it once automatically
+  retries until it succeeds, returning "charged" with attempts landing
+  at exactly 3.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "RetryConfig.custom().maxAttempts(3).waitDuration(Duration.ofMillis(1)).build();"
+  - "Retry retry = Retry.of(\"payment\", config); then Retry.decorateSupplier(retry, () -> { ... }).get();"
+xp_reward: 10
+achievement: null
+category: resilience
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "Retry\\.decorateSupplier"
+concept_tags: [resilience, retry, resilience4j]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class PaymentGatewayTest {
+      @Test
+      void retriesUntilSuccess() {
+          PaymentGateway gw = new PaymentGateway();
+          assertThat(gw.flakyThenSucceeds()).isEqualTo("charged");
+          assertThat(gw.attempts).isEqualTo(3);
+      }
+  }

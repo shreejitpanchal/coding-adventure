@@ -1,0 +1,103 @@
+id: resilience_05
+title: "The Retry That Kept Hammering a Circuit That Should Have Stopped It"
+language: spring
+level: 30
+objective: "Fix the decoration order of a combined CircuitBreaker + Retry so the circuit breaker sits inside the retry, letting it actually stop repeated attempts from reaching a failing dependency."
+explanation: |
+  When combining a circuit breaker and a retry around the same call,
+  decoration order matters more than it looks. If the circuit breaker
+  wraps the retry (CircuitBreaker.decorateSupplier(cb,
+  Retry.decorateSupplier(retry, risky))), the breaker only ever sees
+  ONE outcome per logical call -- the retry silently absorbs every
+  individual attempt internally, so the breaker's sliding window never
+  fills up fast enough to actually open and protect anything; every
+  retry attempt still genuinely hits the failing dependency. Flipping
+  the order so retry wraps the circuit breaker
+  (Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(cb,
+  risky))) means each individual attempt is separately recorded by the
+  breaker -- once it opens, later retry attempts fail fast with
+  CallNotPermittedException instead of reaching the dependency at all.
+example_code: |
+  // circuit breaker INSIDE, retry OUTSIDE -- each attempt is separately
+  // recorded by the breaker, so it can actually open mid-retry-sequence
+  Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(circuitBreaker, risky));
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+  import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+  import io.github.resilience4j.retry.Retry;
+  import io.github.resilience4j.retry.RetryConfig;
+  import org.springframework.stereotype.Component;
+  import java.time.Duration;
+  import java.util.function.Supplier;
+
+  @Component
+  public class PaymentGateway {
+      private final CircuitBreaker circuitBreaker;
+      private final Retry retry;
+      public int callCount = 0;
+
+      public PaymentGateway() {
+          CircuitBreakerConfig cbConfig = CircuitBreakerConfig.custom()
+              .slidingWindowSize(2)
+              .failureRateThreshold(50)
+              .waitDurationInOpenState(Duration.ofSeconds(30))
+              .build();
+          circuitBreaker = CircuitBreaker.of("payment", cbConfig);
+
+          RetryConfig retryConfig = RetryConfig.custom()
+              .maxAttempts(5)
+              .waitDuration(Duration.ofMillis(1))
+              .build();
+          retry = Retry.of("payment", retryConfig);
+      }
+
+      public String chargeAlwaysFails() {
+          Supplier<String> risky = () -> {
+              callCount++;
+              throw new RuntimeException("downstream is down");
+          };
+          Supplier<String> decorated = CircuitBreaker.decorateSupplier(circuitBreaker, Retry.decorateSupplier(retry, risky));
+          return decorated.get();
+      }
+  }
+challenge: |
+  The circuit breaker wraps the retry, so the breaker only ever sees ONE
+  outcome per call to chargeAlwaysFails() -- every one of the 5 retry
+  attempts genuinely reaches the (simulated) failing dependency, and the
+  breaker never gets a chance to open and stop them. Fix this by
+  swapping the decoration order to
+  Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(circuitBreaker, risky)),
+  so each individual attempt is recorded by the breaker separately --
+  after 2 real failures it opens, and the remaining retry attempts fail
+  fast with CallNotPermittedException instead of calling risky again,
+  keeping callCount at exactly 2.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Whichever decorator is applied LAST (outermost) sees each call the OTHER decorator lets through as a single unit -- order changes what each one actually observes."
+  - "Change the decoration line to: Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(circuitBreaker, risky));"
+xp_reward: 15
+achievement: resilience_master
+category: resilience
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "Retry\\.decorateSupplier\\(retry, CircuitBreaker\\.decorateSupplier\\(circuitBreaker, risky\\)\\)"
+concept_tags: [resilience, circuit_breaker, retry, resilience4j, decorator_order]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+  import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+  public class PaymentGatewayTest {
+      @Test
+      void retryFailsFastOnceCircuitBreakerOpens() {
+          PaymentGateway gw = new PaymentGateway();
+          assertThatThrownBy(gw::chargeAlwaysFails).isInstanceOf(CallNotPermittedException.class);
+          assertThat(gw.callCount).isEqualTo(2);
+      }
+  }

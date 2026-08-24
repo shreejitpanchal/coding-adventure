@@ -33,9 +33,10 @@ through in a few focused minutes, not tutorials to sit through.
   Thread Scheduling, Sync vs Async, Functional Programming, and
   Recursion — categories that genuinely fit a single compiled file, unlike
   packaging/deployment/observability which assume a package manager or
-  framework C++ doesn't have here), Spring covers 5 (Dependency
+  framework C++ doesn't have here), Spring covers 6 (Dependency
   Injection, Bean Lifecycle & Scopes, Configuration & Profiles,
-  Application Events, and Aspect-Oriented Programming).
+  Application Events, Aspect-Oriented Programming, and Resilience
+  Patterns).
   - **Python** — 75 exercises (mutable defaults, race conditions, float
     precision, silent exception swallowing, GIL vs true parallelism, and
     more).
@@ -51,18 +52,21 @@ through in a few focused minutes, not tutorials to sit through.
     future/shared_future/launch-policy sync-vs-async gotchas, lambda
     closures and std::transform/accumulate, memoization and mutual
     recursion, and more).
-  - **Spring** — 25 exercises (constructor vs field injection, ambiguous
+  - **Spring** — 30 exercises (constructor vs field injection, ambiguous
     beans and @Qualifier/@Primary, singleton vs prototype scope,
     @PostConstruct/@PreDestroy, @Lazy, @Value placeholder resolution,
     @Profile-gated beans, ApplicationEvent/@EventListener including
-    conditional SpEL listeners, and Spring AOP's @Before/@AfterReturning/
+    conditional SpEL listeners, Spring AOP's @Before/@AfterReturning/
     @Around advice including the classic self-invocation-bypasses-the-
-    proxy gotcha, and more), using plain Spring Framework
-    (spring-context/spring-test/spring-aop) rather than Spring Boot, so
-    `mvn test` stays fast and fully offline after the shared scaffold's
-    dependencies are warmed once.
+    proxy gotcha, and Resilience4j's CircuitBreaker/Retry/RateLimiter/
+    fallback decorators including the non-obvious decoration-order gotcha
+    when combining a circuit breaker with a retry, and more), using plain
+    Spring Framework (spring-context/spring-test/spring-aop/
+    resilience4j-all) rather than Spring Boot, so `mvn test` stays fast
+    and fully offline after the shared scaffold's dependencies are
+    warmed once.
 - **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
-  questions, 34 Spring questions, reshuffled every session.
+  questions, 44 Spring questions, reshuffled every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
 - **Real execution, not a simulated sandbox** — Python exercises run

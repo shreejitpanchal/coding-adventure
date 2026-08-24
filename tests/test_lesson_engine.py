@@ -87,12 +87,13 @@ def test_loads_cpp_content():
 
 def test_loads_spring_content():
     engine = ExerciseEngine("spring")
-    assert len(engine) == 25
+    assert len(engine) == 30
     assert engine.has("dependency_injection_05")
     categories = engine.categories()
-    assert len(categories) == 5
+    assert len(categories) == 6
     assert "dependency_injection" in categories
     assert "bean_lifecycle" in categories
     assert "configuration_profiles" in categories
     assert "events" in categories
     assert "aop" in categories
+    assert "resilience" in categories

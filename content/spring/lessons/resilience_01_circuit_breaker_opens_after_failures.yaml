@@ -1,0 +1,80 @@
+id: resilience_01
+title: "The Gateway That Kept Calling a Dead Service"
+language: spring
+level: 26
+objective: "Wrap a risky call in a Resilience4j CircuitBreaker so repeated failures trip it open and short-circuit further calls instead of hammering a failing dependency."
+explanation: |
+  A circuit breaker tracks recent outcomes (a sliding window) and, once
+  the failure rate crosses a threshold, "opens" -- for a configured
+  duration, every call is rejected immediately with
+  CallNotPermittedException instead of ever reaching the real
+  function. This protects an already-struggling downstream dependency
+  from being hit with even more traffic while it recovers, and gives
+  the calling code a fast, predictable failure instead of waiting on
+  (or retrying against) something that's already down.
+  CircuitBreaker.decorateSupplier(breaker, supplier) wraps any
+  Supplier<T> with this behavior.
+example_code: |
+  CircuitBreaker breaker = CircuitBreaker.of("payment", config);
+  Supplier<String> decorated = CircuitBreaker.decorateSupplier(breaker, () -> {
+      ...
+  });
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class PaymentGateway {
+      public int failures = 0;
+
+      public String charge(boolean shouldFail) {
+          if (shouldFail) {
+              failures++;
+              throw new RuntimeException("payment failed");
+          }
+          return "charged";
+      }
+  }
+challenge: |
+  charge() calls straight through with no protection -- every single
+  call reaches the (simulated) downstream service, no matter how many
+  consecutive failures came before it. Fix this by creating a
+  CircuitBreaker field (a 4-call sliding window, 50% failure rate
+  threshold) in the constructor, and wrapping the risky logic with
+  CircuitBreaker.decorateSupplier(circuitBreaker, ...) inside charge(),
+  so once the breaker opens, further calls fail fast with
+  CallNotPermittedException instead of incrementing failures again.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "CircuitBreakerConfig.custom().slidingWindowSize(4).failureRateThreshold(50).waitDurationInOpenState(Duration.ofSeconds(30)).build();"
+  - "circuitBreaker = CircuitBreaker.of(\"payment\", config); then CircuitBreaker.decorateSupplier(circuitBreaker, () -> { ... }).get();"
+xp_reward: 15
+achievement: null
+category: resilience
+category_level: 1
+difficulty: deep_dive
+contains_patterns:
+  - "CircuitBreaker\\.decorateSupplier"
+concept_tags: [resilience, circuit_breaker, resilience4j]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+  import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+  public class PaymentGatewayTest {
+      @Test
+      void opensAfterFailureThresholdAndShortCircuits() {
+          PaymentGateway gw = new PaymentGateway();
+          assertThatThrownBy(() -> gw.charge(true)).isInstanceOf(RuntimeException.class);
+          assertThatThrownBy(() -> gw.charge(true)).isInstanceOf(RuntimeException.class);
+          assertThat(gw.charge(false)).isEqualTo("charged");
+          assertThatThrownBy(() -> gw.charge(true)).isInstanceOf(RuntimeException.class);
+          int failuresBefore = gw.failures;
+          assertThatThrownBy(() -> gw.charge(true)).isInstanceOf(CallNotPermittedException.class);
+          assertThat(gw.failures).isEqualTo(failuresBefore);
+      }
+  }

@@ -1,0 +1,66 @@
+id: resilience_03
+title: "The Call That Wasn't Allowed to Happen Yet"
+language: spring
+level: 28
+objective: "Use Resilience4j's RateLimiter to cap how many calls can go through within a given period, rejecting anything over the limit."
+explanation: |
+  A rate limiter caps the number of permitted calls within a rolling
+  time window -- useful for staying under a downstream API's rate
+  limit, or protecting your own service from being overwhelmed.
+  RateLimiter.decorateSupplier(limiter, supplier) wraps a call so that
+  once the configured number of permits for the current period is used
+  up, further calls are rejected with RequestNotPermitted (with a
+  timeoutDuration of zero, meaning "reject immediately" rather than
+  "wait for a permit to free up").
+example_code: |
+  RateLimiter limiter = RateLimiter.of("payment", config);
+  Supplier<String> decorated = RateLimiter.decorateSupplier(limiter, () -> "ok");
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class PaymentGateway {
+      public String call() {
+          return "ok";
+      }
+  }
+challenge: |
+  call() has no rate limiting at all -- it can be called as many times
+  as anyone likes, with no protection. Fix this by creating a
+  RateLimiter field (limitForPeriod 1, a 10-second refresh period, zero
+  timeout so an over-limit call is rejected immediately rather than
+  waiting) and wrapping the logic with
+  RateLimiter.decorateSupplier(rateLimiter, ...) inside call(), so a
+  second call within the same period throws RequestNotPermitted instead
+  of succeeding.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "RateLimiterConfig.custom().limitForPeriod(1).limitRefreshPeriod(Duration.ofSeconds(10)).timeoutDuration(Duration.ZERO).build();"
+  - "RateLimiter rateLimiter = RateLimiter.of(\"payment\", config); then RateLimiter.decorateSupplier(rateLimiter, () -> \"ok\").get();"
+xp_reward: 10
+achievement: null
+category: resilience
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "RateLimiter\\.decorateSupplier"
+  - "RateLimiter\\.of\\("
+concept_tags: [resilience, rate_limiter, resilience4j]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+  import org.junit.jupiter.api.Test;
+  import static org.assertj.core.api.Assertions.assertThat;
+  import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+  public class PaymentGatewayTest {
+      @Test
+      void secondCallWithinPeriodIsRejected() {
+          PaymentGateway gw = new PaymentGateway();
+          assertThat(gw.call()).isEqualTo("ok");
+          assertThatThrownBy(gw::call).isInstanceOf(RequestNotPermitted.class);
+      }
+  }
