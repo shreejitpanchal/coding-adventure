@@ -4,20 +4,60 @@ language: python
 level: 51
 objective: "Fix infinite recursion caused by a missing base case."
 explanation: |
-  Every recursive function needs at least one base case -- a condition
-  where it stops calling itself and just returns. Without one, each call
-  makes another call, forever, until Python's recursion limit is hit and
-  a RecursionError is raised. The fix is always the same shape: check for
-  the stopping condition first, and return directly instead of recursing
-  further.
+  Every recursive function needs two parts working together: a
+  recursive case (the function calling itself with a "smaller" version
+  of the problem) and at least one base case -- a condition where it
+  recognizes the problem is now trivial and stops calling itself,
+  returning a direct answer instead. Without a base case, or with one
+  that the recursive calls never actually reach, each call makes
+  another call, which makes another, forever, with no way for the chain
+  to unwind -- eventually Python's built-in recursion limit (a few
+  thousand frames, guarding against the process silently exhausting the
+  real call stack and crashing harder) is hit, and a `RecursionError` is
+  raised. `countdown(n)` with no base case at all doesn't even have a
+  *broken* stopping condition -- it simply never checks for one,
+  decrementing `n` past 0 into negative numbers indefinitely, which is
+  the most basic version of this bug.
+
+  The fix is always the same shape, regardless of what the recursive
+  function actually computes: identify the smallest, simplest input the
+  function needs to handle directly (here, "we've printed down to 0,
+  there's nothing left to count down"), check for that condition
+  *before* making the recursive call, and `return` immediately when
+  it's met rather than recursing further. It's worth being precise
+  about *where* the base case actually needs to be checked -- placing
+  the check after doing the work for the current call (print, then
+  check, then maybe recurse) versus before (check, maybe return, then
+  do the work and recurse) changes exactly which values get processed
+  before the function stops, and getting that ordering subtly wrong is
+  itself a common source of off-by-one bugs in otherwise-correct
+  recursive functions.
 example_code: |
+  # The trap: no base case at all -- n decrements forever past 0.
+  def countdown_broken(n):
+      print(n)
+      countdown_broken(n - 1)      # never checks for a stopping condition
+
+  # countdown_broken(3) -- prints 3, 2, 1, 0, -1, -2, ... until RecursionError
+
+  # Fix: check the stopping condition FIRST, return directly when met.
   def countdown(n):
       if n < 0:
-          return
+          return                   # base case: nothing left to count down
       print(n)
-      countdown(n - 1)
+      countdown(n - 1)             # recursive case: smaller problem
 
-  countdown(2)
+  countdown(2)                     # 2, 1, 0
+
+  # Placement matters: this variant stops at the SAME point, just checked earlier.
+  def countdown_v2(n):
+      if n == 0:
+          print(n)
+          return                   # base case checked before recursing further
+      print(n)
+      countdown_v2(n - 1)
+
+  countdown_v2(3)                  # 3, 2, 1, 0
 starter_code: |
   def countdown(n):
       print(n)

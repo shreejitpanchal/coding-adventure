@@ -5,14 +5,50 @@ level: 7
 objective: "Rewrite an explicit accumulator loop as a list comprehension."
 explanation: |
   A list comprehension expresses "build a new list by transforming and
-  filtering an iterable" in one line, and is idiomatic Python for exactly
-  this shape of loop. It's not just shorter -- it also signals intent
-  ("I'm building a list") more clearly than a bare for-loop with an
-  append call buried inside it.
+  optionally filtering an iterable" as a single expression, and it's the
+  idiomatic Python way to write exactly this shape of loop: initialize
+  an empty list, iterate, conditionally transform, append. It's not
+  merely shorter -- it also signals intent up front. A bare `for` loop
+  with an `append()` call somewhere inside its body makes a reader
+  scan the whole loop to figure out what's being built and under what
+  condition; a comprehension puts the "what" (the expression) and the
+  "when" (the filter) both in the first line, before any control flow.
+  The general shape is `[expression for item in iterable if condition]`
+  -- the `if` clause is optional when there's nothing to filter, and it
+  can be chained with a second `for` to flatten nested iteration
+  (`[x for row in matrix for x in row]`) without needing nested loops at
+  all.
+
+  Comprehensions aren't just a stylistic preference either -- CPython
+  actually compiles them to their own specialized bytecode (a dedicated
+  scope with an optimized loop), which tends to make them measurably
+  faster than the equivalent explicit loop with repeated `.append()`
+  calls, since each `.append()` is an attribute lookup and a method call
+  that the comprehension's bytecode skips entirely. The same
+  transform-and-filter idea extends to dict and set comprehensions
+  (`{k: v for k, v in pairs}`, `{x for x in items}`) and to generator
+  expressions (`(x for x in items)`, using parentheses instead of
+  brackets), which produce a lazy iterator instead of materializing a
+  full list -- useful when the source is huge and you only need to
+  consume it once.
 example_code: |
+  # The explicit loop being replaced:
   words = ["go", "python", "hi", "rust"]
+  long_words_loop = []
+  for w in words:
+      if len(w) > 2:
+          long_words_loop.append(w.upper())
+  print(long_words_loop)                          # ['PYTHON', 'RUST']
+
+  # As a comprehension -- expression, iteration, and filter in one line:
   long_words = [w.upper() for w in words if len(w) > 2]
-  print(long_words)
+  print(long_words)                                # ['PYTHON', 'RUST']
+
+  # The same idea generalizes to dicts, sets, and lazy generators:
+  lengths = {w: len(w) for w in words}             # dict comprehension
+  unique_lengths = {len(w) for w in words}         # set comprehension
+  lazy_upper = (w.upper() for w in words)          # generator, not a list
+  print(lengths, unique_lengths, next(lazy_upper))
 starter_code: |
   numbers = [1, 2, 3, 4, 5, 6]
   evens = []

@@ -4,16 +4,49 @@ language: python
 level: 3
 objective: "Fix a comparison that checks object identity (`is`) where it should check equality of contents (`==`)."
 explanation: |
-  `is` asks "are these literally the same object in memory?" `==` asks
-  "do these compare as equal?" Two separately-built lists with identical
-  contents are almost always different objects, so `is` returns False even
-  when the data is what you'd call "the same." This trips up plenty of
-  experienced developers, especially coming from languages where `==`
-  means identity by default.
+  `is` asks one very specific question: "are these two names bound to
+  the exact same object in memory?" -- equivalent to comparing
+  `id(a) == id(b)`. `==` asks a completely different question: "do these
+  two objects compare as equal?", and what that actually means is up to
+  each type's own `__eq__` method (lists compare element-by-element,
+  dicts compare key/value pairs, custom classes get to define whatever
+  notion of equality makes sense for them). Two separately built
+  containers with identical contents -- `[1, 2, 3]` built twice, a dict
+  built twice -- are almost always two different objects living at
+  different memory addresses, so `is` correctly reports False even
+  though most people would call the *data* "the same." Using `is` where
+  `==` was meant trips up plenty of experienced developers, especially
+  anyone coming from a language where `==` compares by identity by
+  default and content-equality needs its own method (Java's
+  `.equals()`, for instance).
+
+  The confusion is made worse by an implementation detail that's easy to
+  mistake for a rule: CPython caches small integers (-5 to 256) and
+  short string literals, so `x = 5; y = 5; x is y` often evaluates to
+  True purely by accident of that cache -- not because `is` is a valid
+  substitute for `==` on integers. Relying on that behavior is a bug
+  waiting to surface the moment the numbers get bigger or the strings
+  get built dynamically instead of appearing as literals. The one place
+  `is` is unambiguously the *right* tool, not just a shortcut, is
+  comparing against the singletons `None`, `True`, and `False` --
+  `if x is None` is preferred over `if x == None` precisely because it
+  can never be fooled by a custom `__eq__` that claims to equal `None`.
 example_code: |
   a = {"id": 1}
   b = {"id": 1}
-  print(a == b)
+  print(a == b)   # True  -- same contents
+  print(a is b)   # False -- two different dict objects
+
+  # The integer cache makes `is` LOOK safe here -- it isn't a rule.
+  small_a, small_b = 5, 5
+  print(small_a is small_b)          # True, but only by cache accident
+
+  big_a, big_b = 10_000, 10_000
+  print(big_a is big_b)              # False -- outside the cached range
+
+  # `is` is the RIGHT tool for singleton checks:
+  value = None
+  print(value is None)               # preferred over `value == None`
 starter_code: |
   def has_same_items(a, b):
       return a is b

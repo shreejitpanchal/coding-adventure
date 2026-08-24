@@ -4,17 +4,54 @@ language: python
 level: 66
 objective: "Fix config-loading code that crashes when an environment variable isn't set, instead of falling back to a sensible default."
 explanation: |
-  Reading required config with `os.environ["NAME"]` crashes with a
-  KeyError the moment that variable isn't set -- which is exactly what
-  happens in a fresh environment, a local dev machine, or a misconfigured
-  deploy. `os.environ.get("NAME", default)` degrades gracefully instead,
-  and remembering to convert the (always-string) result to the right
-  type is just as important as the default itself.
+  `os.environ` behaves like a regular dict, and indexing it with
+  `os.environ["NAME"]` inherits dict's exact failure mode: a `KeyError`
+  the instant that key isn't present. For config that's genuinely
+  required to run at all, that's arguably the right behavior -- fail
+  loudly and immediately rather than limping along without it. But for
+  anything that has a sensible default, an unset variable is an
+  expected, common situation (a fresh environment, a local dev machine
+  that never bothered to set it, a container image built without every
+  optional variable) rather than a genuine error, and crashing on it is
+  needlessly fragile. `os.environ.get("NAME", default)` is the standard
+  fix -- it mirrors `dict.get()`'s behavior exactly, returning `default`
+  instead of raising when the key is absent.
+
+  The detail that trips people up even after they remember `.get()`:
+  every single value in `os.environ` is a string, always, no matter
+  what it semantically represents -- there's no such thing as an
+  integer or boolean environment variable at the OS level, only text.
+  That means `os.environ.get("TIMEOUT_SECONDS", "30")` returns the
+  *string* `"30"` in the fallback case (not the int `30`), and the
+  string `"45"` in the case where it's actually set -- either way, the
+  caller must explicitly convert it (`int(...)`) to get a usable
+  number. It's easy to write the default as the *target* type by
+  mistake (`os.environ.get("TIMEOUT_SECONDS", 30)`, an int default) and
+  have it work fine in the fallback branch while producing an
+  inconsistent type (`int` sometimes, `str` other times) whenever the
+  variable actually is set in the environment -- always default with
+  the same string-typed value the variable itself would hold, then
+  convert the whole expression once, uniformly.
 example_code: |
   import os
 
+  # The trap: required-style indexing crashes on anything not explicitly set.
+  def get_port_unsafe():
+      return os.environ["PORT"]        # KeyError if PORT isn't set
+
+  # Fix: .get() with a default, degrading gracefully.
   timeout = int(os.environ.get("TIMEOUT_SECONDS", "30"))
-  print(timeout)
+  print(timeout)                        # 30 if unset, or the real value if set
+
+  # A subtler trap: defaulting with the WRONG type is inconsistent.
+  def get_timeout_inconsistent():
+      return os.environ.get("TIMEOUT_SECONDS", 30)   # int default!
+  # Returns int 30 when unset, but str "45" when TIMEOUT_SECONDS=45 is set --
+  # two different types depending on environment, a bug waiting to happen.
+
+  # Fix: default with the SAME (string) type, convert once at the end.
+  def get_timeout():
+      return int(os.environ.get("TIMEOUT_SECONDS", "30"))   # always an int
 starter_code: |
   import os
 

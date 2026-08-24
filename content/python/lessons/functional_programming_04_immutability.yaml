@@ -4,14 +4,69 @@ language: python
 level: 49
 objective: "Fix a function that mutates its input in place when it should return a new, independent immutable value."
 explanation: |
-  A mutable object passed into a function can be mutated by that
-  function -- surprising the caller, whose own reference now silently
-  reflects the change too. Functional style favors returning a new value
-  instead of mutating the input, and an immutable type (like
-  typing.NamedTuple, which can't be changed after construction at all)
-  makes that the only option, ruling this class of bug out entirely.
+  Python passes object references by value -- a function receives the
+  same underlying object the caller has, not a copy of it. For an
+  immutable value like an `int` or a `str`, that distinction is
+  invisible, since there's no way to mutate it anyway. But for a
+  mutable object like a plain class instance, the function is holding
+  the *exact same object* the caller's variable points to, and any
+  in-place mutation it performs (`point.x += dx`) is visible through
+  every reference to that object, including the caller's original one
+  -- even if the function also returns something, suggesting (falsely)
+  that it produced something new. That's precisely the bug here:
+  `move(p1, 1, 1)` mutates `p1` in place *and* returns it, so `p1` and
+  `p2` end up being the same mutated object under two different names,
+  when the caller's intent was clearly to get a second, independent
+  point while leaving the first alone.
+
+  Functional style's answer to this whole bug class is to prefer
+  *returning a new value* over *mutating the input*, and `typing.
+  NamedTuple` makes that the only option available, structurally --
+  its fields simply cannot be reassigned after construction (attempting
+  `point.x = 5` on a NamedTuple instance raises `AttributeError`), so
+  "mutate in place" isn't a code path that can exist by accident. A
+  function operating on a NamedTuple is forced to build and return a
+  new instance (`Vector(v.x * factor, v.y * factor)`) rather than
+  mutating fields of the one it received, which automatically preserves
+  every existing reference to the original -- callers never need to
+  worry that passing an object into a function might silently change it
+  out from under them. This is the same trust boundary reasoning that
+  makes immutable data attractive in concurrent code too: an object
+  that can never change after creation can be freely shared across
+  threads with zero risk of one thread's mutation corrupting another's
+  view of it.
 example_code: |
+  # The trap: mutating the input AND returning it, hiding the aliasing.
+  class PointBroken:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  def move_broken(point, dx, dy):
+      point.x += dx               # mutates the CALLER's object in place
+      point.y += dy
+      return point                # returns that SAME object, not a new one
+
+  p1 = PointBroken(0, 0)
+  p2 = move_broken(p1, 1, 1)
+  print(p1.x, p1.y)               # 1 1 -- p1 changed too! p1 and p2 are the same object
+
+  # Fix: an immutable NamedTuple makes in-place mutation structurally impossible.
   from typing import NamedTuple
+
+  class Point(NamedTuple):
+      x: int
+      y: int
+
+  def move(point, dx, dy):
+      return Point(point.x + dx, point.y + dy)   # must build a NEW instance
+
+  p1 = Point(0, 0)
+  p2 = move(p1, 1, 1)
+  print(p1.x, p1.y)               # 0 0 -- original untouched
+  print(p2.x, p2.y)               # 1 1 -- a genuinely new, independent point
+
+  # p1.x = 5 would raise AttributeError -- NamedTuple fields can't be reassigned.
 
   class Vector(NamedTuple):
       x: int
@@ -20,7 +75,7 @@ example_code: |
   def scale(v, factor):
       return Vector(v.x * factor, v.y * factor)
 
-  print(scale(Vector(2, 3), 2))
+  print(scale(Vector(2, 3), 2))   # Vector(x=4, y=6)
 starter_code: |
   class Point:
       def __init__(self, x, y):

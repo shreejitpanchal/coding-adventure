@@ -4,26 +4,70 @@ language: python
 level: 63
 objective: "Fix a @register decorator that never actually registers the decorated function, mimicking how packaging's console_scripts / plugin entry points work."
 explanation: |
-  Packaging systems expose "entry points" -- a name mapped to a callable
-  -- so other tools can discover and invoke plugins without importing
-  them by exact module path. A decorator-based registry (`@register`)
-  is the in-process version of this idea: the decorator's job is to
-  record the function in a shared registry as a side effect, then return
-  the function unchanged so it still works normally when called directly.
+  Real packaging systems expose "entry points" -- declared in
+  `pyproject.toml` under something like `[project.scripts]` or
+  `[project.entry-points."some.group"]` -- so that a *name* (like a
+  CLI command) can be resolved to a *callable* without the caller
+  needing to know or import the exact module path where that callable
+  actually lives. That's what lets `pip install some-tool` make a
+  `some-tool` command available on the shell PATH, or lets a plugin
+  framework discover every installed plugin registered under a shared
+  group name, all without any hardcoded imports naming specific plugin
+  modules. A decorator-based registry (`@register("name")`) is the
+  in-process version of exactly that idea, useful any time a codebase
+  wants "name → callable" lookup without a big hardcoded if/elif chain
+  or a central import list that has to be updated every time a new
+  handler is added.
+
+  The mechanics matter here: `register(name)` is a decorator *factory*
+  -- calling `register("greet")` returns `wrapper`, a function that
+  will actually receive `greet` as its argument, since `@register(
+  "greet")` above a function definition is exactly equivalent to `greet
+  = register("greet")(greet)`. `wrapper`'s job has two parts, and both
+  matter: it must record `func` into the shared registry dict as a side
+  effect (`COMMANDS[name] = func`), *and* it must return `func`
+  unchanged afterward -- forgetting the registration leaves the
+  registry permanently empty (as in the buggy version here), while
+  forgetting the return would make `greet` become `None` after
+  decoration, breaking every normal call to `greet()` even outside the
+  registry. `name` itself is available inside `wrapper` purely through
+  closure -- it was captured from `register`'s own argument, without
+  needing to be passed to `wrapper` explicitly.
 example_code: |
+  # The trap: wrapper returns func unchanged, but never actually registers it.
+  COMMANDS_BROKEN = {}
+  def register_broken(name):
+      def wrapper(func):
+          return func                  # registry is NEVER updated!
+      return wrapper
+
+  @register_broken("greet")
+  def greet_broken():
+      return "hello"
+
+  # COMMANDS_BROKEN["greet"] would raise KeyError -- registry stayed empty
+
+  # Fix: wrapper must BOTH register func AND return it unchanged.
   PLUGINS = {}
 
   def register(name):
       def wrapper(func):
-          PLUGINS[name] = func
-          return func
+          PLUGINS[name] = func          # side effect: record in the registry
+          return func                   # func still works normally when called directly
       return wrapper
 
   @register("shout")
   def shout(text):
       return text.upper()
 
-  print(PLUGINS["shout"]("hi"))
+  print(PLUGINS["shout"]("hi"))         # HI -- looked up by name, not imported directly
+  print(shout("hi"))                    # HI -- still works as a normal function too
+
+  # This is the in-process analogue of pyproject.toml's real entry points:
+  # [project.scripts]
+  # my-command = "my_package.cli:main"
+  # -- pip resolves "my-command" to my_package.cli.main WITHOUT the caller
+  # ever importing my_package.cli by name.
 starter_code: |
   COMMANDS = {}
 

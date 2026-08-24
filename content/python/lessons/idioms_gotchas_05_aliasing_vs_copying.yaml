@@ -4,15 +4,54 @@ language: python
 level: 5
 objective: "Fix code that mutates a list through an alias when an independent copy was intended."
 explanation: |
-  `backup = original` doesn't copy a list -- it makes `backup` point at the
-  exact same list object as `original`. Any mutation through either name
-  (append, sort, etc.) is visible through the other. To get an independent
-  copy, use `.copy()`, `list(x)`, or a full slice `x[:]`.
+  In Python, variables are names bound to objects, not boxes that
+  contain values -- `backup = original` doesn't create a second list, it
+  just gives the *same* list object a second name. Both names are now
+  aliases pointing at one underlying object, so any mutation performed
+  through either name -- `.append()`, `.sort()`, item assignment -- is
+  visible through the other, because there was never a second copy to
+  begin with. This is easy to miss because assignment for immutable
+  types (`x = 5; y = x`) behaves indistinguishably whether you think of
+  it as aliasing or copying, since numbers can't be mutated anyway --
+  the distinction only becomes observable, and dangerous, with mutable
+  types like lists, dicts, and sets.
+
+  Getting an independent copy requires explicitly asking for one:
+  `.copy()`, the `list()`/`dict()`/`set()` constructor called on the
+  original, or a full slice `x[:]` for lists all create a genuinely new
+  container object with the same elements. But there's a further wrinkle
+  worth knowing about even once you're copying correctly: all of those
+  are *shallow* copies -- they duplicate the outer container, but if
+  its elements are themselves mutable (a list of lists, a dict of
+  dicts), the inner objects are still shared between the original and
+  the copy. Mutating a nested list inside a "copy" still leaks back into
+  the original. For genuinely independent data all the way down, use
+  `copy.deepcopy()`, which recursively copies every nested mutable
+  object too -- at the cost of being noticeably slower for large,
+  deeply nested structures.
 example_code: |
-  original = ["draft"]
-  backup = original.copy()
-  original.append("final")
-  print(backup)
+  # The trap: `backup = original` is an alias, not a copy.
+  original = [1, 2, 3]
+  backup_buggy = original
+  original.append(4)
+  print(backup_buggy)          # [1, 2, 3, 4] -- mutated through the alias!
+
+  # Fix: an explicit (shallow) copy.
+  original2 = ["draft"]
+  backup = original2.copy()    # or list(original2), or original2[:]
+  original2.append("final")
+  print(backup)                # ['draft'] -- independent
+
+  # The remaining wrinkle: shallow copies still share NESTED objects.
+  nested = [[1, 2], [3, 4]]
+  shallow = nested.copy()
+  nested[0].append(99)
+  print(shallow)                # [[1, 2, 99], [3, 4]] -- inner list leaked!
+
+  import copy
+  deep = copy.deepcopy(nested)
+  nested[0].append(100)
+  print(deep)                   # unaffected -- fully independent
 starter_code: |
   original = [1, 2, 3]
   backup = original

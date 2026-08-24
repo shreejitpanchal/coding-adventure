@@ -4,19 +4,61 @@ language: python
 level: 12
 objective: "Replace raw string constants with a proper Enum to remove the risk of typo-based bugs."
 explanation: |
-  Plain string/int constants like STATUS_DONE = "done" give no protection
-  against typos -- comparing against "dnoe" just silently fails. An Enum
-  is a fixed, checkable set of named values, so a typo becomes an
-  AttributeError at the point of the mistake instead of a silent bug
-  somewhere downstream.
+  Plain string or integer constants like `STATUS_DONE = "done"` are just
+  ordinary variables holding ordinary values -- Python has no idea
+  they're meant to represent one option out of a fixed, closed set.
+  That means there's zero protection against typos: comparing a status
+  against the string `"dnoe"` instead of `"done"` doesn't raise
+  anything, it just silently evaluates to `False` forever, and the bug
+  hides until someone notices the wrong branch keeps running.
+  `enum.Enum` fixes this by making the set of valid values an actual
+  type: `Status.DONE` is a real attribute that either exists or raises
+  `AttributeError` immediately, at the exact line with the typo, instead
+  of producing a wrong-but-valid-looking comparison far away from where
+  the mistake was made. Enum members also compare by identity, are
+  hashable (so they work as dict keys), and print as
+  `Status.DONE` instead of a bare unhelpful string, which makes
+  debugging output far more informative than a raw string ever is.
+
+  `auto()` is a convenience that assigns increasing integer values
+  automatically, for cases where the specific number doesn't matter and
+  only distinctness does -- but plain Enums can just as easily assign
+  meaningful values explicitly (`RED = "red"`, `PENDING = 1`) when the
+  underlying value needs to match something external, like a database
+  column or a JSON payload. A pattern-matching `match` statement (or a
+  chain of `if`/`elif`) over enum members also reads more clearly than
+  the same logic over interchangeable strings, since every branch is
+  visibly checking against the same closed, named family of options.
 example_code: |
   from enum import Enum, auto
 
-  class Direction(Enum):
-      NORTH = auto()
-      SOUTH = auto()
+  # The trap: string constants give no protection against typos.
+  STATUS_PENDING = "pending"
+  STATUS_DONE = "done"
+  status = "dnoe"                          # typo -- looks like STATUS_DONE
+  print(status == STATUS_DONE)              # False, silently, no error
 
-  print(Direction.NORTH)
+  # Fix: an Enum makes the valid set of values a real, checkable type.
+  class Status(Enum):
+      PENDING = auto()
+      DONE = auto()
+
+  def describe(status):
+      if status == Status.PENDING:
+          return "still working"
+      elif status == Status.DONE:
+          return "finished"
+      return "unknown"
+
+  print(describe(Status.DONE))              # finished
+  print(Status.DONE)                        # Status.DONE
+  # Status.DNOE would raise AttributeError immediately -- no silent typo.
+
+  # Enums can also carry meaningful explicit values, not just auto():
+  class Color(Enum):
+      RED = "red"
+      GREEN = "green"
+  print(Color.RED.value)                    # 'red'
 starter_code: |
   STATUS_PENDING = "pending"
   STATUS_DONE = "done"

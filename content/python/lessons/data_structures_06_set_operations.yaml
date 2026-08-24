@@ -4,14 +4,47 @@ language: python
 level: 18
 objective: "Replace a nested-loop membership check with a set intersection."
 explanation: |
-  `name in team_b` on a list is O(n) per check, making the whole loop
-  O(n*m). Converting both collections to sets turns "find common
-  elements" into a single O(n+m) intersection (`&`), which is both faster
-  and more directly expresses the intent.
+  `name in team_b` on a `list` is O(n) -- Python has to scan from the
+  start comparing each element until it finds a match or runs out.
+  Doing that check once per element of `team_a` makes the whole loop
+  O(n*m): a nested-loop cost hiding behind what looks like a single
+  `for` loop, because the `in` check silently costs O(m) every single
+  time. Sets solve this at the data-structure level: they're backed by
+  a hash table, so `x in some_set` is O(1) on average -- the same
+  reason dict key lookups are O(1). Converting both collections to sets
+  turns membership testing from linear scan into hash lookup, and turns
+  "find the common elements" from a nested loop into a single set
+  operation: `a & b` (intersection) directly expresses "elements in
+  both," running in O(n+m) instead of O(n*m).
+
+  Sets support the full family of mathematical set operations as
+  operators, all reading as directly as the intersection does: `a | b`
+  is union (elements in either), `a - b` is difference (in `a` but not
+  `b`), `a ^ b` is symmetric difference (in exactly one of the two, not
+  both). Each has an equivalent method too (`a.intersection(b)`,
+  `a.union(b)`, ...) which additionally accepts any iterable, not just
+  another set, useful when one side of the comparison is still a list
+  or generator you don't want to materialize into a set first. The one
+  real constraint: sets can only hold *hashable* elements, so a set of
+  lists isn't possible (lists are mutable and therefore unhashable) --
+  tuples work fine as set elements precisely because they're immutable.
 example_code: |
+  # The trap: `in` on a list scans linearly -- O(n) per check.
+  team_a = ["alice", "bob", "carol"]
+  team_b = ["bob", "dave", "alice"]
+  both_slow = [name for name in team_a if name in team_b]  # O(n*m) overall
+
+  # Fix: sets turn membership testing into O(1) hash lookups.
   a = {1, 2, 3, 4}
   b = {3, 4, 5, 6}
-  print(sorted(a & b))
+  print(sorted(a & b))               # [3, 4]      -- intersection
+  print(sorted(a | b))               # [1..6]      -- union
+  print(sorted(a - b))               # [1, 2]      -- difference
+  print(sorted(a ^ b))               # [1, 2, 5, 6] -- symmetric difference
+
+  team_a_set = {"alice", "bob", "carol"}
+  team_b_set = {"bob", "dave", "alice"}
+  print(sorted(team_a_set & team_b_set))   # ['alice', 'bob']
 starter_code: |
   team_a = ["alice", "bob", "carol"]
   team_b = ["bob", "dave", "alice"]

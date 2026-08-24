@@ -4,17 +4,49 @@ language: python
 level: 56
 objective: "Implement the standard check for whether Python is running inside a virtual environment: sys.prefix differing from sys.base_prefix."
 explanation: |
-  When a virtual environment is active, `sys.prefix` points at the venv's
-  own directory while `sys.base_prefix` still points at the real system
-  Python that created it -- outside a venv, they're the same path. That
-  comparison is the standard, dependency-free way to detect "am I
-  running inside a venv right now," used by pip and other tools
-  internally.
+  Every running Python interpreter has a `sys.prefix` -- the directory
+  it treats as its installation root, used to find its standard library
+  and site-packages. Outside a virtual environment, `sys.prefix` and
+  `sys.base_prefix` are literally the same path, both pointing at the
+  system Python install. When you activate a venv, `sys.prefix` changes
+  to point at the venv's own directory (where `pip install` will drop
+  packages, isolated from anything else on the machine), but
+  `sys.base_prefix` keeps pointing at the real system Python that the
+  venv was created from and still delegates its standard library to.
+  That divergence -- `sys.prefix != sys.base_prefix` -- is precisely
+  what "a venv is active" means at the interpreter level, and it's the
+  same check pip, `venv`, and other packaging tools use internally
+  rather than relying on environment variables like `VIRTUAL_ENV`
+  (which a venv's activation script sets for the shell's benefit, but
+  which isn't authoritative for the interpreter itself and can be unset
+  or stale).
+
+  This matters in practice any time a script needs to behave
+  differently depending on whether it's running inside an isolated
+  environment -- for example, refusing to run `pip install` against the
+  system Python by accident, or printing a warning when a tool that
+  expects isolation detects none. It's also a good example of why
+  "compare two paths" is sometimes exactly the right level of
+  abstraction: no need to parse `VIRTUAL_ENV`, check for a `pyvenv.cfg`
+  file, or inspect `sys.path` -- the two prefixes already encode the
+  answer directly, because that's literally what they're for.
 example_code: |
+  # The check itself: two paths that differ exactly when a venv is active.
   def in_virtualenv(prefix, base_prefix):
       return prefix != base_prefix
 
-  print(in_virtualenv("/opt/project/.venv", "/opt/project/.venv"))
+  print(in_virtualenv("/opt/project/.venv", "/opt/project/.venv"))  # False -- no venv
+  print(in_virtualenv("/opt/project/.venv", "/usr"))                # True -- venv active
+
+  # In real code, sys supplies both prefixes directly -- no simulation needed:
+  import sys
+  def running_in_venv():
+      return sys.prefix != sys.base_prefix
+
+  # A common real use: refuse to touch the system Python by accident.
+  def require_virtualenv():
+      if not running_in_venv():
+          raise RuntimeError("Refusing to run outside a virtual environment")
 starter_code: |
   def detect_virtualenv(prefix, base_prefix):
       return False

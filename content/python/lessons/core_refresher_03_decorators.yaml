@@ -4,12 +4,36 @@ language: python
 level: 9
 objective: "Write a simple decorator and apply it with @ syntax."
 explanation: |
-  A decorator is a function that takes a function and returns a new
-  function wrapping it -- the `@decorator` syntax above a `def` is just
-  sugar for `func = decorator(func)`. It's the standard pattern for
-  cross-cutting behavior (timing, logging, caching, access control)
-  without touching the wrapped function's own body.
+  A decorator is nothing more exotic than a function that takes a
+  function as input and returns a new (usually wrapping) function as
+  output -- functions being ordinary first-class objects in Python is
+  what makes this possible at all. The `@decorator` line written above
+  a `def` is pure syntax sugar: `@shout` above `def greet(name): ...`
+  is exactly equivalent to writing `def greet(name): ...` followed by
+  `greet = shout(greet)`. Nothing about decorators requires the `@`
+  syntax -- you could apply one by hand as a plain function call, and
+  in fact that's a useful mental model for understanding what's really
+  happening: the name `greet` ends up bound not to the original
+  function, but to whatever `shout` returned.
+
+  The inner `wrapper(*args, **kwargs)` function is what actually runs
+  every time the decorated name is called, and it's written to accept
+  and forward *any* arguments precisely because the decorator doesn't
+  know (and shouldn't need to know) the wrapped function's specific
+  signature -- that's the `*args`/`**kwargs` pattern from the previous
+  exercise, put to real use. This is the standard mechanism for
+  cross-cutting behavior that would otherwise have to be copy-pasted
+  into every function that needs it: timing how long a call takes,
+  logging every invocation, caching results, checking permissions
+  before allowing a call through -- all without touching the wrapped
+  function's own body at all. Real-world decorators typically also
+  apply `functools.wraps(func)` to the inner `wrapper`, which copies
+  over `__name__`, `__doc__`, and other metadata from the original
+  function; without it, every decorated function looks like it's
+  literally named `wrapper` to tools like debuggers, `help()`, and
+  documentation generators.
 example_code: |
+  # A decorator: takes a function, returns a wrapping function.
   def shout(func):
       def wrapper(*args, **kwargs):
           return func(*args, **kwargs).upper()
@@ -19,7 +43,27 @@ example_code: |
   def greet(name):
       return f"hi, {name}"
 
-  print(greet("sam"))
+  print(greet("sam"))                      # HI, SAM
+
+  # @shout is just sugar for this manual equivalent:
+  def greet2(name):
+      return f"hi, {name}"
+  greet2 = shout(greet2)
+  print(greet2("sam"))                     # HI, SAM
+
+  # Real decorators preserve the original name/docstring via functools.wraps:
+  import functools
+  def timed(func):
+      @functools.wraps(func)
+      def wrapper(*args, **kwargs):
+          return func(*args, **kwargs)
+      return wrapper
+
+  @timed
+  def add(a, b):
+      """Adds two numbers."""
+      return a + b
+  print(add.__name__, "-", add.__doc__)    # add - Adds two numbers.
 starter_code: |
   def greet(name):
       return f"Hello, {name}!"

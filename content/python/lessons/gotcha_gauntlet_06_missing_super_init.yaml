@@ -4,23 +4,73 @@ language: python
 level: 35
 objective: "Fix a subclass that overrides __init__ but forgets to call super().__init__(), silently dropping the base class's setup."
 explanation: |
-  Overriding __init__ in a subclass completely replaces the base class's
-  __init__ unless you explicitly call super().__init__(...). Forgetting
-  that call means any attributes the base class sets up (like self.name
-  here) simply never get set -- not a loud error at the point of the
-  mistake, but a quiet AttributeError later wherever that attribute gets
-  used.
+  Defining `__init__` in a subclass doesn't extend the parent class's
+  `__init__` automatically -- it *overrides* it completely, the same
+  way overriding any other method replaces the parent's version rather
+  than running both. `class Dog(Animal): def __init__(self, name):` on
+  its own means Python calls *only* `Dog.__init__`, and `Animal.
+  __init__` (which is where `self.name = name` and `self.sound = "..."`
+  actually happen in the parent) never runs at all unless the subclass
+  explicitly invokes it. That's exactly what `super().__init__(name)`
+  does: it calls the parent class's `__init__` with the given
+  arguments, running whatever setup the parent needs, before (or after,
+  depending on where the call is placed) the subclass's own
+  initialization logic continues.
+
+  What makes this bug class particularly nasty in practice is *where*
+  it manifests versus *where* the actual mistake is: the missing
+  `super().__init__()` call itself raises no error at all -- `Dog("Rex"
+  )` constructs successfully, with no exception, no warning, nothing
+  visibly wrong. The failure only surfaces later, at the first place
+  something tries to actually use `self.name` -- an `AttributeError:
+  'Dog' object has no attribute 'name'` raised far from the `__init__`
+  where the real problem lives, potentially in a completely different
+  method, file, or even a much later point in the program's execution.
+  That gap between cause and symptom is what makes "always call `super
+  ().__init__(...)` as (usually) the first line of an overriding
+  `__init__`, unless you have a specific reason not to set up the
+  parent's state" worth treating as a near-default habit in any class
+  that inherits from something with its own `__init__` logic, rather
+  than something to remember only when a bug report eventually points
+  back to it.
 example_code: |
+  # The trap: overriding __init__ silently drops the parent's setup.
+  class AnimalBroken:
+      def __init__(self, name):
+          self.name = name
+          self.sound = "..."
+
+  class DogBroken(AnimalBroken):
+      def __init__(self, name):
+          self.sound = "Woof"        # never calls super().__init__() !
+
+  d = DogBroken("Rex")               # constructs fine -- NO error here
+  # print(d.name)                    # AttributeError -- fails much LATER, far from the cause
+
+  # Fix: call super().__init__(...) to run the parent's setup too.
+  class Animal:
+      def __init__(self, name):
+          self.name = name
+          self.sound = "..."
+
+  class Dog(Animal):
+      def __init__(self, name):
+          super().__init__(name)     # parent's setup runs first
+          self.sound = "Woof"        # then the subclass's own logic
+
+  d = Dog("Rex")
+  print(d.name)                      # Rex -- correct
+
   class Vehicle:
       def __init__(self, wheels):
           self.wheels = wheels
 
   class Car(Vehicle):
       def __init__(self, wheels, brand):
-          super().__init__(wheels)
+          super().__init__(wheels)   # parent attribute set up correctly
           self.brand = brand
 
-  print(Car(4, "Volvo").wheels)
+  print(Car(4, "Volvo").wheels)      # 4
 starter_code: |
   class Animal:
       def __init__(self, name):

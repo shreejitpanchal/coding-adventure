@@ -4,18 +4,53 @@ language: python
 level: 60
 objective: "Fix a version resolver that ignores the requested pin, to understand why lock files matter for reproducible installs."
 explanation: |
-  A lock file records the exact version actually installed, not just an
-  acceptable range -- so a second install, months later, on a different
-  machine, resolves to the identical version instead of "whatever
-  satisfies the range today." A resolver that doesn't honor an exact pin
-  (returning whatever it feels like) defeats that entire guarantee.
+  A `requirements.txt` with a loose range like `requests>=2.20` is a
+  moving target: whatever satisfies `>=2.20` today might be `2.31.0`,
+  but six months from now, after several new releases, a fresh install
+  of that same file could resolve to `2.35.0` instead -- same file,
+  different installed code, silently. That's the exact failure mode
+  "works on my machine" bugs come from: two developers, or a developer
+  and a CI server, installing the "same" dependencies at different
+  points in time and getting different actual versions. A lock file
+  (`requirements.txt` with exact `==` pins, or a dedicated
+  `poetry.lock`/`Pipfile.lock`/`uv.lock`) closes that gap by recording
+  the *exact* version that was actually resolved and tested against, so
+  every future install -- next week, next year, on a teammate's laptop,
+  in CI -- installs that identical version rather than "whatever
+  satisfies the range as of whenever this runs."
+
+  That guarantee only holds if the resolution step actually honors the
+  pin, though -- a resolver that silently substitutes some other
+  version "close enough" to what was requested defeats the entire
+  point of locking in the first place, and worse, it defeats it
+  *silently*, which is far more dangerous than an install that loudly
+  fails. Raising a clear error when the exact pinned version genuinely
+  isn't available (rather than quietly picking something else) is the
+  correct behavior: it surfaces a real problem -- a lock file that's
+  drifted out of sync with what's actually installable -- immediately
+  and loudly, rather than letting it manifest later as a mysterious
+  runtime difference that's much harder to trace back to its cause.
 example_code: |
+  # The trap: silently substituting "close enough" defeats the whole point.
+  def resolve_version_unsafe(available_versions, pin):
+      return available_versions[0]        # ignores pin entirely!
+
+  # Fix: honor the exact pin, fail loudly if it's genuinely unavailable.
   def resolve_version(available_versions, pin):
       if pin not in available_versions:
           raise ValueError(f"{pin} not available")
       return pin
 
-  print(resolve_version(["1.0.0", "1.1.0"], "1.1.0"))
+  print(resolve_version(["1.0.0", "1.1.0", "1.2.0"], "1.1.0"))   # 1.1.0
+
+  # Why this matters: a loose range resolves differently over time.
+  # requirements.txt: requests>=2.20        <- moving target
+  # requirements.txt: requests==2.31.0      <- locked, reproducible
+  #
+  # A lock file is just this idea applied to a whole dependency tree --
+  # every transitive dependency pinned exactly, not just top-level ones,
+  # so "pip install -r requirements.txt" installs bit-for-bit the same
+  # code on every machine, every time, indefinitely into the future.
 starter_code: |
   def resolve_version(available_versions, pin):
       return available_versions[0]

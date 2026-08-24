@@ -4,24 +4,68 @@ language: python
 level: 45
 objective: "Fix a plain `for` loop over an async generator, which needs `async for` instead."
 explanation: |
-  A function with `yield` inside an `async def` is an async generator --
-  its values are only available through the async iteration protocol
-  (`__anext__`, driven by `async for`), not the regular `for` loop
-  protocol. Using a plain `for` on one raises a TypeError, even though
-  the object looks list-like.
+  A `yield` statement inside a function normally makes it a generator,
+  iterated with a plain `for` loop via the synchronous iteration
+  protocol (`__iter__`/`__next__`). Putting `yield` inside an `async
+  def` function instead creates a distinct kind of object -- an async
+  generator -- iterated through a *separate* protocol
+  (`__aiter__`/`__anext__`), driven by `async for` rather than a plain
+  `for`. This exists for the same reason `async with` exists alongside
+  plain `with`: an async generator's body can `await` between
+  `yield`s (as `numbers()` does here, awaiting `asyncio.sleep(0)`
+  before each `yield`), which lets it, say, fetch one page of results
+  from a database or a paginated API and yield each item, awaiting the
+  next fetch only when the consumer asks for more -- something a
+  regular synchronous generator has no way to express at all, since it
+  has no `await` capability inside its body.
+
+  Calling `numbers()` returns the async generator object itself
+  immediately (unlike calling a plain coroutine, this doesn't need to
+  be awaited to get the object -- only *iterating* it needs `async for`
+  ), but attempting a plain `for n in numbers():` fails with a `TypeError
+  : 'async_generator' object is not iterable`, because a plain `for`
+  loop only knows how to call `__next__`, not `__anext__`. The fix is
+  purely mechanical: `async for n in numbers():` -- swapping which
+  iteration protocol drives the loop -- and it can only appear inside
+  another coroutine (an `async def` function), since driving an async
+  iterator itself requires the ability to `await` at each step, which a
+  synchronous `for` loop's context can't provide.
 example_code: |
   import asyncio
+
+  async def numbers():
+      for i in range(3):
+          await asyncio.sleep(0)      # can await between yields -- a plain generator can't
+          yield i
+
+  # The trap: a plain `for` loop can't drive an async generator's __anext__.
+  async def main_broken():
+      total = 0
+      for n in numbers():             # TypeError: 'async_generator' object is not iterable
+          total += n
+      print(total)
+
+  # asyncio.run(main_broken())        # raises TypeError
+
+  # Fix: async for drives the async iteration protocol correctly.
+  async def main():
+      total = 0
+      async for n in numbers():
+          total += n
+      print(total)                    # 3  (0 + 1 + 2)
+
+  asyncio.run(main())
 
   async def counts():
       for i in range(2):
           await asyncio.sleep(0)
           yield i
 
-  async def main():
+  async def show():
       async for n in counts():
-          print(n)
+          print(n)                    # 0, then 1
 
-  asyncio.run(main())
+  asyncio.run(show())
 starter_code: |
   import asyncio
 

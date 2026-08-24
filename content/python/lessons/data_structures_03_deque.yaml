@@ -4,16 +4,48 @@ language: python
 level: 15
 objective: "Replace a list-as-queue (with pop(0)) with collections.deque for O(1) operations on both ends."
 explanation: |
-  list.pop(0) is O(n) -- every remaining element has to shift left one
-  slot. collections.deque supports O(1) appendleft/append and
-  popleft/pop, making it the right structure whenever you're using a list
-  as a queue (or a ring buffer, or need fast operations at both ends).
+  A Python `list` is really a dynamic array under the hood, backed by
+  one contiguous block of memory -- which is exactly why `.append()` on
+  the *end* is cheap (amortized O(1)) but `.pop(0)` or `.insert(0, x)`
+  at the *front* is expensive: every one of the remaining `n` elements
+  has to physically shift one slot to close (or open) the gap, making
+  it O(n) per call. Do that in a loop and what looks like a simple queue
+  drain is secretly O(n²) overall. `collections.deque` ("double-ended
+  queue") is backed by a different structure entirely -- a doubly
+  linked list of fixed-size blocks -- specifically designed so that
+  `append`/`appendleft` and `pop`/`popleft` are all O(1), no shifting
+  required at either end. The trade-off is that random access by index
+  (`d[500]`) is O(n) on a deque, unlike a list's O(1) -- deques are built
+  for adding/removing at the ends, not indexing into the middle, so pick
+  whichever structure matches how the data actually gets used.
+
+  Beyond plain queues, `deque` has a feature list has no equivalent for:
+  construct one with `maxlen=N` and it automatically becomes a
+  fixed-size ring buffer -- once it's full, appending on one end
+  silently discards the oldest element from the other end, which is
+  exactly the shape needed for "keep only the last N log lines" or "a
+  sliding window over a stream" without writing any manual eviction
+  logic. `deque` also supports `.rotate(n)`, which shifts every element
+  around the deque by `n` positions in O(k) rather than rebuilding the
+  whole sequence.
 example_code: |
   from collections import deque
+
+  # The trap: list.pop(0) shifts every remaining element -- O(n) per call.
+  queue_list = [1, 2, 3]
+  first = queue_list.pop(0)          # O(n): 2 and 3 both shift left
+
+  # Fix: deque gives O(1) operations at both ends.
   d = deque([1, 2, 3])
   d.appendleft(0)
-  print(d.popleft())
-  print(list(d))
+  print(d.popleft())                 # 0
+  print(list(d))                     # [1, 2, 3]
+
+  # Bonus deque feature: maxlen turns it into a fixed-size ring buffer.
+  recent = deque(maxlen=3)
+  for x in [1, 2, 3, 4, 5]:
+      recent.append(x)
+  print(list(recent))                # [3, 4, 5] -- oldest entries evicted
 starter_code: |
   queue = []
   queue.append(1)

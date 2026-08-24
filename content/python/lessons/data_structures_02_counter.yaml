@@ -4,14 +4,48 @@ language: python
 level: 14
 objective: "Use collections.Counter instead of a manual tally dict."
 explanation: |
-  Counter is a dict subclass purpose-built for counting hashable items --
-  Counter(iterable) tallies everything in one call, and most_common(n)
-  gives you the top n items by count without writing any sorting code
-  yourself.
+  `Counter` is a `dict` subclass purpose-built for exactly one job:
+  counting hashable things. `Counter(iterable)` walks the iterable once
+  and tallies every element in a single call -- no manual loop, no
+  `.get(key, 0) + 1` pattern needed, because `Counter` already defaults
+  missing keys to `0` the same way `defaultdict(int)` would (in fact,
+  it's built on that same idea). Beyond just building the tally,
+  `Counter` bundles the operations you almost always want next:
+  `.most_common(n)` returns the top `n` (item, count) pairs already
+  sorted by count descending, without writing any sorting code
+  yourself; called with no argument, `.most_common()` returns every
+  item sorted by count.
+
+  Because `Counter` is a real `dict` subclass, every ordinary dict
+  operation works on it too (`counter[key]`, `len(counter)`, iterating
+  keys), but it also supports arithmetic between two counters that
+  reads naturally: `counter_a + counter_b` merges two tallies by adding
+  counts for shared keys, and `counter_a - counter_b` subtracts them
+  (dropping any resulting non-positive counts, unlike a plain dict
+  subtraction which isn't even defined). `.update(iterable)` adds more
+  items to an existing counter's tally in place, useful for
+  accumulating counts across multiple passes or multiple sources
+  without rebuilding from scratch.
 example_code: |
   from collections import Counter
+
+  # Counter(iterable) tallies everything in one call.
   letters = Counter("mississippi")
-  print(letters.most_common(1))
+  print(letters.most_common(1))              # [('i', 4)]
+  print(letters.most_common(2))              # [('i', 4), ('s', 4)]
+
+  votes = Counter(["dog", "cat", "dog", "dog", "cat", "fish"])
+  print(votes["dog"])                        # 3 -- plain dict-style access
+
+  # Counters support arithmetic between two tallies:
+  more_votes = Counter(["dog", "fish", "fish"])
+  print(votes + more_votes)                  # Counter({'dog': 4, 'fish': 3, 'cat': 2})
+
+  # .update() accumulates more items into an existing tally in place:
+  running_total = Counter()
+  running_total.update("hello")
+  running_total.update("world")
+  print(running_total.most_common(1))        # [('l', 3)]
 starter_code: |
   votes = ["dog", "cat", "dog", "dog", "cat", "fish"]
   tally = {}

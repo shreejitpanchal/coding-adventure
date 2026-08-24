@@ -4,17 +4,55 @@ language: python
 level: 69
 objective: "Fix a health-check function that always reports 'ok', regardless of whether its actual dependencies are healthy."
 explanation: |
-  A deployment's readiness/liveness check exists to let an orchestrator
-  (or a human) know whether the process is actually able to do its job --
-  a health check that always reports "ok" defeats its own purpose,
-  since it can't ever catch a real outage (a downed database, a failed
-  connection). It needs to actually reflect the state of what it's
-  checking.
+  An orchestrator (Kubernetes, a load balancer, a deploy pipeline)
+  periodically calls a running process's health-check endpoint to
+  decide whether to keep sending it traffic, restart it, or hold off
+  marking a rolling deploy successful. That decision is only as good
+  as the check's honesty: a health check that unconditionally reports
+  "ok" regardless of what's actually happening is worse than having no
+  health check at all, because it actively lies -- the orchestrator
+  keeps routing live traffic to a process whose database connection
+  has dropped, or marks a broken deploy as healthy and lets it roll out
+  to every instance, precisely the outage it existed to catch.
+
+  A correct health check has to genuinely reflect the state of the
+  things it's checking -- typically the dependencies the process
+  actually needs to do its job (a database connection, a cache, a
+  downstream service) -- and report unhealthy the moment any critical
+  one is down, not just when *all* of them happen to be down
+  simultaneously. That's why `db_ok and cache_ok` (both must hold) is
+  the right shape, not `db_ok or cache_ok` (either one being fine would
+  mask a real outage in the other). It's also worth distinguishing
+  *readiness* from *liveness* in systems that separate the two:
+  liveness asks "should this process be restarted" (is it deadlocked or
+  crashed), while readiness asks "should traffic be routed here right
+  now" (are its dependencies currently reachable) -- a process can be
+  alive but not ready, e.g. still warming a cache on startup, and
+  conflating the two checks can cause an orchestrator to restart a
+  process that just needs a few more seconds rather than a restart at
+  all.
 example_code: |
+  # The trap: a health check that ignores what it's supposedly checking.
+  def health_check_broken(dependencies_ok):
+      return "ok"                       # always "ok" -- can never catch an outage
+
+  # Fix: actually reflect the state of what's being checked.
   def health_check(db_ok, cache_ok):
       return "ok" if (db_ok and cache_ok) else "unhealthy"
 
-  print(health_check(True, False))
+  print(health_check(True, False))       # unhealthy -- cache is down
+
+  # Why "and", not "or": ANY critical dependency failing should fail the check.
+  def health_check_wrong_logic(db_ok, cache_ok):
+      return "ok" if (db_ok or cache_ok) else "unhealthy"
+  # health_check_wrong_logic(True, False) -> "ok" -- masks the cache outage!
+
+  # Readiness vs liveness: a process can be alive but not yet ready.
+  def liveness_check(is_deadlocked):
+      return "ok" if not is_deadlocked else "restart_me"
+
+  def readiness_check(dependencies_ok, cache_warmed):
+      return "ok" if (dependencies_ok and cache_warmed) else "not_ready"
 starter_code: |
   def health_check(dependencies_ok):
       return "ok"

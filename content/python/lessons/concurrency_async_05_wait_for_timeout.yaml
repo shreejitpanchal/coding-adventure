@@ -4,11 +4,35 @@ language: python
 level: 29
 objective: "Use asyncio.wait_for to bound how long you'll wait for a slow coroutine, falling back gracefully on timeout."
 explanation: |
-  A coroutine that might hang or take too long shouldn't be allowed to
-  block your program indefinitely. asyncio.wait_for(coro, timeout=...)
-  wraps a coroutine with a deadline, raising asyncio.TimeoutError (and
-  cancelling the coroutine) if it isn't done in time -- so you can catch
-  that and fall back instead of hanging.
+  A plain `await slow_coroutine()` will wait exactly as long as that
+  coroutine takes, with no upper bound at all -- if it's talking to a
+  flaky network service that occasionally hangs forever, the awaiting
+  code hangs right along with it. Production code calling anything
+  that might be slow or unreliable needs an explicit deadline, the same
+  way a well-behaved synchronous HTTP client sets a request timeout
+  rather than trusting the server to always respond promptly.
+  `asyncio.wait_for(coro, timeout=seconds)` wraps a coroutine with
+  exactly that deadline: it awaits normally, but if the deadline passes
+  before the coroutine completes, `wait_for` cancels the coroutine (by
+  raising `asyncio.CancelledError` inside it, giving it a chance to
+  clean up) and raises `asyncio.TimeoutError` to the caller instead of
+  continuing to wait. That's a controlled, catchable failure mode --
+  `except asyncio.TimeoutError:` lets calling code fall back to a
+  default, retry, or report the failure -- rather than an indefinite
+  hang with no way to recover.
+
+  It's worth being precise about what gets cancelled: `wait_for`
+  cancels the *coroutine itself* on timeout, not some outer operation
+  that spawned it -- if the coroutine started other background work
+  (like its own nested tasks) that isn't tied to its own cancellation,
+  that work can keep running even after `wait_for` gives up on the
+  original coroutine, a subtlety worth checking for in code with
+  multiple layers of concurrent tasks. As of Python 3.11, the same
+  bounded-waiting idea is also available as `asyncio.timeout(seconds)`,
+  usable as an `async with` block around a whole section of code rather
+  than wrapping one single coroutine -- useful when several awaits in a
+  row should all share one overall deadline instead of each getting
+  its own separate timeout.
 example_code: |
   import asyncio
 
@@ -16,13 +40,28 @@ example_code: |
       await asyncio.sleep(1)
       return "done"
 
+  # The trap: no timeout at all -- a hang here is an indefinite hang.
+  async def main_no_timeout():
+      result = await slow()           # waits however long slow() takes
+      print(result)
+
+  # Fix: wait_for bounds the wait, raises TimeoutError on deadline.
   async def main():
       try:
           print(await asyncio.wait_for(slow(), timeout=0.05))
       except asyncio.TimeoutError:
           print("gave up")
 
-  asyncio.run(main())
+  asyncio.run(main())                 # gave up
+
+  # Python 3.11+: asyncio.timeout() covers a whole block, not one coroutine.
+  async def main_block_timeout():
+      try:
+          async with asyncio.timeout(0.05):
+              await slow()
+              await slow()             # both share the SAME 0.05s deadline
+      except TimeoutError:
+          print("gave up on the whole block")
 starter_code: |
   import asyncio
 

@@ -4,22 +4,60 @@ language: python
 level: 64
 objective: "Filter a module's defined names down to just what __all__ declares as public."
 explanation: |
-  A module or package's `__all__` list is how it declares its public
-  API -- what `from module import *` actually exposes, and a signal to
-  humans (and tools) about which names are meant to be used from
-  outside versus which are internal implementation details, even if
-  they're technically importable.
+  A module's `__all__` -- a plain list of strings, assigned at module
+  level -- serves two related but distinct purposes. First, mechanically:
+  it controls exactly what `from module import *` actually binds into
+  the importer's namespace; without an `__all__`, `import *` grabs
+  every name in the module that doesn't start with an underscore, which
+  is a much blunter default than most modules actually want. Second,
+  and arguably more importantly in practice: it's a clear, explicit
+  signal to both humans reading the code and tools analyzing it (IDEs,
+  documentation generators, linters) about which names are the
+  module's intentional public interface versus which are internal
+  implementation details that happen to be technically importable but
+  were never meant to be depended on from outside. A name absent from
+  `__all__` isn't hidden or protected -- Python has no true privacy
+  enforcement -- but its absence is a documented statement of intent:
+  "this might change or disappear without warning; don't build on it."
+
+  The leading-underscore convention (`_internal_helper`) reinforces the
+  same signal at the naming level, independent of `__all__` -- a single
+  leading underscore is the community-wide convention for "internal,
+  not part of the public API," recognized by tooling and readers alike
+  even without checking `__all__` directly. The two mechanisms usually
+  agree (public names go in `__all__` and have no leading underscore;
+  internal names have a leading underscore and are omitted from
+  `__all__`), but `__all__` is the *authoritative* one for `import *`
+  behavior specifically -- a name could technically be included in
+  `__all__` despite a leading underscore, or omitted despite having a
+  clean name, and `__all__`'s explicit listing is what actually governs
+  the star-import behavior in either case.
 example_code: |
+  # The trap: exposing everything, ignoring __all__'s declared boundary.
+  def public_api_broken(all_names, defined_names):
+      return defined_names               # returns EVERYTHING, public or not
+
+  defined = ["helper", "public_func", "_private_func"]
+  exported_list = ["public_func"]
+  print(public_api_broken(exported_list, defined))   # leaks helper and _private_func
+
+  # Fix: filter down to exactly what __all__ declares.
+  def public_api(all_names, defined_names):
+      return [name for name in defined_names if name in all_names]
+
+  print(public_api(exported_list, defined))    # ['public_func']
+
+  # In a real module, __all__ governs `from module import *` directly:
   __all__ = ["run"]
 
   def run():
       pass
 
-  def _internal_helper():
+  def _internal_helper():          # leading underscore: internal by convention too
       pass
 
   exported = [name for name in ("run", "_internal_helper") if name in __all__]
-  print(exported)
+  print(exported)                  # ['run'] -- _internal_helper is excluded
 starter_code: |
   def public_api(all_names, defined_names):
       return defined_names

@@ -4,22 +4,78 @@ language: python
 level: 40
 objective: "Give each thread its own independent copy of a value using threading.local(), instead of a single shared variable."
 explanation: |
-  A plain module-level variable is shared by every thread -- if each
-  thread needs to track its own piece of state (a request ID, a
-  per-thread connection, a counter), writes from one thread stomp on the
-  others. threading.local() creates an object whose attributes are
-  automatically separate per thread: each thread sees its own values, no
-  locking required.
+  A plain module-level variable, or a shared dict/object referenced by
+  multiple threads, is exactly *one* piece of storage, visible and
+  writable by every thread that touches it -- there's no built-in
+  notion of "this value belongs to thread A, not thread B." If several
+  threads each need to track their *own* independent piece of state --
+  a per-request ID, a per-thread database connection, a running
+  per-thread counter -- writing to shared storage means later writes
+  from other threads simply overwrite earlier ones, and by the time any
+  particular thread reads the value back, it may well be reading
+  whatever the *most recently running* thread wrote, not its own. In
+  `shared["value"] = n; results[n] = shared["value"]`, every thread
+  writes to the exact same dict key, so a thread can easily read back a
+  different thread's `n` instead of its own, entirely dependent on
+  unpredictable scheduling -- the wrong result appears only sometimes,
+  which is the hallmark of this kind of race.
+
+  `threading.local()` solves this directly by creating a special object
+  whose attributes are automatically, transparently separated per
+  thread -- `local_data.value = v` in one thread and `local_data.value =
+  v2` in a different thread don't collide at all; each thread reading
+  `local_data.value` back sees only the value *it itself* set, as if
+  each thread had its own private instance of the object, even though
+  every thread is referring to the exact same Python object by name.
+  Critically, this requires *no* explicit locking on the caller's
+  part -- the isolation is handled internally, which makes `threading.
+  local()` the right tool specifically for "each thread needs its own
+  copy of this value" situations, as opposed to `Lock`/`RLock`, which
+  are the right tool for "multiple threads need to safely share and
+  coordinate access to *one* piece of state." Recognizing which of
+  those two situations a given piece of shared state actually calls for
+  is the key judgment call -- reaching for a lock around genuinely
+  per-thread state adds unnecessary contention and complexity that `
+  threading.local()` sidesteps entirely.
 example_code: |
   import threading
 
+  # The trap: one shared dict key, overwritten by whichever thread runs last.
+  shared = {}
+
+  def worker_broken(n, results):
+      shared["value"] = n              # every thread writes the SAME key
+      results[n] = shared["value"]     # might read a DIFFERENT thread's write!
+
+  results_broken = {}
+  threads_broken = [threading.Thread(target=worker_broken, args=(n, results_broken)) for n in range(3)]
+  for t in threads_broken:
+      t.start()
+  for t in threads_broken:
+      t.join()
+  print(sorted(results_broken.values()))   # unreliable -- may show duplicates, not [0, 1, 2]
+
+  # Fix: threading.local() gives each thread its OWN separate storage.
   local_data = threading.local()
 
+  def worker(n, results):
+      local_data.value = n             # this thread's OWN copy -- no collision
+      results[n] = local_data.value    # always reads back its OWN write
+
+  results = {}
+  threads = [threading.Thread(target=worker, args=(n, results)) for n in range(3)]
+  for t in threads:
+      t.start()
+  for t in threads:
+      t.join()
+  print(sorted(results.values()))       # [0, 1, 2] -- reliable every time
+
+  # The same local_data object, but genuinely isolated per thread:
   def set_value(v):
       local_data.value = v
 
   set_value(1)
-  print(local_data.value)
+  print(local_data.value)               # 1 -- this thread's own value
 starter_code: |
   import threading
 

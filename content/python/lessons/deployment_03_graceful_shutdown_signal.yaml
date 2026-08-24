@@ -4,15 +4,43 @@ language: python
 level: 68
 objective: "Fix a signal handler that's registered but does nothing, instead of flipping a flag the rest of the program can check to shut down cleanly."
 explanation: |
-  A deployed process typically gets SIGTERM when it's asked to stop
-  (e.g. during a rolling deploy) -- the standard pattern is to register a
-  handler via signal.signal() that just flips a flag ("we've been asked
-  to stop"), letting the main loop notice it and wind down cleanly
-  (finish in-flight work, close connections) instead of being killed
-  mid-request.
+  When an orchestrator wants a running process to stop -- during a
+  rolling deploy, a scale-down, a routine restart -- it doesn't just
+  kill it outright by default; it sends `SIGTERM`, a polite "please
+  wind down" signal, and only escalates to the unstoppable `SIGKILL`
+  if the process doesn't exit within some grace period. That grace
+  period exists specifically so a process gets a chance to finish
+  in-flight work (an HTTP request already being handled, a database
+  transaction mid-commit) and close resources cleanly (network
+  connections, file handles, message-queue acknowledgments) instead of
+  being cut off mid-operation, which can leave a client with a
+  half-finished response or a queue message stuck in an ambiguous
+  "was it processed or not" state.
+
+  The standard pattern for handling that grace period is deliberately
+  minimal: `signal.signal(signal.SIGTERM, handler)` registers a handler
+  function that Python calls when the signal arrives, but that handler
+  should do as little as possible -- typically just flip a
+  module-level flag to `True` -- rather than trying to perform the
+  actual cleanup work itself. That's because signal handlers in Python
+  run with real restrictions on what's safe to do inside them (certain
+  operations aren't safely reentrant from a signal handler's context),
+  so the robust pattern is "handler sets a flag, main loop polls the
+  flag." The main loop -- wherever the program's actual work happens,
+  processing requests or messages in a `while not stop_requested:` loop
+  -- checks that flag on each iteration (or between units of work) and,
+  once it sees it's `True`, finishes whatever's currently in flight and
+  then exits the loop deliberately, rather than being interrupted at an
+  arbitrary point.
 example_code: |
   import signal
 
+  # The trap: a handler that's registered but does nothing on receipt.
+  shutting_down_broken = False
+  def handle_broken(signum, frame):
+      pass                              # flag never actually changes!
+
+  # Fix: the handler's ONLY job is to flip a flag -- keep it minimal.
   stop_requested = False
 
   def handle(signum, frame):
@@ -20,6 +48,15 @@ example_code: |
       stop_requested = True
 
   signal.signal(signal.SIGTERM, handle)
+
+  # The main loop polls the flag and winds down deliberately:
+  def main_loop():
+      while not stop_requested:
+          do_one_unit_of_work()
+      print("finished in-flight work, shutting down cleanly")
+
+  def do_one_unit_of_work():
+      pass  # process one request/message, then loop checks the flag again
 starter_code: |
   import signal
 

@@ -4,21 +4,66 @@ language: python
 level: 38
 objective: "Set a background thread's daemon flag so it doesn't block the program from exiting."
 explanation: |
-  A non-daemon thread keeps the whole Python process alive until it
-  finishes, even after the main thread's work is done -- fine for work
-  that must complete, but wrong for an endless background task (like a
-  polling loop or heartbeat) that should simply be killed when the
-  program exits. Setting `daemon=True` before `start()` marks a thread
-  as background-only: it's abandoned automatically at interpreter exit
-  instead of keeping the process alive.
+  Python's interpreter, by default, doesn't exit just because the main
+  thread finishes its own work -- it waits for every *non-daemon*
+  thread to finish too, however long that takes. That's the correct
+  behavior for a thread doing genuinely important work that must run to
+  completion (writing a file to disk, finishing a network request
+  already in flight) -- abandoning it mid-task would be a real, visible
+  bug. But it's exactly the wrong behavior for a background task that's
+  meant to run *indefinitely*, like a polling loop or a heartbeat
+  checking in every few seconds forever: that thread has no natural
+  finishing point by design, so leaving it as a non-daemon thread means
+  the whole program can never exit cleanly on its own, hanging
+  indefinitely even after every piece of "real" work is done, requiring
+  something like Ctrl+C or a forced kill to actually stop it.
+
+  `daemon=True`, passed to the `Thread` constructor (or set on `t.
+  daemon` before calling `start()` -- it cannot be changed after the
+  thread has already started, which is why it's shown here being read
+  immediately after construction rather than after `start()`), marks a
+  thread as background-only: Python is explicitly told this thread's
+  ongoing existence should never be a reason to keep the process alive.
+  When every non-daemon thread has finished, the interpreter exits
+  immediately and any still-running daemon threads are simply
+  abandoned, with no cleanup code inside them guaranteed to run. That
+  last point is the tradeoff to keep in mind: daemon status is the
+  right tool for "this doesn't need a graceful shutdown, just stop
+  existing when the program stops" background work, but the wrong
+  choice for anything that needs to flush a buffer, close a connection,
+  or otherwise clean up before disappearing -- that kind of thread
+  needs either to be non-daemon (and given an actual way to be told to
+  stop, like the signal-flag pattern from the deployment category) or
+  an explicit shutdown sequence the main thread triggers deliberately
+  before exiting.
 example_code: |
   import threading
 
+  # The trap: a never-ending background thread that's NOT marked daemon.
+  def poll_forever():
+      pass  # imagine an infinite loop here
+
+  t_broken = threading.Thread(target=poll_forever)
+  print(t_broken.daemon)            # False -- keeps the WHOLE process alive forever
+
+  # Fix: daemon=True at construction -- abandoned automatically at exit.
   def heartbeat():
-      pass
+      pass  # imagine an infinite loop here too
 
   t = threading.Thread(target=heartbeat, daemon=True)
-  print(t.daemon)
+  print(t.daemon)                    # True
+
+  # daemon MUST be set before start() -- it can't be changed afterward:
+  t2 = threading.Thread(target=heartbeat)
+  t2.daemon = True                   # fine, still before start()
+  t2.start()
+  # t2.daemon = False                # would raise RuntimeError -- already started
+
+  # Non-daemon is still correct for work that MUST finish:
+  def write_important_file():
+      pass  # e.g. flush data to disk -- must complete, not be abandoned
+
+  t3 = threading.Thread(target=write_important_file)   # daemon=False (the default)
 starter_code: |
   import threading
 

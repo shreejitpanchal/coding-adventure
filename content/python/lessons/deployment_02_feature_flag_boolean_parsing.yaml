@@ -4,17 +4,51 @@ language: python
 level: 67
 objective: "Fix a boolean-from-string parser that treats any non-empty string -- including the literal text 'false' -- as truthy."
 explanation: |
-  Environment variables are always strings, never real booleans --
-  `bool("false")` is True, because it's a non-empty string, not because
-  Python understands its contents. Parsing a boolean-ish config value
-  correctly means explicitly checking its text against known truthy
-  values ("true", "1", "yes"), not just asking Python whether the string
-  itself is non-empty.
+  This is the boolean-flavored version of the same "everything from the
+  environment is a string" trap as the previous exercise, and it's a
+  particularly nasty one because it fails *silently* rather than
+  crashing. `bool(value)` on a string only ever asks one question: is
+  this string empty or not? Any non-empty string -- including, most
+  dangerously, the literal text `"false"`, `"no"`, or `"0"` -- is
+  truthy to Python's `bool()`, because Python has no idea those
+  particular characters are meant to *mean* something. `FEATURE_X=false`
+  set in the environment, then read with `bool(os.environ["FEATURE_X"])`
+  , evaluates to `True` -- the feature flag meant to disable a feature
+  instead silently enables it, and nothing about the code raises an
+  error or even looks suspicious at a glance.
+
+  The fix is to stop asking "is this string non-empty" and start
+  explicitly checking its actual textual content against the specific
+  values that are meant to mean "true": `value.strip().lower() in
+  ("true", "1", "yes")` (the exact set of accepted spellings is a
+  judgment call -- pick whatever convention the rest of the codebase or
+  deployment tooling already uses, and document it, since "true" vs
+  "True" vs "1" vs "yes" all being independently plausible is exactly
+  the kind of ambiguity that causes this bug class in the first place).
+  `.strip()` guards against accidental whitespace from however the
+  variable got set (a trailing newline from a `.env` file, a stray
+  space in a shell script); `.lower()` makes the check case-insensitive
+  so `TRUE`, `True`, and `true` are all treated the same. Anything not
+  in the accepted set -- including typos -- is treated as false, which
+  is the safer failure direction for a feature flag: an unrecognized
+  value disabling a feature is far less dangerous than an unrecognized
+  value silently enabling one.
 example_code: |
+  import os
+
+  # The trap: bool() on a string only checks "is it non-empty."
+  os.environ["FEATURE_X"] = "false"
+  print(bool(os.environ["FEATURE_X"]))    # True!! "false" is non-empty text
+
+  # Fix: check the string's actual CONTENT against known truthy values.
   def parse_bool(value):
       return value.strip().lower() in ("true", "1", "yes")
 
-  print(parse_bool("YES"))
+  print(parse_bool("YES"))                # True
+  print(parse_bool("false"))              # False -- correct this time
+  print(parse_bool("  True  "))           # True -- .strip() handles whitespace
+  print(parse_bool("nope"))               # False -- unrecognized defaults to false,
+                                           # the safer direction for a feature flag
 starter_code: |
   import os
 

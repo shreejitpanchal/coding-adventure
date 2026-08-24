@@ -4,15 +4,57 @@ language: python
 level: 24
 objective: "Replace a try/except/pass block with contextlib.suppress for a clearer, more explicit idiom."
 explanation: |
-  contextlib.suppress(ExceptionType) reads as exactly what it means:
-  "this specific exception is expected here and can be ignored." It's a
-  more explicit, more restricted alternative to a bare try/except/pass,
-  which can accidentally swallow exceptions you didn't mean to catch.
+  `contextlib.suppress(ExceptionType)` reads as exactly what it means:
+  "this specific exception is expected here and can be safely ignored."
+  Functionally, it's equivalent to `try: ... except ExceptionType:
+  pass`, but the context-manager spelling is more explicit about
+  *which* exception is being intentionally silenced and makes that
+  intent visible right at the top of the block, before the code inside
+  even runs -- a reader doesn't have to scan down to an `except`
+  clause to discover what's being suppressed. A bare `except:` (or even
+  `except Exception:`) with a `pass` body is a well-known anti-pattern
+  precisely because it's easy to write broader than intended: it can
+  silently swallow a genuinely unexpected bug (a typo causing
+  `AttributeError`, a `KeyboardInterrupt` if written as a truly bare
+  `except:`) right alongside the one specific, expected failure the
+  code was actually trying to tolerate. `suppress` narrows the net to
+  exactly the exception type(s) named, and nothing else -- an
+  unexpected exception of a different type still propagates normally,
+  which is the behavior you almost always want.
+
+  `suppress` also accepts multiple exception types at once
+  (`suppress(KeyError, IndexError)`), exactly like a multi-type
+  `except` clause would, for code that legitimately needs to tolerate
+  more than one specific failure mode in the same block. It's most
+  useful for genuinely small, single-purpose blocks -- "try to remove
+  this file, but it's fine if it doesn't exist" (`suppress
+  (FileNotFoundError)`), "try this optional conversion, fall back to a
+  default" -- rather than wrapping large chunks of logic, where a bare
+  `try/except` with more deliberate handling and logging is usually
+  clearer about what actually went wrong when it does.
 example_code: |
   from contextlib import suppress
+
+  # Equivalent to try/except ZeroDivisionError: pass, but states intent clearly.
   with suppress(ZeroDivisionError):
       print(1 / 0)
-  print("still running")
+  print("still running")                    # reached -- exception was swallowed
+
+  # Multiple exception types, just like a multi-type except clause:
+  data = {}
+  with suppress(KeyError, IndexError):
+      value = data["missing"]
+
+  # A realistic use: tolerate a file that might not exist.
+  import os
+  with suppress(FileNotFoundError):
+      os.remove("maybe_missing.tmp")
+
+  # The fallback pattern from the exercise: pre-set a default, suppress ValueError.
+  value = 0
+  with suppress(ValueError):
+      value = int("not a number")
+  print(value)                              # 0 -- default preserved
 starter_code: |
   try:
       value = int("not a number")

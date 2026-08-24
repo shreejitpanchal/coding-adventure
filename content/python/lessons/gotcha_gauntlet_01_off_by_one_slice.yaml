@@ -4,13 +4,51 @@ language: python
 level: 30
 objective: "Fix a negative slice that grabs one element too many."
 explanation: |
-  Negative slice indices count from the end: data[-3:] means "the last 3
-  elements." It's an easy off-by-one to write data[-4:] when you mean the
-  last three -- the negative index and the count you want are one apart,
-  which trips people up under time pressure.
+  Negative indices count backward from the end of a sequence: `data[-1]`
+  is the last element, `data[-2]` the second-to-last, and so on --
+  which makes `data[-N:]` a compact way to say "the last N elements,"
+  since the slice starts N positions from the end and runs to the end
+  by default. The trap is that this reads almost, but not quite, like
+  plain arithmetic: it's tempting to think "I want the last 3, so I
+  need index -4" by analogy with how a 0-indexed slice like `data[1:4]`
+  needs its start bumped by one relative to a count -- but negative
+  indexing from the end doesn't have that same off-by-one shift.
+  `data[-3:]` *is* the last three elements directly; `data[-4:]` is one
+  too many, the last *four*. The mismatch between the number you're
+  counting and the number you write is exactly what makes this bug slip
+  past a quick glance, especially under time pressure when "looks about
+  right" gets accepted without actually counting elements.
+
+  A reliable way to avoid the trap is to test the boundary explicitly
+  rather than eyeballing it: for "the last N," the slice should be
+  `data[-N:]` with N itself as the number, not N+1 or N-1 -- write out
+  a short example with a known-length list and count the output
+  elements to confirm, rather than reasoning it out symbolically under
+  pressure. The same category of mistake shows up in reverse too:
+  `data[:N]` for "the first N elements" is correct as-is (no off-by-one
+  there, since positive slicing already starts counting from 0), so the
+  asymmetry between positive slicing (`data[:N]`, no shift needed) and
+  negative slicing (`data[-N:]`, also no shift needed once you see it
+  correctly) is really just about not overthinking a case that's
+  actually simpler than it feels in the moment.
 example_code: |
   data = [10, 20, 30, 40, 50]
-  print(data[-2:])
+
+  # The trap: reaching for -4 when you actually want the last THREE.
+  last_three_wrong = data[-4:]
+  print(last_three_wrong)          # [20, 30, 40, 50] -- that's FOUR elements
+
+  # Fix: data[-N:] IS the last N elements directly -- no off-by-one shift.
+  last_three = data[-3:]
+  print(last_three)                # [30, 40, 50] -- correct
+
+  # Sanity-check by testing a smaller, obvious case:
+  print(data[-1:])                 # [50]         -- last 1
+  print(data[-2:])                 # [40, 50]     -- last 2
+
+  # For contrast: data[:N] for "first N" needs no such adjustment either.
+  first_three = data[:3]
+  print(first_three)               # [10, 20, 30]
 starter_code: |
   data = [10, 20, 30, 40, 50]
   last_three = data[-4:]

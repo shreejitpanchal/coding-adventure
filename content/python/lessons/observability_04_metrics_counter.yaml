@@ -4,13 +4,42 @@ language: python
 level: 74
 objective: "Implement the simplest possible observability primitive: a named counter that increments on each call."
 explanation: |
-  Almost every real metrics system (Prometheus counters, StatsD, etc.)
-  boils down to this same core idea: a name maps to a number that only
-  goes up, incremented once per occurrence of the thing being measured
-  (a request, an error, a retry). Building the simplest possible version
-  -- a dict from name to count -- is the same mental model as the real
-  thing, just without a network client attached.
+  Strip away the network client, the export protocol, and the
+  aggregation server, and almost every real metrics system --
+  Prometheus counters, StatsD, CloudWatch custom metrics -- boils down
+  to exactly this same core idea: a name maps to a number that only
+  ever increases, going up by exactly one each time the thing it's
+  measuring happens (one increment per request served, per error
+  raised, per retry attempted). The "counter" primitive is deliberately
+  the simplest possible metric type for exactly this reason -- unlike a
+  gauge (which can go up or down, like current memory usage) or a
+  histogram (which buckets a distribution of values, like request
+  latencies), a counter's only operation is "increment by one," which
+  makes it trivial to reason about and combine: the total count over
+  any time window is unambiguous, and it can never be corrupted by
+  events arriving out of order the way a value that can decrease might
+  be.
+
+  Building this from a plain `dict` -- `metrics.get(name, 0) + 1`,
+  written back to `metrics[name]` -- captures the exact same mental
+  model real metrics libraries use internally, just entirely in-process
+  with no network call attached. `dict.get(name, 0)` is what makes the
+  first increment for any given name work correctly without special
+  casing: it returns `0` for a name that's never been seen before,
+  exactly the right starting point to add 1 to, rather than raising a
+  `KeyError` the way plain `metrics[name]` would for an unseen key.
+  This same "counter with a default of zero" shape is common enough
+  that `collections.Counter` (or `collections.defaultdict(int)`) exists
+  specifically to express it without writing out `.get(name, 0)`
+  manually every time, at the cost of pulling in an extra import for
+  what's otherwise a two-line pattern.
 example_code: |
+  # The trap: doing nothing leaves every counter permanently at zero.
+  metrics_broken = {}
+  def increment_broken(name):
+      pass                              # never actually updates anything
+
+  # Fix: .get(name, 0) supplies the right starting point for a NEW name.
   metrics = {}
 
   def increment(name):
@@ -18,7 +47,19 @@ example_code: |
 
   increment("cache_hits")
   increment("cache_hits")
-  print(metrics["cache_hits"])
+  print(metrics["cache_hits"])          # 2
+
+  increment("requests_total")
+  increment("requests_total")
+  increment("errors_total")
+  print(sorted(metrics.items()))        # [('errors_total', 1), ('requests_total', 2)]
+
+  # The same shape, using collections.Counter -- purpose-built for exactly this:
+  from collections import Counter
+  counter_metrics = Counter()
+  counter_metrics["cache_hits"] += 1
+  counter_metrics["cache_hits"] += 1
+  print(counter_metrics["cache_hits"])  # 2 -- Counter defaults missing keys to 0 too
 starter_code: |
   metrics = {}
 

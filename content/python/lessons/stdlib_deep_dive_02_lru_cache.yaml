@@ -4,20 +4,58 @@ language: python
 level: 20
 objective: "Speed up an exponential naive-recursive function with functools.lru_cache, without changing its logic."
 explanation: |
-  Naive recursive fib(n) recomputes the same sub-calls exponentially many
-  times. @lru_cache transparently memoizes a function's return value per
-  distinct argument tuple, turning this into linear time with a one-line
-  change and no restructuring of the recursion itself.
+  Naive recursive `fib(n)` recomputes the same sub-calls an exponential
+  number of times -- `fib(30)` calls `fib(28)` twice, `fib(27)` three
+  times, and so on, because the recursion tree has no memory of what
+  it's already computed. `@lru_cache` fixes this without touching the
+  recursion's logic at all: it wraps the function in a cache keyed by
+  its argument tuple, so the *first* call with a given set of arguments
+  runs the real function body and stores the result, and *every*
+  subsequent call with the exact same arguments returns the cached
+  result immediately instead of recomputing anything. Since `fib(n-1)`
+  gets called with the same `n-1` from many different branches of the
+  recursion tree, memoizing collapses what was exponential time into
+  linear time -- and it's a one-line change (`@lru_cache` above the
+  `def`), with zero restructuring of the recursive body itself. "LRU"
+  stands for Least Recently Used: with a bounded `maxsize`, the cache
+  evicts its least-recently-accessed entries once full; `maxsize=None`
+  makes it unbounded, appropriate when the total number of distinct
+  argument combinations is known to be small (as with typical Fibonacci
+  usage).
+
+  There's a real constraint behind the convenience: `lru_cache` uses the
+  function's arguments as a dict key, which means every argument must be
+  *hashable* -- calling a cached function with a `list` argument raises
+  `TypeError`, since lists (being mutable) can't be dict keys, the same
+  restriction that applies to set membership. It's also worth knowing
+  the cache is per *decorated function object*, shared across every call
+  site, and persists for the lifetime of the process (or until
+  `.cache_clear()` is called explicitly) -- meaning `lru_cache` is a
+  poor fit for functions whose "correct" answer could change over time
+  for the same input (like a function reading live external state),
+  since a stale cached result would silently be returned forever.
 example_code: |
   from functools import lru_cache
+  import time
 
+  # Naive version: exponential time, recomputes shared sub-calls.
+  def fib_naive(n):
+      if n < 2:
+          return n
+      return fib_naive(n - 1) + fib_naive(n - 2)
+
+  # Same logic, memoized: linear time, zero restructuring.
   @lru_cache(maxsize=None)
   def fib(n):
       if n < 2:
           return n
       return fib(n - 1) + fib(n - 2)
 
-  print(fib(30))
+  print(fib(30))                     # 832040, computed almost instantly
+
+  # Introspect the cache -- hits/misses, and clearing it:
+  print(fib.cache_info())            # CacheInfo(hits=28, misses=31, ...)
+  fib.cache_clear()
 starter_code: |
   def fib(n):
       if n < 2:

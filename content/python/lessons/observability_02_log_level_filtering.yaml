@@ -4,16 +4,61 @@ language: python
 level: 72
 objective: "Fix a logger configured at WARNING level that's silently swallowing INFO-level logs the code actually needs."
 explanation: |
-  logging.basicConfig(level=...) sets the *minimum* severity that gets
-  emitted at all -- anything below that threshold is silently dropped,
-  not buffered or delayed, just gone. Setting the level too high (e.g.
-  WARNING when you actually need INFO-level visibility) is a common,
-  quiet way to lose exactly the logs you need when debugging a live
-  issue.
+  Python's logging levels form an ordered scale -- from lowest to
+  highest severity: `DEBUG` (10), `INFO` (20), `WARNING` (30), `ERROR`
+  (40), `CRITICAL` (50). `logging.basicConfig(level=X)` sets a
+  *threshold*: only calls at level X or higher are actually emitted;
+  anything below that threshold is silently discarded at the moment
+  it's called, not buffered, not delayed, not recoverable later --
+  simply never written anywhere. `level=logging.WARNING` means every
+  `logging.info(...)` and `logging.debug(...)` call in the entire
+  program produces no output at all, even though the calls still run
+  (the string formatting and function call overhead still happen; only
+  the actual emission is skipped) -- which is exactly why a `logging.
+  info("starting up")` line can be sitting right there in the code,
+  clearly intended to log something, and simply never show up anywhere,
+  with nothing about the code itself indicating why.
+
+  This is a genuinely common, quiet way to lose exactly the
+  observability you need most: a level set for production noise
+  reduction (`WARNING`, so routine info doesn't flood the logs) is
+  often left in place while debugging a live issue that would have been
+  immediately obvious from the `INFO`-level logs that are being
+  silently dropped. The fix is simple once spotted -- lower the
+  threshold (`level=logging.INFO` or `logging.DEBUG`) to let those
+  lines through -- but the harder skill is recognizing "the log line I
+  expect to see just isn't there" as a threshold problem rather than
+  assuming the logging call itself is broken or was never reached. A
+  useful habit: when a log seems to be "missing," check the configured
+  level *before* checking anything about the surrounding logic, since
+  it's often the fastest explanation to rule in or out.
 example_code: |
   import logging, sys
-  logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s", stream=sys.stdout)
-  logging.debug("this now shows, since DEBUG is the lowest level")
+
+  # The trap: WARNING threshold silently drops INFO-level logs.
+  logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s", stream=sys.stdout)
+
+  def run_broken():
+      logging.info("starting up")     # silently dropped -- below WARNING threshold
+      logging.warning("low disk space")
+
+  run_broken()                        # only prints: WARNING: low disk space
+
+  # Fix: lower the threshold to let the INFO-level logs through too.
+  logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout, force=True)
+
+  def run():
+      logging.info("starting up")
+      logging.warning("low disk space")
+
+  run()
+  # INFO: starting up
+  # WARNING: low disk space
+
+  # The full severity scale, low to high -- each level shows itself and everything above:
+  # DEBUG(10) < INFO(20) < WARNING(30) < ERROR(40) < CRITICAL(50)
+  logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s", stream=sys.stdout, force=True)
+  logging.debug("this now shows too, since DEBUG is the lowest level")
 starter_code: |
   import logging
   import sys

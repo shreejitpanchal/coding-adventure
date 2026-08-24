@@ -4,17 +4,49 @@ language: python
 level: 58
 objective: "Fix a version comparison that's wrong because it compares version strings lexicographically instead of numerically."
 explanation: |
-  "10.0.0" > "9.0.0" is False as a plain string comparison -- Python
-  compares strings character by character, and the character '1' sorts
-  before '9', so "10.0.0" looks "smaller" than "9.0.0" even though
-  version 10 is clearly newer than version 9. Real version comparisons
-  need to split on the dots and compare each numeric component as an
-  integer, not as text.
+  `"10.0.0" > "9.0.0"` evaluates to `False`, which surprises anyone who
+  hasn't stopped to think about how Python actually compares strings:
+  lexicographically, character by character, the same way a dictionary
+  orders words -- not numerically. The very first character decides
+  the outcome here: `'1'` (from `"10.0.0"`) sorts before `'9'` (from
+  `"9.0.0"`) because `'1'` has a smaller Unicode code point than `'9'`,
+  so the comparison stops right there and declares `"10.0.0"` the
+  "smaller" string, never even looking at the rest. This is the exact
+  same category of trap as comparing `"2" > "10"` and getting `True` --
+  it's correct *string* comparison, just not the comparison a human
+  means when the strings happen to represent numbers.
+
+  The fix is to stop comparing strings and start comparing the actual
+  numeric structure a semantic version encodes: split on `.`, convert
+  each component to an `int`, and compare the resulting tuples --
+  Python compares tuples element-by-element, numerically, which is
+  exactly the "compare major, then minor, then patch" semantics real
+  version ordering needs. This has a real edge case worth knowing:
+  version strings aren't always three clean dot-separated integers --
+  pre-release suffixes (`"1.0.0rc1"`), build metadata (`"1.0.0+build5"`
+  ), or a differing number of components (`"1.0"` vs `"1.0.0"`) all
+  break a naive `split(".")` + `int()` approach. For anything beyond a
+  quick internal comparison, `packaging.version.Version` (from the same
+  `packaging` library pip depends on) implements the full PEP 440
+  version-comparison spec correctly, including all of those cases.
 example_code: |
+  # The trap: string comparison is character-by-character, not numeric.
+  print("10.0.0" > "9.0.0")           # False -- '1' sorts before '9'
+  print("2" > "10")                   # True  -- same trap, simpler example
+
+  # Fix: split into an integer tuple, then compare tuples numerically.
   def parse(v):
       return tuple(int(p) for p in v.split("."))
 
-  print(parse("2.10.0") > parse("2.9.0"))
+  print(parse("10.0.0") > parse("9.0.0"))   # True -- correct
+  print(parse("2.10.0") > parse("2.9.0"))   # True -- minor component compared correctly
+
+  # Real version strings aren't always clean integers-and-dots though:
+  # "1.0.0rc1", "1.0.0+build5", "1.0" vs "1.0.0" all break naive parsing.
+  # Production code uses packaging.version.Version for full PEP 440 support:
+  from packaging.version import Version
+  print(Version("10.0.0") > Version("9.0.0"))      # True
+  print(Version("1.0.0rc1") < Version("1.0.0"))     # True -- pre-releases sort correctly
 starter_code: |
   def is_newer(version_a, version_b):
       return version_a > version_b

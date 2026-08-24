@@ -4,15 +4,51 @@ language: python
 level: 47
 objective: "Rewrite an explicit filter-then-transform loop using the functional map() and filter() builtins."
 explanation: |
-  map() and filter() are the functional-style tools for "transform every
-  item" and "keep only matching items" -- composing them (filter, then
-  map) expresses the same logic as a loop with an if-and-append, but as a
-  pipeline of small, reusable, single-purpose functions instead of
-  imperative steps.
+  `map(func, iterable)` and `filter(predicate, iterable)` are the two
+  foundational functional-style tools for the two most common list
+  operations: "apply this transformation to every item" and "keep only
+  the items matching this condition." Composing them -- `map(f,
+  filter(predicate, items))` -- expresses exactly the same logic as a
+  loop with an `if` check and an `.append()` call, but as a pipeline of
+  small, named, independently-testable operations rather than a single
+  block of imperative step-by-step instructions. Both `map` and
+  `filter` are lazy in Python 3 -- they return iterators, not lists,
+  computing each result only as it's consumed -- which is why wrapping
+  the whole expression in `list(...)` is what actually forces
+  evaluation and produces a concrete list; without it, `map(...)` alone
+  just prints as `<map object at 0x...>`.
+
+  In modern Python, a list comprehension (`[n * 10 for n in numbers if
+  n % 2 == 0]`) is generally considered more idiomatic and often more
+  readable than the equivalent `map`/`filter` chain for simple cases --
+  it reads left-to-right in one expression instead of nesting calls
+  inside each other, and doesn't require reaching for `lambda` for
+  trivial transformations. `map`/`filter` earn their keep in a few
+  specific situations instead: composing with an *existing* named
+  function rather than a throwaway lambda (`map(str.upper, names)` reads
+  cleanly, with no lambda needed at all), building a lazy pipeline where
+  values should be produced on demand rather than materialized all at
+  once, or working in a codebase/style that leans functional throughout
+  and treats `map`/`filter`/`reduce` as its consistent vocabulary for
+  data transformation.
 example_code: |
   names = ["ada", "bob", "cy"]
+
+  # map/filter compose into a pipeline -- lazy, evaluated on consumption.
   result = list(map(str.upper, filter(lambda n: len(n) > 2, names)))
-  print(result)
+  print(result)                          # ['ADA', 'BOB']
+
+  # Forgetting list(...) leaves it as an unevaluated iterator:
+  lazy = map(str.upper, filter(lambda n: len(n) > 2, names))
+  print(lazy)                            # <filter object at 0x...> -- not the values!
+
+  # The equivalent list comprehension -- often considered more idiomatic:
+  result_comprehension = [n.upper() for n in names if len(n) > 2]
+  print(result_comprehension)            # ['ADA', 'BOB']
+
+  # map() shines when composing with an EXISTING named function -- no lambda needed:
+  numbers = [1, 2, 3, 4, 5, 6, 7, 8]
+  print(list(map(str, filter(lambda n: n % 2 == 0, numbers))))   # ['2', '4', '6', '8']
 starter_code: |
   numbers = [1, 2, 3, 4, 5, 6, 7, 8]
   result = []

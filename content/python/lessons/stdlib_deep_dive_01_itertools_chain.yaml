@@ -4,16 +4,51 @@ language: python
 level: 19
 objective: "Use itertools.chain to treat multiple iterables as one sequence without building a new combined list."
 explanation: |
-  `a + b` allocates a brand new list containing copies of both. When you
-  only need to *iterate* over both in order (not build a combined list),
-  itertools.chain(a, b) does it lazily with no extra allocation --
-  useful when the inputs are large or aren't even lists (generators,
-  files, etc.).
+  `a + b` on two lists allocates a brand-new list and copies every
+  element of both into it before you can even start iterating -- fine
+  for small lists, wasteful when the goal is only to *walk through*
+  both in order, not to build and keep a combined collection.
+  `itertools.chain(a, b)` sidesteps that allocation entirely: it
+  returns a lazy iterator that pulls from `a` until exhausted, then
+  seamlessly continues pulling from `b`, without ever materializing a
+  merged sequence in memory. That laziness matters most when the inputs
+  are large, or aren't lists at all -- `chain` happily accepts any
+  iterables together: a list, a generator, a file object being read
+  line by line, a `range()`. `a + b` only works when both sides are the
+  *same* concatenable type (two lists, or two tuples) -- it can't
+  combine a list with a generator, but `chain` can, since it only ever
+  asks each input for "the next item," never for its length or type.
+
+  `itertools` is full of these small, composable, lazy building blocks
+  for exactly this kind of iteration pattern -- `chain.from_iterable`
+  flattens an iterable of iterables without an explicit nested loop,
+  `itertools.islice` lazily slices an iterator the way `[start:stop]`
+  slices a list (but works even on infinite iterators), and
+  `itertools.zip_longest` pairs up iterables of different lengths,
+  filling in a default for whichever one runs out first. The unifying
+  idea across all of them is the same: describe the transformation
+  declaratively and let it stay lazy, instead of eagerly building
+  intermediate lists you're just going to iterate over once and throw
+  away.
 example_code: |
   from itertools import chain
+
+  # The trap: + allocates a whole new combined list up front.
+  a_list = [1, 2, 3]
+  b_list = [4, 5]
+  combined_eager = a_list + b_list        # a new list, fully materialized
+
+  # Fix: chain() iterates lazily, no combined list ever built.
   a = [1, 2]
-  b = (3, 4)
-  print(list(chain(a, b)))
+  b = (3, 4)                              # chain doesn't care about type
+  print(list(chain(a, b)))                 # [1, 2, 3, 4]
+
+  # chain works across mixed iterable types + can flatten nested ones:
+  def gen():
+      yield 5
+      yield 6
+  print(list(chain([1, 2], gen())))        # [1, 2, 5, 6]
+  print(list(chain.from_iterable([[1, 2], [3], [4, 5]])))  # [1, 2, 3, 4, 5]
 starter_code: |
   a = [1, 2, 3]
   b = [4, 5]

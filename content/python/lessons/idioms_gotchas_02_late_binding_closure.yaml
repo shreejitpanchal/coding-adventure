@@ -4,17 +4,50 @@ language: python
 level: 2
 objective: "Fix a set of closures that all capture the same loop variable by reference instead of by value."
 explanation: |
-  A closure captures the *variable*, not its value at the time the closure
-  was created. By the time these lambdas actually run, the loop has
-  finished and `i` holds its final value -- so every closure sees the same
-  number. The standard fix is to bind the current value as a default
-  argument, which IS evaluated at definition time.
+  A Python closure captures the *variable itself* -- really, a reference
+  into the enclosing scope -- not a frozen snapshot of whatever value
+  that variable happened to hold when the closure was written. This is
+  called late binding: the variable is looked up when the closure
+  actually *runs*, not when it was *created*. A `for` loop doesn't
+  create a new `i` on every iteration either -- it's the same variable
+  `i`, reassigned each time around. Put those two facts together and
+  every lambda created inside the loop is reading from the exact same
+  box, and by the time any of them are called (usually after the loop
+  has already finished), that box holds whatever `i`'s final value was.
+
+  This bites people constantly with `for` loops that build up a list of
+  callbacks, and it's not unique to lambdas -- a `def` written inside a
+  loop has the exact same problem, and so does capturing a loop variable
+  in a thread's target function. The fix works because default argument
+  values, unlike closures, ARE evaluated eagerly at definition time (see
+  the mutable-default-argument gotcha for the flip side of that same
+  fact): `lambda x, n=n: x * n` copies the *current* value of the outer
+  `n` into a new parameter also confusingly named `n`, at the exact
+  moment the lambda object is created inside that loop iteration. From
+  then on, that lambda's own `n` is independent of the loop variable.
+  Two other idiomatic fixes exist: wrap the lambda-creation in a small
+  factory function (`def make(n): return lambda x: x * n`), which
+  works because each call to `make` gets its own fresh local `n`; or, in
+  newer Python, use `functools.partial(lambda x, n: x * n, n=n)`.
 example_code: |
+  # The trap: every lambda shares the SAME loop variable `i`.
+  functions_buggy = []
+  for i in range(3):
+      functions_buggy.append(lambda: i)
+  print([f() for f in functions_buggy])   # [2, 2, 2] -- all see the final i
+
+  # Fix #1: default-argument capture (evaluated eagerly, at def time).
   multipliers = []
   for n in range(3):
       multipliers.append(lambda x, n=n: x * n)
+  print([m(10) for m in multipliers])     # [0, 10, 20]
 
-  print([m(10) for m in multipliers])
+  # Fix #2: a factory function -- each call gets its own fresh local `n`.
+  def make_multiplier(n):
+      return lambda x: x * n
+
+  multipliers2 = [make_multiplier(n) for n in range(3)]
+  print([m(10) for m in multipliers2])    # [0, 10, 20]
 starter_code: |
   functions = []
   for i in range(3):

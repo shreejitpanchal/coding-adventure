@@ -4,21 +4,59 @@ language: python
 level: 27
 objective: "Use concurrent.futures.ThreadPoolExecutor to run independent I/O-bound tasks concurrently instead of sequentially."
 explanation: |
-  Threads release the GIL while blocked on I/O (like time.sleep, network
-  calls, or file reads), so threading genuinely helps for I/O-bound work
-  even though it doesn't help for CPU-bound work. ThreadPoolExecutor.map
-  is the concise way to fan a function out across a pool of worker
-  threads and collect results in order.
+  CPython's Global Interpreter Lock (GIL) means only one thread can
+  execute Python bytecode at a time, which is why threading famously
+  doesn't speed up pure CPU-bound work -- four threads all crunching
+  numbers still take turns on the one GIL, one at a time, no faster
+  overall than a single thread doing the same total work. But the GIL
+  is explicitly *released* whenever a thread blocks on I/O --
+  `time.sleep()`, a network call, a file read -- specifically so other
+  threads can run Python code during that wait instead of sitting idle.
+  That's why threading genuinely helps for I/O-bound work even though it
+  doesn't for CPU-bound work: four threads each waiting on a slow
+  network call can have their waits overlap, turning what would be four
+  sequential waits into roughly one wait's worth of wall-clock time.
+  `ThreadPoolExecutor` is the concise, managed way to exploit this: it
+  maintains a fixed-size pool of worker threads and `.map(func,
+  iterable)` fans the function out across them, blocking until every
+  call completes and returning results in the *same order as the input
+  iterable* (not completion order) -- the threaded analogue of
+  `asyncio.gather`'s ordering guarantee.
+
+  The `with ThreadPoolExecutor(...) as pool:` form matters for the same
+  reason `with` matters everywhere else: it guarantees the pool's
+  threads are properly shut down (via an implicit `pool.shutdown(wait=
+  True)`) when the block exits, even if an exception occurs inside it.
+  For more control than `.map()` offers -- submitting tasks one at a
+  time, or reacting to whichever finishes first rather than waiting for
+  all of them -- `pool.submit(func, arg)` returns a `Future` object
+  immediately, and `concurrent.futures.as_completed(futures)` yields
+  those futures in completion order, mirroring the
+  `asyncio.as_completed` pattern for coroutines. Choosing `max_workers`
+  is itself a judgment call: too few threads under-utilizes available
+  I/O-wait time, too many adds unnecessary thread-management overhead
+  for diminishing returns once most of the achievable overlap is
+  already captured.
 example_code: |
   import time
-  from concurrent.futures import ThreadPoolExecutor
+  from concurrent.futures import ThreadPoolExecutor, as_completed
 
   def slow_double(n):
-      time.sleep(0.01)
+      time.sleep(0.01)                 # releases the GIL while blocked
       return n * 2
 
+  # The trap: sequential calls don't overlap their I/O waits at all.
+  results_slow = [slow_double(n) for n in range(4)]   # ~40ms total
+
+  # Fix: ThreadPoolExecutor.map fans work out, preserves INPUT order.
   with ThreadPoolExecutor(max_workers=4) as pool:
-      print(list(pool.map(slow_double, range(4))))
+      print(list(pool.map(slow_double, range(4))))     # ~10ms total
+
+  # For reacting as each one finishes, use submit + as_completed instead:
+  with ThreadPoolExecutor(max_workers=4) as pool:
+      futures = [pool.submit(slow_double, n) for n in range(4)]
+      for future in as_completed(futures):
+          print("finished:", future.result())           # completion order
 starter_code: |
   import time
 

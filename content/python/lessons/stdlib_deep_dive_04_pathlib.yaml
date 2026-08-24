@@ -4,14 +4,54 @@ language: python
 level: 22
 objective: "Use pathlib.Path instead of manual string manipulation to work with filesystem paths."
 explanation: |
-  pathlib.Path represents a filesystem path as a real object with useful
-  properties (.name, .stem, .suffix, .parent) and an overloaded / operator
-  for joining -- far less error-prone than splitting and concatenating
-  strings by hand, and it handles platform path separators correctly.
+  Manipulating filesystem paths as plain strings means hand-rolling
+  string operations for every question you'd want to ask -- splitting
+  on `.` to find an extension, splitting on `/` (or `\` on Windows) to
+  find a parent directory, concatenating with the right separator to
+  join two path segments -- and every one of those hand-rolled
+  operations is a place a subtle cross-platform bug can hide (Windows
+  uses `\`, POSIX systems use `/`, and naive string joining tends to
+  assume one or the other). `pathlib.Path` represents a filesystem path
+  as a real object instead of an opaque string, with useful properties
+  already computed for you: `.name` (the final component), `.stem` (the
+  name without its extension), `.suffix` (the extension, with the dot),
+  `.parent` (the containing directory), and the `/` operator overloaded
+  specifically for joining path segments correctly regardless of
+  platform -- `Path("data") / "reports" / "summary.txt"` builds the
+  right path with the right separator on whatever OS the code actually
+  runs on, something manual string concatenation can't guarantee
+  without an explicit `os.path.join` (which `Path` effectively replaces
+  with a much more readable spelling).
+
+  Beyond just representing a path, `Path` objects also carry the
+  filesystem operations that act on them directly as methods:
+  `.exists()`, `.is_file()`, `.is_dir()`, `.mkdir(parents=True,
+  exist_ok=True)`, `.read_text()`/`.write_text()` for simple whole-file
+  I/O without a separate `open()` call, and `.glob("*.py")` for pattern
+  matching against directory contents. This consolidates what used to be
+  spread across `os`, `os.path`, `glob`, and manual `open()` calls into
+  one coherent object-oriented API, which is why modern Python code
+  reaches for `pathlib` by default rather than the older `os.path`
+  string-based functions.
 example_code: |
   from pathlib import Path
+
+  # The trap: manual string splitting to answer path questions.
+  filename = "summary.txt"
+  name_without_ext = filename.split(".")[0]   # breaks on multi-dot names!
+
+  # Fix: Path exposes these as properties, correctly, cross-platform.
   p = Path("data") / "report.csv"
-  print(p.suffix)
+  print(p)                                     # data/report.csv (or data\report.csv)
+  print(p.suffix)                              # .csv
+  print(p.stem)                                # report
+  print(p.parent)                               # data
+
+  full_path = Path("reports") / "summary.txt"
+  print(full_path.stem)                         # summary
+
+  # Path bundles filesystem operations directly as methods too:
+  # full_path.exists(), full_path.read_text(), full_path.parent.mkdir(...)
 starter_code: |
   folder = "reports"
   filename = "summary.txt"

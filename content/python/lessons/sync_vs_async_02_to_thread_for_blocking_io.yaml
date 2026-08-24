@@ -4,24 +4,69 @@ language: python
 level: 42
 objective: "Use asyncio.to_thread to run a genuinely blocking function (one you can't rewrite as async) without freezing the event loop."
 explanation: |
-  Sometimes the blocking call isn't yours to rewrite -- a third-party
-  library, a C extension, a legacy function -- so there's no `await`
-  version available. asyncio.to_thread(func, *args) runs it in a
-  background thread and awaits the result, letting the rest of the event
-  loop keep making progress while it runs, instead of calling it inline
-  and freezing everything.
+  The previous exercise's fix -- swap `time.sleep()` for `asyncio.sleep
+  ()` -- only works when an async-native equivalent actually exists.
+  Often it doesn't: a third-party library with no async support, a C
+  extension doing genuine blocking I/O at a lower level than Python can
+  intercept, or legacy code that can't be rewritten. Calling any of
+  those directly inside a coroutine has exactly the same effect as the
+  previous exercise's `time.sleep()` mistake -- it blocks the entire
+  event loop for as long as it runs, since there's no `await` point
+  inside it for the loop to reclaim control at.
+
+  `asyncio.to_thread(func, *args, **kwargs)` solves this by running
+  `func` in a separate background thread (drawn from a thread pool
+  managed internally) rather than on the event loop's own thread, and
+  returning an awaitable that completes once that background call
+  finishes. The event loop's own thread is free to keep running other
+  coroutines the entire time the blocking call is executing elsewhere
+  -- the blocking work still takes just as long in wall-clock terms
+  (running it on a different thread doesn't make `blocking_io()` itself
+  faster), but it no longer *prevents* anything else from making
+  progress concurrently, which is the actual goal. This only helps for
+  I/O-bound blocking work, for the same GIL-related reason threads help
+  I/O-bound work generally (see the `concurrency_async` category): a
+  thread genuinely blocked on I/O releases the GIL, letting the event
+  loop's thread run Python code in the meantime, whereas CPU-bound work
+  moved to a thread would still contend for the GIL and provide much
+  less benefit -- `asyncio`'s own docs point toward `ProcessPoolExecutor
+  ` instead for CPU-bound work that needs to run alongside an event
+  loop without blocking it.
 example_code: |
   import asyncio, time
 
-  def blocking_call():
-      time.sleep(0.01)
-      return "result"
+  # The trap: a blocking call with no async equivalent, called inline.
+  def blocking_io(delay=0.05):
+      time.sleep(delay)              # e.g. a legacy function, no await version exists
+      return "io done"
 
+  async def fast_task(log):
+      await asyncio.sleep(0.01)
+      log.append("fast task done")
+
+  async def main_broken():
+      log = []
+      async def wrapped():
+          result = blocking_io()     # blocks the WHOLE event loop for 0.05s
+          log.append(result)
+      await asyncio.gather(wrapped(), fast_task(log))
+      print(log)                      # ['io done', 'fast task done'] -- wrong order
+
+  asyncio.run(main_broken())
+
+  # Fix: asyncio.to_thread runs it off the event loop's own thread.
   async def main():
-      result = await asyncio.to_thread(blocking_call)
-      print(result)
+      log = []
+      async def wrapped():
+          result = await asyncio.to_thread(blocking_io, 0.05)   # args forwarded to blocking_io
+          log.append(result)
+      await asyncio.gather(wrapped(), fast_task(log))
+      print(log)                      # ['fast task done', 'io done'] -- correct interleaving
 
   asyncio.run(main())
+
+  # For CPU-bound work (not I/O), a ProcessPoolExecutor is the better fit --
+  # to_thread still contends for the GIL for pure computation.
 starter_code: |
   import asyncio
   import time

@@ -4,15 +4,48 @@ language: python
 level: 75
 objective: "Fix a Timer context manager that never actually records the elapsed duration of the block it wraps."
 explanation: |
-  A timing context manager is a standard observability building block:
-  __enter__ records a start timestamp, and __exit__ computes the elapsed
-  time and stores it somewhere the caller can read after the `with`
-  block ends -- using time.monotonic() rather than time.time(), since a
-  monotonic clock can't ever jump backward due to a system clock
-  adjustment, which would corrupt a duration measurement.
+  A timing context manager is a standard observability building block
+  for answering "how long did this block of code actually take" --
+  `__enter__` runs when the `with` block is entered and records a start
+  timestamp, `__exit__` runs when the block exits (whether it finished
+  normally or raised an exception, since `__exit__` is guaranteed to
+  run either way) and computes the elapsed time, storing it somewhere
+  the caller can read afterward. Returning `self` from `__enter__` is
+  what makes `with Timer() as t:` bind `t` to the Timer instance itself
+  rather than to some other value, so `t.duration` is reachable once
+  the block has finished.
+
+  The choice of clock matters more than it might first appear: `time.
+  monotonic()` is specifically guaranteed to never go backward, unlike
+  `time.time()` (wall-clock time), which reflects the actual calendar
+  date/time and *can* jump -- backward or forward -- if the system
+  clock gets adjusted (NTP synchronization, a manual clock change,
+  daylight saving in some configurations). If a duration measurement
+  used `time.time()` and the system clock happened to be adjusted
+  backward mid-measurement, the computed "elapsed time" could come out
+  negative, which is nonsensical for a duration and would corrupt any
+  metric or log built from it. `time.monotonic()` has no defined
+  relationship to wall-clock time at all -- it's not meaningful as a
+  timestamp, only as a value whose *differences* are meaningful and
+  always non-negative for events that actually happened in order --
+  which is precisely the property a duration measurement needs and
+  nothing else about it matters.
 example_code: |
   import time
 
+  # The trap: __exit__ never actually computes or stores anything.
+  class TimerBroken:
+      def __enter__(self):
+          self.start = time.monotonic()
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          pass                          # duration never recorded!
+
+  # with TimerBroken() as t:
+  #     pass
+  # print(t.duration)                   # AttributeError -- no .duration at all
+
+  # Fix: __exit__ computes elapsed time from the __enter__-recorded start.
   class Timer:
       def __enter__(self):
           self.start = time.monotonic()
@@ -21,8 +54,14 @@ example_code: |
           self.duration = time.monotonic() - self.start
 
   with Timer() as t:
-      pass
-  print(t.duration is not None)
+      total = sum(range(1000))
+  print(t.duration is not None)          # True
+
+  # Why monotonic(), not time.time(): wall-clock time can jump backward.
+  # A duration computed from time.time() COULD go negative if the system
+  # clock is adjusted mid-measurement -- monotonic() never can, by design.
+  start_wrong = time.time()              # wall-clock -- NOT safe for durations
+  start_right = time.monotonic()         # monotonic -- always safe for durations
 starter_code: |
   import time
 

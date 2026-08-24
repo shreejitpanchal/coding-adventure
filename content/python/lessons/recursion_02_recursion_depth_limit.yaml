@@ -4,20 +4,68 @@ language: python
 level: 52
 objective: "Fix a RecursionError caused by recursing too deep, by converting the function to an iterative loop."
 explanation: |
-  Python has no tail-call optimization, and a default recursion limit
-  (~1000 frames) -- a recursive function that needs one call per unit of
-  work will blow that limit on large inputs, raising RecursionError.
-  Unlike languages with proper tail calls, the fix in Python is usually
-  to convert the recursion into an explicit loop, which uses one stack
-  frame no matter how much work it does.
+  Many languages optimize a specific shape of recursion -- a "tail
+  call," where the recursive call is the very last thing a function
+  does, with nothing left to compute after it returns -- by reusing the
+  current stack frame instead of pushing a new one, effectively turning
+  tail-recursive code into a loop under the hood with no growing call
+  stack. CPython deliberately does *not* implement this optimization
+  (it's a long-standing, intentional design decision, partly because it
+  would make tracebacks harder to read), which means every recursive
+  call in Python, tail-positioned or not, consumes one real stack
+  frame, and Python enforces a default recursion limit (`sys.
+  getrecursionlimit()`, around 1000 by default) specifically to catch
+  runaway recursion before it exhausts the real C call stack and
+  crashes the interpreter itself rather than failing gracefully. A
+  recursive function that needs one call per unit of work -- `sum_to_n
+  (10000)` needing roughly 10,000 nested calls -- blows straight through
+  that limit long before finishing, raising `RecursionError:
+  maximum recursion depth exceeded`.
+
+  Because Python won't quietly optimize tail recursion away the way
+  some other languages do, the practical fix for recursion that's
+  genuinely going to run deep on realistic inputs is usually to convert
+  it into an explicit loop, which uses exactly one stack frame no
+  matter how many iterations it performs -- there's no growing call
+  stack to overflow, because there's no additional stack frame per unit
+  of work at all. This isn't a purely mechanical translation, though:
+  it usually means restructuring "accumulate the answer via recursive
+  calls that combine results after returning" into "accumulate the
+  answer via a running variable updated each iteration," which is
+  exactly the accumulator-pattern idea a nearby exercise covers in more
+  depth. `sys.setrecursionlimit()` exists to raise the ceiling
+  manually, but it's rarely the right fix -- it just delays the crash to
+  a larger input and risks a real (harder-to-diagnose) stack overflow
+  at the C level instead of a clean, catchable `RecursionError`.
 example_code: |
+  # The trap: one call per unit of work -- blows the recursion limit on large n.
+  def sum_to_n_broken(n):
+      if n == 0:
+          return 0
+      return n + sum_to_n_broken(n - 1)
+
+  # sum_to_n_broken(10000) -- RecursionError: maximum recursion depth exceeded
+
+  # Fix: an explicit loop uses ONE stack frame regardless of how much work it does.
+  def sum_to_n(n):
+      total = 0
+      for i in range(n + 1):
+          total += i
+      return total
+
+  print(sum_to_n(10000))              # 50005000 -- no recursion limit involved at all
+
   def factorial_iterative(n):
       result = 1
       for i in range(2, n + 1):
           result *= i
       return result
 
-  print(factorial_iterative(10))
+  print(factorial_iterative(10))       # 3628800
+
+  # sys.setrecursionlimit() raises the ceiling but doesn't fix the underlying issue --
+  # it just delays the crash to a larger n, and risks a harder-to-diagnose
+  # C-level stack overflow instead of a clean, catchable RecursionError.
 starter_code: |
   def sum_to_n(n):
       if n == 0:

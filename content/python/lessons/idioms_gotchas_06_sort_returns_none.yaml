@@ -4,16 +4,47 @@ language: python
 level: 6
 objective: "Fix a function that returns the result of list.sort(), which always returns None."
 explanation: |
-  `list.sort()` sorts in place and returns `None` -- it's a common mistake
-  to write `return some_list.sort()` expecting the sorted list back. The
-  fix is either to sort first and then return the (now-mutated) list on a
-  separate line, or to use the builtin `sorted()`, which returns a new
-  sorted list instead of mutating and returning None.
+  Python has a general, if unwritten, convention: a method either
+  mutates its object in place and returns `None` (so nobody mistakes
+  the return value for a new object), or it returns a new object and
+  leaves the original untouched -- rarely both. `list.sort()` follows
+  the first pattern: it reorders the list's elements in place and
+  explicitly returns `None`, as a signal that nothing new was created.
+  `return some_list.sort()` is a natural mistake because it *reads*
+  like it should hand back the sorted list, but what it actually hands
+  back is `None`, silently -- there's no error, just a wrong value
+  propagating downstream, often surfacing as a confusing `TypeError`
+  much later when something tries to iterate over that `None`.
+
+  The same "mutate-in-place, return None" pattern shows up all over the
+  standard library once you know to look for it: `list.append()`,
+  `list.reverse()`, `list.extend()`, `dict.update()`, `set.add()` all
+  return `None`. The builtin `sorted()` follows the opposite
+  convention -- it never mutates its input at all, and always returns a
+  brand-new sorted list, which is exactly why it composes cleanly inside
+  a `return` statement, or chained with slicing to grab a top-N
+  subset. When in doubt about which pattern a given method follows, the
+  reliable check is simple: try it in a REPL and see whether the return
+  value is `None`.
 example_code: |
+  # The trap: list.sort() mutates in place and returns None.
+  def sort_scores_buggy(scores):
+      return scores.sort()
+
+  print(sort_scores_buggy([3, 1, 2]))   # None -- not the sorted list!
+
+  # Fix #1: sort in place, then return the (now-mutated) list separately.
+  def sort_scores(scores):
+      scores.sort()
+      return scores
+
+  print(sort_scores([3, 1, 2]))          # [1, 2, 3]
+
+  # Fix #2: sorted() returns a new list, never mutates, composes cleanly.
   def top_three(scores):
       return sorted(scores, reverse=True)[:3]
 
-  print(top_three([5, 9, 1, 7]))
+  print(top_three([5, 9, 1, 7]))         # [9, 7, 5]
 starter_code: |
   def sort_scores(scores):
       return scores.sort()

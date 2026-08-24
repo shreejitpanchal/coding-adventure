@@ -4,23 +4,70 @@ language: python
 level: 36
 objective: "Fix a deadlock caused by a function acquiring a non-reentrant Lock while already holding it."
 explanation: |
-  threading.Lock is not reentrant -- a thread that already holds it will
-  block forever if it tries to acquire it again, even from the same
-  thread (e.g. via recursion or a nested call). threading.RLock (a
-  "reentrant lock") tracks which thread holds it and how many times, so
-  the same thread can acquire it repeatedly without deadlocking, as long
-  as it releases the same number of times.
+  `threading.Lock` has exactly two states, held or not held, with no
+  concept of *which* thread holds it or how many times -- `acquire()`
+  simply blocks until the lock is free, full stop, even if the thread
+  calling `acquire()` is the very same thread that already holds it.
+  That makes a plain `Lock` non-reentrant: `factorial(n)` acquiring the
+  lock, then recursively calling `factorial(n - 1)` which tries to
+  acquire the *same* lock again from the *same* thread, blocks forever
+  waiting for a release that can never happen -- the thread is waiting
+  on itself, a deadlock with no other thread involved at all. This is a
+  distinct failure mode from the multi-thread race conditions covered
+  elsewhere: no interleaving, no timing sensitivity, no "usually works
+  but occasionally fails" -- it deadlocks deterministically, every
+  single time `factorial` recurses at all, because the second `with
+  lock:` block is unconditionally reached from within the first.
+
+  `threading.RLock` ("reentrant lock") fixes exactly this shape of
+  problem by tracking *which* thread currently holds it and *how many
+  times* that same thread has acquired it, incrementing an internal
+  counter on each nested acquire from the owning thread rather than
+  blocking. The lock is only actually released (available to a
+  *different* thread) once that owning thread has called `release()`
+  (or exited a `with` block) the same number of times it acquired it --
+  so nested/recursive acquisition from the thread that already owns it
+  is always safe, while a genuinely different thread trying to acquire
+  it still blocks normally until the owner has fully released it. The
+  practical rule: reach for `RLock` specifically when the same thread
+  might legitimately need to acquire the same lock more than once
+  before fully releasing it -- recursive functions holding a lock
+  across recursive calls, or a class where multiple locked methods call
+  each other on the same object -- and a plain `Lock` otherwise, since
+  `RLock`'s bookkeeping has a small overhead a simple `Lock` doesn't
+  need to pay.
 example_code: |
   import threading
 
+  # The trap: a plain Lock deadlocks on nested/recursive acquisition.
+  lock_broken = threading.Lock()
+
+  def factorial_broken(n):
+      with lock_broken:
+          if n <= 1:
+              return 1
+          return n * factorial_broken(n - 1)   # tries to re-acquire -- DEADLOCK
+
+  # print(factorial_broken(5))   # hangs forever -- same thread blocked on itself
+
+  # Fix: RLock tracks the owning thread and an acquisition COUNT.
   lock = threading.RLock()
 
+  def factorial(n):
+      with lock:
+          if n <= 1:
+              return 1
+          return n * factorial(n - 1)          # same thread -- RLock allows this
+
+  print(factorial(5))              # 120
+
+  # The general pattern: nested/recursive locked calls from the SAME thread.
   def outer():
       with lock:
           inner()
 
   def inner():
-      with lock:
+      with lock:                    # nested acquisition, same thread -- fine with RLock
           print("inner ran")
 
   outer()

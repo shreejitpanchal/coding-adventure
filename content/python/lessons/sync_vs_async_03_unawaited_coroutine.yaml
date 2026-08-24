@@ -4,18 +4,62 @@ language: python
 level: 43
 objective: "Fix code that calls an async function directly and gets an un-awaited coroutine object back instead of its result."
 explanation: |
-  Calling an async function doesn't run it -- it creates a coroutine
-  object that has to be driven by an event loop (via `await`, or a
-  top-level `asyncio.run()`) before any of its code actually executes.
-  Forgetting that is a very common trap: the call "succeeds" with no
-  error, but silently returns the wrong kind of object.
+  An `async def` function is fundamentally different from a regular
+  function at the point where it's called: calling a regular function
+  runs its body immediately and returns whatever it computes, but
+  calling an `async def` function does *not* run its body at all --
+  it immediately returns a coroutine object, a paused, not-yet-started
+  representation of that call, without executing a single line inside
+  it. The body only actually runs once that coroutine object is driven
+  by something that understands the coroutine protocol: an `await`
+  expression inside another coroutine, or `asyncio.run(coro)` at the
+  top level (which creates an event loop, runs the coroutine to
+  completion, and returns its final result). `get_value()` alone,
+  with nothing awaiting or running it, produces exactly one thing: a
+  `<coroutine object get_value at 0x...>`, and the function's actual
+  body -- including its `return 42` -- never executes at all.
+
+  This is a particularly sneaky trap because it fails silently rather
+  than raising an error at the mistake's actual location: `result =
+  get_value()` runs without complaint, `result` genuinely holds
+  *something*, and the bug only becomes visible later, wherever `result`
+  gets used as if it were the real return value -- and even then, it
+  might not be an obvious crash; it might just be `type(result).
+  __name__` unexpectedly printing `"coroutine"` instead of `"int"`, or
+  (in real code) a runtime warning about "coroutine was never awaited"
+  that's easy to miss in noisy log output. Python 3.8+ does raise a
+  `RuntimeWarning: coroutine '...' was never awaited` in this exact
+  situation as a debugging aid, precisely because the failure mode is
+  otherwise so quiet -- but a warning is easy to overlook compared to an
+  outright exception, which is exactly why "did I forget to await
+  this?" is worth checking explicitly whenever an async function's
+  result looks wrong in a way that doesn't otherwise make sense.
 example_code: |
   import asyncio
+
+  async def get_value():
+      return 42
+
+  # The trap: calling an async function alone just creates a coroutine object.
+  result_broken = get_value()
+  print(type(result_broken).__name__)    # coroutine -- the body never ran!
+  # (Python also emits: RuntimeWarning: coroutine 'get_value' was never awaited)
+
+  # Fix: drive the coroutine with asyncio.run() (or `await` inside another coroutine).
+  result = asyncio.run(get_value())
+  print(result)                           # 42
 
   async def compute():
       return 21 * 2
 
-  print(asyncio.run(compute()))
+  print(asyncio.run(compute()))           # 42
+
+  # Inside another coroutine, `await` drives it the same way asyncio.run() does:
+  async def caller():
+      value = await get_value()           # NOT: value = get_value()
+      return value
+
+  print(asyncio.run(caller()))            # 42
 starter_code: |
   import asyncio
 

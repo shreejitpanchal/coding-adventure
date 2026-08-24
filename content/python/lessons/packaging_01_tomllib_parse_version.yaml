@@ -4,17 +4,54 @@ language: python
 level: 61
 objective: "Use the stdlib tomllib module to parse a pyproject.toml-style string and extract the project version."
 explanation: |
-  pyproject.toml is the standard, tool-agnostic way modern Python
-  projects declare their metadata (name, version, dependencies). Since
-  Python 3.11, tomllib is in the standard library, so parsing one
-  doesn't need any third-party dependency -- tomllib.loads() turns the
-  text into a plain nested dict you can index into directly.
+  `pyproject.toml` is the modern, standardized way Python projects
+  declare their own metadata -- name, version, dependencies, build
+  system -- in one tool-agnostic file, replacing the older patchwork of
+  `setup.py`/`setup.cfg` that every build tool had to interpret
+  differently. TOML itself (the file format) is deliberately simple:
+  sections in `[brackets]` become nested dict keys, and `key = "value"`
+  lines become dict entries, so `[project]` followed by `version =
+  "2.1.0"` parses into `{"project": {"version": "2.1.0"}}` -- a plain
+  nested structure indexable exactly like any other dict of dicts.
+  Since Python 3.11, `tomllib` ships in the standard library
+  specifically to parse this format, meaning any tool that needs to
+  read project metadata (a build backend, a linter, a version-bump
+  script) can do so with zero third-party dependencies -- previously
+  this required an external library like `toml` or `tomli` (the latter
+  is in fact what became `tomllib` once it was adopted into the
+  standard library).
+
+  One easy trip-up: `tomllib` is *read-only* by design -- it exposes
+  `tomllib.load()` (reading from an already-open binary-mode file
+  object) and `tomllib.loads()` (parsing a string already in memory),
+  but there's no `tomllib.dump()`/`dumps()` for writing TOML back out,
+  because the standard library deliberately didn't commit to one
+  particular TOML-writing style. A tool that needs to *generate* TOML
+  reaches for a third-party library like `tomli-w` instead. Also worth
+  noting: `tomllib.load()` requires the file to be opened in binary
+  mode (`"rb"`), not text mode (`"r"`) -- TOML's spec requires UTF-8
+  encoding, and binary mode lets `tomllib` handle that decoding itself
+  rather than trusting whatever mode the file happened to be opened in.
 example_code: |
   import tomllib
 
+  # tomllib.loads() parses a TOML string already in memory:
   text = "[project]\nname = \"demo\"\nversion = \"2.1.0\"\n"
   data = tomllib.loads(text)
-  print(data["project"]["version"])
+  print(data["project"]["version"])       # 2.1.0
+  print(data)                              # {'project': {'name': 'demo', 'version': '2.1.0'}}
+
+  # tomllib.load() reads directly from an already-open file --
+  # note: must be opened in BINARY mode ("rb"), not text mode.
+  # with open("pyproject.toml", "rb") as f:
+  #     data = tomllib.load(f)
+
+  # There is no tomllib.dumps() -- reading only, by design.
+  # Writing TOML requires a third-party library like tomli-w instead.
+
+  # Nested tables parse into nested dicts, indexed the same way:
+  nested = tomllib.loads('[project]\nversion = "1.0.0"\n[tool.pytest]\ntestpaths = ["tests"]\n')
+  print(nested["tool"]["pytest"]["testpaths"])   # ['tests']
 starter_code: |
   import tomllib
 

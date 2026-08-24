@@ -4,15 +4,55 @@ language: python
 level: 13
 objective: "Use collections.defaultdict to remove the manual 'if key not in dict' boilerplate when grouping items."
 explanation: |
-  defaultdict(list) auto-creates an empty list the first time a new key is
-  accessed, removing the need for an explicit existence check before
-  appending. It's the standard tool for "bucket items by some key" code.
+  A plain dict raises `KeyError` the moment you access a key that isn't
+  there yet, which is exactly why "grouping" code so often starts with
+  an `if key not in d: d[key] = []` guard before it can safely append.
+  `defaultdict` removes that guard entirely by taking a *factory*
+  function at construction time -- not a value, a zero-argument callable
+  -- and calling it automatically to produce a default value any time a
+  missing key is looked up (including implicitly, via `groups[key]`).
+  `defaultdict(list)` calls `list()` (producing a fresh empty list) the
+  first time each new key is touched, so `groups[n % 3].append(n)` just
+  works on the very first access to any given key, with no existence
+  check anywhere in the loop body. This is the standard tool any time
+  the shape of the problem is "bucket items by some key I don't know in
+  advance" -- word frequency by first letter, log lines by request ID,
+  students by grade.
+
+  The factory can be any callable, which makes `defaultdict` flexible
+  beyond just grouping into lists: `defaultdict(int)` defaults missing
+  keys to `0`, perfect for tally/counting code
+  (`counts[word] += 1` just works, no `.get(word, 0)` needed);
+  `defaultdict(set)` defaults to an empty set, for grouping unique
+  items; a `lambda: defaultdict(list)` even lets you build nested
+  defaultdicts for multi-level grouping. One thing worth knowing: simply
+  *looking up* a missing key via `d[key]` (not just assigning to it)
+  still creates that key with its default value as a side effect --
+  usually harmless for grouping code, but worth remembering if you ever
+  need to check "does this key exist" without accidentally creating it
+  (use `key in d` for that, which never triggers the factory).
 example_code: |
   from collections import defaultdict
+
+  # The manual pattern being replaced:
+  words = ["a", "bb", "ccc"]
+  by_length_manual = {}
+  for w in words:
+      if len(w) not in by_length_manual:
+          by_length_manual[len(w)] = []
+      by_length_manual[len(w)].append(w)
+
+  # defaultdict(list): no existence check needed at all.
   groups = defaultdict(list)
   for n in [1, 2, 3, 4, 5, 6]:
       groups[n % 3].append(n)
-  print(dict(groups))
+  print(dict(groups))                       # {1: [1, 4], 2: [2, 5], 0: [3, 6]}
+
+  # The factory can be anything -- int() for tallying, no .get() needed:
+  counts = defaultdict(int)
+  for word in ["cat", "dog", "cat"]:
+      counts[word] += 1
+  print(dict(counts))                       # {'cat': 2, 'dog': 1}
 starter_code: |
   words = ["a", "bb", "ccc", "dd", "e"]
   by_length = {}

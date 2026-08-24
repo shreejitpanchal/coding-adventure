@@ -4,21 +4,53 @@ language: python
 level: 1
 objective: "Fix a function whose mutable default argument persists across calls instead of starting fresh each time."
 explanation: |
-  Default argument values are evaluated exactly once, at function definition
-  time, not on every call. When that default is a mutable object like a
-  list or dict, every call that doesn't pass its own argument shares the
-  SAME object, and mutations from one call leak into the next. This is one
-  of the most common real-world Python bugs, and linters flag `def f(x=[])`
-  on sight for exactly this reason.
+  Default argument values are evaluated exactly once, when the `def`
+  statement itself runs -- not once per call. Python builds the function
+  object at that moment and tucks the default values away in its
+  `__defaults__` tuple; every call that doesn't supply its own argument
+  just reuses whatever object is sitting in that tuple. For immutable
+  defaults (numbers, strings, `None`) this distinction is invisible,
+  since you can't mutate them anyway -- `def f(x=5)` behaves exactly like
+  you'd naively expect. The trouble starts the moment the default is
+  mutable: a list, a dict, a set. There is only ever *one* such object,
+  created once, shared by every call that relies on the default -- so
+  `tags.append(...)` in one call is still visible the next time the
+  function runs with no `tags` argument, because it's literally the same
+  list object both times.
+
+  This is arguably the single most common real-world Python footgun --
+  common enough that linters (pylint, ruff, flake8) flag `def f(x=[])`
+  on sight, no execution needed, purely from reading the signature. The
+  fix is the "sentinel" pattern: default the parameter to `None` (an
+  immutable, safe-to-share value), then build a fresh mutable object
+  *inside* the function body if the caller didn't pass one. That `if x
+  is None: x = []` line runs fresh on every call, so every call that
+  relies on the default gets its own list.
+
+  Occasionally this behavior is exploited deliberately rather than
+  fixed -- a mutable default can double as a cheap, function-scoped
+  cache that persists between calls without needing a global variable or
+  a class. That's a legitimate, if unusual, pattern; the difference
+  between "clever trick" and "bug" is entirely about whether the
+  behavior was intended.
 example_code: |
+  # The trap: every call without its own `tags` shares ONE list.
+  def add_tag_buggy(tag, tags=[]):
+      tags.append(tag)
+      return tags
+
+  print(add_tag_buggy("urgent"))   # ['urgent']
+  print(add_tag_buggy("review"))   # ['urgent', 'review'] -- leaked!
+
+  # The fix: sentinel default, built fresh inside the function.
   def add_tag(tag, tags=None):
       if tags is None:
           tags = []
       tags.append(tag)
       return tags
 
-  print(add_tag("urgent"))
-  print(add_tag("review"))
+  print(add_tag("urgent"))   # ['urgent']
+  print(add_tag("review"))   # ['review'] -- independent, as intended
 starter_code: |
   def add_item(item, cart=[]):
       cart.append(item)

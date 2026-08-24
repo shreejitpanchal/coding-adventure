@@ -4,15 +4,56 @@ language: python
 level: 23
 objective: "Add type hints to a function signature without changing its runtime behavior."
 explanation: |
-  Type hints (PEP 484) don't change what a function does at runtime --
-  Python doesn't enforce them -- but they let type checkers (mypy,
-  pyright) and IDEs catch real bugs before the code ever runs, and they
-  document the contract for anyone reading the signature.
+  Type hints (introduced in PEP 484) are purely annotations -- Python
+  the *language* parses them, stores them, and otherwise does nothing
+  with them at runtime; calling `add("x", "y")` on a function annotated
+  `def add(a: int, b: int) -> int` runs exactly the same as if the hints
+  weren't there at all, with no automatic type checking or coercion. The
+  value comes entirely from *external tools* that read those
+  annotations: static type checkers like `mypy` or `pyright` analyze the
+  code without running it and flag a call like `add("x", "y")` as an
+  error before it ever executes, IDEs use the same hints to power
+  autocomplete and inline warnings, and human readers get a
+  documented contract for what a function expects and returns without
+  needing to read its implementation or guess from its name. This
+  "gradual typing" design is deliberate -- hints are opt-in, can be
+  added incrementally to an existing untyped codebase one function at a
+  time, and never change runtime behavior, which is why they've been
+  adopted so widely without requiring a language-level type system the
+  way statically typed languages have from the start.
+
+  Beyond simple types like `int`/`str`/`float`, the `typing` module (and
+  built-in generics since Python 3.9+) covers richer shapes:
+  `list[int]` for a list of ints, `dict[str, int]` for a string-keyed
+  dict of ints, `Optional[str]` (or the newer `str | None` syntax) for
+  "a string, or possibly None," and `Callable[[int, int], int]` for "a
+  function taking two ints and returning one" -- useful for
+  higher-order functions that accept a callback. Because none of this
+  is enforced at runtime, a codebase's type hints are only as trustworthy
+  as its type-checker discipline: running `mypy` in CI is what actually
+  turns hints from documentation into a real, continuously-checked
+  guarantee.
 example_code: |
+  # Hints document a contract -- but don't change runtime behavior at all.
   def area(width: float, height: float) -> float:
       return width * height
 
-  print(area(2.0, 3.0))
+  print(area(2.0, 3.0))              # 6.0
+  print(area("2", "3"))              # "22333" -- no error! hints aren't enforced
+
+  # A type checker (mypy/pyright) WOULD flag the line above before running.
+
+  # Richer generic shapes for collections and callables:
+  from typing import Callable
+
+  def apply_twice(f: Callable[[int], int], x: int) -> int:
+      return f(f(x))
+
+  def total(values: list[int]) -> int:
+      return sum(values)
+
+  print(apply_twice(lambda n: n + 1, 5))   # 7
+  print(total([1, 2, 3]))                   # 6
 starter_code: |
   def add(a, b):
       return a + b

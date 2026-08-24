@@ -4,16 +4,50 @@ language: python
 level: 17
 objective: "Use bisect.insort to insert into an already-sorted list in O(n) instead of appending and re-sorting in O(n log n)."
 explanation: |
-  If a list is already sorted, appending a new item and calling .sort()
-  again re-sorts the whole thing, throwing away the fact that it was
-  already sorted. bisect.insort finds the correct insertion point with
-  binary search and inserts there directly, which is asymptotically
-  better and clearly expresses "keep this sorted" as intent.
+  If a list is already sorted, appending a new item and calling
+  `.sort()` again re-sorts the *entire* list from scratch -- O(n log n)
+  -- throwing away the fact that everything except the one new element
+  was already in order. `bisect.insort(values, x)` exploits that
+  existing order instead: it uses binary search (`bisect.bisect_left`
+  under the hood) to find exactly where `x` belongs among already-sorted
+  elements in O(log n), then shifts only the elements after that point
+  to make room -- an O(n) insert overall, better than re-sorting, and
+  more importantly it directly expresses the intent "keep this
+  collection sorted" rather than "sort, append, sort again," which
+  reads as an odd, roundabout way to maintain an invariant that
+  `insort` states outright.
+
+  `bisect` the module is really about binary search generally, and
+  `insort` is built on top of the lower-level search functions
+  `bisect.bisect_left`/`bisect.bisect_right`, which return the index
+  where a value *would* be inserted to keep the list sorted, without
+  actually inserting anything -- useful any time you need to answer
+  "how many elements are less than X?" or "which bucket does this value
+  fall into?" against sorted data, in O(log n) rather than a linear
+  scan. The `_left`/`_right` distinction only matters when the value
+  being searched for already appears in the list: `bisect_left` returns
+  the position before any existing equal elements, `bisect_right`
+  after -- relevant if you need insertions to be stable relative to
+  existing duplicates.
 example_code: |
   import bisect
+
+  # The trap: append + full re-sort throws away the existing order.
+  sorted_nums = [1, 3, 4, 7, 9]
+  sorted_nums.append(5)
+  sorted_nums.sort()                          # re-sorts ALL 6 elements
+
+  # Fix: bisect.insort finds the spot via binary search, inserts there.
   values = [1, 4, 9]
   bisect.insort(values, 6)
-  print(values)
+  print(values)                               # [1, 4, 6, 9]
+
+  # The lower-level search, useful beyond just inserting:
+  breakpoints = [60, 70, 80, 90]              # grade cutoffs
+  grades = "FDCBA"
+  score = 85
+  index = bisect.bisect_right(breakpoints, score)
+  print(grades[index])                        # 'B' -- 85 falls in the B range
 starter_code: |
   sorted_nums = [1, 3, 4, 7, 9]
   sorted_nums.append(5)

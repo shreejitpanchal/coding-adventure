@@ -4,23 +4,60 @@ language: python
 level: 25
 objective: "Use asyncio.gather to run coroutines concurrently while still getting results back in the original order."
 explanation: |
-  Awaiting coroutines one at a time in a loop runs them sequentially --
-  each one waits for the previous to finish. asyncio.gather(*coros)
-  schedules them all to run concurrently, and still returns their results
-  in the order the coroutines were passed in, regardless of which
-  finishes first.
+  `await coro` inside a `for` loop runs coroutines one at a time in the
+  most literal sense: the loop body doesn't move to the next iteration
+  until the current `await` actually completes, so three coroutines that
+  each sleep for 10ms take 30ms total, sequentially, exactly as if they
+  were ordinary synchronous calls. That defeats the entire purpose of
+  using `asyncio` in the first place, which is to let independent
+  I/O-bound operations overlap while each is waiting. `asyncio.gather
+  (*coros)` schedules every coroutine passed to it onto the event loop
+  up front, all at once, so they all start running (or waiting on I/O)
+  concurrently -- and it awaits all of them together, returning a single
+  list of results once every one has finished. Even though the
+  underlying coroutines may complete in any order (the fastest one
+  first, in whatever order the event loop happens to service them),
+  `gather`'s returned list always preserves the original *input* order,
+  not completion order -- the result at index 0 always corresponds to
+  the first coroutine passed in, regardless of which one actually
+  finished first.
+
+  This distinction between input order and completion order matters:
+  if you genuinely need results *as they complete* (to start processing
+  the fastest ones immediately, rather than waiting for the slowest),
+  `asyncio.as_completed(coros)` is the tool for that instead -- it
+  yields futures in completion order, trading the convenience of a
+  single ordered list for the ability to react as soon as each result is
+  ready. `gather` also has an important failure-handling default: if any
+  one coroutine raises, `gather` immediately propagates that exception
+  (cancelling the still-running others, unless `return_exceptions=True`
+  is passed, in which case exceptions are returned as regular values in
+  the results list instead of being raised).
 example_code: |
   import asyncio
 
-  async def square(n):
-      await asyncio.sleep(0.01)
-      return n * n
+  async def fetch(n):
+      await asyncio.sleep(0.01 * (3 - n))
+      return n
 
-  async def main():
-      results = await asyncio.gather(*(square(n) for n in range(4)))
+  # The trap: awaiting one at a time in a loop runs sequentially.
+  async def main_sequential():
+      results = []
+      for n in range(3):
+          results.append(await fetch(n))    # each one waits for the last
       print(results)
 
+  # Fix: gather schedules all three concurrently, preserves INPUT order.
+  async def main():
+      results = await asyncio.gather(*(fetch(n) for n in range(3)))
+      print(results)                         # [0, 1, 2] -- input order, not completion order
+
   asyncio.run(main())
+
+  # For reacting to results AS they complete, use as_completed instead:
+  async def main_as_completed():
+      for coro in asyncio.as_completed([fetch(0), fetch(1), fetch(2)]):
+          print("finished:", await coro)     # prints in COMPLETION order
 starter_code: |
   import asyncio
 

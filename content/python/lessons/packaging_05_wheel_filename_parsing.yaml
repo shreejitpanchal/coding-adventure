@@ -4,15 +4,57 @@ language: python
 level: 65
 objective: "Parse a distribution's name and version out of its wheel filename, following the standard dash-separated naming convention."
 explanation: |
-  A built wheel's filename follows a fixed convention:
-  {name}-{version}-{python tag}-{abi tag}-{platform tag}.whl. Knowing how
-  to parse that (as install tools and package indexes do) is a genuinely
-  practical packaging skill -- the name and version are always the first
-  two dash-separated fields, once the .whl extension is stripped.
+  A built wheel's filename isn't arbitrary -- it follows a fixed,
+  standardized convention (defined in PEP 427):
+  `{name}-{version}-{python tag}-{abi tag}-{platform tag}.whl`. Every
+  field is meaningful to an installer deciding whether a given wheel is
+  compatible with the current environment: the Python tag (`py3`, `cp311
+  `) says which interpreter version/implementation it targets, the ABI
+  tag (`none`, `cp311`) says which binary interface it was built
+  against (relevant for wheels containing compiled extensions), and the
+  platform tag (`any`, `win_amd64`, `manylinux_2_17_x86_64`) says which
+  OS/architecture it runs on. Tools like `pip` parse exactly this
+  filename structure to decide, among several available wheels for a
+  package, which one actually matches the machine currently doing the
+  installing -- so understanding this format is directly useful beyond
+  just an exercise, it's literally how dependency resolution picks a
+  compatible file.
+
+  The parsing approach here works because the convention is
+  dash-delimited with a fixed field order: strip the `.whl` extension
+  first (`removesuffix(".whl")`, which -- unlike `.replace(".whl", "")`
+  -- only removes the suffix if it's actually present at the end,
+  rather than replacing that substring anywhere it happens to appear in
+  the filename), then split on `-`. The name and version are always the
+  *first two* fields regardless of how many fields follow, which is
+  exactly what `name, version, *_ = stem.split("-")` expresses: unpack
+  the first two elements by name, and capture "everything else,
+  however many fields that turns out to be" into `_` via the `*`
+  catch-all -- a clean way to unpack a known-length prefix from a
+  variable-length sequence without needing to know or check the total
+  length in advance.
 example_code: |
+  # The trap: returning the raw filename, not parsing anything at all.
+  def parse_wheel_filename_broken(filename):
+      return filename
+
+  print(parse_wheel_filename_broken("flet-0.86.5-py3-none-any.whl"))
+  # flet-0.86.5-py3-none-any.whl -- unparsed, not useful to a caller
+
+  # Fix: strip .whl, split on "-", the name/version are always the first two fields.
+  def parse_wheel_filename(filename):
+      stem = filename.removesuffix(".whl")
+      name, version, *_ = stem.split("-")     # *_ catches everything else
+      return (name, version)
+
+  print(parse_wheel_filename("flet-0.86.5-py3-none-any.whl"))   # ('flet', '0.86.5')
+
+  # The full filename convention, for reference:
+  # {name}-{version}-{python tag}-{abi tag}-{platform tag}.whl
   stem = "requests-2.31.0-py3-none-any.whl".removesuffix(".whl")
-  name, version, *_ = stem.split("-")
-  print(name, version)
+  name, version, py_tag, abi_tag, platform_tag = stem.split("-")
+  print(name, version, py_tag, abi_tag, platform_tag)
+  # requests 2.31.0 py3 none any
 starter_code: |
   def parse_wheel_filename(filename):
       return filename

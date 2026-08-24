@@ -4,14 +4,49 @@ language: python
 level: 16
 objective: "Use heapq.nsmallest instead of sorting an entire list just to read off the first few items."
 explanation: |
-  sorted(data)[:k] sorts the *entire* list in O(n log n) just to throw
-  most of it away. heapq.nsmallest(k, data) (and nlargest) does the same
-  job in O(n log k), which matters once data gets large and k stays
-  small.
+  `sorted(data)[:k]` fully sorts the *entire* list -- O(n log n) -- and
+  then throws away everything except the first `k` elements. That's a
+  lot of wasted work once `n` is large and `k` stays small: sorting a
+  million items to read off the smallest 3 does vastly more comparisons
+  than the problem actually needs. `heapq.nsmallest(k, data)` (and its
+  mirror, `heapq.nlargest`) solves the same problem in O(n log k)
+  instead, by maintaining a heap of size `k` as it scans through the
+  data once -- a heap being a tree-shaped structure that keeps its
+  smallest (or largest) element accessible in O(1) and lets elements be
+  pushed/popped in O(log k). When `k` is small relative to `n`, that's a
+  meaningfully smaller amount of work, and it also reads as a more
+  direct expression of intent: "give me the k smallest," not "sort
+  everything, then take a slice."
+
+  `heapq` is Python's binary min-heap implementation, operating directly
+  on a plain list (`heapq.heappush(heap, x)`, `heapq.heappop(heap)`
+  always returns the smallest item in O(log n)) rather than a dedicated
+  heap class -- there's no `heapq.Heap` type, just functions that treat
+  an ordinary list as heap-ordered. Because it's a *min*-heap, getting
+  max-heap behavior (as `heapq.nlargest` effectively provides) usually
+  means negating values on the way in and out, or in `nlargest`'s case,
+  the library handles that inversion internally. `heapq` is also the
+  natural building block for a priority queue: push `(priority, item)`
+  tuples, and `heappop` always returns the lowest-priority-value item
+  first, which is exactly the ordering task schedulers and pathfinding
+  algorithms like Dijkstra's rely on.
 example_code: |
   import heapq
-  data = [9, 1, 8, 2, 7, 3]
-  print(heapq.nlargest(2, data))
+
+  # The trap: sorting everything just to read off a few smallest values.
+  scores = [42, 7, 19, 3, 88, 15]
+  smallest_three_slow = sorted(scores)[:3]   # sorts all 6, keeps 3
+
+  # Fix: heapq does it in O(n log k) instead of O(n log n).
+  print(heapq.nsmallest(3, scores))           # [3, 7, 15]
+  print(heapq.nlargest(2, scores))            # [88, 42]
+
+  # heapq also underlies a plain priority queue via push/pop:
+  tasks = []
+  heapq.heappush(tasks, (2, "low priority"))
+  heapq.heappush(tasks, (1, "urgent"))
+  heapq.heappush(tasks, (3, "someday"))
+  print(heapq.heappop(tasks))                 # (1, 'urgent') -- lowest first
 starter_code: |
   scores = [42, 7, 19, 3, 88, 15]
   smallest_three = sorted(scores)[:3]

@@ -4,13 +4,50 @@ language: python
 level: 21
 objective: "Use functools.reduce to combine a sequence into a single accumulated value."
 explanation: |
-  reduce(func, iterable) repeatedly applies a two-argument function,
-  carrying an accumulated value forward -- the general-purpose "fold"
-  operation. It's the right tool whenever a manual for-loop is just
-  accumulating one running value across a sequence.
+  `reduce(func, iterable, initial)` repeatedly applies a two-argument
+  function, carrying an accumulated value forward from one call to the
+  next: it calls `func(initial, first_item)`, then
+  `func(that_result, second_item)`, and so on until the iterable is
+  exhausted, returning the final accumulated value. This is the
+  general-purpose "fold" operation from functional programming --
+  whenever a manual `for` loop's *entire* job is to maintain one running
+  value across a sequence (a sum, a product, a running maximum, a
+  concatenated string), that loop is a fold in disguise, and `reduce`
+  names the pattern directly instead of re-deriving it via loop
+  boilerplate every time. The initial value is technically optional
+  (`reduce` will use the iterable's first element as the seed if
+  omitted), but supplying it explicitly is safer: without it, calling
+  `reduce` on an empty iterable raises `TypeError` instead of returning
+  a sensible default.
+
+  In practice, `reduce` is used far less often in idiomatic Python than
+  `sum()`, `max()`, `min()`, or `''.join()` -- because those built-ins
+  already cover the most common folds directly, more readably, and
+  usually faster. `reduce` earns its place for folds that aren't one of
+  those common shapes: combining objects with a custom merge function,
+  building up a nested data structure, or applying a chain of
+  transformations where each step depends on the one before. Guido van
+  Rossum himself has commented that `reduce` is the one functional tool
+  he finds hardest to read at a glance compared to an equivalent
+  explicit loop -- worth keeping in mind before reaching for it purely
+  for its conciseness rather than because the fold shape is genuinely
+  the clearest way to express the problem.
 example_code: |
   from functools import reduce
-  print(reduce(lambda acc, n: acc + n, [1, 2, 3, 4], 0))
+  from operator import mul
+
+  # Summing -- the classic reduce example, though sum() is preferred:
+  print(reduce(lambda acc, n: acc + n, [1, 2, 3, 4], 0))   # 10
+  print(sum([1, 2, 3, 4]))                                  # same, clearer
+
+  # A fold that ISN'T a one-liner built-in: multiplying everything.
+  numbers = [1, 2, 3, 4]
+  print(reduce(mul, numbers))                # 24 (no initial -- uses first item)
+
+  # A more elaborate fold: merging a list of dicts into one.
+  dicts = [{"a": 1}, {"b": 2}, {"a": 3}]
+  merged = reduce(lambda acc, d: {**acc, **d}, dicts, {})
+  print(merged)                               # {'a': 3, 'b': 2}
 starter_code: |
   numbers = [1, 2, 3, 4]
   product = 1

@@ -4,15 +4,56 @@ language: python
 level: 71
 objective: "Replace ad-hoc print() calls with the logging module, which supports levels, filtering, and structured output that print() can't."
 explanation: |
-  print() has no concept of severity, no way to filter it out in
-  production, and no structured format -- the logging module solves all
-  three: logging.info()/warning()/error() carry a level, can be filtered
-  globally by that level, and can be formatted consistently across an
-  entire application via logging.basicConfig().
+  `print()` is fine for quick local debugging, but it doesn't scale to
+  a real running application because it's missing three things every
+  production logging need actually requires. First, severity: `print()`
+  has no concept of "this is routine info" versus "this is a serious
+  problem" -- every call looks identical, so there's no way to
+  distinguish a helpful status line from an urgent warning without
+  reading the message text itself. Second, filterability: there's no
+  way to say "only show me warnings and above in production, but show
+  everything in development" with `print()` -- every call either always
+  runs or has to be manually commented out. Third, consistent
+  structure: `print()` output has whatever shape each individual call
+  happened to give it, with no common format for timestamps, severity
+  labels, or source location across the whole codebase.
+
+  The `logging` module solves all three at once. `logging.info(msg)`,
+  `logging.warning(msg)`, `logging.error(msg)`, etc. each carry an
+  explicit severity level baked into the function name itself.
+  `logging.basicConfig(level=...)` sets a *global* minimum threshold --
+  anything below that level is filtered out everywhere, with one line
+  of configuration rather than editing every call site. And `format=
+  "%(levelname)s: %(message)s"` (or any of the many other available
+  `%()s` fields -- `%(asctime)s`, `%(name)s`, `%(filename)s`,
+  `%(lineno)d`) gives every log line across the entire application the
+  same consistent shape, configured once. `basicConfig()` should
+  generally be called exactly once, early, before any other logging
+  calls happen -- calling it again later has no effect on an
+  already-configured root logger by default, which is a common
+  source of confusion when a second `basicConfig()` call seems to be
+  silently ignored.
 example_code: |
+  # The trap: print() has no severity, no filtering, no consistent format.
+  def process_order_print(order_id):
+      print(f"Processing order {order_id}")   # looks the same as any other print
+
+  # Fix: logging carries severity, is globally filterable, formats consistently.
   import logging, sys
   logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
-  logging.info("started")
+
+  def process_order(order_id):
+      logging.info(f"Processing order {order_id}")
+      return True
+
+  process_order(42)                  # INFO: Processing order 42
+
+  # Severity is explicit in the call itself -- filterable as a group later:
+  logging.warning("low disk space")   # WARNING: low disk space
+  logging.error("payment failed")     # ERROR: payment failed
+
+  # A richer format, still configured in exactly ONE place:
+  # format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 starter_code: |
   def process_order(order_id):
       print(f"Processing order {order_id}")

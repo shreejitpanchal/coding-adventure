@@ -4,23 +4,74 @@ language: python
 level: 73
 objective: "Use contextvars.ContextVar to attach a per-request correlation ID to every log line without passing it as an explicit parameter everywhere."
 explanation: |
-  Tracing a single request through many nested function calls needs a
-  correlation/request ID attached to every log line it touches --
-  threading that as an explicit parameter through every function
-  signature is invasive. contextvars.ContextVar holds a value that's
-  implicitly available anywhere in the same logical call chain (and,
-  critically, correctly isolated per-task under asyncio), without
-  passing it manually.
+  Tracing one request through a real application means it usually
+  passes through many layers -- a route handler calls a service
+  function, which calls a repository function, which calls a logging
+  helper -- and every log line at every layer needs to carry the same
+  correlation/request ID so all of them can be grepped together later
+  when debugging that one request. The naive approach, passing
+  `request_id` as an explicit parameter through every function
+  signature along that entire call chain, is invasive: it pollutes
+  function signatures that otherwise have nothing to do with logging,
+  and it means every new function added anywhere in the chain has to
+  remember to accept and forward it too.
+
+  `contextvars.ContextVar` solves this by making a value implicitly
+  available to *anything running within the same logical call chain*,
+  without it being passed as an argument anywhere. `request_id.set(
+  "req-123")` stores a value that any code calling `request_id.get()`
+  later in that same execution context can read, regardless of how many
+  function calls deep it is -- no parameter threading required. The
+  "critically" part of what makes `ContextVar` specifically the right
+  tool (rather than, say, a plain global variable) is how it behaves
+  under concurrency: a plain global would be shared and clobbered by
+  every concurrent request, but a `ContextVar`'s value is automatically
+  isolated per `asyncio` task and per thread -- each concurrent request
+  handling its own `.set()` call sees only its own value via `.get()`,
+  never another request's, even though they're all running against the
+  same module-level `ContextVar` object. That per-task isolation is
+  exactly the property that makes `ContextVar` the standard mechanism
+  behind request-scoped logging context in async web frameworks.
 example_code: |
   import contextvars
 
-  user_id = contextvars.ContextVar("user_id", default="anonymous")
+  # The trap: never calling .set() leaves every log line at the default.
+  request_id_broken = contextvars.ContextVar("request_id", default="unknown")
 
-  def log(msg):
-      print(f"[{user_id.get()}] {msg}")
+  def log_broken(message):
+      print(f"[{request_id_broken.get()}] {message}")
 
-  user_id.set("u-42")
-  log("logged in")
+  def handle_request_broken():
+      log_broken("handling request")    # [unknown] handling request -- no ID set!
+
+  # Fix: .set() the value once, .get() picks it up anywhere in the same chain.
+  request_id = contextvars.ContextVar("request_id", default="unknown")
+
+  def log(message):
+      print(f"[{request_id.get()}] {message}")   # no request_id PARAMETER needed
+
+  def deeply_nested_helper():
+      log("doing nested work")          # still sees the right ID, no threading needed
+
+  def handle_request():
+      request_id.set("req-123")
+      log("handling request")
+      deeply_nested_helper()
+
+  handle_request()
+  # [req-123] handling request
+  # [req-123] doing nested work
+
+  # Per-task isolation under asyncio -- each task's .set() is independent:
+  import asyncio
+
+  async def handle(rid):
+      request_id.set(rid)
+      await asyncio.sleep(0)
+      log("concurrent request")         # each task logs its OWN id, never another's
+
+  async def main():
+      await asyncio.gather(handle("req-A"), handle("req-B"))
 starter_code: |
   import contextvars
 

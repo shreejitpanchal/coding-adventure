@@ -4,12 +4,44 @@ language: python
 level: 70
 objective: "Fix a resource-creation step that always claims to 'create', even when re-run against a resource that already exists."
 explanation: |
-  Deploy steps get re-run -- a retried pipeline, a re-applied deployment,
-  a config re-sync. A step that isn't idempotent (safe to run more than
-  once with the same effect) causes duplicate work or misleading
-  reports; a step that checks "does this already exist?" before acting,
-  and reports accordingly, can be re-run safely without surprises.
+  Deploy pipelines get re-run far more often than the happy path
+  suggests: a step times out and the orchestrator retries it, a
+  deployment gets re-applied to reconcile drift, a config sync runs on
+  a schedule against infrastructure that's mostly already correct.
+  "Idempotent" is the property that makes all of that safe: running the
+  same step twice (or fifty times) produces the same end state as
+  running it once, with no duplicate side effects and no misleading
+  output. A step that isn't idempotent -- one that unconditionally
+  claims to "create" a resource whether or not it already existed --
+  causes two distinct kinds of harm: it can literally duplicate work
+  (provisioning a second copy of something that should be a singleton),
+  and even when the underlying action is itself safely repeatable, the
+  *reporting* becomes actively misleading, showing "created" in a
+  deploy log for something that's actually been running unchanged for
+  months, obscuring what really happened during this particular run.
+
+  The general shape of the fix is "check current state before acting,
+  and let the observed state -- not the mere fact that the function was
+  called -- determine both the action and what gets reported": look up
+  whether the resource already exists first, only perform the actual
+  creation when it doesn't, and report "already exists" rather than
+  "created" whenever the check finds it's already there. This same
+  check-then-act shape underlies most idempotent infrastructure tooling
+  (Terraform's plan/apply diffing against real state, Kubernetes'
+  reconciliation loops constantly comparing desired vs. actual state)
+  -- the specific mechanism varies, but the principle is the same:
+  never assume "no state exists yet" just because a step is being
+  invoked; always check first.
 example_code: |
+  # The trap: unconditionally claims "created", even on a re-run.
+  resources_broken = {"web-server"}
+  def ensure_resource_broken(name):
+      resources_broken.add(name)         # add() is a no-op if already present
+      return f"created {name}"           # but this ALWAYS says "created"!
+
+  print(ensure_resource_broken("web-server"))   # "created web-server" -- misleading, it already existed
+
+  # Fix: check existing state FIRST, let it drive both action and report.
   seen = set()
 
   def ensure(name):
@@ -18,8 +50,13 @@ example_code: |
       seen.add(name)
       return f"created {name}"
 
-  print(ensure("db"))
-  print(ensure("db"))
+  print(ensure("db"))                    # created db
+  print(ensure("db"))                    # already exists: db -- safe to re-run
+
+  # The same check-then-act shape scales to real infra tooling:
+  # Terraform diffs desired config against real state before acting;
+  # Kubernetes reconciliation loops compare desired vs actual continuously --
+  # neither ever assumes "nothing exists yet" just because it was invoked.
 starter_code: |
   resources = {"web-server"}
 

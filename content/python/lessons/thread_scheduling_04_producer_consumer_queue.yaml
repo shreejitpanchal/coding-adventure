@@ -4,32 +4,81 @@ language: python
 level: 39
 objective: "Use queue.Queue to hand work off between threads safely, instead of a plain list with no synchronization."
 explanation: |
-  queue.Queue is thread-safe out of the box (unlike a plain list, which
-  needs manual locking to avoid corruption under concurrent access), and
-  its blocking `get()`/`put()` naturally coordinate a producer thread and
-  a consumer thread without any extra locks. A sentinel value (like None)
-  is the standard way to tell a consumer "no more work is coming."
+  A plain `list`, shared between threads with no synchronization at
+  all, is not safe for genuinely concurrent producer/consumer access --
+  `.append()` and iteration on a list have no built-in coordination
+  between threads, so a producer writing while a consumer reads
+  concurrently can race in ways that corrupt state or produce
+  inconsistent reads (the starter code here only "works" because `t.
+  join()` forces the producer to finish completely before the consumer
+  starts at all, which sidesteps concurrent access entirely rather than
+  handling it -- a pattern that quietly stops being safe the moment the
+  producer and consumer are meant to actually run *at the same time*).
+  `queue.Queue` is thread-safe out of the box specifically for this
+  handoff pattern: internally, its `put()` and `get()` are already
+  protected by their own locking, so multiple threads can call them
+  concurrently without the caller needing to add any locks of their
+  own at all.
+
+  Beyond just being safe, `Queue.get()` *blocks* by default when the
+  queue is empty, waiting until an item becomes available rather than
+  returning immediately or raising -- which is exactly the coordination
+  a producer/consumer pair needs: the consumer doesn't need to poll in
+  a loop checking "is there anything yet," it just calls `get()` and
+  the queue itself handles waiting for the producer to catch up. The
+  remaining piece is knowing when to *stop* consuming -- a queue has no
+  built-in concept of "the producer is done forever" -- which is why a
+  sentinel value (commonly `None`, though any value the real data could
+  never legitimately be is fine) is the standard convention: the
+  producer puts one sentinel onto the queue after all its real work,
+  and the consumer's loop checks for that sentinel and breaks when it
+  sees it, rather than looping forever waiting for items that will
+  never come. With multiple consumers, this needs one sentinel per
+  consumer (or a different termination strategy entirely), since a
+  single sentinel is only ever seen by whichever one consumer happens
+  to pull it off the queue.
 example_code: |
-  import queue, threading
+  import threading
+
+  # The trap: a plain list "works" here only because join() serializes everything.
+  buffer_broken = []
+
+  def producer_broken():
+      for i in range(5):
+          buffer_broken.append(i)
+
+  def consumer_broken(total):
+      for item in buffer_broken:      # only safe because producer already finished
+          total.append(item * 10)
+
+  total_broken = []
+  t = threading.Thread(target=producer_broken)
+  t.start()
+  t.join()                             # forces full serialization -- not real concurrency
+  consumer_broken(total_broken)
+  print(total_broken)                  # [0, 10, 20, 30, 40] -- correct, but fragile
+
+  # Fix: queue.Queue is thread-safe, with blocking get()/put() and a sentinel.
+  import queue
 
   q = queue.Queue()
 
   def producer():
-      for i in range(3):
+      for i in range(5):
           q.put(i)
-      q.put(None)
+      q.put(None)                      # sentinel: "no more work is coming"
 
   def consumer(total):
       while True:
-          item = q.get()
+          item = q.get()               # blocks until an item is available
           if item is None:
-              break
-          total.append(item)
+              break                     # sentinel seen -- stop consuming
+          total.append(item * 10)
 
   total = []
   threading.Thread(target=producer).start()
-  consumer(total)
-  print(total)
+  consumer(total)                      # can run genuinely CONCURRENTLY with the producer
+  print(total)                          # [0, 10, 20, 30, 40]
 starter_code: |
   import threading
 

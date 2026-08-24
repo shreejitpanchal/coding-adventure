@@ -4,20 +4,67 @@ language: python
 level: 41
 objective: "Fix an async function that calls a blocking function (time.sleep), freezing the entire event loop instead of yielding control."
 explanation: |
-  asyncio's concurrency comes entirely from cooperative yielding at
-  `await` points -- a coroutine that calls a blocking function like
-  time.sleep() never yields, so it blocks every other coroutine on the
-  same event loop for its entire duration, not just itself. The fix for
-  a delay is asyncio.sleep() (which awaits, yielding control); for
-  genuinely blocking I/O or CPU work, it's asyncio.to_thread().
+  All of asyncio's concurrency comes from one single mechanism:
+  cooperative yielding at `await` points. A coroutine runs uninterrupted
+  from one `await` to the next -- the event loop only gets a chance to
+  switch to a *different* coroutine at those exact points, never in
+  between. That's what "cooperative" means here: coroutines aren't
+  preemptively interrupted by the scheduler the way OS threads are;
+  each one has to voluntarily yield control back by awaiting something.
+  `time.sleep()` is a regular, blocking function call with no `await`
+  anywhere in it -- from the event loop's perspective, a coroutine that
+  calls `time.sleep(0.05)` simply never yields for that entire 50
+  milliseconds, so *nothing else* scheduled on that event loop can run
+  either, not just the coroutine that called it. This is the single
+  most common asyncio mistake: code that "looks async" (it's defined
+  with `async def`) but silently blocks everything anyway, because a
+  synchronous call snuck in without an `await` in front of it.
+
+  The fix depends on what's actually available: for a simple delay,
+  `asyncio.sleep(seconds)` is the async-native equivalent of `time.
+  sleep()` -- crucially, it's an `await`-able coroutine itself, so
+  awaiting it *does* yield control back to the event loop for that
+  duration, letting other coroutines make progress concurrently. For
+  genuinely blocking work that has no async equivalent (a blocking
+  library call, disk I/O, CPU-bound computation), `asyncio.to_thread()`
+  is the tool -- covered in the next exercise -- which runs the blocking
+  call in a background thread instead, keeping the event loop free.
+  The underlying rule to internalize: inside an `async def` function,
+  *every* potentially slow operation needs to either be natively
+  awaitable or explicitly offloaded to a thread -- a plain blocking call
+  sitting inline is a trap that produces no error, just silently
+  serialized "concurrent" code.
 example_code: |
-  import asyncio
+  import asyncio, time
 
-  async def worker():
-      await asyncio.sleep(0.01)
-      return "done"
+  # The trap: time.sleep() never yields -- it blocks the WHOLE event loop.
+  async def blocking_worker_broken(log):
+      time.sleep(0.05)              # nothing else can run during this!
+      log.append("worker done")
 
-  print(asyncio.run(worker()))
+  async def fast_task(log):
+      await asyncio.sleep(0.01)     # yields -- other coroutines CAN run here
+      log.append("fast task done")
+
+  async def main_broken():
+      log = []
+      await asyncio.gather(blocking_worker_broken(log), fast_task(log))
+      print(log)                     # ['worker done', 'fast task done'] -- fast_task
+                                      # never got a chance to interleave in!
+
+  asyncio.run(main_broken())
+
+  # Fix: asyncio.sleep() awaits, genuinely yielding control back to the loop.
+  async def worker(log):
+      await asyncio.sleep(0.05)     # yields -- fast_task can now run concurrently
+      log.append("worker done")
+
+  async def main():
+      log = []
+      await asyncio.gather(worker(log), fast_task(log))
+      print(log)                     # ['fast task done', 'worker done'] -- correct interleaving
+
+  asyncio.run(main())
 starter_code: |
   import asyncio
   import time

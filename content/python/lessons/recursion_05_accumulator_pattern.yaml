@@ -4,20 +4,62 @@ language: python
 level: 55
 objective: "Rewrite a recursive function that rebuilds a new list via concatenation on every call to instead carry an accumulator parameter, avoiding repeated O(n) list-concatenation work."
 explanation: |
-  `reverse_list(items[1:]) + [items[0]]` recurses correctly, but list
-  concatenation (`+`) allocates a brand-new list every single call --
-  making the whole function O(n^2) instead of O(n). The accumulator
-  pattern (an extra parameter that carries the "answer so far" through
-  each call) avoids repeated allocation: each call just builds one new
-  small list and passes it forward, and the final call returns the
-  finished accumulator directly.
+  `reverse_list(items[1:]) + [items[0]]` is correct -- it does produce
+  the right reversed list -- but it's quietly inefficient in a way
+  that's easy to miss because the code itself looks clean. Every single
+  call performs `+`, which allocates a brand-new list and copies every
+  element from both operands into it; with `n` calls, each doing
+  roughly O(n) work for that copy (the copied list grows by one element
+  per call, but the total copying work across all calls sums up
+  quadratically), the whole function ends up doing O(n²) work to
+  reverse a list that should only take O(n). The bug isn't in the
+  *logic* -- it's in the *cost*, invisible until the input gets large
+  enough for the quadratic blowup to actually matter, which is exactly
+  the kind of performance issue that's hardest to catch by just reading
+  code casually.
+
+  The accumulator pattern fixes this by adding an extra parameter that
+  carries the "answer built so far" through each recursive call,
+  instead of combining results together *after* each call returns
+  (which is what forces the repeated allocation in the first place).
+  Each call does a small, constant amount of work -- prepend one item
+  to the accumulator -- and passes the updated accumulator forward to
+  the next call; when the base case is finally reached, the
+  accumulator already *is* the complete answer, so the base case just
+  returns it directly rather than needing to combine anything further.
+  This restructuring -- "build the answer incrementally on the way
+  down, rather than combining results on the way back up" -- is the
+  same fundamental shape that makes many recursive functions tail-
+  recursive (the recursive call becomes the last operation, with
+  nothing left to compute after it returns), and it generalizes to any
+  recursive accumulation, not just list reversal -- `sum_list`'s `acc`
+  parameter below is the same pattern applied to summing instead.
 example_code: |
+  # The trap: correct result, but O(n^2) -- `+` reallocates a new list every call.
+  def reverse_list_slow(items):
+      if len(items) == 0:
+          return []
+      return reverse_list_slow(items[1:]) + [items[0]]   # + copies EVERYTHING, every call
+
+  print(reverse_list_slow([1, 2, 3, 4, 5]))   # [5, 4, 3, 2, 1] -- correct, but O(n^2)
+
+  # Fix: an accumulator carries the answer forward -- no repeated combination.
+  def reverse_list(items, acc=None):
+      if acc is None:
+          acc = []
+      if len(items) == 0:
+          return acc                            # base case: acc IS the finished answer
+      return reverse_list(items[1:], [items[0]] + acc)   # small, constant-size prepend
+
+  print(reverse_list([1, 2, 3, 4, 5]))          # [5, 4, 3, 2, 1] -- same result, O(n)
+
+  # The same accumulator shape applied to summing:
   def sum_list(items, acc=0):
       if not items:
-          return acc
-      return sum_list(items[1:], acc + items[0])
+          return acc                             # base case returns the accumulator directly
+      return sum_list(items[1:], acc + items[0])  # cheap scalar add, not a list copy
 
-  print(sum_list([1, 2, 3, 4]))
+  print(sum_list([1, 2, 3, 4]))                  # 10
 starter_code: |
   def reverse_list(items):
       if len(items) == 0:

@@ -4,15 +4,49 @@ language: python
 level: 8
 objective: "Generalize a fixed-arity function to accept a variable number of arguments with *args."
 explanation: |
-  `*args` collects any number of positional arguments into a tuple inside
-  the function body. It's the standard way to write a function whose
-  argument count isn't known up front -- like sum(), print(), or a
-  logging wrapper that needs to accept whatever its caller passes along.
+  `*args` in a function signature collects any number of extra
+  positional arguments into a single tuple, bound to the name `args`
+  inside the function body -- the star is what tells Python "gather
+  the rest," and the name itself is just a convention, not special
+  syntax (`*values` works identically). It's the standard way to write
+  a function whose argument count genuinely isn't known up front:
+  `print()`, `sum()` with multiple iterables, `os.path.join()`, and
+  countless logging/wrapping utilities all accept a variable number of
+  positional arguments this way. The counterpart, `**kwargs`, does the
+  same thing for keyword arguments, collecting them into a dict instead
+  of a tuple (`def f(**kwargs)` called as `f(a=1, b=2)` gives
+  `kwargs == {"a": 1, "b": 2}`), and the two combine naturally: `def
+  f(*args, **kwargs)` accepts absolutely anything, which is exactly the
+  shape a generic decorator's `wrapper` function needs, so it can pass
+  through whatever the wrapped function was actually called with
+  without knowing its signature in advance.
+
+  The reverse direction matters just as much: the same `*`/`**` syntax
+  used at a *call site* instead of a *definition* unpacks an existing
+  sequence or dict into separate arguments. `total(*[1, 2, 3])` is
+  exactly equivalent to writing `total(1, 2, 3)` by hand -- useful any
+  time the arguments already exist as a collection (built dynamically,
+  read from a config file, forwarded from another function) rather than
+  as separate literals you'd type out individually.
 example_code: |
+  # *args collects extra positional arguments into a tuple.
   def total(*args):
       return sum(args)
+  print(total(1, 2, 3))                    # 6
 
-  print(total(1, 2, 3))
+  # **kwargs collects keyword arguments into a dict.
+  def describe(**kwargs):
+      return ", ".join(f"{k}={v}" for k, v in kwargs.items())
+  print(describe(name="Ada", age=30))      # name=Ada, age=30
+
+  # Combined -- a generic pass-through wrapper accepts anything:
+  def log_call(*args, **kwargs):
+      print(f"called with args={args}, kwargs={kwargs}")
+  log_call(1, 2, verbose=True)
+
+  # The reverse: * and ** at a CALL site unpack an existing collection.
+  numbers = [1, 2, 3]
+  print(total(*numbers))                   # same as total(1, 2, 3)
 starter_code: |
   def total(a, b):
       return a + b

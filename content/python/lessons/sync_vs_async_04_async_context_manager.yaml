@@ -4,26 +4,74 @@ language: python
 level: 44
 objective: "Fix a class meant for `async with` that implements the sync context manager protocol (__enter__/__exit__) instead of the async one."
 explanation: |
-  `async with` requires `__aenter__`/`__aexit__` (both coroutine
-  methods) -- a class with only the plain `__enter__`/`__exit__` doesn't
-  support the async context manager protocol at all, and using it with
-  `async with` raises a TypeError. This is the async-native equivalent of
-  a regular context manager, used for resources acquired/released with
-  their own async setup/teardown steps (a connection pool, an async lock).
+  A regular `with` statement is powered by the `__enter__`/`__exit__`
+  protocol; `async with` is a genuinely separate protocol, powered by
+  `__aenter__`/`__aexit__` instead -- both defined with `async def`,
+  meaning both are themselves coroutines that must be awaited, which
+  `async with` does automatically as part of entering and exiting the
+  block. This exists because acquiring or releasing some resources
+  legitimately requires awaiting something -- opening a database
+  connection from a pool that might need to wait for one to free up, or
+  releasing an `asyncio.Lock`, both cases where a synchronous
+  `__enter__`/`__exit__` simply couldn't express "this setup/teardown
+  step itself needs to await something." `async with` and plain `with`
+  are not interchangeable or auto-detected based on what a class
+  happens to implement -- a class exposing only `__enter__`/`__exit__`
+  doesn't support `async with` at all, and attempting it raises `TypeError
+  : 'async with' received an object without __aenter__`, a fairly clear
+  error once you know to look for it, but a confusing one if you don't
+  already know the two protocols are separate.
+
+  The fix is a mechanical rename plus adding `async` to each method's
+  definition -- the actual body logic (what "acquire" and "release"
+  mean for this particular resource) usually doesn't need to change at
+  all if there's nothing genuinely async happening inside them yet;
+  only the method names and the `async def`/`await` machinery change.
+  Once real async work needs to happen during setup or teardown (an
+  actual `await some_async_call()` inside `__aenter__`), that's exactly
+  where the async protocol earns its keep over the synchronous one --
+  it's the only one of the two that can express it at all.
 example_code: |
   import asyncio
 
+  # The trap: sync protocol methods don't satisfy `async with` at all.
+  class AsyncResourceBroken:
+      def __enter__(self):
+          print("acquire")
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          print("release")
+
+  async def main_broken():
+      async with AsyncResourceBroken():   # TypeError: no __aenter__
+          print("using resource")
+
+  # asyncio.run(main_broken())   # raises TypeError
+
+  # Fix: __aenter__/__aexit__, both async def -- the bodies can stay the same.
+  class AsyncResource:
+      async def __aenter__(self):
+          print("acquire")
+          return self
+      async def __aexit__(self, exc_type, exc_val, exc_tb):
+          print("release")
+
+  async def main():
+      async with AsyncResource():
+          print("using resource")
+
+  asyncio.run(main())
+  # acquire
+  # using resource
+  # release
+
+  # Real usage often DOES await something inside setup/teardown:
   class AsyncGate:
       async def __aenter__(self):
+          await asyncio.sleep(0)      # e.g. acquiring an async lock
           return self
       async def __aexit__(self, exc_type, exc_val, exc_tb):
           return False
-
-  async def main():
-      async with AsyncGate():
-          pass
-
-  asyncio.run(main())
 starter_code: |
   import asyncio
 

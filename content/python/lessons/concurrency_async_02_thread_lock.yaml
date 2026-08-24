@@ -4,15 +4,49 @@ language: python
 level: 26
 objective: "Fix a race condition where multiple threads increment a shared counter without synchronization."
 explanation: |
-  `counter += 1` is not atomic -- it's a read, an add, and a write as
-  separate steps, and CPython can switch threads between any of them.
-  With enough threads and iterations, some increments get lost when two
-  threads read the same value before either writes back. A
-  threading.Lock around the critical section makes each increment atomic
-  with respect to other threads, guaranteeing the final count is exact.
+  `counter += 1` looks like a single indivisible operation in source
+  code, but the interpreter breaks it into several distinct steps under
+  the hood: read the current value of `counter`, compute `value + 1`,
+  write the result back. CPython's Global Interpreter Lock (GIL) means
+  only one thread executes Python bytecode at any given instant, but the
+  GIL can still be released and reacquired *between* bytecode
+  instructions -- so the interpreter is free to switch to a different
+  thread after the read but before the write. With enough threads and
+  enough iterations, two threads can both read the same value of
+  `counter`, both compute `value + 1` from that same stale reading, and
+  both write back the same result -- silently losing one of the two
+  increments. This is a real, observable bug: run the unsynchronized
+  version with 4 threads doing 100,000 increments each and the final
+  count usually comes out noticeably below the expected 400,000,
+  differently on different runs, which is the hallmark of a race
+  condition rather than a deterministic bug.
+
+  `threading.Lock` fixes this by making the read-add-write sequence
+  atomic *with respect to other threads holding the same lock*: only one
+  thread can be inside a `with lock:` block for a given lock object at a
+  time, so no other thread can interleave a read in the middle of
+  another thread's increment. The `with lock:` context-manager form is
+  strongly preferred over calling `lock.acquire()`/`lock.release()`
+  manually, for the same reason context managers are preferred for any
+  resource cleanup: `with` guarantees the lock is released even if an
+  exception is raised inside the block, where manual acquire/release
+  would leave the lock held forever, deadlocking every other thread
+  waiting on it. The scope of the `with lock:` block should be kept as
+  small as possible -- covering only the actual shared-state access, not
+  any surrounding I/O or computation that doesn't need protecting --
+  since anything inside the lock blocks every other thread waiting on
+  it, defeating the concurrency threading was meant to provide.
 example_code: |
   import threading
 
+  # The trap: counter += 1 isn't atomic -- interleaved reads lose updates.
+  counter_buggy = 0
+  def increment_buggy():
+      global counter_buggy
+      for _ in range(100_000):
+          counter_buggy += 1        # read, add, write -- interruptible
+
+  # Fix: a Lock makes the critical section atomic w.r.t. other threads.
   counter = 0
   lock = threading.Lock()
 
@@ -26,7 +60,13 @@ example_code: |
       t.start()
   for t in threads:
       t.join()
-  print(counter)
+  print(counter)                     # always exactly 10 -- no lost updates
+
+  # The critical section should be as SMALL as possible:
+  def increment_many():
+      for _ in range(100_000):
+          with lock:                # lock only the shared-state access
+              counter += 1          # not any surrounding I/O or computation
 starter_code: |
   import threading
 

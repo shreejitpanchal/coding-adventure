@@ -4,20 +4,64 @@ language: python
 level: 10
 objective: "Convert manual acquire/release calls into a proper context manager used with `with`."
 explanation: |
-  Implementing `__enter__` and `__exit__` on a class makes it usable with
-  `with`, guaranteeing cleanup runs even if the block raises -- unlike a
-  bare pair of manual calls, which skips the release step entirely if an
-  exception happens in between.
+  Implementing the two "dunder" methods `__enter__` and `__exit__` on a
+  class makes instances of it usable in a `with` statement: Python calls
+  `__enter__()` on entry to the block (whatever it returns is what gets
+  bound to the `as` name, if one is given) and *guarantees* it calls
+  `__exit__()` on the way out, whether the block finished normally,
+  returned early, or raised an exception. That guarantee is the entire
+  point -- a bare `resource.acquire(); ...; resource.release()` skips
+  the release step completely if anything between them raises, silently
+  leaking whatever was acquired (a file handle, a lock, a database
+  connection). A `with` block can't leak that way, because the
+  interpreter itself is responsible for invoking `__exit__`, not
+  application code that might get skipped.
+
+  `__exit__` receives three arguments describing any exception that
+  occurred inside the block (`exc_type`, `exc_val`, `exc_tb` -- all
+  `None` if nothing went wrong), which lets it distinguish clean exit
+  from error-driven exit and react differently if needed; returning
+  `True` from `__exit__` even suppresses the exception entirely,
+  though that's a sharp tool best used sparingly. Writing the full
+  `__enter__`/`__exit__` class is the general-purpose approach, but for
+  a simple single-function case there's a lighter-weight alternative:
+  `contextlib.contextmanager` turns an ordinary generator function into
+  a context manager, where everything before `yield` is `__enter__`'s
+  body and everything after is `__exit__`'s -- often enough to avoid
+  writing a class at all.
 example_code: |
-  class Timer:
+  # The manual pattern that's easy to get wrong under an exception:
+  class ResourceManual:
+      def acquire(self): print("acquire")
+      def release(self): print("release")
+
+  r = ResourceManual()
+  r.acquire()
+  print("using resource")
+  r.release()      # skipped entirely if the line above raised!
+
+  # As a context manager: __exit__ is GUARANTEED to run.
+  class Resource:
       def __enter__(self):
-          print("start")
+          print("acquire")
           return self
       def __exit__(self, exc_type, exc_val, exc_tb):
-          print("stop")
+          print("release")
 
-  with Timer():
-      print("working")
+  with Resource():
+      print("using resource")
+
+  # Lighter-weight equivalent via a generator function:
+  from contextlib import contextmanager
+
+  @contextmanager
+  def resource():
+      print("acquire")
+      yield
+      print("release")
+
+  with resource():
+      print("using resource")
 starter_code: |
   class Resource:
       def acquire(self):

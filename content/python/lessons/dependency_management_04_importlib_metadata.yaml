@@ -4,19 +4,65 @@ language: python
 level: 59
 objective: "Catch importlib.metadata.PackageNotFoundError instead of letting it crash a version lookup."
 explanation: |
-  importlib.metadata.version(name) reads an installed package's version
-  from its distribution metadata without importing the package itself --
-  useful for feature-detection ("is this optional dependency
-  installed?"). It raises PackageNotFoundError if the package isn't
-  installed, which a well-behaved lookup should catch and turn into a
-  clean "not available" signal instead of crashing the caller.
+  `importlib.metadata.version(name)` reads an installed package's
+  version straight from the metadata that `pip` writes alongside it at
+  install time (a `.dist-info` or `.egg-info` directory in
+  site-packages), without ever importing the package's actual code.
+  That distinction matters: importing a package to check its version
+  runs that package's `__init__.py` and any side effects it has,
+  potentially slowly or with unwanted consequences, just to answer a
+  metadata question -- `importlib.metadata` answers it directly from
+  the installed-package index instead, which is both faster and safer
+  for something like feature-detection ("is this optional dependency
+  installed, and if so, which version?").
+
+  Like any lookup by name, it needs a defined failure mode for "the
+  name doesn't exist" -- and `importlib.metadata` raises a specific,
+  catchable exception, `PackageNotFoundError`, rather than returning
+  `None` or an empty string that could be confused with a legitimately
+  empty result. Catching that *specific* exception type (not a bare
+  `except:` or an overly broad `except Exception:`) is important
+  discipline: a bare except would also silently swallow a genuine bug
+  elsewhere in the lookup, whereas `except metadata.PackageNotFoundError
+  :` only catches the one well-defined "not installed" case and lets
+  any other unexpected error propagate and surface normally. This
+  pattern -- catch one specific exception type, turn it into a clean
+  sentinel value like `None` -- generalizes well beyond package
+  lookups: it's the same shape as catching `KeyError` for a missing
+  dict key or `FileNotFoundError` for a missing file, wherever "doesn't
+  exist" is an expected, common outcome rather than a genuine error.
 example_code: |
   from importlib import metadata
 
+  # Reads metadata directly -- no import of the actual package required.
   try:
       print(metadata.version("pip"))
   except metadata.PackageNotFoundError:
       print(None)
+
+  # The trap: a bare except (or except Exception) hides real bugs too.
+  def get_version_unsafe(name):
+      try:
+          return metadata.version(name)
+      except Exception:              # swallows EVERYTHING, not just "missing"
+          return None
+
+  # Fix: catch only the specific, expected failure mode.
+  def get_version(name):
+      try:
+          return metadata.version(name)
+      except metadata.PackageNotFoundError:
+          return None
+
+  print(get_version("definitely_not_a_real_package_xyz"))   # None
+  print(get_version("pip"))                                  # e.g. "24.0"
+
+  # The same "catch the specific expected exception" shape elsewhere:
+  def get_from_dict(d, key):
+      try:
+          return d[key]
+      except KeyError:                # not a bare except
+          return None
 starter_code: |
   from importlib import metadata
 

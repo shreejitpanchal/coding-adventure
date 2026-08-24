@@ -4,17 +4,53 @@ language: python
 level: 46
 objective: "Remove a hidden side effect (mutating module-level state) so a function becomes pure -- same inputs always produce the same output, nothing else."
 explanation: |
-  A pure function's only effect is its return value -- call it twice with
-  the same arguments and you get the same result, with nothing else in
-  the program changed. A function that quietly mutates shared state on
-  the side (like appending to a module-level log) is much harder to test
-  in isolation and to reason about, since its behavior depends on -- and
-  changes -- things outside its own arguments and return value.
+  Purity is a strong, precise guarantee: a pure function's *only*
+  observable effect is its return value, and that return value depends
+  *only* on its arguments -- call it a thousand times with the same
+  inputs and you get the same output every time, and nothing anywhere
+  else in the program has changed as a result. A function that quietly
+  mutates shared state on the side -- appending to a module-level log,
+  incrementing a global counter, writing to a file -- breaks that
+  guarantee even if its *return value* still looks correct, because it
+  now has a second, hidden effect that isn't visible at the call site.
+  Anyone reading `result = add_tax(100)` has no way to know, just from
+  that line, that a module-level list somewhere just grew by one
+  element -- that's the core cost of impurity: it makes a function's
+  full behavior invisible from its signature and call site, forcing a
+  reader (or a test) to understand the entire surrounding module to
+  know what actually happens when it's called.
+
+  The practical payoff of purity shows up most clearly in testing and
+  reasoning: a pure function can be tested with nothing but "call it,
+  check the return value" -- no setup of shared state beforehand, no
+  cleanup afterward, no risk that running the test twice produces
+  different results because leftover state from the first run leaked
+  into the second. It's also trivially safe to call from multiple
+  threads concurrently (no shared state means no race condition to
+  worry about), and safe to memoize (cache results by input, since the
+  same input always produces the same output). None of that holds once
+  a function starts mutating something outside itself -- which is why
+  "does this function have side effects, and if so, are they isolated
+  and obvious rather than buried" is one of the first things worth
+  checking when a piece of code is hard to test or hard to reason
+  about.
 example_code: |
+  # The trap: a hidden side effect the return value doesn't reveal.
+  log = []
+  def add_tax_impure(price, rate=0.1):
+      taxed = round(price * (1 + rate), 2)
+      log.append(taxed)          # invisible from the call site!
+      return taxed
+
+  # Fix: the ONLY effect is the return value.
   def add_tax(price, rate=0.1):
       return round(price * (1 + rate), 2)
 
-  print(add_tax(100))
+  print(add_tax(100))            # 110.0 -- same inputs, same output, nothing else touched
+
+  # Purity makes testing trivial -- no setup/teardown of shared state:
+  assert add_tax(100) == 110.0
+  assert add_tax(100) == 110.0   # calling it again changes nothing else
 starter_code: |
   log = []
 

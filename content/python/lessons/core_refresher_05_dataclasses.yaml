@@ -4,19 +4,65 @@ language: python
 level: 11
 objective: "Replace a hand-written class with a @dataclass to eliminate boilerplate __init__/__repr__/__eq__."
 explanation: |
-  For classes that are mostly a bundle of fields, @dataclass generates
-  __init__, __repr__, and __eq__ automatically from type-annotated class
-  attributes -- removing exactly the kind of repetitive boilerplate this
-  class hand-writes.
+  For classes that are mostly just a bundle of named fields -- a point,
+  a config record, a DTO passed between layers -- hand-writing
+  `__init__` to assign every field, `__repr__` to print something
+  readable, and `__eq__` to compare instances by their values is pure
+  repetitive boilerplate, and it's exactly the kind of thing a decorator
+  can generate instead. `@dataclass` reads the class body's
+  type-annotated attributes (`x: int`, `y: int`, no assignment required
+  unless you want a default) and synthesizes all three methods
+  automatically at class-definition time, based purely on the field
+  names and their declared order. The generated `__init__` takes every
+  field as a parameter in declaration order; `__repr__` prints
+  `ClassName(field1=value1, field2=value2, ...)`; `__eq__` compares two
+  instances field-by-field, which is almost always what "equal" should
+  mean for a plain data holder, unlike the default object identity
+  comparison every ordinary class starts with.
+
+  Fields can have default values just like function parameters
+  (`y: int = 0`), and `@dataclass(frozen=True)` produces an immutable
+  version where reassigning any field after construction raises an
+  error -- useful for anything meant to behave like a value rather than
+  a mutable object. One sharp edge carries over directly from the
+  mutable-default-argument gotcha: a dataclass field can't default to a
+  mutable value like `tags: list = []` (it raises `ValueError` at class
+  definition time specifically to stop you from hitting that bug) --
+  instead, use `field(default_factory=list)`, which calls the factory
+  fresh for every new instance.
 example_code: |
-  from dataclasses import dataclass
+  from dataclasses import dataclass, field
 
   @dataclass
   class Coord:
       lat: float
       lon: float
 
-  print(Coord(1.0, 2.0))
+  print(Coord(1.0, 2.0))                    # Coord(lat=1.0, lon=2.0)
+  print(Coord(1.0, 2.0) == Coord(1.0, 2.0)) # True -- compares by value
+
+  # Defaults work like function parameter defaults:
+  @dataclass
+  class Settings:
+      name: str
+      retries: int = 3
+
+  print(Settings("job"))                    # Settings(name='job', retries=3)
+
+  # Mutable defaults need default_factory, not a literal:
+  @dataclass
+  class Job:
+      tags: list = field(default_factory=list)
+
+  j1, j2 = Job(), Job()
+  j1.tags.append("urgent")
+  print(j1.tags, j2.tags)                   # ['urgent'] [] -- independent
+
+  # frozen=True makes instances immutable value objects:
+  @dataclass(frozen=True)
+  class ImmutablePoint:
+      x: int
+      y: int
 starter_code: |
   class Point:
       def __init__(self, x, y):

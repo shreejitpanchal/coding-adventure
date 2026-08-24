@@ -4,19 +4,58 @@ language: python
 level: 50
 objective: "Use functools.partial to pre-fill an argument instead of writing a one-off lambda wrapper."
 explanation: |
-  functools.partial(func, **fixed_kwargs) returns a new callable with
-  some arguments already bound, leaving the rest to be supplied later.
-  It expresses "the same function, with this argument fixed" directly,
-  which is clearer than a lambda that just forwards to the original
-  function with one argument hardcoded.
+  `functools.partial(func, *fixed_args, **fixed_kwargs)` returns a new
+  callable that remembers some of `func`'s arguments already bound, and
+  when that new callable is eventually invoked, it fills in the
+  remaining arguments and calls the original function with all of them
+  combined. `cube = lambda base: power(base, 3)` and `cube = partial
+  (power, exponent=3)` end up behaving identically at the call site,
+  but they say something different to a reader: the lambda is a small
+  anonymous function that happens to forward to `power` with one
+  argument hardcoded, requiring a reader to actually read its body to
+  understand what it does, while `partial(power, exponent=3)` states
+  the intent directly in its own name and arguments -- "this is `power`
+  ,  with `exponent` fixed at `3`, nothing more" -- without needing a
+  lambda body to express it at all.
+
+  `partial` also has a couple of properties a lambda wrapper doesn't
+  automatically get: the resulting object exposes `.func`, `.args`, and
+  `.keywords` attributes that let other code (or a debugger) introspect
+  exactly what was pre-bound, and `partial` objects are picklable in
+  situations where a lambda often isn't (lambdas can't be pickled at
+  all, which matters for code that needs to serialize callables --
+  passing work to a multiprocessing pool, for instance). Positional
+  pre-binding works too, not just keyword: `partial(power, 2)` fixes
+  `base=2` instead of `exponent`, leaving the *second* positional
+  argument to be supplied at call time -- worth knowing since which
+  argument gets fixed changes depending on whether you pass it
+  positionally or by keyword to `partial` itself.
 example_code: |
   from functools import partial
 
   def greet(greeting, name):
       return f"{greeting}, {name}!"
 
-  hello = partial(greet, "Hello")
-  print(hello("Sam"))
+  hello = partial(greet, "Hello")     # positional: fixes `greeting`
+  print(hello("Sam"))                  # Hello, Sam!
+
+  def power(base, exponent):
+      return base ** exponent
+
+  # The lambda-wrapper way -- works, but requires reading the body to know intent.
+  cube_lambda = lambda base: power(base, 3)
+  print(cube_lambda(2))                # 8
+
+  # partial states the intent directly -- no body to read, just name + fixed args.
+  cube = partial(power, exponent=3)    # keyword: fixes `exponent`
+  print(cube(2))                       # 8
+
+  # partial objects are introspectable, unlike a lambda:
+  print(cube.func, cube.keywords)      # <built-in function pow> {'exponent': 3}
+
+  # Positional pre-binding fixes the FIRST argument instead:
+  square_base_2 = partial(power, 2)    # fixes base=2, exponent supplied later
+  print(square_base_2(10))             # 2 ** 10 = 1024
 starter_code: |
   def power(base, exponent):
       return base ** exponent

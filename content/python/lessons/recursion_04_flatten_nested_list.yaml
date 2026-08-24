@@ -4,18 +4,65 @@ language: python
 level: 54
 objective: "Fix a flatten() function that only copies items one level deep instead of recursively flattening nested lists."
 explanation: |
-  A nested list (a list that can contain other lists, to any depth) is a
-  naturally recursive data structure -- flattening it needs a recursive
-  function: for each item, if it's itself a list, recurse into it and
-  extend the result with what comes back; otherwise, append the item
-  directly.
+  A nested list -- a list that can itself contain other lists, to any
+  depth, with no fixed limit known in advance -- is a naturally
+  recursive data structure, and recursive data structures are exactly
+  what recursive functions are best suited to process: the function's
+  own recursive structure mirrors the data's recursive structure. A
+  single flat loop over `items` can't handle arbitrary nesting depth on
+  its own, because the depth isn't known ahead of time and could vary
+  from element to element within the same list -- what's needed instead
+  is a function that, for each item, asks "is this itself a list?" and
+  answers differently depending on the result: if it's a list, recurse
+  into *it* using the exact same flattening logic (since a nested list
+  is flattened the same way regardless of how deep it sits), and
+  combine whatever comes back into the result; if it's not a list,
+  it's already a plain value, so just append it directly.
+
+  The detail that trips people up is `append` versus `extend`: `result.
+  append(flatten(item))` would nest the *already-flattened* sublist
+  back inside `result` as one single element (undoing the whole point),
+  while `result.extend(flatten(item))` merges each element of the
+  recursively-flattened sublist directly into `result` as individual
+  top-level elements, which is what "flatten" actually means. This
+  append-vs-extend distinction is a common trip-up independent of
+  recursion too, but it matters especially here since getting it wrong
+  produces output that looks *almost* right (still nested, just one
+  level shallower than before) rather than obviously broken, which can
+  make the mistake harder to notice at a glance.
 example_code: |
+  # The trap: copies every top-level item as-is, ignoring nested lists entirely.
+  def flatten_broken(items):
+      result = []
+      for item in items:
+          result.append(item)        # nested lists stay nested!
+      return result
+
+  print(flatten_broken([1, [2, 3, [4, 5]], 6]))   # [1, [2, 3, [4, 5]], 6] -- unchanged
+
+  # Fix: recurse into list items, extend (not append) to merge their contents in.
+  def flatten(items):
+      result = []
+      for item in items:
+          if isinstance(item, list):
+              result.extend(flatten(item))   # merge recursively-flattened elements IN
+          else:
+              result.append(item)             # plain value: append directly
+      return result
+
+  nested = [1, [2, 3, [4, 5]], 6]
+  print(flatten(nested))              # [1, 2, 3, 4, 5, 6]
+
+  # The append-vs-extend trap, isolated:
+  # result.append(flatten(item)) would give [1, [2, 3, 4, 5], 6] -- still nested!
+
+  # A related recursive helper: measuring how deep the nesting actually goes.
   def depth(items):
       if not any(isinstance(i, list) for i in items):
           return 1
       return 1 + max(depth(i) for i in items if isinstance(i, list))
 
-  print(depth([1, [2, [3]]]))
+  print(depth([1, [2, [3]]]))          # 3
 starter_code: |
   def flatten(items):
       result = []

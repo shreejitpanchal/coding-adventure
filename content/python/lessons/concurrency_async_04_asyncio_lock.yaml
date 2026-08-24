@@ -4,15 +4,49 @@ language: python
 level: 28
 objective: "Fix a lost-update bug in async code by protecting a read-await-write sequence with asyncio.Lock."
 explanation: |
-  asyncio is single-threaded, but coroutines can still interleave at
-  every `await` point -- if several coroutines read a shared value, then
-  `await` something, then write back based on what they read, they can
-  all read the same stale value before any of them writes, and updates
-  get lost. asyncio.Lock serializes the critical section the same way
-  threading.Lock does for threads, just for coroutines instead.
+  `asyncio` runs entirely on a single OS thread, which makes it tempting
+  to assume race conditions can't happen -- and it's true that two
+  coroutines never execute Python bytecode at the *exact* same instant
+  the way two preemptively-scheduled threads can. But coroutines are
+  still cooperatively interleaved at every `await` point: whenever a
+  coroutine awaits something, the event loop is free to switch to
+  running a *different* coroutine until that awaited thing is ready,
+  then come back later. If several coroutines each read a shared value,
+  then `await` something (even `asyncio.sleep(0)`, which yields control
+  for exactly one event-loop tick and nothing more), then write back a
+  value computed from what they read, all of them can read the *same*
+  stale value before any of them has had a chance to write -- because
+  the read happened, then control was yielded away, then several other
+  coroutines did the same read-before-anyone-writes dance before
+  control came back around. The result: several concurrent increments
+  collapse into effectively just one, the async equivalent of the
+  classic threading race condition, just triggered by `await` points
+  instead of arbitrary bytecode-level preemption.
+
+  `asyncio.Lock` fixes it exactly the way `threading.Lock` fixes the
+  threaded version: `async with lock:` ensures only one coroutine is
+  inside the critical section at a time, so no other coroutine can
+  interleave a read in the middle of another's read-await-write
+  sequence -- any coroutine that tries to acquire an already-held
+  `asyncio.Lock` simply awaits until it's released, which itself is just
+  another cooperative yield point, not a busy-wait. The rule of thumb
+  carries over unchanged too: any shared mutable state that's read,
+  then awaited-on, then written back based on what was read needs
+  protecting, and the protected section should stay as small as
+  possible -- covering only the actual read-modify-write, not any
+  unrelated work that happens to sit nearby.
 example_code: |
   import asyncio
 
+  # The trap: every coroutine reads the SAME stale value before any writes.
+  counter_buggy = 0
+  async def increment_buggy():
+      global counter_buggy
+      current = counter_buggy
+      await asyncio.sleep(0)          # yields control -- others interleave here
+      counter_buggy = current + 1     # overwrites based on stale `current`
+
+  # Fix: asyncio.Lock serializes the read-await-write sequence.
   total = 0
   lock = asyncio.Lock()
 
@@ -25,7 +59,7 @@ example_code: |
 
   async def main():
       await asyncio.gather(*(add_one() for _ in range(5)))
-      print(total)
+      print(total)                     # always exactly 5
 
   asyncio.run(main())
 starter_code: |

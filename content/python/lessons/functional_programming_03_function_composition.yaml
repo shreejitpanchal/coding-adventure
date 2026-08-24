@@ -4,17 +4,61 @@ language: python
 level: 48
 objective: "Write a compose(f, g) helper that combines two functions into a single one, f(g(x))."
 explanation: |
-  Function composition -- building a new function by chaining others
-  together -- is a foundational functional-programming pattern.
-  compose(f, g) returns a new function equivalent to calling g first,
-  then passing its result to f, letting you build complex behavior out
-  of small, independently-testable pieces instead of one large function.
+  Function composition -- building a new function by chaining two or
+  more existing ones together -- is one of the foundational
+  functional-programming patterns, mirroring the mathematical notation
+  `(f ∘ g)(x) = f(g(x))`: apply `g` first, then feed its result into
+  `f`. `compose(f, g)` captures that as a reusable helper: it returns a
+  brand-new function (a closure over `f` and `g`) that, when called
+  with `x`, runs `g(x)` first and passes that result to `f`. The value
+  isn't just avoiding one line of nested calls -- it's that `f` and `g`
+  stay small, independently named, and independently testable pieces
+  (`str.upper`, `str.strip`, `double`, `increment`), and `compose` lets
+  you assemble larger behavior out of them declaratively, as data
+  (functions passed around and combined) rather than as a growing block
+  of sequential statements.
+
+  Note the order carefully: `compose(f, g)` applies `g` *first* and `f`
+  *second*, even though `f` is written first in the call --
+  `compose(increment, double)` means "double, then increment," not the
+  other way around, matching how `f(g(x))` reads in math (innermost
+  first) even though it doesn't read left-to-right the way a pipeline
+  might intuitively suggest. This order convention is worth being
+  deliberate about, since different libraries pick different
+  conventions (some define a `pipe(f, g)` helper instead, which
+  deliberately applies `f` first then `g`, precisely to avoid this
+  right-to-left reading). Real compositional pipelines usually chain
+  more than two functions -- a variadic `compose(*funcs)` that folds
+  over an arbitrary list of functions with `functools.reduce` is the
+  natural generalization once two stops being enough.
 example_code: |
   def compose(f, g):
-      return lambda x: f(g(x))
+      return lambda x: f(g(x))       # g runs FIRST, f runs on its result
 
   shout = compose(str.upper, str.strip)
-  print(shout("  hi  "))
+  print(shout("  hi  "))              # HI -- strip() first, then upper()
+
+  # Order matters: compose(f, g) means "g first, then f" -- not the reverse.
+  def double(x):
+      return x * 2
+
+  def increment(x):
+      return x + 1
+
+  double_then_increment = compose(increment, double)
+  print(double_then_increment(5))     # 11 -- (5*2)+1, double ran first
+
+  increment_then_double = compose(double, increment)
+  print(increment_then_double(5))     # 12 -- (5+1)*2, increment ran first
+
+  # Generalizing to MORE than two functions with functools.reduce:
+  from functools import reduce
+
+  def compose_many(*funcs):
+      return reduce(lambda f, g: lambda x: f(g(x)), funcs)
+
+  pipeline = compose_many(str.upper, str.strip, str.lower)
+  print(pipeline("  Hi There  "))     # HI THERE -- lower, then strip, then upper
 starter_code: |
   def double(x):
       return x * 2

@@ -4,21 +4,61 @@ language: python
 level: 31
 objective: "Fix a real bug that a bare except clause was silently swallowing instead of surfacing."
 explanation: |
-  A bare `except:` catches *everything*, including bugs that have
-  nothing to do with the failure you meant to handle -- like a typo'd
-  variable name raising NameError. That gets silently mapped to the same
-  fallback as a genuine parse failure, hiding the real problem. Catching
-  the specific exception you actually expect (ValueError here) lets
-  unrelated bugs surface instead of vanishing.
+  A bare `except:` catches literally every exception Python can raise --
+  not just the one failure mode the `try` block was written to guard
+  against, but also `NameError` from a typo'd variable, `TypeError` from
+  a wrong argument, `KeyboardInterrupt` from the user pressing Ctrl+C,
+  even `SystemExit`. Any of those gets funneled into the same fallback
+  behavior as the one genuine failure the code was designed to handle,
+  which means a completely unrelated bug -- like `txt` instead of
+  `text`, raising `NameError: name 'txt' is not defined` -- disappears
+  silently behind the same `return -1` that was meant for "the text
+  wasn't a valid number." The function doesn't crash, doesn't log
+  anything suspicious, and returns a plausible-looking value -- there's
+  no signal anywhere that something is actually broken, which is what
+  makes bare-except bugs so much more expensive to find than a crash:
+  a crash points directly at the problem, while a swallowed exception
+  just produces quietly wrong behavior somewhere downstream.
+
+  The fix is to name the *specific* exception type the code is actually
+  prepared to handle -- `except ValueError:` for "the string wasn't a
+  parseable integer," nothing broader. That does two things at once:
+  it correctly handles the failure mode it was written for, and it lets
+  every *other* exception type propagate normally, crashing loudly with
+  a full traceback the way an unexpected bug should. If a caller
+  genuinely needs to catch a wider category of errors, `except
+  Exception:` (which still excludes `KeyboardInterrupt`/`SystemExit`,
+  unlike a bare `except:`) is the least-broad reasonable ceiling --
+  even then, narrowing to the specific expected type is almost always
+  better whenever the expected failure is actually known in advance.
 example_code: |
+  # The trap: bare except hides an unrelated bug behind the wrong fallback.
+  def parse_age_broken(text):
+      try:
+          return int(txt)          # typo: txt instead of text -> NameError
+      except:
+          return -1                # NameError silently becomes -1, no signal at all
+
+  print(parse_age_broken("25"))     # -1 -- WRONG, and no clue why
+
+  # Fix: name the specific exception you actually expect.
   def parse_count(text):
       try:
           return int(text)
       except ValueError:
           return 0
 
-  print(parse_count("12"))
-  print(parse_count("oops"))
+  print(parse_count("12"))          # 12
+  print(parse_count("oops"))        # 0 -- genuine parse failure, handled correctly
+
+  def parse_age(text):
+      try:
+          return int(text)          # typo fixed
+      except ValueError:
+          return -1
+
+  print(parse_age("25"))            # 25 -- correct, and a real typo would now
+                                     # raise NameError loudly instead of vanishing
 starter_code: |
   def parse_age(text):
       try:

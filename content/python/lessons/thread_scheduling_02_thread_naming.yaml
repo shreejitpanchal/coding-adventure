@@ -4,17 +4,64 @@ language: python
 level: 37
 objective: "Give worker threads meaningful names instead of the default Thread-N, so logs and debuggers can identify them."
 explanation: |
-  Every thread gets an auto-generated name like "Thread-1" unless you
-  pass `name=` to the constructor. In a multi-threaded program, an
-  unnamed thread is nearly impossible to trace through logs or a
-  debugger -- naming threads by the work they do (e.g. "worker-fetch",
-  "worker-write") is a small habit that pays off constantly when
-  diagnosing production issues.
+  Every `threading.Thread` gets an automatically generated name --
+  `"Thread-1"`, `"Thread-2"`, and so on, incrementing globally across
+  the whole process -- unless the caller explicitly passes `name=` to
+  the constructor. Those default names carry zero information about
+  what a thread is actually *for*: in a log line, a stack trace from a
+  debugger, or a thread-dump taken during an incident, `"Thread-7"` says
+  nothing about whether it's fetching data, writing to a database, or
+  polling a queue, forcing whoever's debugging to cross-reference other
+  context (timing, which log messages appear nearby) just to figure out
+  which logical piece of work that thread even represents. In a program
+  with more than a couple of threads -- especially one under production
+  load, where the numbering keeps climbing and threads get created and
+  destroyed continuously -- that ambiguity turns a five-second glance
+  into real investigative work.
+
+  Passing `name=` at construction time (`threading.Thread(target=...,
+  name="worker-fetch")`) costs nothing and pays off constantly: any
+  code that calls `threading.current_thread().name` -- inside the
+  thread's own target function, in a logging formatter that includes
+  `%(threadName)s`, in a debugger's thread list -- immediately shows
+  something meaningful instead of an anonymous counter. The convention
+  worth adopting is naming by *role*, not by an arbitrary label: `
+  "worker-fetch"`/`"worker-write"` describe what the thread does,
+  which stays meaningful even as the number of threads scales up or
+  down, whereas something like `"thread1"`/`"thread2"` is barely more
+  useful than the auto-generated default it's replacing. When multiple
+  threads share the same role (a pool of otherwise-identical workers),
+  including an index in the name (`f"worker-{i}"`) keeps them
+  individually distinguishable while still communicating what they all
+  do.
 example_code: |
   import threading
 
+  # The trap: default names carry no information about a thread's purpose.
+  def report_broken(results):
+      results.append(threading.current_thread().name)   # e.g. "Thread-4" -- meaningless
+
+  threads_broken = [threading.Thread(target=report_broken, args=([],)) for _ in range(3)]
+  # every thread ends up named "Thread-N" for some arbitrary global N
+
+  # Fix: name threads by the role/index they represent.
+  def report(results):
+      results.append(threading.current_thread().name)
+
+  results = []
+  threads = [
+      threading.Thread(target=report, args=(results,), name=f"worker-{i}")
+      for i in range(3)
+  ]
+  for t in threads:
+      t.start()
+  for t in threads:
+      t.join()
+  print(sorted(results))            # ['worker-0', 'worker-1', 'worker-2']
+
+  # A named thread shows up meaningfully anywhere current_thread().name is used:
   def task():
-      print(threading.current_thread().name)
+      print(threading.current_thread().name)   # "cache-refresh", not "Thread-N"
 
   t = threading.Thread(target=task, name="cache-refresh")
   t.start()

@@ -4,13 +4,51 @@ language: python
 level: 57
 objective: "Split a 'package==version' requirements.txt-style line into its name and version parts."
 explanation: |
-  A requirements.txt file is just plain text -- each pinned line has a
-  simple, predictable shape (name, ==, version) that's easy to parse
-  without pulling in a dependency-parsing library, using str.partition()
-  to split cleanly on the first occurrence of the separator.
+  A requirements.txt file is just plain text, one requirement per line,
+  and a pinned line has a simple, predictable shape: a package name,
+  the literal characters `==`, then a version string. That regularity
+  means it can be parsed without pulling in a dependency-parsing
+  library at all -- `str.partition(sep)` is purpose-built for exactly
+  this shape, splitting a string into a 3-tuple `(before, sep,
+  after)` at the *first* occurrence of `sep`. That "first occurrence"
+  behavior is the key detail: it's what makes `partition` safer here
+  than a naive `str.split("==")`, which would produce more than two
+  pieces (and silently misbehave) if a version string ever contained
+  `==` again, or fail if the separator doesn't appear at all in the
+  input -- `partition` instead returns the original string as `before`
+  and empty strings for `sep`/`after` in that case, never raising.
+
+  Real requirements.txt parsing has to handle more than the simple
+  `==` pin, though: extras (`requests[socks]==2.31.0`), other
+  comparison operators (`>=`, `~=`, `!=`), environment markers
+  (`; python_version >= "3.8"`), and comments -- which is exactly why
+  production code reaches for `packaging.requirements.Requirement`
+  (part of the `packaging` library that pip itself uses) rather than
+  hand-rolling `partition` logic for anything beyond a quick script or
+  a teaching example. The lesson here is less "always use partition"
+  and more "know the shape of your input well enough to pick the
+  simplest tool that won't silently misparse an edge case you'll
+  actually see."
 example_code: |
+  # partition splits into (before, sep, after) at the FIRST occurrence.
   name, _, version = "requests==2.31.0".partition("==")
-  print(name, version)
+  print(name, version)                          # requests 2.31.0
+
+  # Why not str.split("==")? It's fine here, but partition degrades safer:
+  no_pin = "requests"
+  before, sep, after = no_pin.partition("==")
+  print(before, repr(sep), repr(after))          # requests '' '' -- no crash
+
+  # Real requirements.txt lines have more than a plain name==version --
+  # extras, other operators, and environment markers all show up:
+  # requests[socks]==2.31.0
+  # flet>=0.86,<0.90
+  # black; python_version >= "3.8"
+  # For those, production code uses packaging.requirements.Requirement
+  # instead of hand-rolled string splitting:
+  from packaging.requirements import Requirement
+  req = Requirement("requests[socks]==2.31.0")
+  print(req.name, req.extras, req.specifier)     # requests {'socks'} ==2.31.0
 starter_code: |
   def parse_requirement(line):
       return line

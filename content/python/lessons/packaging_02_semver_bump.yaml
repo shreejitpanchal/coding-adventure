@@ -4,17 +4,57 @@ language: python
 level: 62
 objective: "Implement a semantic-version bump: incrementing one part resets every part below it to zero."
 explanation: |
-  Semantic versioning (major.minor.patch) encodes meaning in each
-  position -- bumping the minor version for a new backward-compatible
-  feature should reset the patch number back to 0, since patch numbers
-  are only meaningful relative to a specific minor release. Getting this
-  reset wrong is a common packaging-tooling bug.
+  Semantic versioning's `major.minor.patch` scheme encodes an actual
+  meaning in each position, not just an arbitrary counter: `patch`
+  increments for backward-compatible bug fixes, `minor` for
+  backward-compatible new features, `major` for breaking changes. The
+  reset rule follows directly from what each number is *relative to*:
+  a patch number only makes sense in the context of one specific
+  `major.minor` release, so bumping `minor` starts a new release line
+  whose patch history begins fresh at 0 again -- `1.2.3` bumped to
+  minor becomes `1.3.0`, not `1.3.3`, because "patch 3" was specific to
+  the `1.2.x` line and has no meaning carried forward into `1.3.x`.
+  The same cascading logic applies one level up: bumping `major` resets
+  *both* `minor` and `patch` to 0 (`1.2.3` → `2.0.0`), since an entirely
+  new major line starts its own minor and patch numbering from scratch
+  too. Only a `patch` bump leaves everything above it untouched, since
+  there's nothing below `patch` to reset.
+
+  Getting this reset wrong is a genuinely common bug in real packaging
+  tooling -- it's an easy detail to overlook because "just increment the
+  requested number" looks correct until the *next* bump on that same
+  version reveals the leftover stale patch number sitting where a fresh
+  0 should be. It's worth internalizing the rule as "reset everything
+  strictly *below* the bumped position, leave everything *above* it
+  alone" rather than memorizing three separate cases, since that
+  framing generalizes cleanly to versioning schemes with more than
+  three components too.
 example_code: |
   def bump_patch(version):
       major, minor, patch = (int(p) for p in version.split("."))
       return f"{major}.{minor}.{patch + 1}"
 
-  print(bump_patch("1.0.0"))
+  print(bump_patch("1.0.0"))              # 1.0.1 -- nothing to reset below patch
+
+  # The trap: bumping minor but forgetting to reset patch back to 0.
+  def bump_minor_broken(version):
+      major, minor, patch = (int(p) for p in version.split("."))
+      return f"{major}.{minor + 1}.{patch}"    # keeps the STALE patch number!
+
+  print(bump_minor_broken("1.2.3"))       # 1.3.3 -- wrong, patch 3 meant nothing in 1.3.x
+
+  # Fix: reset everything BELOW the bumped position to zero.
+  def bump_version(version, part):
+      major, minor, patch = (int(p) for p in version.split("."))
+      if part == "major":
+          return f"{major + 1}.0.0"       # resets BOTH minor and patch
+      elif part == "minor":
+          return f"{major}.{minor + 1}.0"  # resets patch
+      elif part == "patch":
+          return f"{major}.{minor}.{patch + 1}"  # nothing below patch to reset
+
+  print(bump_version("1.2.3", "minor"))    # 1.3.0 -- correct
+  print(bump_version("1.2.3", "major"))    # 2.0.0 -- correct, cascades down
 starter_code: |
   def bump_version(version, part):
       return version
