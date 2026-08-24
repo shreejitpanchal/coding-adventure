@@ -1,0 +1,84 @@
+id: aop_02
+title: "The Pointcut Watching the Wrong Method"
+language: spring
+level: 22
+objective: "Fix a pointcut expression that names the wrong method, so the advice actually matches the call it's meant to intercept."
+explanation: |
+  A pointcut expression like `execution(* com.codingadventure.exercise.
+  AccountService.deposit(..))` matches exactly the method it names --
+  nothing more, nothing less. If the expression names the wrong method
+  (a typo, or genuinely the wrong operation), the advice silently never
+  fires for the method you actually meant to intercept, while
+  potentially firing for one you didn't. There's no compile-time check
+  that a pointcut expression's method name is even correct.
+example_code: |
+  @Before("execution(* com.codingadventure.exercise.AccountService.withdraw(..))")
+  public void audit() { calls++; }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.Aspect;
+  import org.aspectj.lang.annotation.Before;
+  import org.springframework.context.annotation.ComponentScan;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.EnableAspectJAutoProxy;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  @EnableAspectJAutoProxy
+  @ComponentScan
+  class AppConfig {}
+
+  @Aspect
+  @Component
+  public class AuditAspect {
+      public static int calls = 0;
+
+      @Before("execution(* com.codingadventure.exercise.AccountService.deposit(..))")
+      public void audit() {
+          calls++;
+      }
+  }
+
+  @Component
+  class AccountService {
+      public void deposit(int amount) { }
+      public void withdraw(int amount) { }
+  }
+challenge: |
+  AuditAspect is meant to audit withdrawals specifically, but its
+  pointcut targets deposit(..) instead -- calling withdraw() is never
+  audited, while deposit() is (incorrectly). Fix this by changing the
+  pointcut expression to target AccountService.withdraw(..) instead of
+  deposit(..).
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "The pointcut expression names deposit(..), but the intent (auditing) is really about withdraw(..)."
+  - 'Change the expression to: "execution(* com.codingadventure.exercise.AccountService.withdraw(..))"'
+xp_reward: 10
+achievement: null
+category: aop
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "AccountService\\.withdraw\\(\\.\\.\\)"
+concept_tags: [aop, pointcut, before_advice, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class AuditAspectTest {
+      @Test
+      void auditsWithdrawalsNotDeposits() {
+          AuditAspect.calls = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)) {
+              AccountService service = ctx.getBean(AccountService.class);
+              service.deposit(100);
+              service.withdraw(50);
+              assertThat(AuditAspect.calls).isEqualTo(1);
+          }
+      }
+  }

@@ -1,0 +1,52 @@
+id: recursion_04
+title: "Carrying the Answer Along Instead of Building It on the Way Back"
+language: cpp
+level: 44
+objective: "Convert a non-tail-recursive factorial into tail-recursive style using an accumulator parameter."
+explanation: |
+  In `n * factorial(n - 1)`, the multiplication happens *after* the
+  recursive call returns -- there's still work left to do at each level
+  on the way back up, so this isn't tail recursion. An accumulator
+  parameter flips this: instead of multiplying after the call returns,
+  the running product is computed *before* the recursive call and
+  passed forward as an argument, so the recursive call is the very last
+  thing the function does. That "last thing the function does is call
+  itself" shape is what tail recursion means, and it's the pattern some
+  languages/compilers can optimize into a plain loop with no growing
+  call stack (C++ doesn't guarantee this optimization, but the
+  accumulator style is the same technique those languages rely on).
+example_code: |
+  long long factorialHelper(int n, long long acc) {
+      if (n <= 1) return acc;
+      return factorialHelper(n - 1, acc * n);
+  }
+starter_code: |
+  #include <iostream>
+  long long factorial(int n) {
+      if (n <= 1) return 1;
+      return n * factorial(n - 1);
+  }
+  int main() {
+      std::cout << factorial(6) << std::endl;
+      return 0;
+  }
+challenge: |
+  factorial multiplies by n *after* the recursive call returns, so
+  there's still work pending at every level on the way back up -- not
+  tail recursion. Fix this by adding a factorialHelper(int n, long long
+  acc) function that carries the running product forward as a
+  parameter, making the recursive call the very last operation, and
+  have factorial(n) call factorialHelper(n, 1). Keep the output: 720.
+expected_output: |
+  720
+hints:
+  - "Add an accumulator parameter that carries the running product forward, computed BEFORE the recursive call."
+  - "long long factorialHelper(int n, long long acc) { if (n <= 1) return acc; return factorialHelper(n - 1, acc * n); }"
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "factorialHelper\\(int n, long long acc\\)"
+concept_tags: [recursion, tail_recursion, accumulator]

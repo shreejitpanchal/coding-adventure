@@ -1,0 +1,45 @@
+id: recursion_01
+title: "The Recursion That Never Stopped"
+language: cpp
+level: 41
+objective: "Add the missing base case to a recursive function, since without one it recurses forever until the stack overflows."
+explanation: |
+  Every recursive function needs a base case -- a condition that stops
+  the recursion and returns directly, without calling itself again.
+  Without one, each call makes another call, which makes another, and
+  so on, consuming one more stack frame every time until the call stack
+  is exhausted and the program crashes with a stack overflow. The base
+  case is what turns "infinite recursion" into "recursion that
+  eventually finishes."
+example_code: |
+  int sumDown(int n) {
+      if (n <= 0) return 0;
+      return n + sumDown(n - 1);
+  }
+starter_code: |
+  #include <iostream>
+  int sumDown(int n) {
+      return n + sumDown(n - 1);
+  }
+  int main() {
+      std::cout << sumDown(5) << std::endl;
+      return 0;
+  }
+challenge: |
+  sumDown has no base case -- it calls itself forever, with n going
+  4, 3, 2, 1, 0, -1, -2... until the stack overflows and the program
+  crashes. Fix this by adding a base case (if n <= 0, return 0) before
+  the recursive call, so sumDown(5) correctly returns 15 (5+4+3+2+1).
+expected_output: |
+  15
+hints:
+  - "There's no condition that ever stops the recursion -- n just keeps decreasing forever."
+  - "if (n <= 0) return 0; -- add this as the first line of the function."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "if\\s*\\(\\s*n\\s*<=\\s*0\\s*\\)\\s*return 0;"
+concept_tags: [recursion, base_case, gotchas]

@@ -1,0 +1,90 @@
+id: events_03
+title: "One Event, Two Listeners"
+language: spring
+level: 18
+objective: "Register a second @EventListener bean so one published event correctly fans out to every listener that cares about it, not just the first."
+explanation: |
+  Nothing about publishing an event limits it to a single listener --
+  every registered bean with a matching @EventListener method gets
+  called when that event is published. But "registered" is the key
+  word: a listener class still needs @Component (or explicit
+  registration) for Spring to know about it at all. A perfectly correct
+  @EventListener method on a class Spring never scanned or registered
+  simply never runs.
+example_code: |
+  @Component
+  class AnalyticsListener {
+      @EventListener
+      public void onSignup(SignupEvent event) { ... }
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEventPublisher;
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  class SignupEvent {
+      private final Object source;
+      SignupEvent(Object source) { this.source = source; }
+  }
+
+  @Component
+  class SignupService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+      public void signup() { publisher.publishEvent(new SignupEvent(this)); }
+  }
+
+  @Component
+  class EmailWelcomeListener {
+      static int fired = 0;
+      @EventListener
+      public void onSignup(SignupEvent event) { fired++; }
+  }
+
+  class AnalyticsListener {
+      static int fired = 0;
+      @EventListener
+      public void onSignup(SignupEvent event) { fired++; }
+  }
+challenge: |
+  AnalyticsListener's onSignup() method is correctly annotated
+  @EventListener, but the class itself is missing @Component, so Spring
+  never registers it as a bean in the first place -- it can't receive
+  events it was never wired up to hear about. Fix this by adding
+  @Component to AnalyticsListener, so both listeners fire when signup()
+  publishes one event.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "EmailWelcomeListener has @Component; compare it to AnalyticsListener, which doesn't."
+  - "Add @Component directly above `class AnalyticsListener`."
+xp_reward: 10
+achievement: null
+category: events
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "@Component\\s*\\nclass AnalyticsListener"
+concept_tags: [events, event_listener, component_annotation, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class SignupServiceTest {
+      @Test
+      void oneEventReachesBothListeners() {
+          EmailWelcomeListener.fired = 0;
+          AnalyticsListener.fired = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(
+                  SignupService.class, EmailWelcomeListener.class, AnalyticsListener.class)) {
+              ctx.getBean(SignupService.class).signup();
+              assertThat(EmailWelcomeListener.fired).isEqualTo(1);
+              assertThat(AnalyticsListener.fired).isEqualTo(1);
+          }
+      }
+  }

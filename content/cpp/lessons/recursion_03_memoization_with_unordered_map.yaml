@@ -1,0 +1,49 @@
+id: recursion_03
+title: "Remembering What You've Already Computed"
+language: cpp
+level: 43
+objective: "Add memoization via std::unordered_map to a naive recursive Fibonacci, avoiding exponential recomputation of overlapping subproblems."
+explanation: |
+  Naive recursive Fibonacci recomputes the same subproblems over and
+  over -- fib(30) calls fib(28) twice, fib(27) three times, and so on,
+  giving exponential time complexity. Memoization caches each result
+  the first time it's computed (in a std::unordered_map keyed by n), so
+  every subsequent call for that same n is an O(1) lookup instead of a
+  full recursive recomputation, turning exponential time into linear.
+example_code: |
+  std::unordered_map<int, long long> memo;
+  long long fib(int n) {
+      if (n <= 1) return n;
+      if (memo.count(n)) return memo[n];
+      long long result = fib(n - 1) + fib(n - 2);
+      memo[n] = result;
+      return result;
+  }
+starter_code: |
+  #include <iostream>
+  long long fib(int n) {
+      if (n <= 1) return n;
+      return fib(n - 1) + fib(n - 2);
+  }
+  int main() {
+      std::cout << fib(30) << std::endl;
+      return 0;
+  }
+challenge: |
+  fib recomputes every overlapping subproblem from scratch, taking
+  exponential time. Fix this by adding a std::unordered_map<int, long
+  long> cache: check it before recursing, and store each new result in
+  it before returning, keeping the same output: 832040.
+expected_output: |
+  832040
+hints:
+  - "The same fib(n) gets recomputed many times across the recursion tree -- cache it the first time."
+  - "std::unordered_map<int, long long> memo; then check memo.count(n) before recursing, and store memo[n] = result; before returning."
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "std::unordered_map<int, long long>"
+concept_tags: [recursion, memoization, performance]

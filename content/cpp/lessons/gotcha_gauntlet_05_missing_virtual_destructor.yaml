@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_05
 title: "The Destructor That Never Ran"
 language: cpp
-level: 30
+level: 50
 objective: "Fix a base class whose non-virtual destructor means a derived object's own destructor never runs when deleted through a base pointer."
 explanation: |
   Deleting an object through a pointer to its base class only calls the

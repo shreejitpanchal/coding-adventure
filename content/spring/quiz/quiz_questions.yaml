@@ -218,3 +218,157 @@ questions:
     correct: 1
     explanation: "Constructor parameters are just normal Java arguments -- no reflection or container needed to supply them in a test."
     concept_tags: [dependency_injection, constructor_injection, testability]
+
+  - id: q21
+    question: "What does ApplicationEventPublisher.publishEvent() do?"
+    options:
+      - "Directly calls every method that might care about the event"
+      - "Publishes an event that any bean with a matching @EventListener method will automatically receive, with no direct reference between publisher and listener"
+      - "Writes the event to a log file"
+      - "Blocks until every listener has finished processing"
+    correct: 1
+    explanation: "Spring's event system decouples publishers from listeners entirely -- publishing is a one-way broadcast, not a direct call."
+    concept_tags: [events, application_event_publisher]
+
+  - id: q22
+    question: "What does a method need for Spring to recognize it as an event handler?"
+    options:
+      - "Just a name starting with 'on'"
+      - "The @EventListener annotation (or implementing ApplicationListener<T> directly), and the containing class must be a registered bean"
+      - "A return type of void only"
+      - "It must be declared in the same class that publishes the event"
+    correct: 1
+    explanation: "Without @EventListener, a method is just a plain method -- Spring has no way to know it should be wired up as a handler."
+    concept_tags: [events, event_listener, gotchas]
+
+  - id: q23
+    question: "If two separate @Component beans both have an @EventListener method for the same event type, what happens when that event is published?"
+    options:
+      - "Only the first-registered listener fires"
+      - "Both listeners fire independently -- publishing isn't limited to a single handler"
+      - "Spring throws an exception due to ambiguous listeners"
+      - "Only one fires, chosen at random"
+    correct: 1
+    explanation: "Every registered bean with a matching @EventListener method gets called when a matching event is published -- there's no single-listener limit."
+    concept_tags: [events, event_listener, fan_out]
+
+  - id: q24
+    question: "What does @EventListener's `condition` attribute do?"
+    options:
+      - "Filters which listener beans get registered at startup"
+      - "Evaluates a SpEL expression against the published event -- the listener method's body only runs when it evaluates true"
+      - "Sets a timeout for how long the listener can run"
+      - "Specifies which thread the listener runs on"
+    correct: 1
+    explanation: "condition lets a listener declaratively filter events (e.g. only large purchases) without an internal if-check."
+    concept_tags: [events, event_listener, spel, conditional]
+
+  - id: q25
+    question: "What's required to reference an @EventListener method's parameter by name in a SpEL condition (e.g. #event.amount)?"
+    options:
+      - "Nothing -- parameter names are always available at runtime"
+      - "The compiler needs to preserve parameter names in the bytecode (e.g. via the -parameters flag), or reflection-based name discovery fails"
+      - "The event class must implement a special interface"
+      - "SpEL conditions can only reference static fields, never parameters"
+    correct: 1
+    explanation: "Without -parameters (or equivalent debug info), Spring's parameter name discovery can't resolve #event to the actual argument."
+    concept_tags: [events, spel, reflection]
+
+  - id: q26
+    question: "Why does a custom event class need its own field and getter for its payload, even when extending ApplicationEvent?"
+    options:
+      - "ApplicationEvent doesn't allow additional fields"
+      - "ApplicationEvent only provides infrastructure (timestamp, source) -- any event-specific data has to be stored and exposed explicitly by the subclass"
+      - "Payload fields must be static"
+      - "Getters are optional and Spring generates them automatically"
+    correct: 1
+    explanation: "Without an explicit field and getter, listeners can tell an event happened but have no way to access what specifically happened."
+    concept_tags: [events, custom_event, application_event]
+
+  - id: q27
+    question: "What does @Aspect mark a class as, in Spring AOP?"
+    options:
+      - "A regular bean with no special behavior"
+      - "A class whose advice annotations (@Before, @After, @Around, etc.) should actually be recognized and woven into matching method calls"
+      - "A class that can never be proxied"
+      - "A configuration class"
+    correct: 1
+    explanation: "Advice annotations only have effect on a class also annotated @Aspect -- without it, they're just unused annotations."
+    concept_tags: [aop, aspect, gotchas]
+
+  - id: q28
+    question: "What happens if an @Before pointcut expression names the wrong method?"
+    options:
+      - "Spring raises a compile error"
+      - "The advice silently never fires for the method actually intended, since a pointcut expression matches exactly what it names -- nothing more"
+      - "The advice fires for every method in the class instead"
+      - "Spring automatically corrects common typos in pointcut expressions"
+    correct: 1
+    explanation: "There's no compile-time check that a pointcut's method name is correct -- a typo or wrong target just means silent non-matching."
+    concept_tags: [aop, pointcut, gotchas]
+
+  - id: q29
+    question: "Why would you use @AfterReturning instead of plain @After to log a method's result?"
+    options:
+      - "They're functionally identical"
+      - "@AfterReturning's `returning` attribute binds the method's actual return value to an advice parameter; plain @After has no access to it"
+      - "@After only works on void methods"
+      - "@AfterReturning runs before the method instead of after"
+    correct: 1
+    explanation: "Plain @After runs regardless of outcome and can't see the return value; @AfterReturning is specifically for the success case with result access."
+    concept_tags: [aop, afterreturning_advice, pointcut]
+
+  - id: q30
+    question: "What makes @Around advice more powerful than @Before/@After/@AfterReturning?"
+    options:
+      - "It runs faster"
+      - "It receives a ProceedingJoinPoint and controls what pjp.proceed() returns, letting it inspect, transform, or replace the method's return value"
+      - "It can only be used once per aspect"
+      - "It doesn't require @EnableAspectJAutoProxy"
+    correct: 1
+    explanation: "Because @Around wraps the call and controls proceed()'s result, it can modify the return value -- something the other advice types can't do."
+    concept_tags: [aop, around_advice, proceedingjoinpoint]
+
+  - id: q31
+    question: "What is Spring AOP's 'self-invocation' gotcha?"
+    options:
+      - "A bean can't inject itself under any circumstances"
+      - "A method calling another advised method on `this` (or bare, implicitly on this) bypasses the Spring proxy entirely, so that method's advice never fires"
+      - "Aspects can't advise private methods"
+      - "Two aspects can't advise the same method"
+    correct: 1
+    explanation: "Only calls that go through the proxy (i.e. external calls) trigger advice -- internal self-calls reach the real object directly."
+    concept_tags: [aop, self_invocation, proxy, gotchas]
+
+  - id: q32
+    question: "What's the standard fix for Spring AOP's self-invocation problem?"
+    options:
+      - "Make the method static"
+      - "Self-inject a reference to the bean's own proxy (typically @Autowired with @Lazy to avoid a circular dependency) and call through that reference instead of `this`"
+      - "There is no fix -- self-invocation can never trigger advice"
+      - "Mark the class @Aspect as well as @Component"
+    correct: 1
+    explanation: "Self-injection routes the internal call back through the proxy, so advice fires just like an external call would."
+    concept_tags: [aop, self_invocation, proxy]
+
+  - id: q33
+    question: "Why is @Lazy typically needed on a self-injected field (e.g. @Autowired private Greeter self)?"
+    options:
+      - "It isn't needed -- it's purely optional styling"
+      - "It avoids a circular dependency during construction, since the bean would otherwise need to inject itself before it's fully constructed"
+      - "It makes the injected reference thread-safe"
+      - "It's required syntax for all @Autowired fields"
+    correct: 1
+    explanation: "@Lazy defers resolving the self-reference until it's actually used, sidestepping the construction-order problem of a bean depending on itself."
+    concept_tags: [aop, self_invocation, lazy_initialization]
+
+  - id: q34
+    question: "By default, does Spring AOP use JDK dynamic proxies or CGLIB subclass proxies for a class with no interfaces?"
+    options:
+      - "It fails -- AOP requires an interface"
+      - "CGLIB, which creates a runtime subclass of the concrete class to intercept calls, since JDK dynamic proxies require an interface"
+      - "JDK dynamic proxies, applied to the class's own methods directly"
+      - "Neither -- it modifies the original class's bytecode in place"
+    correct: 1
+    explanation: "Spring automatically falls back to CGLIB class-based proxying when the target bean doesn't implement any interface."
+    concept_tags: [aop, proxy, cglib]

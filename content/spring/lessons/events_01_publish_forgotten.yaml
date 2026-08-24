@@ -1,0 +1,84 @@
+id: events_01
+title: "The Event Nobody Published"
+language: spring
+level: 16
+objective: "Publish an application event via ApplicationEventPublisher so a registered @EventListener actually fires."
+explanation: |
+  Spring's event system decouples "something happened" from "here's
+  what should happen in response" -- a service publishes an event via
+  ApplicationEventPublisher.publishEvent(), and any bean with a matching
+  @EventListener method gets called automatically, with no direct
+  reference between the two. If the publishing side never actually
+  calls publishEvent(), the listener is registered correctly but simply
+  never has anything to react to -- the wiring is only half-built.
+example_code: |
+  @Autowired
+  private ApplicationEventPublisher publisher;
+
+  public void placeOrder(String orderId) {
+      publisher.publishEvent(new OrderPlacedEvent(this, orderId));
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class OrderService {
+      public void placeOrder(String orderId) {
+          // forgot to publish an event
+      }
+  }
+
+  class OrderPlacedEvent {
+      private final Object source;
+      private final String orderId;
+      OrderPlacedEvent(Object source, String orderId) { this.source = source; this.orderId = orderId; }
+      String getOrderId() { return orderId; }
+  }
+
+  @Component
+  class OrderListener {
+      static int received = 0;
+      @EventListener
+      public void onOrderPlaced(OrderPlacedEvent event) {
+          received++;
+      }
+  }
+challenge: |
+  OrderService.placeOrder() never actually publishes an OrderPlacedEvent,
+  so OrderListener's @EventListener method never fires. Fix this by
+  injecting ApplicationEventPublisher into OrderService and calling
+  publisher.publishEvent(new OrderPlacedEvent(this, orderId)) inside
+  placeOrder().
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "@Autowired private ApplicationEventPublisher publisher;"
+  - "publisher.publishEvent(new OrderPlacedEvent(this, orderId));"
+xp_reward: 10
+achievement: null
+category: events
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "publisher\\.publishEvent\\("
+concept_tags: [events, application_event_publisher]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class OrderServiceTest {
+      @Test
+      void placingOrderPublishesEvent() {
+          OrderListener.received = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(OrderService.class, OrderListener.class)) {
+              OrderService service = ctx.getBean(OrderService.class);
+              service.placeOrder("42");
+              assertThat(OrderListener.received).isEqualTo(1);
+          }
+      }
+  }

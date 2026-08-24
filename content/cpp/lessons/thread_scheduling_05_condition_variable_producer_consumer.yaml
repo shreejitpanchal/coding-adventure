@@ -1,0 +1,70 @@
+id: thread_scheduling_05
+title: "Waiting Without Wasting a Core"
+language: cpp
+level: 30
+objective: "Replace a busy-wait polling loop with std::condition_variable, the standard way to block a thread efficiently until another thread signals it."
+explanation: |
+  A consumer thread that repeatedly locks a mutex just to check "is
+  there work yet?" in a tight loop wastes CPU the whole time it waits,
+  the same busy-waiting problem sleep_for and yield address elsewhere --
+  but this time the fix is std::condition_variable, purpose-built for
+  the producer/consumer pattern. The consumer calls
+  cv.wait(lock, predicate), which atomically releases the lock and
+  puts the thread to sleep until notified, checking the predicate again
+  each time it wakes -- no spinning, no wasted cycles, and no
+  lost-wakeup race the way a manual flag check can have.
+example_code: |
+  std::unique_lock<std::mutex> lock(mtx);
+  cv.wait(lock, [] { return finished; });
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  #include <mutex>
+  #include <queue>
+  std::mutex mtx;
+  std::queue<int> tasks;
+  bool finished = false;
+  void producer() {
+      for (int i = 1; i <= 5; i++) {
+          std::lock_guard<std::mutex> lock(mtx);
+          tasks.push(i);
+      }
+      std::lock_guard<std::mutex> lock(mtx);
+      finished = true;
+  }
+  int main() {
+      std::thread prod(producer);
+      while (true) {
+          std::lock_guard<std::mutex> lock(mtx);
+          if (finished) break;
+      }
+      prod.join();
+      int total = 0;
+      while (!tasks.empty()) {
+          total += tasks.front();
+          tasks.pop();
+      }
+      std::cout << total << std::endl;
+      return 0;
+  }
+challenge: |
+  The consumer busy-waits, repeatedly locking the mutex just to check
+  finished in a tight loop, wasting CPU the entire time it waits. Fix
+  this by adding a std::condition_variable: have the producer call
+  cv.notify_one() after setting finished, and have the consumer replace
+  its spin loop with cv.wait(lock, [] { return finished; }), keeping the
+  same output: 15.
+expected_output: |
+  15
+hints:
+  - "#include <condition_variable>, then a global std::condition_variable cv;"
+  - "Producer: after setting finished = true, call cv.notify_one(). Consumer: std::unique_lock<std::mutex> lock(mtx); cv.wait(lock, [] { return finished; });"
+xp_reward: 15
+achievement: thread_scheduling_master
+category: thread_scheduling
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "condition_variable"
+  - "cv\\.wait\\("
+concept_tags: [threading, condition_variable, producer_consumer]

@@ -512,13 +512,14 @@ default.
   entirely from what's present in that language's content directory —
   this is what let the Java-parity content addition just be new YAML
   files, no app-code change, and what let C++ ship with its own smaller
-  6-category set (skipping categories like packaging/deployment that fit
+  10-category set (skipping categories like packaging/deployment that fit
   a framework or package manager better than bare C++) without touching
-  any app code either. Spring took this furthest: its 3 categories
-  (`dependency_injection`, `bean_lifecycle`, `configuration_profiles`)
-  have no equivalent at all in the other tracks, and still required zero
-  changes to `ExerciseEngine`/`CATEGORY_META`'s lookup logic — only new
-  `CATEGORY_META` *entries* for display, same as any other new category.
+  any app code either. Spring took this furthest: its 5 categories
+  (`dependency_injection`, `bean_lifecycle`, `configuration_profiles`,
+  `events`, `aop`) have no equivalent at all in the other tracks, and
+  still required zero changes to `ExerciseEngine`/`CATEGORY_META`'s
+  lookup logic — only new `CATEGORY_META` *entries* for display, same as
+  any other new category.
 - **Crash-containment, not a safety sandbox.** The kids' app this one is
   architecturally based on runs an AST-based builtins/import allowlist
   because it has to defend against accidental-or-adversarial child

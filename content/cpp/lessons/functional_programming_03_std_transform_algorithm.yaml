@@ -1,0 +1,47 @@
+id: functional_programming_03
+title: "Manual Mapping to std::transform"
+language: cpp
+level: 38
+objective: "Replace a manual index-based loop with std::transform, the standard library's functional map operation."
+explanation: |
+  Applying the same transformation to every element of a range and
+  writing the results somewhere else is exactly what std::transform
+  does -- it's the C++ standard library's equivalent of "map" from
+  functional programming. Passing a lambda as the transformation makes
+  the intent ("apply this function to every element") explicit at the
+  call site, instead of being implied by the shape of a hand-written
+  loop.
+example_code: |
+  std::transform(nums.begin(), nums.end(), doubled.begin(),
+                  [](int n) { return n * 2; });
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> nums = {1, 2, 3, 4};
+      std::vector<int> doubled;
+      for (size_t i = 0; i < nums.size(); i++) {
+          doubled.push_back(nums[i] * 2);
+      }
+      for (int n : doubled) std::cout << n << " ";
+      std::cout << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::transform with a lambda instead of a manual
+  indexed loop, keeping the same output: "2 4 6 8". Pre-size doubled to
+  nums.size() first, since std::transform writes into existing
+  positions rather than appending.
+expected_output: |
+  2 4 6 8
+hints:
+  - "#include <algorithm>"
+  - "std::vector<int> doubled(nums.size()); std::transform(nums.begin(), nums.end(), doubled.begin(), [](int n) { return n * 2; });"
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "std::transform"
+concept_tags: [algorithms, functional_programming, map]

@@ -1,0 +1,51 @@
+id: sync_vs_async_05
+title: "The Task That Waited to Be Asked"
+language: cpp
+level: 35
+objective: "Understand std::launch::deferred: the task doesn't run at all until .get()/.wait() is called, unlike std::launch::async."
+explanation: |
+  std::launch::async guarantees the task starts running on a separate
+  thread essentially immediately. std::launch::deferred is the opposite:
+  the standard guarantees the task does *not* run until .get() or
+  .wait() is called on the future -- and when it finally does run, it
+  runs synchronously on the thread that called .get(), not in the
+  background at all. Code that assumes "the task is already running in
+  the background" right after calling std::async is only safe with the
+  async policy; with deferred, nothing has happened yet.
+example_code: |
+  auto fut = std::async(std::launch::deferred, task);
+  // task has NOT run yet here
+  int value = fut.get();
+  // task runs now, synchronously, then returns
+starter_code: |
+  #include <iostream>
+  #include <future>
+  int calls = 0;
+  int main() {
+      auto fut = std::async(std::launch::async, []() { calls++; return 5; });
+      std::cout << calls << std::endl;
+      int value = fut.get();
+      std::cout << calls << " " << value << std::endl;
+      return 0;
+  }
+challenge: |
+  With std::launch::async, the task may have already run by the time
+  the first calls is printed, making the first line unpredictable
+  (could print 0 or 1 depending on timing). Fix this by changing the
+  launch policy to std::launch::deferred, which the standard guarantees
+  will NOT have run before the first print -- so the output is
+  deterministically "0" then "1 5".
+expected_output: |
+  0
+  1 5
+hints:
+  - "std::launch::async gives no guarantee about exactly when the task starts -- it could already be done by the first print."
+  - "std::launch::deferred guarantees the task doesn't run at all until .get()/.wait() is called."
+xp_reward: 15
+achievement: sync_vs_async_master
+category: sync_vs_async
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "std::launch::deferred"
+concept_tags: [async, future, launch_policy, deferred]

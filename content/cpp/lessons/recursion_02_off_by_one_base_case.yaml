@@ -1,0 +1,46 @@
+id: recursion_02
+title: "The Base Case That Missed Its Target"
+language: cpp
+level: 42
+objective: "Fix a base case that only checks for exact equality (n == 0), so a value that skips past it never actually stops the recursion."
+explanation: |
+  A base case like `if (n == 0)` only stops the recursion if n hits
+  exactly 0 at some point. If n starts negative, or decreases by more
+  than 1 per call, or is otherwise never exactly 0, the recursion keeps
+  going past where it should have stopped -- straight into a stack
+  overflow. A range check like `n <= 0` is more robust: it stops the
+  recursion the moment n reaches OR passes the intended boundary,
+  regardless of the exact value.
+example_code: |
+  int countdown(int n) {
+      if (n <= 0) return 0;
+      return 1 + countdown(n - 1);
+  }
+starter_code: |
+  #include <iostream>
+  int countdown(int n) {
+      if (n == 0) return 0;
+      return 1 + countdown(n - 1);
+  }
+  int main() {
+      std::cout << countdown(-1) << std::endl;
+      return 0;
+  }
+challenge: |
+  countdown(-1) never hits exactly n == 0 -- it goes -1, -2, -3, ...
+  forever, since the base case only checks for exact equality. Fix this
+  by changing the base case to n <= 0, and call countdown(0) in main()
+  instead, so the program correctly and safely returns 0.
+expected_output: |
+  0
+hints:
+  - "n == 0 only stops the recursion if n hits exactly 0 -- a negative starting value skips right past it."
+  - "Change `if (n == 0)` to `if (n <= 0)`, and change the main() call to countdown(0)."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "if\\s*\\(\\s*n\\s*<=\\s*0\\s*\\)"
+concept_tags: [recursion, base_case, gotchas]

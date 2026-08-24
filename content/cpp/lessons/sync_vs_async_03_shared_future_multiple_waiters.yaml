@@ -1,0 +1,44 @@
+id: sync_vs_async_03
+title: "One Result, Two Readers"
+language: cpp
+level: 33
+objective: "Convert a std::future to a std::shared_future via .share() so more than one piece of code can independently retrieve its result."
+explanation: |
+  std::future's copy constructor is deleted -- a future represents a
+  single, exclusively-owned handle to a result, and its .get() can only
+  be called once. When multiple independent readers genuinely need the
+  same result, std::shared_future (created by calling .share() on a
+  future) is the right tool: it's copyable, and .get() can be called
+  from it as many times as needed, by as many holders as needed.
+example_code: |
+  std::shared_future<int> fut = std::async(std::launch::async, task).share();
+starter_code: |
+  #include <iostream>
+  #include <future>
+  int main() {
+      std::future<int> fut = std::async(std::launch::async, []() { return 7; });
+      int a = fut.get();
+      int b = fut.get();
+      std::cout << a << " " << b << std::endl;
+      return 0;
+  }
+challenge: |
+  fut.get() is called twice on a plain std::future, which throws on the
+  second call since get() consumes the result. Fix this by converting
+  fut to a std::shared_future<int> (via .share() on the result of
+  std::async), which allows both get() calls to succeed, keeping the
+  output "7 7".
+expected_output: |
+  7 7
+hints:
+  - "std::future can only be read once -- std::shared_future (via .share()) supports being read multiple times."
+  - "std::shared_future<int> fut = std::async(std::launch::async, []() { return 7; }).share();"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "std::shared_future<int>"
+  - "\\.share\\(\\)"
+concept_tags: [async, future, shared_future]

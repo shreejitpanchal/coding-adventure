@@ -1,0 +1,45 @@
+id: functional_programming_05
+title: "A Function Factory, Not Just a Function"
+language: cpp
+level: 40
+objective: "Write a function that returns a std::function -- a closure factory -- instead of hardcoding one fixed behavior."
+explanation: |
+  A higher-order function is one that takes or returns another
+  function. Returning a lambda from a function turns that function into
+  a *factory*: makeMultiplier(3) doesn't compute a result directly, it
+  builds and returns a new callable that remembers 3 and multiplies by
+  it whenever it's later invoked. This is the closure-as-value pattern
+  at the heart of functional-style C++ -- configuration captured once,
+  reused as a first-class value.
+example_code: |
+  std::function<int(int)> makeMultiplier(int factor) {
+      return [factor](int x) { return x * factor; };
+  }
+starter_code: |
+  #include <iostream>
+  int multiplyByThree(int x) {
+      return x * 3;
+  }
+  int main() {
+      std::cout << multiplyByThree(7) << std::endl;
+      return 0;
+  }
+challenge: |
+  multiplyByThree is hardcoded to always multiply by 3. Fix this by
+  writing a makeMultiplier(int factor) function that returns a
+  std::function<int(int)> -- a lambda capturing factor -- and call
+  makeMultiplier(3) in main() to build the multiplier, then invoke it
+  with 7, keeping the output 21.
+expected_output: |
+  21
+hints:
+  - "#include <functional>"
+  - "std::function<int(int)> makeMultiplier(int factor) { return [factor](int x) { return x * factor; }; }"
+xp_reward: 15
+achievement: functional_programming_master
+category: functional_programming
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "std::function<int\\(int\\)> makeMultiplier\\(int factor\\)"
+concept_tags: [lambdas, higher_order_functions, closures]

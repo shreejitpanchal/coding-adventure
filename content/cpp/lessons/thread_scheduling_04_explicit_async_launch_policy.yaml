@@ -1,0 +1,54 @@
+id: thread_scheduling_04
+title: "The Pool That Might Not Actually Run in Parallel"
+language: cpp
+level: 29
+objective: "Pass std::launch::async explicitly to std::async, since the default launch policy is implementation-defined and might run everything sequentially instead."
+explanation: |
+  std::async(fn, args...) without an explicit launch policy lets the
+  implementation choose between std::launch::async (a genuinely new
+  thread) and std::launch::deferred (runs later, on the calling thread,
+  when .get()/.wait() is called) -- and that choice is unspecified by
+  the standard. Code written expecting real concurrent execution across
+  a "pool" of async tasks can silently end up running every task
+  sequentially on one thread instead, defeating the entire point of
+  using async in the first place. Passing std::launch::async explicitly
+  guarantees an actual separate thread every time.
+example_code: |
+  std::async(std::launch::async, [i]() { return i * i; });
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  #include <future>
+  int main() {
+      std::vector<std::future<int>> results;
+      for (int i = 0; i < 5; i++) {
+          results.push_back(std::async([i]() { return i * i; }));
+      }
+      int total = 0;
+      for (auto& f : results) {
+          total += f.get();
+      }
+      std::cout << total << std::endl;
+      return 0;
+  }
+challenge: |
+  std::async here is called with no explicit launch policy, so the
+  implementation is free to run every task deferred (sequentially, on
+  whichever thread calls .get()) instead of truly in parallel -- the
+  result is still correct, but the "pool" may provide zero actual
+  concurrency. Fix this by passing std::launch::async explicitly to
+  std::async so every task genuinely runs on its own thread, keeping
+  the same output: 30.
+expected_output: |
+  30
+hints:
+  - "Without an explicit policy, the implementation can legally run every task sequentially instead of in parallel."
+  - "std::async(std::launch::async, [i]() { return i * i; })"
+xp_reward: 15
+achievement: null
+category: thread_scheduling
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "std::launch::async"
+concept_tags: [threading, async, launch_policy, gotchas]

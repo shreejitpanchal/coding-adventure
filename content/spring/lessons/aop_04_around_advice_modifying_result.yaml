@@ -1,0 +1,82 @@
+id: aop_04
+title: "The Advice That Could Change the Answer"
+language: spring
+level: 24
+objective: "Use @Around advice to intercept a method call and transform its return value before it reaches the caller."
+explanation: |
+  @Around is the most powerful advice type: it wraps the entire method
+  call, receiving a ProceedingJoinPoint that must be explicitly told to
+  proceed() (unlike @Before/@After, which run automatically around a
+  call that always happens). Because @Around advice controls what gets
+  returned from pjp.proceed(), it can inspect, transform, or even
+  entirely replace the result before handing it back to the original
+  caller -- something @Before/@After/@AfterReturning can't do, since
+  none of them control the return value.
+example_code: |
+  @Around("execution(* ...Greeter.greet(..))")
+  public Object shout(ProceedingJoinPoint pjp) throws Throwable {
+      Object result = pjp.proceed();
+      return String.valueOf(result).toUpperCase();
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.ProceedingJoinPoint;
+  import org.aspectj.lang.annotation.Around;
+  import org.aspectj.lang.annotation.Aspect;
+  import org.springframework.context.annotation.ComponentScan;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.EnableAspectJAutoProxy;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  @EnableAspectJAutoProxy
+  @ComponentScan
+  class AppConfig {}
+
+  @Aspect
+  @Component
+  public class UppercaseAspect {
+      @Around("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public Object shout(ProceedingJoinPoint pjp) throws Throwable {
+          return pjp.proceed();
+      }
+  }
+
+  @Component
+  class Greeter {
+      public String greet(String name) { return "hi " + name; }
+  }
+challenge: |
+  UppercaseAspect's advice calls pjp.proceed() and returns the result
+  unchanged, but it's supposed to shout -- uppercase the greeting before
+  returning it to the caller. Fix this by transforming the result with
+  .toUpperCase() before returning it, so greet("Ada") returns "HI ADA".
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "@Around advice can modify what pjp.proceed() returns before handing it back to the caller."
+  - "Object result = pjp.proceed(); return String.valueOf(result).toUpperCase();"
+xp_reward: 15
+achievement: null
+category: aop
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "\\.toUpperCase\\(\\)"
+concept_tags: [aop, around_advice, proceedingjoinpoint]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class UppercaseAspectTest {
+      @Test
+      void aroundAdviceUppercasesResult() {
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)) {
+              Greeter greeter = ctx.getBean(Greeter.class);
+              assertThat(greeter.greet("Ada")).isEqualTo("HI ADA");
+          }
+      }
+  }

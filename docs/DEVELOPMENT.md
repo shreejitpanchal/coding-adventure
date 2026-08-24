@@ -8,9 +8,9 @@ and how to run it, see the main [README](../README.md).
 
 All four tracks are fully built. Python and Java share the same 14 topic
 categories, real execution against a local `python`/`javac`+`java`
-toolchain. C++ has its own 6 topic categories (a general-purpose
+toolchain. C++ has its own 10 topic categories (a general-purpose
 language subset rather than a framework), executed against a local
-`g++` toolchain. Spring has its own 3 topic categories, executed against
+`g++` toolchain. Spring has its own 5 topic categories, executed against
 a local Maven + JDK toolchain via a scaffolded Maven project run through
 `mvn test` — see `app/execution/spring_engine.py` and "Execution
 engines" below for how that differs from the other three. The app is
@@ -80,10 +80,10 @@ content/
     lessons/   # same shape, same category keys as python/lessons/
     quiz/
   cpp/
-    lessons/   # own 6 category keys (not the full 14 -- see below)
+    lessons/   # own 10 category keys (not the full 14 -- see below)
     quiz/
   spring/
-    lessons/   # own 3 category keys (not the full 14 -- see below)
+    lessons/   # own 5 category keys (not the full 14 -- see below)
     quiz/
     scaffold/pom.xml  # shared Maven project template, copied per run
 docs/          # this file + ARCHITECTURE.md
@@ -149,23 +149,45 @@ C++ deliberately does **not** chase the same 14-category list — several
 of those categories (dependency management, packaging, deployment,
 observability) are ecosystem/tooling concepts more naturally taught via
 a package manager or framework than bare C++ language/stdlib content.
-Instead C++ has its own 6 categories covering general-purpose-language
+Instead C++ has its own 10 categories covering general-purpose-language
 ground: `idioms_gotchas`, `core_refresher`, `data_structures`,
 `stdlib_deep_dive`, `concurrency_async` (`std::thread`/`mutex`/`atomic`/
-`async`/`promise`-`future` rather than `asyncio`/virtual threads), and
-`gotcha_gauntlet`. Nothing in the engine assumes a fixed category set
-across languages — `ExerciseEngine.categories()` is still derived purely
-from what's present in each language's own content directory, so C++
-having a different-sized set required zero app-code changes.
+`async`/`promise`-`future` rather than `asyncio`/virtual threads),
+`thread_scheduling` (`sleep_for`/`yield`/`condition_variable`, joining a
+`vector<thread>`, explicit `std::launch::async`), `sync_vs_async`
+(`std::future`/`shared_future` gotchas, exception propagation through
+`.get()`, `std::launch::deferred`'s precisely-defined lazy execution),
+`functional_programming` (lambda-capture-in-loop gotchas, `std::function`,
+`std::transform`/`std::accumulate`, closures-as-values), `recursion`
+(missing/off-by-one base cases, memoization, tail-recursion style via an
+accumulator, mutual recursion), and `gotcha_gauntlet` (kept last in level
+order so it stays the flagship's "final" position in the topic browser,
+same as Python/Java). The four newer categories were chosen specifically
+because they fit a single `g++`-compiled file with no external tooling;
+categories like packaging/deployment/dependency-management were left out
+because they'd need a real package manager or build system C++ doesn't
+have here, which would have meant stretching the exercise's honesty
+("real execution, not simulated") past what the engine can back up.
+Nothing in the engine assumes a fixed category set across languages —
+`ExerciseEngine.categories()` is still derived purely from what's present
+in each language's own content directory, so C++ having a
+different-sized set required zero app-code changes.
 
 Spring goes further still: it's a framework, not a general-purpose
-language, so even C++'s 6-category shape doesn't fit. Its 3 categories —
-`dependency_injection`, `bean_lifecycle`, `configuration_profiles` — are
-Spring-specific concerns with no equivalent in the other tracks at all.
-This first batch deliberately stays within plain Spring Framework
-territory (dependency injection, bean scopes/lifecycle hooks,
-`@Value`/`@Profile` configuration) rather than reaching for Spring Boot's
-web/data layers — see "Execution engines" below for why.
+language, so even C++'s category shape doesn't fit. Its 5 categories —
+`dependency_injection`, `bean_lifecycle`, `configuration_profiles`,
+`events`, `aop` — are Spring-specific concerns with no equivalent in the
+other tracks at all. All five deliberately stay within plain Spring
+Framework territory (dependency injection, bean scopes/lifecycle hooks,
+`@Value`/`@Profile` configuration, `ApplicationEvent`/`@EventListener`,
+`@Aspect`/`@Before`/`@AfterReturning`/`@Around` advice) rather than
+reaching for Spring Boot's web/data layers — see "Execution engines"
+below for why. Adding `events` and `aop` only needed two new
+dependencies in the shared scaffold (`spring-aop` + `aspectjweaver`, both
+already bundled with plain Spring, not Boot-specific) and one scaffold
+tweak: the compiler plugin needed `<parameters>true</parameters>` so
+`@EventListener`'s SpEL `condition` expressions can resolve a listener
+parameter by name (e.g. `#event.amount`) via reflection.
 
 ### Daily Refresher
 
@@ -248,7 +270,7 @@ was added.
   timeout (`MVN_TIMEOUT_SECONDS = 45.0`) rather than the 8s the UI
   passes in, since JVM+Maven+Spring context startup needs more headroom.
   Deliberately uses plain Spring Framework (`spring-context`/
-  `spring-test`), not Spring Boot — no embedded server or
+  `spring-test`/`spring-aop`+`aspectjweaver`), not Spring Boot — no embedded server or
   autoconfiguration to boot, which keeps a cold `mvn -o test` run around
   4 seconds and fully offline once the scaffold's dependencies are
   warmed into `~/.m2` once. Maven's own logger writes everything

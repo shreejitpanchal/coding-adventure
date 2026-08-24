@@ -1,0 +1,42 @@
+id: sync_vs_async_01
+title: "The Future You Can Only Cash In Once"
+language: cpp
+level: 31
+objective: "Fix a crash from calling .get() twice on the same std::future by storing the result after the first call."
+explanation: |
+  std::future::get() doesn't just read the result -- it consumes the
+  future's shared state. Calling .get() a second time on the same
+  future is undefined behavior (in practice, it throws
+  std::future_error), since the value has already been retrieved and
+  the future has nothing left to give. If a result is needed more than
+  once, save it to a variable the first time and reuse that variable --
+  don't call .get() again.
+example_code: |
+  int value = fut.get();
+  std::cout << value << " " << value << std::endl;
+starter_code: |
+  #include <iostream>
+  #include <future>
+  int main() {
+      std::future<int> fut = std::async(std::launch::async, []() { return 21; });
+      std::cout << fut.get() << " " << fut.get() << std::endl;
+      return 0;
+  }
+challenge: |
+  fut.get() is called twice -- the second call is on an already-consumed
+  future, which throws std::future_error and crashes the program. Fix
+  this by calling fut.get() once, storing the result in a variable, and
+  printing that variable twice instead, keeping the output "21 21".
+expected_output: |
+  21 21
+hints:
+  - "get() consumes the future's result -- calling it a second time on the same future throws."
+  - "int value = fut.get(); std::cout << value << \" \" << value << std::endl;"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "int value = fut\\.get\\(\\);"
+concept_tags: [async, future, gotchas]

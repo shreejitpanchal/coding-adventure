@@ -1,0 +1,88 @@
+id: events_04
+title: "The Alert That Fired for Everything"
+language: spring
+level: 19
+objective: "Use @EventListener's condition attribute (a SpEL expression) so a listener only reacts to events matching a specific criterion."
+explanation: |
+  @EventListener accepts a `condition` attribute -- a SpEL expression
+  evaluated against the published event -- so the listener method's
+  body only runs when the condition is true, filtering out events it
+  shouldn't react to without any manual `if` check inside the method.
+  Referencing the listener method's own parameter by name in the SpEL
+  expression (e.g. #event.amount) requires the compiler to preserve
+  parameter names, which this project's Maven scaffold is already
+  configured for.
+example_code: |
+  @EventListener(condition = "#event.amount > 100")
+  public void onPurchase(PurchaseEvent event) {
+      alerts++;
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEventPublisher;
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  class PurchaseEvent {
+      private final Object source;
+      private final int amount;
+      PurchaseEvent(Object source, int amount) { this.source = source; this.amount = amount; }
+      public int getAmount() { return amount; }
+  }
+
+  @Component
+  class PurchaseService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+      public void purchase(int amount) { publisher.publishEvent(new PurchaseEvent(this, amount)); }
+  }
+
+  @Component
+  class FraudAlertListener {
+      static int alerts = 0;
+
+      @EventListener
+      public void onPurchase(PurchaseEvent event) {
+          alerts++;
+      }
+  }
+challenge: |
+  FraudAlertListener currently alerts on every single purchase, no
+  matter how small -- it should only care about purchases over 100. Fix
+  this by adding a condition attribute to @EventListener:
+  condition = "#event.amount > 100", so a $50 purchase is ignored but a
+  $150 purchase triggers exactly one alert.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "@EventListener has a condition attribute: a SpEL expression evaluated against the event."
+  - '@EventListener(condition = "#event.amount > 100")'
+xp_reward: 15
+achievement: null
+category: events
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - '@EventListener\(condition = "#event\.amount > 100"\)'
+concept_tags: [events, event_listener, spel, conditional]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class FraudAlertListenerTest {
+      @Test
+      void onlyAlertsForLargePurchases() {
+          FraudAlertListener.alerts = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(
+                  PurchaseService.class, FraudAlertListener.class)) {
+              PurchaseService service = ctx.getBean(PurchaseService.class);
+              service.purchase(50);
+              service.purchase(150);
+              assertThat(FraudAlertListener.alerts).isEqualTo(1);
+          }
+      }
+  }

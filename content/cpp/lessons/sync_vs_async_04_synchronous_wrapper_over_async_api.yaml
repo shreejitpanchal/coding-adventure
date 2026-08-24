@@ -1,0 +1,47 @@
+id: sync_vs_async_04
+title: "Giving Callers a Synchronous Front Door"
+language: cpp
+level: 34
+objective: "Write a synchronous wrapper function around an async-only API, so callers who just want a plain result don't have to deal with futures directly."
+explanation: |
+  Not every caller of an asynchronous API actually wants to manage a
+  future -- sometimes the simplest, most honest thing is a thin
+  synchronous wrapper that calls the async version internally and blocks
+  on .get() before returning a plain value. This is a common integration
+  pattern: keep the async primitive available for callers who want real
+  concurrency, but also expose a synchronous entry point for callers who
+  just want an answer.
+example_code: |
+  int computeSync(int n) {
+      return computeAsync(n).get();
+  }
+starter_code: |
+  #include <iostream>
+  #include <future>
+  std::future<int> computeAsync(int n) {
+      return std::async(std::launch::async, [n]() { return n * n; });
+  }
+  int main() {
+      std::future<int> fut = computeAsync(6);
+      std::cout << fut.get() << std::endl;
+      return 0;
+  }
+challenge: |
+  main() has to deal with a std::future directly to get a result.
+  Fix this by writing a computeSync(int n) function that calls
+  computeAsync(n) internally and returns the plain int result via
+  .get(), then have main() call computeSync(6) directly instead of
+  handling the future itself, keeping the same output: 36.
+expected_output: |
+  36
+hints:
+  - "Write a computeSync(int n) function that wraps computeAsync(n).get() and returns a plain int."
+  - "int computeSync(int n) { return computeAsync(n).get(); }"
+xp_reward: 15
+achievement: null
+category: sync_vs_async
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "int computeSync\\(int n\\)"
+concept_tags: [async, future, api_design]

@@ -1,0 +1,44 @@
+id: functional_programming_04
+title: "Manual Folding to std::accumulate"
+language: cpp
+level: 39
+objective: "Replace a manual reduction loop with std::accumulate and a custom combining lambda -- the standard library's fold operation."
+explanation: |
+  std::accumulate is C++'s general-purpose "fold" (or "reduce"): given a
+  starting value and a binary operation, it combines every element of a
+  range into a single result. By default it sums, but passing a custom
+  binary lambda (like multiplication) lets it express any fold -- a
+  manual loop that starts an accumulator, updates it every iteration,
+  and returns it at the end is exactly the pattern std::accumulate
+  captures directly.
+example_code: |
+  int product = std::accumulate(nums.begin(), nums.end(), 1,
+                                 [](int a, int b) { return a * b; });
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  int main() {
+      std::vector<int> nums = {1, 2, 3, 4};
+      int product = 1;
+      for (size_t i = 0; i < nums.size(); i++) {
+          product *= nums[i];
+      }
+      std::cout << product << std::endl;
+      return 0;
+  }
+challenge: |
+  Rewrite this using std::accumulate with a multiplication lambda
+  instead of a manual loop, keeping the same output: 24.
+expected_output: |
+  24
+hints:
+  - "#include <numeric>"
+  - "int product = std::accumulate(nums.begin(), nums.end(), 1, [](int a, int b) { return a * b; });"
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "std::accumulate"
+concept_tags: [algorithms, functional_programming, fold]

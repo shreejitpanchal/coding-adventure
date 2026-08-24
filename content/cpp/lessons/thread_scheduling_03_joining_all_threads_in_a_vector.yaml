@@ -1,0 +1,49 @@
+id: thread_scheduling_03
+title: "The Pool That Only Waited for One Worker"
+language: cpp
+level: 28
+objective: "Join every thread in a std::vector<std::thread>, not just the first one, before the vector goes out of scope."
+explanation: |
+  A std::vector<std::thread> is a natural way to manage a group of
+  worker threads, but joining only requires calling .join() on each
+  individual thread object -- the vector itself doesn't do that for
+  you. Any thread left joinable when its std::thread object is
+  destroyed (including when the whole vector is destroyed at the end of
+  main) crashes the program via std::terminate(), the same guaranteed
+  behavior as forgetting to join a single thread.
+example_code: |
+  for (auto& t : workers) {
+      t.join();
+  }
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  #include <vector>
+  int main() {
+      std::vector<std::thread> workers;
+      for (int i = 0; i < 3; i++) {
+          workers.push_back(std::thread([i]() { }));
+      }
+      workers[0].join();
+      std::cout << "all done" << std::endl;
+      return 0;
+  }
+challenge: |
+  Only workers[0] gets joined -- workers[1] and workers[2] are still
+  joinable when the vector is destroyed at the end of main, crashing the
+  program via std::terminate(). Fix this by looping over every thread in
+  workers and calling .join() on each one before printing, so the
+  output "all done" is reached cleanly.
+expected_output: |
+  all done
+hints:
+  - "Only the first thread in the vector gets joined -- the other two are still joinable when the vector is destroyed."
+  - "for (auto& t : workers) { t.join(); }"
+xp_reward: 15
+achievement: null
+category: thread_scheduling
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "for\\s*\\(\\s*auto&\\s*\\w+\\s*:\\s*workers\\s*\\)"
+concept_tags: [threading, join, gotchas]

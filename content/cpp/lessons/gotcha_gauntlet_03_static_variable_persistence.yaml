@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_03
 title: "The Counter That Forgot Every Call"
 language: cpp
-level: 28
+level: 48
 objective: "Fix a function meant to hand out sequential IDs, but which resets its counter to 0 on every call instead of remembering it."
 explanation: |
   A plain local variable is reinitialized every time a function is

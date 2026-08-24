@@ -1,0 +1,50 @@
+id: sync_vs_async_02
+title: "The Exception That Waited to Be Asked For"
+language: cpp
+level: 32
+objective: "Catch an exception thrown inside an async task, which propagates when .get() is called rather than being lost."
+explanation: |
+  An exception thrown inside a function running via std::async isn't
+  lost just because it happened on a background thread -- it's captured
+  and stored in the future's shared state, and re-thrown the moment
+  .get() is called on that future. This means ordinary try/catch around
+  the .get() call works exactly like it would for a synchronous call --
+  the asynchronous boundary doesn't need any special exception-handling
+  machinery.
+example_code: |
+  try {
+      int value = fut.get();
+  } catch (const std::runtime_error& e) {
+      std::cout << "caught: " << e.what() << std::endl;
+  }
+starter_code: |
+  #include <iostream>
+  #include <future>
+  #include <stdexcept>
+  int main() {
+      std::future<int> fut = std::async(std::launch::async, []() -> int {
+          throw std::runtime_error("boom");
+      });
+      int value = fut.get();
+      std::cout << value << std::endl;
+      return 0;
+  }
+challenge: |
+  The async task always throws std::runtime_error("boom"), and that
+  exception re-surfaces when fut.get() is called, crashing the program
+  since nothing catches it. Fix this by wrapping the fut.get() call in
+  a try/catch for std::runtime_error, printing "caught: boom" instead of
+  crashing.
+expected_output: |
+  caught: boom
+hints:
+  - "An exception thrown inside an async task is stored and re-thrown when .get() is called, just like a normal exception."
+  - "try { int value = fut.get(); ... } catch (const std::runtime_error& e) { std::cout << \"caught: \" << e.what() << std::endl; }"
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "catch\\s*\\(\\s*const std::runtime_error"
+concept_tags: [async, future, exceptions]

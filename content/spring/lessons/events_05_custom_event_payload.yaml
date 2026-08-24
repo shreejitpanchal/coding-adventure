@@ -1,0 +1,94 @@
+id: events_05
+title: "The Event That Forgot What Happened"
+language: spring
+level: 20
+objective: "Give a custom ApplicationEvent subclass an actual payload field and getter, so listeners can find out what happened, not just that something did."
+explanation: |
+  Extending ApplicationEvent gives access to Spring's event
+  infrastructure (timestamps, the source object), but the *content*
+  specific to your event -- an order ID, a tracking number, an amount --
+  has to be added explicitly as your own field, set in the constructor,
+  and exposed via a getter. Without that, listeners can react to "a
+  ShipmentEvent happened" but have no way to find out which shipment,
+  making the event far less useful than it looks.
+example_code: |
+  class ShipmentEvent extends ApplicationEvent {
+      private final String trackingNumber;
+      public ShipmentEvent(Object source, String trackingNumber) {
+          super(source);
+          this.trackingNumber = trackingNumber;
+      }
+      public String getTrackingNumber() { return trackingNumber; }
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEvent;
+  import org.springframework.context.ApplicationEventPublisher;
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  class ShipmentEvent extends ApplicationEvent {
+      public ShipmentEvent(Object source, String trackingNumber) {
+          super(source);
+      }
+  }
+
+  @Component
+  class ShipmentService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+      public void ship(String trackingNumber) {
+          publisher.publishEvent(new ShipmentEvent(this, trackingNumber));
+      }
+  }
+
+  @Component
+  class ShipmentListener {
+      static String lastTrackingNumber = null;
+
+      @EventListener
+      public void onShipment(ShipmentEvent event) {
+          lastTrackingNumber = "unknown";
+      }
+  }
+challenge: |
+  ShipmentEvent's constructor receives trackingNumber but never stores
+  it, so there's no way for any listener to actually retrieve it --
+  ShipmentListener has to hardcode "unknown" since the real value is
+  lost. Fix this by adding a trackingNumber field to ShipmentEvent (set
+  in the constructor) with a getTrackingNumber() getter, and update
+  ShipmentListener to read event.getTrackingNumber() instead of
+  hardcoding a placeholder.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "ShipmentEvent's constructor receives trackingNumber as a parameter but never saves it anywhere."
+  - "Add a private final String trackingNumber; field, set via this.trackingNumber = trackingNumber; in the constructor, and a getTrackingNumber() getter."
+xp_reward: 15
+achievement: events_master
+category: events
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "getTrackingNumber\\(\\)"
+  - "event\\.getTrackingNumber\\(\\)"
+concept_tags: [events, custom_event, application_event]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class ShipmentServiceTest {
+      @Test
+      void listenerReadsThePayload() {
+          ShipmentListener.lastTrackingNumber = null;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(
+                  ShipmentService.class, ShipmentListener.class)) {
+              ctx.getBean(ShipmentService.class).ship("TRACK-123");
+              assertThat(ShipmentListener.lastTrackingNumber).isEqualTo("TRACK-123");
+          }
+      }
+  }

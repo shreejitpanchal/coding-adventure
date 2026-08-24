@@ -29,10 +29,13 @@ through in a few focused minutes, not tutorials to sit through.
   flagship **Gotcha Gauntlet**. C++ and Spring each define their own
   smaller category sets instead, since chasing full 14-category parity
   doesn't fit a bare language or a DI framework the same way it fits two
-  general-purpose languages: C++ covers 6 (Idioms & Gotchas, Core
-  Language Refresher, Data Structures, Standard Library Deep Dive,
-  Concurrency & Async, Gotcha Gauntlet), Spring covers 3 (Dependency
-  Injection, Bean Lifecycle & Scopes, Configuration & Profiles).
+  general-purpose languages: C++ covers 10 (the same 6 as before plus
+  Thread Scheduling, Sync vs Async, Functional Programming, and
+  Recursion — categories that genuinely fit a single compiled file, unlike
+  packaging/deployment/observability which assume a package manager or
+  framework C++ doesn't have here), Spring covers 5 (Dependency
+  Injection, Bean Lifecycle & Scopes, Configuration & Profiles,
+  Application Events, and Aspect-Oriented Programming).
   - **Python** — 75 exercises (mutable defaults, race conditions, float
     precision, silent exception swallowing, GIL vs true parallelism, and
     more).
@@ -41,19 +44,25 @@ through in a few focused minutes, not tutorials to sit through.
     virtual threads and CompletableFuture for concurrency,
     ConcurrentModificationException, silent int overflow, the
     equals()/hashCode() contract, and more).
-  - **C++** — 30 exercises (integer division/overflow, pass-by-value vs
+  - **C++** — 50 exercises (integer division/overflow, pass-by-value vs
     pass-by-reference, unsigned wraparound, RAII/smart pointers, STL
     containers and algorithms, std::thread/mutex/atomic/async, missing
-    virtual destructors, and more).
-  - **Spring** — 15 exercises (constructor vs field injection, ambiguous
+    virtual destructors, sleep_for/yield/condition_variable scheduling,
+    future/shared_future/launch-policy sync-vs-async gotchas, lambda
+    closures and std::transform/accumulate, memoization and mutual
+    recursion, and more).
+  - **Spring** — 25 exercises (constructor vs field injection, ambiguous
     beans and @Qualifier/@Primary, singleton vs prototype scope,
     @PostConstruct/@PreDestroy, @Lazy, @Value placeholder resolution,
-    @Profile-gated beans, and more), using plain Spring Framework
-    (spring-context/spring-test) rather than Spring Boot, so `mvn test`
-    stays fast and fully offline after the shared scaffold's dependencies
-    are warmed once.
-- **Quiz Bank** — 87 Python questions, 70 Java questions, 35 C++
-  questions, 20 Spring questions, reshuffled every session.
+    @Profile-gated beans, ApplicationEvent/@EventListener including
+    conditional SpEL listeners, and Spring AOP's @Before/@AfterReturning/
+    @Around advice including the classic self-invocation-bypasses-the-
+    proxy gotcha, and more), using plain Spring Framework
+    (spring-context/spring-test/spring-aop) rather than Spring Boot, so
+    `mvn test` stays fast and fully offline after the shared scaffold's
+    dependencies are warmed once.
+- **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
+  questions, 34 Spring questions, reshuffled every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
 - **Real execution, not a simulated sandbox** — Python exercises run

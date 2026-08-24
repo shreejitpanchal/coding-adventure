@@ -1,0 +1,52 @@
+id: functional_programming_01
+title: "The Lambdas That All Remembered the Same Number"
+language: cpp
+level: 36
+objective: "Capture a loop variable by value instead of by reference, so each lambda freezes its own iteration's value instead of sharing one final value."
+explanation: |
+  Capturing by reference ([&i]) means the lambda doesn't store its own
+  copy of i -- it stores a reference to the *variable* i, which keeps
+  changing (and eventually goes out of scope) as the loop continues.
+  By the time any of these lambdas actually run, they all see whatever
+  i's final value was, not the value it had when each lambda was
+  created. Capturing by value ([i]) copies the current value into the
+  lambda at the moment it's created, so each one keeps its own
+  independent snapshot.
+example_code: |
+  for (int i = 0; i < 3; i++) {
+      makers.push_back([i]() { return i; });
+  }
+starter_code: |
+  #include <iostream>
+  #include <vector>
+  #include <functional>
+  int main() {
+      std::vector<std::function<int()>> makers;
+      for (int i = 0; i < 3; i++) {
+          makers.push_back([&i]() { return i; });
+      }
+      for (auto& m : makers) {
+          std::cout << m() << " ";
+      }
+      std::cout << std::endl;
+      return 0;
+  }
+challenge: |
+  Every lambda captures i by reference, so they all end up returning
+  whatever i's value was after the loop finished, not each one's own
+  iteration value -- printing the same number three times. Fix this by
+  capturing i by value instead ([i] instead of [&i]), so each lambda
+  keeps its own snapshot, printing "0 1 2".
+expected_output: |
+  0 1 2
+hints:
+  - "Capturing by reference ([&i]) means every lambda shares the same variable, which keeps changing."
+  - "Change [&i] to [i] so each lambda captures its own copy of the current value."
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "\\[i\\]\\(\\)"
+concept_tags: [lambdas, closures, gotchas]

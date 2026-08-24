@@ -1,0 +1,82 @@
+id: aop_01
+title: "The Advice That Was Never An Aspect"
+language: spring
+level: 21
+objective: "Add @Aspect to a class alongside its @Before advice method, since without it Spring/AspectJ doesn't recognize the class as an aspect at all."
+explanation: |
+  @Before (and the other advice annotations like @After, @Around) only
+  mean something on a class that's also annotated @Aspect -- that's
+  what tells the AspectJ auto-proxying machinery (enabled via
+  @EnableAspectJAutoProxy) to actually scan this class for pointcuts and
+  weave its advice into matching method calls. A class with advice
+  annotations but no @Aspect is just a plain bean with unused
+  annotations sitting on it; nothing ever calls countCall().
+example_code: |
+  @Aspect
+  @Component
+  public class CallCounterAspect {
+      @Before("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public void countCall() { calls++; }
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.Before;
+  import org.springframework.context.annotation.ComponentScan;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.EnableAspectJAutoProxy;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  @EnableAspectJAutoProxy
+  @ComponentScan
+  class AppConfig {}
+
+  @Component
+  public class CallCounterAspect {
+      public static int calls = 0;
+
+      @Before("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public void countCall() {
+          calls++;
+      }
+  }
+
+  @Component
+  class Greeter {
+      public String greet(String name) { return "hi " + name; }
+  }
+challenge: |
+  CallCounterAspect has @Before advice but is missing @Aspect, so Spring
+  never recognizes it as an aspect at all -- countCall() never runs when
+  greet() is called. Fix this by adding @Aspect above the class.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "@Before only has meaning on a class that's also annotated @Aspect."
+  - "Add @Aspect directly above `public class CallCounterAspect`."
+xp_reward: 10
+achievement: null
+category: aop
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "@Aspect"
+concept_tags: [aop, aspect, before_advice, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class CallCounterAspectTest {
+      @Test
+      void adviceFiresBeforeGreet() {
+          CallCounterAspect.calls = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)) {
+              Greeter greeter = ctx.getBean(Greeter.class);
+              greeter.greet("Ada");
+              assertThat(CallCounterAspect.calls).isEqualTo(1);
+          }
+      }
+  }

@@ -1,0 +1,84 @@
+id: aop_03
+title: "The Advice That Couldn't See the Answer"
+language: spring
+level: 23
+objective: "Use @AfterReturning with a returning parameter to capture a method's actual return value, since plain @After can't access it."
+explanation: |
+  @After runs after a method completes, whether it returned normally or
+  threw -- but it has no access to what the method actually returned.
+  @AfterReturning is specifically for the "completed successfully"
+  case, and its `returning` attribute binds the method's return value to
+  a parameter of the advice method by name, giving the aspect real
+  access to the result rather than just knowing "something happened."
+example_code: |
+  @AfterReturning(pointcut = "execution(* ...Calculator.square(..))", returning = "result")
+  public void logResult(Object result) {
+      lastResult = String.valueOf(result);
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.After;
+  import org.aspectj.lang.annotation.Aspect;
+  import org.springframework.context.annotation.ComponentScan;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.EnableAspectJAutoProxy;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  @EnableAspectJAutoProxy
+  @ComponentScan
+  class AppConfig {}
+
+  @Aspect
+  @Component
+  public class ResultLoggerAspect {
+      public static String lastResult = null;
+
+      @After("execution(* com.codingadventure.exercise.Calculator.square(..))")
+      public void logResult() {
+          lastResult = "unknown";
+      }
+  }
+
+  @Component
+  class Calculator {
+      public int square(int n) { return n * n; }
+  }
+challenge: |
+  ResultLoggerAspect uses plain @After, which has no way to access
+  square()'s actual return value -- it can only ever record "unknown".
+  Fix this by switching to @AfterReturning with a returning = "result"
+  attribute and a matching Object result parameter, so lastResult
+  captures the real computed value.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Plain @After can't see the method's return value -- @AfterReturning's `returning` attribute can."
+  - '@AfterReturning(pointcut = "execution(* com.codingadventure.exercise.Calculator.square(..))", returning = "result") public void logResult(Object result) { lastResult = String.valueOf(result); }'
+xp_reward: 15
+achievement: null
+category: aop
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "@AfterReturning"
+  - 'returning = "result"'
+concept_tags: [aop, afterreturning_advice, pointcut]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class ResultLoggerAspectTest {
+      @Test
+      void capturesTheReturnValue() {
+          ResultLoggerAspect.lastResult = null;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)) {
+              Calculator calc = ctx.getBean(Calculator.class);
+              calc.square(6);
+              assertThat(ResultLoggerAspect.lastResult).isEqualTo("36");
+          }
+      }
+  }

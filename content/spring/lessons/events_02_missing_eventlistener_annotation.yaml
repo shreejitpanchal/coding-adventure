@@ -1,0 +1,78 @@
+id: events_02
+title: "The Listener That Never Registered"
+language: spring
+level: 17
+objective: "Add @EventListener to a method so Spring actually recognizes it as an event handler, and publish the event that should trigger it."
+explanation: |
+  A plain method named onSomething() isn't automatically wired up as an
+  event handler -- Spring only treats a method as a listener when it's
+  annotated @EventListener (or the bean implements
+  ApplicationListener<T> directly). Without the annotation, the method
+  just sits there unused, and without a corresponding publishEvent()
+  call, nothing ever reaches it even if it were wired up correctly.
+example_code: |
+  @EventListener
+  public void onPaymentReceived(PaymentEvent event) {
+      received++;
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  @Component
+  public class PaymentListener {
+      static int received = 0;
+
+      public void onPaymentReceived(PaymentEvent event) {
+          received++;
+      }
+  }
+
+  class PaymentEvent {
+      private final Object source;
+      PaymentEvent(Object source) { this.source = source; }
+  }
+
+  @Component
+  class PaymentService {
+      public void charge() {
+      }
+  }
+challenge: |
+  Two things are broken: onPaymentReceived() is missing @EventListener,
+  so Spring never wires it up as a handler, and PaymentService.charge()
+  never publishes a PaymentEvent at all. Fix both: add @EventListener to
+  the listener method, and inject ApplicationEventPublisher into
+  PaymentService to publish a PaymentEvent from charge().
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "The listener method needs @EventListener above it to be recognized at all."
+  - "PaymentService needs @Autowired ApplicationEventPublisher publisher; and a publisher.publishEvent(new PaymentEvent(this)); call inside charge()."
+xp_reward: 10
+achievement: null
+category: events
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "@EventListener"
+  - "publisher\\.publishEvent\\("
+concept_tags: [events, event_listener, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class PaymentListenerTest {
+      @Test
+      void listenerReactsToPublishedEvent() {
+          PaymentListener.received = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(PaymentListener.class, PaymentService.class)) {
+              PaymentService service = ctx.getBean(PaymentService.class);
+              service.charge();
+              assertThat(PaymentListener.received).isEqualTo(1);
+          }
+      }
+  }

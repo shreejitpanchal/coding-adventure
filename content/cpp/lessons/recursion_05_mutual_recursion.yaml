@@ -1,0 +1,55 @@
+id: recursion_05
+title: "Two Functions, Taking Turns"
+language: cpp
+level: 45
+objective: "Fix a mutual recursion where isEven's recursive call skips isOdd, breaking the alternation between the two functions."
+explanation: |
+  Mutual recursion is two (or more) functions that call each other
+  recursively instead of a single function calling itself --
+  isEven(n) delegates to isOdd(n - 1), and isOdd(n) delegates to
+  isEven(n - 1), alternating back and forth until one of them hits its
+  base case. C++ needs a forward declaration for whichever function is
+  defined second, since each one references the other before both
+  definitions exist. If one function's recursive call skips calling the
+  other (calling itself, or the wrong function), the alternation breaks
+  and the result is wrong.
+example_code: |
+  bool isOdd(int n);
+  bool isEven(int n) {
+      if (n == 0) return true;
+      return isOdd(n - 1);
+  }
+starter_code: |
+  #include <iostream>
+  bool isOdd(int n);
+  bool isEven(int n) {
+      if (n == 0) return true;
+      return isOdd(n);
+  }
+  bool isOdd(int n) {
+      if (n == 0) return false;
+      return isEven(n - 1);
+  }
+  int main() {
+      std::cout << isEven(8) << " " << isOdd(8) << std::endl;
+      return 0;
+  }
+challenge: |
+  isEven(n) calls isOdd(n) instead of isOdd(n - 1) -- it never actually
+  decreases n on its side of the mutual recursion, so the two functions
+  fall out of sync and the result is wrong. Fix this by changing
+  isEven's recursive call to isOdd(n - 1), keeping the output "1 0"
+  (isEven(8) is true, isOdd(8) is false).
+expected_output: |
+  1 0
+hints:
+  - "isEven calls isOdd(n) without decrementing -- compare it to isOdd's own recursive call, which does decrement."
+  - "Change `return isOdd(n);` to `return isOdd(n - 1);` inside isEven."
+xp_reward: 15
+achievement: recursion_master
+category: recursion
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "return isOdd\\(n - 1\\);"
+concept_tags: [recursion, mutual_recursion, gotchas]

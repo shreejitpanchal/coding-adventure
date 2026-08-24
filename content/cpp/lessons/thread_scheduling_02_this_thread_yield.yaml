@@ -1,0 +1,51 @@
+id: thread_scheduling_02
+title: "The Spin Loop That Never Gave Up Its Turn"
+language: cpp
+level: 27
+objective: "Use std::this_thread::yield() inside a spin-wait loop so the thread offers the scheduler a chance to run other work instead of hogging the core."
+explanation: |
+  Spinning on a flag with a bare `while (!ready) {}` keeps re-checking
+  as fast as the CPU allows, using 100% of a core the entire time even
+  though there's nothing useful to do until the flag flips.
+  `std::this_thread::yield()` is a hint to the scheduler: "I have
+  nothing productive to do right now, let another ready thread run
+  instead." It doesn't sleep for any fixed duration -- it just steps
+  aside briefly, which is the right tool when the wait is expected to be
+  very short (unlike sleep_for, which is better for longer, known
+  waits).
+example_code: |
+  while (!ready) {
+      std::this_thread::yield();
+  }
+starter_code: |
+  #include <iostream>
+  #include <thread>
+  #include <atomic>
+  std::atomic<bool> ready(false);
+  void worker() { ready = true; }
+  int main() {
+      std::thread t(worker);
+      while (!ready) {
+      }
+      t.join();
+      std::cout << "ready" << std::endl;
+      return 0;
+  }
+challenge: |
+  The while loop spins on ready as fast as possible with no yield,
+  hogging a CPU core the whole time it waits for the worker thread.
+  Fix this by calling std::this_thread::yield() inside the loop body,
+  keeping the same output: "ready".
+expected_output: |
+  ready
+hints:
+  - "A bare spin loop with no yield hogs the CPU checking the same condition over and over."
+  - "while (!ready) { std::this_thread::yield(); }"
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "yield\\(\\)"
+concept_tags: [threading, yield, busy_waiting]

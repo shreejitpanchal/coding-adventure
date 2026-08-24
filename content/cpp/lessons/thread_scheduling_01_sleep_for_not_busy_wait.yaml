@@ -1,0 +1,45 @@
+id: thread_scheduling_01
+title: "The Wait Loop That Burned a Whole Core"
+language: cpp
+level: 26
+objective: "Replace a busy-wait spin loop with std::this_thread::sleep_for, so waiting doesn't burn 100% of a CPU core."
+explanation: |
+  A `while` loop that just re-checks the clock as fast as possible --
+  a busy-wait -- keeps the CPU core it's running on fully occupied for
+  the entire wait, doing no useful work. `std::this_thread::sleep_for`
+  tells the OS scheduler this thread has nothing to do for a while,
+  letting the core run other work (or idle/save power) instead, and
+  waking this thread back up when the duration elapses.
+example_code: |
+  #include <thread>
+  #include <chrono>
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+starter_code: |
+  #include <iostream>
+  #include <chrono>
+  int main() {
+      auto start = std::chrono::steady_clock::now();
+      while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(50)) {
+      }
+      std::cout << "done waiting" << std::endl;
+      return 0;
+  }
+challenge: |
+  The while loop spins as fast as possible re-checking the clock,
+  pegging a CPU core for the entire 50ms instead of actually waiting.
+  Fix this by replacing the whole loop with a single
+  std::this_thread::sleep_for(std::chrono::milliseconds(50)) call,
+  keeping the same output: "done waiting".
+expected_output: |
+  done waiting
+hints:
+  - "#include <thread>"
+  - "Replace the entire while loop with: std::this_thread::sleep_for(std::chrono::milliseconds(50));"
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "sleep_for"
+concept_tags: [threading, sleep_for, busy_waiting]

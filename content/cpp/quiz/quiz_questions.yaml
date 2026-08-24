@@ -383,3 +383,223 @@ questions:
     correct: 1
     explanation: "Statement-level granularity in source code says nothing about atomicity at the machine-instruction level."
     concept_tags: [threading, mutex, race_conditions]
+
+  - id: q36
+    question: "Why does a busy-wait spin loop (`while (!ready) {}`) waste resources compared to std::this_thread::sleep_for?"
+    options:
+      - "It doesn't -- they're equivalent"
+      - "The spin loop keeps a CPU core fully occupied re-checking the condition as fast as possible, instead of letting the OS know the thread has nothing to do"
+      - "sleep_for is only available in C++20 or later"
+      - "Busy-waiting only wastes memory, not CPU"
+    correct: 1
+    explanation: "sleep_for tells the OS scheduler the thread has nothing to do for a while, freeing the core for other work instead of spinning."
+    concept_tags: [threading, sleep_for, busy_waiting]
+
+  - id: q37
+    question: "What does std::this_thread::yield() do inside a spin-wait loop?"
+    options:
+      - "Pauses the thread for a fixed duration"
+      - "Hints to the scheduler that this thread has nothing productive to do right now, letting another ready thread run instead"
+      - "Terminates the thread immediately"
+      - "Blocks until another thread calls notify()"
+    correct: 1
+    explanation: "yield() is a scheduling hint for very short waits, distinct from sleep_for's fixed-duration wait."
+    concept_tags: [threading, yield, busy_waiting]
+
+  - id: q38
+    question: "What happens if only some of the threads in a std::vector<std::thread> are joined before the vector is destroyed?"
+    options:
+      - "The unjoined threads are automatically detached"
+      - "The program crashes via std::terminate() -- any still-joinable thread crashes the program when its std::thread object is destroyed"
+      - "The vector's destructor waits for them automatically"
+      - "Nothing happens -- unjoined threads are silently cleaned up"
+    correct: 1
+    explanation: "Every thread in the vector needs its own .join() (or .detach()) call -- the vector itself doesn't manage that for you."
+    concept_tags: [threading, join, gotchas]
+
+  - id: q39
+    question: "Why might std::async(fn, args...) NOT actually run fn on a separate thread, even though that's often the goal?"
+    options:
+      - "std::async always runs synchronously on the calling thread"
+      - "Without an explicit std::launch::async policy, the implementation may legally choose std::launch::deferred instead, running the task later on the calling thread"
+      - "std::async requires a thread pool to be configured first"
+      - "This never happens -- std::async always uses a new thread"
+    correct: 1
+    explanation: "The default launch policy is implementation-defined; passing std::launch::async explicitly guarantees a real separate thread."
+    concept_tags: [threading, async, launch_policy, gotchas]
+
+  - id: q40
+    question: "What problem does std::condition_variable solve compared to a busy-wait polling loop?"
+    options:
+      - "It makes the waiting thread run faster"
+      - "It lets a thread block efficiently until notified, instead of repeatedly re-checking a condition and wasting CPU"
+      - "It removes the need for a mutex entirely"
+      - "It guarantees a specific thread scheduling order"
+    correct: 1
+    explanation: "cv.wait(lock, predicate) atomically releases the lock and sleeps until notified, avoiding both wasted CPU and lost-wakeup races."
+    concept_tags: [threading, condition_variable, producer_consumer]
+
+  - id: q41
+    question: "Why does calling .get() a second time on the same std::future throw?"
+    options:
+      - "It doesn't -- this always works fine"
+      - "get() consumes the future's shared state -- the value has already been retrieved and there's nothing left to give a second time"
+      - "Futures can only be read from the main thread"
+      - "The second call always returns a default-constructed value instead of throwing"
+    correct: 1
+    explanation: "A plain std::future's result can only be retrieved once; a second .get() call throws std::future_error."
+    concept_tags: [async, future, gotchas]
+
+  - id: q42
+    question: "What happens to an exception thrown inside a task running via std::async?"
+    options:
+      - "It's silently swallowed and the future holds a default value"
+      - "It's captured and stored in the future's shared state, then re-thrown when .get() is called"
+      - "It immediately crashes the whole program with no way to catch it"
+      - "It's logged automatically but not re-thrown"
+    correct: 1
+    explanation: "Exceptions from async tasks propagate through .get() just like a synchronous call -- ordinary try/catch around .get() handles them."
+    concept_tags: [async, future, exceptions]
+
+  - id: q43
+    question: "Why can't a plain std::future be read by two independent consumers?"
+    options:
+      - "std::future's copy constructor is deleted -- it represents a single, exclusively-owned handle to a result"
+      - "There's no such restriction -- any future can be freely copied"
+      - "Only the thread that created the future can ever read it"
+      - "std::future can only hold primitive types"
+    correct: 0
+    explanation: "std::shared_future (via .share()) is the copyable, multi-reader alternative when more than one consumer needs the result."
+    concept_tags: [async, future, shared_future]
+
+  - id: q44
+    question: "What's a common reason to write a synchronous wrapper function around an async-only API?"
+    options:
+      - "To make the underlying task run faster"
+      - "So callers who just want a plain result don't have to deal with futures directly, while the async primitive stays available for callers who do"
+      - "It's required by the C++ standard for all async functions"
+      - "To avoid needing to catch exceptions"
+    correct: 1
+    explanation: "A thin synchronous wrapper calling .get() internally is a common integration pattern at an async/sync boundary."
+    concept_tags: [async, future, api_design]
+
+  - id: q45
+    question: "What does the C++ standard guarantee about std::launch::deferred?"
+    options:
+      - "The task starts running on a background thread immediately"
+      - "The task does not run at all until .get()/.wait() is called, and then runs synchronously on the calling thread"
+      - "The task runs at some unspecified point before .get() is called"
+      - "Deferred tasks never actually execute"
+    correct: 1
+    explanation: "Unlike the unspecified default policy, deferred's behavior is precisely defined: no execution until get()/wait() is called."
+    concept_tags: [async, future, launch_policy, deferred]
+
+  - id: q46
+    question: "Why does capturing a loop variable by reference ([&i]) in a lambda created inside a loop often produce surprising results?"
+    options:
+      - "It doesn't -- reference capture always works as expected in loops"
+      - "The lambda stores a reference to the variable itself, which keeps changing -- by the time the lambda runs, every one sees whatever i's final value was"
+      - "Reference capture is not allowed inside loops"
+      - "It only affects lambdas that return void"
+    correct: 1
+    explanation: "Capturing by value ([i]) instead freezes a snapshot of the current value at the moment each lambda is created."
+    concept_tags: [lambdas, closures, gotchas]
+
+  - id: q47
+    question: "Why can't a capturing lambda be assigned to a raw function pointer type like int (*)(int)?"
+    options:
+      - "Lambdas are never compatible with function pointers"
+      - "A capturing lambda has its own storage for the captured state, which a bare function pointer has no way to represent"
+      - "Function pointers can only point to member functions"
+      - "This restriction was removed in C++17"
+    correct: 1
+    explanation: "Only non-capturing lambdas can decay to a plain function pointer; std::function is the type-erased wrapper that handles both cases."
+    concept_tags: [lambdas, std_function, gotchas]
+
+  - id: q48
+    question: "What does std::transform do?"
+    options:
+      - "Sorts a range in place"
+      - "Applies a function to every element of a range, writing the results to a destination -- the standard library's map operation"
+      - "Filters a range based on a predicate"
+      - "Reverses the order of a range"
+    correct: 1
+    explanation: "std::transform is C++'s functional map: apply a transformation to each element, writing results elsewhere."
+    concept_tags: [algorithms, functional_programming, map]
+
+  - id: q49
+    question: "What does std::accumulate with a custom binary lambda let you express?"
+    options:
+      - "Only summation -- the lambda parameter is ignored"
+      - "Any fold/reduce operation -- combining every element of a range into one result using the given combining operation"
+      - "A way to remove duplicate elements"
+      - "A way to sort elements by a custom comparator"
+    correct: 1
+    explanation: "Passing a custom binary lambda (e.g. multiplication) generalizes accumulate beyond its default sum behavior."
+    concept_tags: [algorithms, functional_programming, fold]
+
+  - id: q50
+    question: "What does a function that returns a std::function (a closure factory) let you do?"
+    options:
+      - "Nothing different from a function returning a plain value"
+      - "Build and return a new callable that remembers captured state (like a configuration parameter), usable later as a first-class value"
+      - "Guarantee the returned function runs on a separate thread"
+      - "Avoid ever needing a lambda"
+    correct: 1
+    explanation: "A function like makeMultiplier(factor) returns a lambda capturing factor, turning it into a reusable, configured callable."
+    concept_tags: [lambdas, higher_order_functions, closures]
+
+  - id: q51
+    question: "What happens to a recursive function with no base case?"
+    options:
+      - "It runs once and returns a default value"
+      - "It keeps calling itself indefinitely, consuming one more stack frame each time, until the stack overflows and the program crashes"
+      - "The compiler rejects it as invalid"
+      - "It automatically becomes an infinite loop optimized away by the compiler"
+    correct: 1
+    explanation: "A base case is what stops the recursion -- without one, there's no condition that ever returns without recursing again."
+    concept_tags: [recursion, base_case, gotchas]
+
+  - id: q52
+    question: "Why might a base case checking `n == 0` fail to stop recursion that a range check `n <= 0` would catch?"
+    options:
+      - "They behave identically in every case"
+      - "If n starts negative or skips past 0 (e.g. decreasing by more than 1), it may never hit exactly 0, so the exact-equality check never triggers"
+      - "== 0 is slower to evaluate than <= 0"
+      - "Range checks are not allowed in recursive base cases"
+    correct: 1
+    explanation: "A range check stops the recursion once n reaches OR passes the boundary, regardless of the exact value."
+    concept_tags: [recursion, base_case, gotchas]
+
+  - id: q53
+    question: "What problem does memoization (e.g. via std::unordered_map) solve in naive recursive Fibonacci?"
+    options:
+      - "It makes the recursion use less stack space"
+      - "It avoids exponential recomputation of overlapping subproblems by caching each result the first time it's computed"
+      - "It removes the need for a base case"
+      - "It converts the recursion into a loop automatically"
+    correct: 1
+    explanation: "Naive recursive Fibonacci recomputes the same subproblems repeatedly; caching turns exponential time into linear."
+    concept_tags: [recursion, memoization, performance]
+
+  - id: q54
+    question: "What makes a recursive call a 'tail call'?"
+    options:
+      - "The function has more than one recursive call"
+      - "The recursive call is the very last operation the function performs, with no pending work left to do when it returns"
+      - "The function uses an accumulator parameter of any kind"
+      - "The recursion depth is small"
+    correct: 1
+    explanation: "An accumulator parameter carries the running result forward before the call, making the recursive call itself the last operation."
+    concept_tags: [recursion, tail_recursion, accumulator]
+
+  - id: q55
+    question: "What is mutual recursion?"
+    options:
+      - "A single function calling itself twice in one line"
+      - "Two or more functions that call each other recursively, alternating back and forth until one hits its base case"
+      - "Recursion that requires a mutex to be thread-safe"
+      - "A function that recurses on a mutable global variable"
+    correct: 1
+    explanation: "isEven and isOdd calling each other (each decrementing n) is a classic mutual recursion example."
+    concept_tags: [recursion, mutual_recursion, gotchas]

@@ -1,0 +1,100 @@
+id: aop_05
+title: "The Call That Skipped Its Own Proxy"
+language: spring
+level: 25
+objective: "Fix Spring AOP's best-known gotcha: a method calling another advised method on 'this' bypasses the proxy entirely, so the advice never fires for that internal call."
+explanation: |
+  Spring AOP works by wrapping a bean in a proxy -- external callers get
+  the proxy, and the proxy is what actually checks pointcuts and runs
+  advice before delegating to the real object. But code *inside* the
+  bean calling another method on itself (`this.method()`, or just
+  `method()`) calls the real object directly, never going through the
+  proxy at all -- so any advice that would normally apply to that method
+  silently doesn't fire. The standard fix is self-injection: autowiring
+  a reference to the bean's own proxy (with @Lazy, to avoid a circular
+  dependency during construction) and calling through that reference
+  instead of through `this`.
+example_code: |
+  @Autowired
+  @Lazy
+  private Greeter self;
+
+  public String greetTwice(String name) {
+      return self.greet(name) + self.greet(name);
+  }
+starter_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.Aspect;
+  import org.aspectj.lang.annotation.Before;
+  import org.springframework.context.annotation.ComponentScan;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.EnableAspectJAutoProxy;
+  import org.springframework.stereotype.Component;
+
+  @Configuration
+  @EnableAspectJAutoProxy
+  @ComponentScan
+  class AppConfig {}
+
+  @Aspect
+  @Component
+  public class CallCounterAspect {
+      public static int calls = 0;
+
+      @Before("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public void countCall() {
+          calls++;
+      }
+  }
+
+  @Component
+  class Greeter {
+      public String greetTwice(String name) {
+          return greet(name) + greet(name);
+      }
+
+      public String greet(String name) {
+          return "hi " + name;
+      }
+  }
+challenge: |
+  greetTwice() calls greet() on `this` implicitly -- a self-invocation
+  that bypasses Greeter's Spring AOP proxy entirely, so
+  CallCounterAspect's advice never fires for those two calls, even
+  though greet() clearly runs. Fix this by adding a self-injected,
+  @Lazy field (private Greeter self, @Autowired) and calling
+  self.greet(name) instead of the bare greet(name) calls, routing both
+  calls back through the proxy.
+expected_output_pattern: "BUILD SUCCESS"
+hints:
+  - "Calling greet(name) from inside Greeter calls the real object directly, bypassing the proxy that Spring AOP relies on."
+  - "@Autowired @Lazy private Greeter self; then call self.greet(name) instead of greet(name)."
+xp_reward: 15
+achievement: aop_master
+category: aop
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "private Greeter self;"
+  - "self\\.greet\\(name\\)"
+concept_tags: [aop, self_invocation, proxy, gotchas]
+spring_test_code: |
+  package com.codingadventure.exercise;
+
+  import org.junit.jupiter.api.Test;
+  import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+  import static org.assertj.core.api.Assertions.assertThat;
+
+  public class SelfInvocationTest {
+      @Test
+      void selfInvocationGoesThroughProxyWhenFixed() {
+          CallCounterAspect.calls = 0;
+          try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)) {
+              Greeter greeter = ctx.getBean(Greeter.class);
+              String result = greeter.greetTwice("Ada");
+              assertThat(result).isEqualTo("hi Adahi Ada");
+              assertThat(CallCounterAspect.calls).isEqualTo(2);
+          }
+      }
+  }

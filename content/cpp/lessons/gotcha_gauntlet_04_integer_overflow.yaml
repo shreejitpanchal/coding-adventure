@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_04
 title: "The Overflow That Silently Wrapped"
 language: cpp
-level: 29
+level: 49
 objective: "Fix a computation that silently wraps around past INT_MAX instead of raising any error."
 explanation: |
   Signed integer overflow doesn't throw or crash in C++ -- in practice,

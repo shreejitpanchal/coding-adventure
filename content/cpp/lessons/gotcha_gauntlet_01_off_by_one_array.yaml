@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_01
 title: "The Array Read That Went One Too Far"
 language: cpp
-level: 26
+level: 46
 objective: "Fix an off-by-one loop bound that reads one element past the end of a fixed-size array."
 explanation: |
   A 3-element array has valid indices 0, 1, 2 -- `i <= 3` lets i reach 3,

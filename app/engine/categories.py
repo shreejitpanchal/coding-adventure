@@ -33,6 +33,8 @@ CATEGORY_META: dict[str, CategoryMeta] = {
     "dependency_injection": CategoryMeta("Dependency Injection", "\U0001F9E9", "#7C9EFF"),
     "bean_lifecycle": CategoryMeta("Bean Lifecycle & Scopes", "\U0001F331", "#4ADE9E"),
     "configuration_profiles": CategoryMeta("Configuration & Profiles", "\U0001F39B️", "#FFC857"),
+    "events": CategoryMeta("Application Events", "\U0001F4E3", "#5DE8FF"),
+    "aop": CategoryMeta("Aspect-Oriented Programming", "\U0001F578️", "#FF8A5B"),
 }
 
 DEFAULT_META = CategoryMeta("More Practice", "⭐", "#8A93C7")

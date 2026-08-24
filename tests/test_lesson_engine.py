@@ -72,20 +72,27 @@ def test_loads_java_content():
 
 def test_loads_cpp_content():
     engine = ExerciseEngine("cpp")
-    assert len(engine) == 30
+    assert len(engine) == 50
     assert engine.has("gotcha_gauntlet_05")
     categories = engine.categories()
-    assert len(categories) == 6
+    assert len(categories) == 10
     assert "gotcha_gauntlet" in categories
     assert "concurrency_async" in categories
+    assert "thread_scheduling" in categories
+    assert "sync_vs_async" in categories
+    assert "functional_programming" in categories
+    assert "recursion" in categories
+    assert categories[-1] == "gotcha_gauntlet"
 
 
 def test_loads_spring_content():
     engine = ExerciseEngine("spring")
-    assert len(engine) == 15
+    assert len(engine) == 25
     assert engine.has("dependency_injection_05")
     categories = engine.categories()
-    assert len(categories) == 3
+    assert len(categories) == 5
     assert "dependency_injection" in categories
     assert "bean_lifecycle" in categories
     assert "configuration_profiles" in categories
+    assert "events" in categories
+    assert "aop" in categories

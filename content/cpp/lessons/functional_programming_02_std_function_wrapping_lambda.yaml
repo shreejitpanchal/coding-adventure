@@ -1,0 +1,47 @@
+id: functional_programming_02
+title: "The Function Pointer That Couldn't Hold a Lambda"
+language: cpp
+level: 37
+objective: "Use std::function instead of a raw function pointer, so a parameter can hold a lambda that captures variables."
+explanation: |
+  A raw function pointer type like `int (*)(int)` can only point to
+  something with no captured state -- a plain function, or a
+  non-capturing lambda (which can decay to a function pointer). A
+  lambda that captures a variable is a distinct type with its own
+  storage for that capture, and it simply cannot be represented as a
+  bare function pointer. std::function<Signature> is a type-erased
+  wrapper that can hold *any* callable matching that signature --
+  function pointers, capturing lambdas, functors -- uniformly.
+example_code: |
+  int applyTwice(std::function<int(int)> f, int x) {
+      return f(f(x));
+  }
+starter_code: |
+  #include <iostream>
+  int applyTwice(int (*f)(int), int x) {
+      return f(f(x));
+  }
+  int main() {
+      int bonus = 3;
+      std::cout << applyTwice([bonus](int x) { return x + bonus; }, 10) << std::endl;
+      return 0;
+  }
+challenge: |
+  applyTwice takes a raw function pointer, but the lambda passed to it
+  captures bonus -- a capturing lambda can't decay to a function
+  pointer, so this fails to compile. Fix this by changing applyTwice's
+  parameter type to std::function<int(int)>, which can hold a capturing
+  lambda, keeping the output 16 (10+3=13, 13+3=16).
+expected_output: |
+  16
+hints:
+  - "A capturing lambda is not a plain function pointer -- it has its own storage for the captured variable."
+  - "#include <functional>, then change the parameter type to std::function<int(int)> f."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "std::function<int\\(int\\)>"
+concept_tags: [lambdas, std_function, gotchas]
