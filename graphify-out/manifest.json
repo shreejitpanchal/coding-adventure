@@ -30,10 +30,10 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "app/engine/categories.py": {
-    "mtime": 1787540983.8224132,
-    "seen": 1787541735.052781,
-    "ast_hash": "c7510dfee8667e7a7dcde8881867be42",
-    "semantic_hash": "c7510dfee8667e7a7dcde8881867be42"
+    "mtime": 1787543206.9632072,
+    "seen": 1787543774.5084414,
+    "ast_hash": "ced6336909ed92b8b7aa32b4161b750c",
+    "semantic_hash": "ced6336909ed92b8b7aa32b4161b750c"
   },
   "app/engine/exercise.py": {
     "mtime": 1787479166.4103563,
@@ -252,10 +252,10 @@
     "semantic_hash": "a02db9580bb7e2ac6f8df4490a6e4b89"
   },
   "tests/test_lesson_engine.py": {
-    "mtime": 1787541088.455698,
-    "seen": 1787541735.0528233,
-    "ast_hash": "c165b5931ceacc4bb758c5983e2f3826",
-    "semantic_hash": "c165b5931ceacc4bb758c5983e2f3826"
+    "mtime": 1787543251.652928,
+    "seen": 1787543774.5084817,
+    "ast_hash": "c7f8108d896d280d4b376d87b12056a7",
+    "semantic_hash": "c7f8108d896d280d4b376d87b12056a7"
   },
   "tests/test_progress_store.py": {
     "mtime": 1787452099.293837,
@@ -270,16 +270,16 @@
     "semantic_hash": "e502b2df2b01a3429cf626483231bc4f"
   },
   "CLAUDE.md": {
-    "mtime": 1787541182.678153,
-    "seen": 1787541735.0528262,
-    "ast_hash": "87537522c84e42c4d45c942895790f90",
-    "semantic_hash": "87537522c84e42c4d45c942895790f90"
+    "mtime": 1787543339.1573162,
+    "seen": 1787543774.5084846,
+    "ast_hash": "8dabb0977cad8a49ef67c7fe543c58cb",
+    "semantic_hash": "8dabb0977cad8a49ef67c7fe543c58cb"
   },
   "README.md": {
-    "mtime": 1787541137.8956459,
-    "seen": 1787541735.052827,
-    "ast_hash": "81fa335d201e0253eee2342fa073c3d1",
-    "semantic_hash": "81fa335d201e0253eee2342fa073c3d1"
+    "mtime": 1787543299.692772,
+    "seen": 1787543774.5084853,
+    "ast_hash": "0e59594262acc8470cbfcfd0991e3935",
+    "semantic_hash": "0e59594262acc8470cbfcfd0991e3935"
   },
   "content/python/lessons/concurrency_async_01_gather_order.yaml": {
     "mtime": 1787451909.8837602,
@@ -1368,22 +1368,22 @@
     "semantic_hash": "db16fce0979811ab022e7d2c9c2c7455"
   },
   "docs/ARCHITECTURE.md": {
-    "mtime": 1787541192.3468783,
-    "seen": 1787541735.052859,
-    "ast_hash": "4b7b357ddb7dec86f10ff68372b7655b",
-    "semantic_hash": "4b7b357ddb7dec86f10ff68372b7655b"
+    "mtime": 1787543347.4865086,
+    "seen": 1787543774.5084927,
+    "ast_hash": "6ec30e0d4b5da9ba623d6a251af45be0",
+    "semantic_hash": "6ec30e0d4b5da9ba623d6a251af45be0"
   },
   "docs/DEVELOPMENT.md": {
-    "mtime": 1787541203.913236,
-    "seen": 1787541735.05286,
-    "ast_hash": "5ef14b316c94082eed7bb2eda471bf49",
-    "semantic_hash": "5ef14b316c94082eed7bb2eda471bf49"
+    "mtime": 1787543334.8020284,
+    "seen": 1787543774.508494,
+    "ast_hash": "f9bfd82e83575e9c93003cc60af15ce2",
+    "semantic_hash": "f9bfd82e83575e9c93003cc60af15ce2"
   },
   "content/spring/scaffold/pom.xml": {
-    "mtime": 1787540182.9222622,
-    "seen": 1787541735.0528152,
-    "ast_hash": "3428c8aaf36d1dfa4d9764eba5f4f614",
-    "semantic_hash": "3428c8aaf36d1dfa4d9764eba5f4f614"
+    "mtime": 1787542648.7851584,
+    "seen": 1787543774.5084739,
+    "ast_hash": "8f71e457a6aaf6a96eb09049ee00b9d9",
+    "semantic_hash": "8f71e457a6aaf6a96eb09049ee00b9d9"
   },
   "tests/test_execution_spring.py": {
     "mtime": 1787480346.4748988,
@@ -1494,10 +1494,10 @@
     "semantic_hash": "69e228ff70395c5acb519b366bfe1a9c"
   },
   "content/spring/quiz/quiz_questions.yaml": {
-    "mtime": 1787541071.2003305,
-    "seen": 1787541735.052858,
-    "ast_hash": "a3ed38e5f2c831358faafb10917041ca",
-    "semantic_hash": "a3ed38e5f2c831358faafb10917041ca"
+    "mtime": 1787543239.5114021,
+    "seen": 1787543774.5084915,
+    "ast_hash": "b8ead602b1a41aa523a3872bbc1c4b09",
+    "semantic_hash": "b8ead602b1a41aa523a3872bbc1c4b09"
   },
   "content/cpp/lessons/functional_programming_01_lambda_capture_by_value_in_loop.yaml": {
     "mtime": 1787540502.427596,
@@ -1678,5 +1678,35 @@
     "seen": 1787541735.0528572,
     "ast_hash": "4170e49f79605cdde31c302e7ca8faa8",
     "semantic_hash": "4170e49f79605cdde31c302e7ca8faa8"
+  },
+  "content/spring/lessons/resilience_01_circuit_breaker_opens_after_failures.yaml": {
+    "mtime": 1787543092.453435,
+    "seen": 1787543774.5084867,
+    "ast_hash": "659396a74b0cbd304d9c74a62fabf8a9",
+    "semantic_hash": "659396a74b0cbd304d9c74a62fabf8a9"
+  },
+  "content/spring/lessons/resilience_02_retry_until_success.yaml": {
+    "mtime": 1787543100.6349463,
+    "seen": 1787543774.5084877,
+    "ast_hash": "deb2da606ab12fed9343d056d4c3ceae",
+    "semantic_hash": "deb2da606ab12fed9343d056d4c3ceae"
+  },
+  "content/spring/lessons/resilience_03_rate_limiter_rejects_excess_calls.yaml": {
+    "mtime": 1787543108.8592389,
+    "seen": 1787543774.5084887,
+    "ast_hash": "c625d6be9266ca8461b734534c78a203",
+    "semantic_hash": "c625d6be9266ca8461b734534c78a203"
+  },
+  "content/spring/lessons/resilience_04_fallback_on_failure.yaml": {
+    "mtime": 1787543117.5897202,
+    "seen": 1787543774.5084894,
+    "ast_hash": "5e1ca3b9eb47b22608324ea007ad9d3d",
+    "semantic_hash": "5e1ca3b9eb47b22608324ea007ad9d3d"
+  },
+  "content/spring/lessons/resilience_05_circuit_breaker_before_retry.yaml": {
+    "mtime": 1787543131.628914,
+    "seen": 1787543774.5084906,
+    "ast_hash": "06d1dece4190b00eeed10c62cf4542c4",
+    "semantic_hash": "06d1dece4190b00eeed10c62cf4542c4"
   }
 }
