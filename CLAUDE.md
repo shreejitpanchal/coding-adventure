@@ -8,11 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Run all from the repo root, using the project venv at `.venv\Scripts\python.exe` (created by `run.bat`/`run.sh` on first launch).
+Run all from the repo root, using the project venv at `.venv\Scripts\python.exe` (created by `run_app_window_mode.bat`/`.sh` on first launch).
 
 ```powershell
-# Run the app
+# Run the app (native desktop window)
 .venv\Scripts\python.exe main.py
+
+# Run the app (browser preview -- one-off UI review only, see main_web.py's docstring)
+.venv\Scripts\python.exe main_web.py
 
 # Full test suite
 .venv\Scripts\python.exe -m pytest tests\ -v
@@ -60,7 +63,7 @@ Fully offline, no network/cloud/accounts. `settings.json` + `progress.sqlite3` l
 
 ### UI shell
 
-`app/ui/app_window.py` is the route dispatcher: `page.views.clear()` + `page.views.append(...)` on every route change, rebuilding exactly one view fresh each time (avoids ever showing stale XP/progress numbers from a view built earlier). A Python-side `history: list[str]` stands in for back-navigation since `page.views` is deliberately kept at length 1. `AppState` (`app/ui/app_state.py`) is built once in `main()` and threaded through every view-builder function as an explicit parameter — settings, progress store, and per-language exercise/quiz engines (lazily built and cached per language key). Routing always starts at `/setup` (first run only) then `/languages` — the language picker is shown on **every** launch, not auto-skipped based on the last-selected track (explicit product requirement, not an oversight).
+`app/ui/app_window.py` is the route dispatcher: `page.views.clear()` + `page.views.append(...)` on every route change, rebuilding exactly one view fresh each time (avoids ever showing stale XP/progress numbers from a view built earlier). A Python-side `history: list[str]` stands in for back-navigation since `page.views` is deliberately kept at length 1. `AppState` (`app/ui/app_state.py`) is built once in `main()` and threaded through every view-builder function as an explicit parameter — settings, progress store, and per-language exercise/quiz engines (lazily built and cached per language key). Routing always starts at `/setup` (first run only) then `/languages` — the language picker is shown on **every** launch, not auto-skipped based on the last-selected track (explicit product requirement, not an oversight). The window opens **maximized** (`page.window.maximized = True`) so screen layout scales to whatever the user's actual desktop resolution/aspect ratio is, rather than a fixed pixel size that forces scrolling on smaller windows — `min_width`/`min_height` (1024×700) still bound how small it can be resized down to. This only affects the native desktop window; `page.window.*` properties are silently no-ops when the same `main()` is run via `main_web.py`'s browser view.
 
 ### Directory layout
 
@@ -79,6 +82,8 @@ content/
   spring/scaffold/pom.xml   # shared Maven project template SpringEngine copies per run
   # all four language content directories have real content
 tests/         # pytest suite, one file per module roughly mirroring app/
-main.py        # Flet entry point (`ft.run(main)`)
-run.bat/run.sh # first-run venv bootstrap + launch
+main.py        # Flet entry point, native desktop window (`ft.run(main)`)
+main_web.py    # Browser-preview entry point, port via CODING_ADVENTURE_WEB_PORT
+run_app_window_mode.bat/.sh # first-run venv bootstrap + launch (desktop window)
+run_app_web_ui.bat/.sh      # first-run venv bootstrap + launch (browser preview)
 ```

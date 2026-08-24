@@ -81,15 +81,41 @@ through in a few focused minutes, not tutorials to sit through.
 
 ## Getting started
 
-**Easiest way (no terminal needed):** double-click `run.bat` (Windows) or
-run `./run.sh` (git-bash/macOS/Linux). The first run takes a minute to set
-itself up; every run after that launches straight into the app.
+**Easiest way (no terminal needed):** double-click `run_app_window_mode.bat`
+(Windows) or run `./run_app_window_mode.sh` (git-bash/macOS/Linux). The
+first run takes a minute to set itself up; every run after that launches
+straight into the native desktop window.
+
+**Browser preview:** `run_app_web_ui.bat` / `./run_app_web_ui.sh` launches
+the same UI in your default browser instead of a native window — handy for
+a quick look at the screens without a desktop window, e.g. from a machine
+without a display server, or just to poke around in Chrome. It's a
+one-off preview only, not a supported way to actually run exercises: the
+app is desktop-only by design (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#why-no-android-build)) since
+running code needs a real local compiler/interpreter subprocess a browser
+sandbox can't provide. The script prints the port it started on
+(`http://localhost:8550` by default); to use a different port, set
+`CODING_ADVENTURE_WEB_PORT` before running it:
+
+```powershell
+# Windows (PowerShell)
+$env:CODING_ADVENTURE_WEB_PORT = "9000"
+run_app_web_ui.bat
+```
+
+```bash
+# git-bash/macOS/Linux
+CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
+```
 
 ## For developers
 
 ```powershell
-# Run the app
+# Run the app (native desktop window)
 .venv\Scripts\python.exe main.py
+
+# Run the app (browser preview, default port 8550)
+.venv\Scripts\python.exe main_web.py
 
 # Full test suite
 .venv\Scripts\python.exe -m pytest tests\ -v

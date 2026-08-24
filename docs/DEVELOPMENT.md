@@ -19,16 +19,29 @@ below.
 
 ## Running it
 
-**Easiest way (no terminal needed):** double-click `run.bat` (Windows) or
-run `./run.sh` (git-bash/macOS/Linux). First run sets up a virtual
-environment and installs dependencies automatically (takes a minute);
-every run after that just launches the app straight away.
+**Easiest way (no terminal needed):** double-click `run_app_window_mode.bat`
+(Windows) or run `./run_app_window_mode.sh` (git-bash/macOS/Linux). First
+run sets up a virtual environment and installs dependencies automatically
+(takes a minute); every run after that just launches the app straight
+away, as a native desktop window (`main.py`).
 
 Manually, if you prefer:
 
 ```powershell
 .venv\Scripts\python.exe main.py
 ```
+
+There's also a browser-preview entry point, `main_web.py` /
+`run_app_web_ui.bat` / `run_app_web_ui.sh`, which opens the same UI in a
+browser tab instead of a native window via `ft.run(..., view=ft.AppView.
+WEB_BROWSER)`. It's a one-off way to look at the screens (e.g. in Chrome,
+or on a machine with no display server) — not a second supported way to
+run the app day to day, since exercises need a real local subprocess
+(compiler/interpreter) a browser sandbox can't provide; see "Why no
+Android build" below for the same underlying constraint. The port is
+configurable via the `CODING_ADVENTURE_WEB_PORT` environment variable
+(default `8550`); the script echoes whichever port it actually started
+on.
 
 Running Java exercises additionally needs a local JDK (`javac`/`java` on
 PATH); running C++ exercises needs a local `g++` (e.g. MinGW-w64 on
@@ -93,8 +106,11 @@ data/          # gitignored -- settings.json + progress.sqlite3, created
 graphify-out/  # knowledge-graph snapshot of the codebase (see repo root
                # CLAUDE.md's graphify section) -- regenerate with the
                # graphify skill, not meant to be hand-edited
-main.py        # Flet entry point (`ft.run(main)`)
-run.bat/run.sh # first-run venv bootstrap + launch
+main.py        # Flet entry point, native desktop window (`ft.run(main)`)
+main_web.py    # Browser-preview entry point (`ft.run(main, view=WEB_BROWSER)`),
+               # port configurable via CODING_ADVENTURE_WEB_PORT
+run_app_window_mode.bat/.sh # first-run venv bootstrap + launch (desktop window)
+run_app_web_ui.bat/.sh      # first-run venv bootstrap + launch (browser preview)
 ```
 
 ## How it works

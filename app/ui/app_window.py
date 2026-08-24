@@ -24,8 +24,11 @@ from app.ui.track_hub import build_track_hub_view
 
 def main(page: ft.Page) -> None:
     page.title = "Coding Adventure"
-    page.window.width = 1100
-    page.window.height = 760
+    page.window.width = 1280
+    page.window.height = 860
+    page.window.min_width = 1024
+    page.window.min_height = 700
+    page.window.maximized = True
     page.padding = 0
 
     state = AppState()

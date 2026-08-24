@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Launches Coding Adventure -- sets up the virtual environment on first run.
+# Launches Coding Adventure as a one-off browser preview (not the primary
+# way to use the app -- see main_web.py's docstring). Sets up the virtual
+# environment on first run, same as run_app_window_mode.sh.
+#
+# Port is configurable via CODING_ADVENTURE_WEB_PORT (default 8550):
+#   CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
 set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -46,4 +51,16 @@ if [ -z "$PYEXE" ]; then
     echo
 fi
 
-"$PYEXE" main.py
+: "${CODING_ADVENTURE_WEB_PORT:=8550}"
+export CODING_ADVENTURE_WEB_PORT
+
+echo "============================================"
+echo "  Coding Adventure web UI starting on port $CODING_ADVENTURE_WEB_PORT"
+echo "  Open http://localhost:$CODING_ADVENTURE_WEB_PORT in your browser."
+echo "  (Set CODING_ADVENTURE_WEB_PORT before running this to use a"
+echo "  different port.)"
+echo "  Press Ctrl+C to stop."
+echo "============================================"
+echo
+
+"$PYEXE" main_web.py
