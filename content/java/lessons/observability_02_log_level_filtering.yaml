@@ -4,15 +4,72 @@ language: java
 level: 142
 objective: "Fix a logger and handler both configured at WARNING level, silently swallowing an INFO-level log the code actually needs."
 explanation: |
-  Both the Logger's own level and its Handler's level act as
-  independent thresholds -- a record has to clear both to actually be
-  emitted. Setting either one too high (WARNING when INFO-level
-  visibility is actually needed) is a quiet way to lose exactly the logs
-  you need when debugging a live issue.
+  `java.util.logging` filters a log record through *two independent*
+  thresholds before it's actually emitted, not just one -- the `Logger`
+  's own level (checked first, deciding whether the logger even bothers
+  dispatching the record to its handlers at all) and each individual `
+  Handler`'s level (checked second, deciding whether *that specific
+  handler* actually processes and outputs the record it was handed). A
+  record only makes it all the way to visible output if it clears
+  *both* checks -- setting either one too restrictively silently
+  swallows records that clear the other, with no error or warning
+  anywhere indicating that happened. Here, both `logger.setLevel(Level.
+  WARNING)` and `handler.setLevel(Level.WARNING)` are set to the same
+  restrictive threshold, so `logger.info("starting up")` fails at the
+  very first check (the logger's own level) and never even reaches the
+  handler to be considered a second time -- it's simply discarded, the
+  method call runs, nothing crashes, and the expected log line just
+  never appears anywhere.
+
+  This two-stage filtering exists to let a logger's *overall* verbosity
+  be controlled separately from any *individual handler's* verbosity --
+  a logger might be configured to consider everything down to `FINE`
+  worth processing, while one attached handler only actually writes `
+  WARNING` and above to a persistent file, and a different handler
+  attached to the same logger writes everything down to `FINE` to a
+  console during active debugging. That flexibility is exactly why both
+  thresholds have to be checked independently rather than there being
+  just one setting -- but it's also precisely why a "missing log line"
+  investigation in `java.util.logging`-based code needs to check *both*
+  the logger's level and every relevant handler's level, not just one,
+  since either one alone being too high is sufficient to silently
+  swallow the exact log line being searched for.
 example_code: |
-  logger.setLevel(Level.INFO);
-  handler.setLevel(Level.INFO);
-  logger.info("this now shows, since INFO clears both thresholds");
+  import java.util.logging.Formatter;
+  import java.util.logging.Level;
+  import java.util.logging.LogRecord;
+  import java.util.logging.Logger;
+  import java.util.logging.StreamHandler;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Logger logger = Logger.getLogger("app2");
+          logger.setUseParentHandlers(false);
+          StreamHandler handler = new StreamHandler(System.out, new Formatter() {
+              public String format(LogRecord record) {
+                  return record.getLevel() + ": " + record.getMessage() + "\n";
+              }
+          });
+
+          // The trap: BOTH thresholds set to WARNING -- INFO fails at the logger check alone.
+          // handler.setLevel(Level.WARNING);
+          // logger.addHandler(handler);
+          // logger.setLevel(Level.WARNING);
+          // logger.info("starting up");     // silently dropped -- never reaches the handler
+
+          // Fix: both the logger's AND the handler's level need lowering.
+          handler.setLevel(Level.INFO);
+          logger.addHandler(handler);
+          logger.setLevel(Level.INFO);
+
+          logger.info("starting up");         // clears BOTH thresholds now
+          logger.warning("low disk space");
+
+          handler.flush();
+      }
+  }
+  // INFO: starting up
+  // WARNING: low disk space
 starter_code: |
   import java.util.logging.Formatter;
   import java.util.logging.Level;

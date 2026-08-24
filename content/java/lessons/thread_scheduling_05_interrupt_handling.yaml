@@ -4,18 +4,67 @@ language: java
 level: 110
 objective: "Fix a worker thread that ignores interruption entirely, so it can never actually be stopped."
 explanation: |
-  Java has no safe way to forcibly kill a thread from outside it --
-  Thread.stop() is deprecated and dangerous. The correct pattern is
-  cooperative: the worker itself periodically checks
-  Thread.currentThread().isInterrupted() and exits cleanly when it sees
-  the flag set, after another thread calls interrupt() on it. A worker
-  that never checks the flag can't be stopped this way at all.
+  Java deliberately provides no safe way to forcibly terminate a thread
+  from the outside -- `Thread.stop()` exists but has been deprecated for
+  decades precisely because forcibly killing a thread mid-execution can
+  leave shared objects in a permanently corrupted, half-updated state
+  (interrupted in the middle of updating one field of a multi-field
+  invariant, for instance), with no way to guarantee cleanup ran. The
+  only correct pattern is *cooperative*: a thread that should be
+  stoppable has to periodically check, on its own initiative, whether
+  it's been asked to stop, and voluntarily exit cleanly when it notices
+  -- there's no external mechanism that reaches in and halts it against
+  its will. `Thread.interrupt()`, called by one thread on another, does
+  not stop that thread by itself; it merely sets an internal boolean
+  flag (retrievable via `Thread.currentThread().isInterrupted()`) and,
+  if the target thread happens to be blocked in certain interruptible
+  operations (`Thread.sleep()`, `Object.wait()`, several `java.util.
+  concurrent` blocking calls), causes an `InterruptedException` to be
+  thrown there instead. For anything else -- including a plain `while
+  (true) { }` busy loop -- setting the flag has *zero* effect unless the
+  loop itself is written to actually check that flag.
+
+  `while (true) { }` never looks at the interrupted flag at all, so
+  calling `interrupt()` on that thread changes nothing about its
+  behavior -- the flag gets set, but nothing inside the loop ever reads
+  it, so the loop runs forever regardless, and `worker.join()` in the
+  caller waits indefinitely for a thread that will never stop on its
+  own. The fix is to make the loop's own continuation condition check
+  the flag: `while (!Thread.currentThread().isInterrupted()) { }`
+  re-evaluates that check on every iteration, so once `interrupt()` sets
+  the flag, the very next iteration's condition check sees it and the
+  loop exits cleanly, letting the thread finish naturally rather than
+  being forcibly terminated. This cooperative-checking pattern is the
+  standard, correct way to make any long-running or infinite-loop
+  worker actually stoppable in Java -- and it's the responsibility of
+  whoever writes the loop, not something that can be bolted on from
+  outside after the fact.
 example_code: |
-  Thread worker = new Thread(() -> {
-      while (!Thread.currentThread().isInterrupted()) {
-          // work
+  public class Solution {
+      public static void main(String[] args) throws InterruptedException {
+          // The trap: a loop that NEVER checks the interrupted flag can't be stopped.
+          Thread workerBroken = new Thread(() -> {
+              while (true) {           // ignores interrupt() entirely
+                  // work
+              }
+          });
+          // workerBroken.start(); workerBroken.interrupt(); workerBroken.join();
+          // -- join() would hang FOREVER; the flag is set but never read
+
+          // Fix: the loop's condition checks isInterrupted() on every iteration.
+          Thread worker = new Thread(() -> {
+              while (!Thread.currentThread().isInterrupted()) {
+                  // work
+              }
+              // exits cleanly once interrupted -- reaches here voluntarily
+          });
+          worker.start();
+          Thread.sleep(50);
+          worker.interrupt();          // sets the flag -- the loop notices on its next check
+          worker.join();                // returns promptly now
+          System.out.println("stopped cleanly");
       }
-  });
+  }
 starter_code: |
   public class Solution {
       public static void main(String[] args) throws InterruptedException {

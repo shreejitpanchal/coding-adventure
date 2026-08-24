@@ -4,15 +4,67 @@ language: java
 level: 139
 objective: "Fix a health-check method that always reports 'ok', regardless of whether its actual dependencies are healthy."
 explanation: |
-  A deployment's readiness/liveness check exists to let an orchestrator
-  (or a human) know whether the process is actually able to do its job --
-  a health check that always reports "ok" defeats its own purpose,
-  since it can't ever catch a real outage (a downed database, a failed
-  connection). It needs to actually reflect the state of what it's
-  checking.
+  An orchestrator (a load balancer, Kubernetes, a deploy pipeline)
+  periodically calls a running process's health-check endpoint to
+  decide whether to keep routing live traffic to it, restart it, or
+  hold off marking a rolling deployment successful -- and that decision
+  is only as trustworthy as the check's own honesty. A health check
+  that unconditionally reports `"ok"` regardless of the actual state of
+  its dependencies is worse than having no health check at all, because
+  it actively misinforms: the orchestrator keeps sending live traffic
+  to a process whose database connection has silently dropped, or
+  declares a genuinely broken deployment "healthy" and lets it roll
+  forward to every remaining instance -- exactly the outage class the
+  check existed to catch in the first place. `healthCheck(boolean
+  dependenciesOk) { return "ok"; }`, ignoring its own parameter
+  entirely, is precisely that failure mode: it always answers "ok," no
+  matter what state is actually passed in.
+
+  A correct health check has to genuinely reflect the state of whatever
+  it's meant to check -- typically the dependencies the process
+  actually needs to do its job (a database connection, a cache, a
+  downstream service) -- reporting unhealthy the moment *any* critical
+  one is down, not only when *every* dependency happens to be down
+  simultaneously. That's why `dbOk && cacheOk` (both must be healthy)
+  is the correct combining logic, not `dbOk || cacheOk` (either being
+  fine would mask a genuine outage in the other one). It's also worth
+  distinguishing *readiness* from *liveness* where a system separates
+  them: liveness asks "should this process be restarted" (is it
+  deadlocked or crashed), while readiness asks "should traffic be
+  routed here right now" (are its dependencies currently reachable) --
+  a process can legitimately be alive but not yet ready (still warming
+  a cache on startup, say), and conflating the two checks risks an
+  orchestrator restarting a process that just needed a few more
+  seconds, rather than genuinely being broken.
 example_code: |
-  static String healthCheck(boolean dbOk, boolean cacheOk) {
-      return (dbOk && cacheOk) ? "ok" : "unhealthy";
+  // The trap: ignores its own parameter -- can never catch a real outage.
+  static String healthCheckBroken(boolean dependenciesOk) {
+      return "ok";                     // always "ok", regardless of the actual state
+  }
+  System.out.println(healthCheckBroken(false));   // ok -- WRONG, masks a real problem
+
+  // Fix: genuinely reflects the state of what's being checked.
+  public class Solution {
+      static String healthCheck(boolean dependenciesOk) {
+          return dependenciesOk ? "ok" : "unhealthy";
+      }
+
+      public static void main(String[] args) {
+          System.out.println(healthCheck(false));   // unhealthy -- correctly caught
+      }
+  }
+
+  static String healthCheckMulti(boolean dbOk, boolean cacheOk) {
+      return (dbOk && cacheOk) ? "ok" : "unhealthy";   // ANY critical dependency failing -> unhealthy
+  }
+  System.out.println(healthCheckMulti(true, false));   // unhealthy -- cache is down
+
+  // Readiness vs liveness -- a process can be alive but not yet ready:
+  static String livenessCheck(boolean isDeadlocked) {
+      return isDeadlocked ? "restart_me" : "ok";
+  }
+  static String readinessCheck(boolean dependenciesOk, boolean cacheWarmed) {
+      return (dependenciesOk && cacheWarmed) ? "ok" : "not_ready";
   }
 starter_code: |
   public class Solution {

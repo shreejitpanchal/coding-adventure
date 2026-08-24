@@ -4,17 +4,70 @@ language: java
 level: 129
 objective: "Fix a minimum-version check that's wrong because it compares version strings lexicographically instead of numerically, part by part."
 explanation: |
-  "2.9.0".compareTo("2.10.0") is positive -- lexicographically, "2.9.0"
-  sorts after "2.10.0" because '9' > '1' at the first differing
-  character, even though 2.9.0 is actually the older version. Correctly
-  checking "does this satisfy at least version X" needs a numeric,
-  part-by-part comparison, the same fix as comparing two raw version
-  strings anywhere else.
+  `"2.9.0".compareTo("2.10.0")` walks both strings character by
+  character: `'2'` matches `'2'`, `'.'` matches `'.'`, then `'9'` (from
+  `"2.9.0"`) versus `'1'` (the first character of `"10"` in `"2.10.0"`)
+  -- and `'9'` has a larger code point than `'1'`, so the comparison
+  resolves right there as positive, declaring `"2.9.0"` "greater" than
+  `"2.10.0"` as plain text. But numerically, minor version `9` is
+  *smaller* than minor version `10` -- `2.9.0` is genuinely the older
+  release. This is precisely the same lexicographic-versus-numeric trap
+  covered for direct version comparison elsewhere in this category,
+  just surfacing here through a slightly different question: not "is A
+  newer than B" directly, but "does version A satisfy a stated minimum
+  requirement B" -- a check that shows up constantly in real dependency
+  resolution (`requires: guava >= 2.10.0`), and one that inherits the
+  exact same underlying bug if it's implemented with a naive string
+  comparison.
+
+  The fix is the identical numeric, part-by-part comparison as before,
+  just applied to answer this particular question: split both version
+  strings on `.`, parse each component as an `int`, and compare them in
+  order -- major first, then minor, then patch -- stopping at the first
+  pair that actually differs and using *that* comparison to decide the
+  overall result. If every component matches all the way through (an
+  exact version match), the minimum is satisfied. It's worth
+  recognizing that "does this satisfy a minimum," "is this newer than
+  that," and "sort a list of versions" are really all the same
+  underlying operation -- a correct numeric version comparator -- just
+  consumed differently at each call site; getting that one comparison
+  right once and reusing it (rather than re-deriving slightly different
+  broken logic at each call site) is the more robust way to structure
+  version-handling code in general.
 example_code: |
+  // The trap: lexicographic comparison gets the minor-version-9-vs-10 case backward.
+  System.out.println("2.9.0".compareTo("2.10.0"));   // positive -- WRONG, looks "newer"
+
+  static boolean satisfiesMinimumBroken(String version, String minimum) {
+      return version.compareTo(minimum) >= 0;
+  }
+  System.out.println(satisfiesMinimumBroken("2.9.0", "2.10.0"));   // true -- WRONG
+
+  // Fix: numeric, part-by-part comparison -- the same underlying fix as elsewhere.
+  public class Solution {
+      static boolean satisfiesMinimum(String version, String minimum) {
+          String[] v = version.split("\\.");
+          String[] m = minimum.split("\\.");
+          for (int i = 0; i < Math.max(v.length, m.length); i++) {
+              int vPart = i < v.length ? Integer.parseInt(v[i]) : 0;
+              int mPart = i < m.length ? Integer.parseInt(m[i]) : 0;
+              if (vPart != mPart) {
+                  return vPart > mPart;
+              }
+          }
+          return true;   // every part equal -- exact match satisfies the minimum
+      }
+
+      public static void main(String[] args) {
+          System.out.println(satisfiesMinimum("2.9.0", "2.10.0"));   // false -- correct
+      }
+  }
+
   String[] v = "2.9.0".split("\\.");
   String[] m = "2.10.0".split("\\.");
   int vMinor = Integer.parseInt(v[1]);
   int mMinor = Integer.parseInt(m[1]);
+  System.out.println(vMinor < mMinor);   // true -- 9 < 10, correctly this time
 starter_code: |
   public class Solution {
       static boolean satisfiesMinimum(String version, String minimum) {

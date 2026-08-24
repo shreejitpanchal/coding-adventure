@@ -4,16 +4,84 @@ language: java
 level: 97
 objective: "Replace a manually synchronized counter with java.util.concurrent.atomic.AtomicInteger, which is lock-free and purpose-built for this."
 explanation: |
-  AtomicInteger provides atomic increment/get operations (backed by
-  hardware compare-and-swap) without needing an explicit lock at all --
-  for a single counter shared across threads, it's simpler and typically
-  faster than hand-rolled synchronized blocks.
+  `synchronized`, from the previous exercise, solves the lost-update
+  race correctly by making the whole read-increment-write sequence
+  atomic through mutual exclusion -- but a lock is a fairly heavyweight
+  tool for something as small as "safely increment one integer." Every
+  thread that wants to increment has to fully acquire and release the
+  lock, potentially blocking behind whichever thread currently holds
+  it, purely to protect three machine instructions' worth of work.
+  `java.util.concurrent.atomic.AtomicInteger` provides a lighter-weight
+  alternative specifically for this common case: it wraps a single `int
+  ` and exposes operations like `.incrementAndGet()` that are atomic
+  *without requiring an explicit lock at all* -- implemented instead
+  using a hardware-level compare-and-swap (CAS) instruction, which lets
+  the CPU itself guarantee "read the current value, and only write the
+  incremented value back if nothing else changed it in between" as a
+  single indivisible hardware operation.
+
+  The practical result is a counter that's just as safe under
+  concurrent access as the `synchronized` version, but typically faster
+  under contention: a lock forces waiting threads to genuinely block
+  (an OS-level context switch, in the worst case), while CAS-based
+  atomics let contending threads retry a cheap compare-and-swap loop
+  instead, which tends to be cheaper when the protected operation
+  itself is small and fast, exactly the situation a single counter
+  increment represents. `AtomicInteger` also happens to be simpler code
+  -- no separate lock object to declare, no `synchronized` block to
+  wrap around the increment -- since the atomicity is built into the
+  type itself. The tradeoff to know: atomics are the right tool
+  specifically for protecting *one single variable's* update; the
+  moment an operation needs to atomically coordinate *multiple* pieces
+  of shared state together (updating two related fields consistently,
+  for instance), a lock (or a higher-level concurrent structure
+  designed for that specific coordination) is still the correct choice,
+  since no single atomic type can cover a multi-variable invariant.
 example_code: |
   import java.util.concurrent.atomic.AtomicInteger;
 
-  AtomicInteger counter = new AtomicInteger(0);
-  counter.incrementAndGet();
-  System.out.println(counter.get());
+  // The trap: correct, but a full lock is heavier than this needs to be.
+  public class SolutionLocked {
+      static int counter = 0;
+      static final Object lock = new Object();
+
+      static void increment() {
+          for (int i = 0; i < 50000; i++) {
+              synchronized (lock) {
+                  counter++;
+              }
+          }
+      }
+  }
+
+  // Fix: AtomicInteger -- lock-free, hardware compare-and-swap under the hood.
+  public class Solution {
+      static AtomicInteger counter = new AtomicInteger(0);
+
+      static void increment() {
+          for (int i = 0; i < 50000; i++) {
+              counter.incrementAndGet();     // atomic, no explicit lock needed
+          }
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          Thread t1 = new Thread(Solution::increment);
+          Thread t2 = new Thread(Solution::increment);
+          t1.start();
+          t2.start();
+          t1.join();
+          t2.join();
+          System.out.println(counter.get());  // 100000, reliably
+      }
+  }
+
+  AtomicInteger c = new AtomicInteger(0);
+  c.incrementAndGet();
+  System.out.println(c.get());                  // 1
+
+  // Other AtomicInteger operations, all lock-free:
+  c.addAndGet(5);                                 // add and return new value
+  c.compareAndSet(6, 100);                        // set to 100 only if current value is 6
 starter_code: |
   public class Solution {
       static int counter = 0;

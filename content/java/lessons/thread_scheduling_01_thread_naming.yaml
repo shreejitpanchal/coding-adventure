@@ -4,14 +4,73 @@ language: java
 level: 106
 objective: "Give worker threads meaningful names instead of the default Thread-N, so logs and debuggers can identify them."
 explanation: |
-  Every thread gets an auto-generated name like "Thread-0" unless you
-  pass a name to the constructor. In a multi-threaded program, an
-  unnamed thread is nearly impossible to trace through logs or a
-  debugger -- naming threads by the work they do is a small habit that
-  pays off constantly when diagnosing production issues.
+  Every `Thread` object gets an automatically generated name --
+  `"Thread-0"`, `"Thread-1"`, and so on, incrementing globally across
+  the entire JVM process -- unless a name is explicitly supplied to one
+  of the constructor overloads that accepts one. Those default names
+  carry no information about what a thread actually *does*: in a stack
+  trace, a thread dump, or a log line that includes the thread's name (
+  a common logging pattern), `"Thread-2"` says nothing about whether
+  it's handling a request, refreshing a cache, or polling a queue,
+  forcing anyone debugging a multi-threaded issue to correlate other
+  context just to figure out which logical piece of work that thread
+  represents. That ambiguity compounds badly once a real program has
+  dozens of threads spun up and torn down continuously -- the numbering
+  keeps climbing and provides essentially zero signal about role.
+
+  `new Thread(runnable, name)` -- passing an explicit name as the
+  second constructor argument -- costs nothing and pays off constantly:
+  `Thread.currentThread().getName()` called from inside that thread (or
+  any tool inspecting it externally, like a debugger's thread list or a
+  `jstack` thread dump) then reports something meaningful instead of an
+  anonymous counter. The convention worth adopting is naming by *role*,
+  not an arbitrary label -- `"worker-0"`, `"worker-1"` describe what a
+  pool of otherwise-identical workers are collectively doing, staying
+  useful even as their count scales up or down, whereas
+  `"thread1"`/`"thread2"` would barely improve on the auto-generated
+  default it's replacing. When capturing a loop index for use inside a
+  lambda (as the naming string here needs to), remember it has to be
+  effectively final -- assigning it to a `final int idx = i;` inside the
+  loop body, once per iteration, is what makes it legally capturable.
 example_code: |
+  import java.util.ArrayList;
+  import java.util.Collections;
+  import java.util.List;
+
+  public class Solution {
+      static void report(List<String> results) {
+          results.add(Thread.currentThread().getName());
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          List<String> results = Collections.synchronizedList(new ArrayList<>());
+
+          // The trap: no explicit name -- every thread gets an anonymous "Thread-N".
+          Thread[] threadsBroken = new Thread[3];
+          for (int i = 0; i < 3; i++) {
+              threadsBroken[i] = new Thread(() -> report(results));   // no name given
+          }
+          // logs/debugger would show "Thread-0", "Thread-1", ... -- meaningless
+
+          // Fix: name each thread explicitly, by role/index.
+          Thread[] threads = new Thread[3];
+          for (int i = 0; i < 3; i++) {
+              final int idx = i;                    // must be effectively final for the lambda
+              threads[i] = new Thread(() -> report(results), "worker-" + idx);
+          }
+          for (Thread t : threads) {
+              t.start();
+          }
+          for (Thread t : threads) {
+              t.join();
+          }
+          Collections.sort(results);
+          System.out.println(results);               // [worker-0, worker-1, worker-2]
+      }
+  }
+
   Thread t = new Thread(() -> {}, "cache-refresh");
-  System.out.println(t.getName());
+  System.out.println(t.getName());                     // cache-refresh
 starter_code: |
   import java.util.ArrayList;
   import java.util.Collections;

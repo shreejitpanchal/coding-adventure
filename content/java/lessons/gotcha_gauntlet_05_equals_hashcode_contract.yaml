@@ -4,17 +4,84 @@ language: java
 level: 105
 objective: "Fix a class that overrides equals() but not hashCode(), silently breaking HashSet/HashMap deduplication."
 explanation: |
-  Java's contract for equals()/hashCode() requires: if two objects are
-  equal, they MUST have the same hash code. HashSet and HashMap rely on
-  hashCode() first to find the right bucket, and only then call equals()
-  within that bucket -- override equals() alone, and two "equal" objects
-  can land in different buckets, so the set never even compares them
-  and treats them as distinct.
-example_code: |
-  import java.util.Objects;
+  `Object`'s Javadoc states the `equals()`/`hashCode()` contract
+  explicitly: whenever `a.equals(b)` is `true`, `a.hashCode()` and `b.
+  hashCode()` are *required* to be equal too -- it's not optional, and
+  violating it doesn't produce a compile error or even necessarily an
+  obvious runtime one, just silently broken behavior in anything that
+  relies on hashing. `HashSet`/`HashMap` are exactly that kind of
+  consumer: internally, they store elements across a number of
+  "buckets," and finding which bucket a given object belongs to is done
+  by calling `.hashCode()` *first* -- only once the right bucket is
+  located does `HashSet.contains()` (or `.add()`'s internal duplicate
+  check) call `.equals()` to compare against whatever's already in that
+  specific bucket. If two objects are `.equals()`-equal but have
+  *different* hash codes (because `hashCode()` was never overridden,
+  and the default inherited from `Object` computes something based on
+  identity, unrelated to the fields `equals()` actually compares), they
+  can easily land in two entirely different buckets -- and since `
+  HashSet` never even checks objects in different buckets against each
+  other, it never calls `.equals()` on them at all, treating them as
+  unrelated even though the class's own `equals()` method would say
+  they're identical.
 
-  public int hashCode() {
-      return Objects.hash(x, y);
+  That's precisely what happens here: `Point`'s overridden `equals()`
+  correctly says two `Point(1, 2)` instances are equal, but with no `
+  hashCode()` override, each instance keeps the default identity-based
+  hash code inherited from `Object` -- two different objects, two
+  different (essentially arbitrary) hash codes, landing in different
+  buckets, so `HashSet.add()` never recognizes the second one as a
+  duplicate of the first, and `points.size()` reports `2` instead of the
+  expected `1`. The fix is to always override `hashCode()` *whenever*
+  `equals()` is overridden, computing it from the *same* fields `equals
+  ()` compares -- `Objects.hash(x, y)` is the standard, convenient way
+  to combine several fields into one well-distributed hash value
+  without writing the combination logic by hand. The rule to
+  internalize as a near-absolute: `equals()` and `hashCode()` are a
+  matched pair: overriding one without the other is a broken contract
+  waiting to silently corrupt any `HashSet`/`HashMap` usage of that
+  class.
+example_code: |
+  import java.util.HashSet;
+  import java.util.Objects;
+  import java.util.Set;
+
+  public class Solution {
+      // The trap: equals() overridden, hashCode() left at the default (identity-based).
+      static class PointBroken {
+          int x, y;
+          PointBroken(int x, int y) { this.x = x; this.y = y; }
+          public boolean equals(Object o) {
+              if (!(o instanceof PointBroken p)) return false;
+              return x == p.x && y == p.y;
+          }
+          // NO hashCode() override -- inherits Object's identity-based default!
+      }
+
+      // Fix: hashCode() overridden too, computed from the SAME fields as equals().
+      static class Point {
+          int x, y;
+          Point(int x, int y) { this.x = x; this.y = y; }
+          public boolean equals(Object o) {
+              if (!(o instanceof Point p)) return false;
+              return x == p.x && y == p.y;
+          }
+          public int hashCode() {
+              return Objects.hash(x, y);     // matches the fields equals() compares
+          }
+      }
+
+      public static void main(String[] args) {
+          Set<PointBroken> broken = new HashSet<>();
+          broken.add(new PointBroken(1, 2));
+          broken.add(new PointBroken(1, 2));
+          System.out.println(broken.size());   // 2 -- WRONG, different hash buckets
+
+          Set<Point> points = new HashSet<>();
+          points.add(new Point(1, 2));
+          points.add(new Point(1, 2));
+          System.out.println(points.size());    // 1 -- correct, same bucket, equals() recognized
+      }
   }
 starter_code: |
   import java.util.HashSet;

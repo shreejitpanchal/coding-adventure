@@ -4,13 +4,66 @@ language: java
 level: 95
 objective: "Fix a broken hand-rolled character-range check by replacing it with a proper regex validation."
 explanation: |
-  Hand-writing character-range logic ("is this a digit?") is easy to get
-  subtly wrong (comparing against just one boundary character, missing
-  the upper bound, etc.), and String.matches("\\d+") already expresses
-  "the whole string is one or more digits" directly and correctly.
+  Hand-writing a character-range check like "is this character a digit"
+  looks simple, but it's exactly the kind of logic that's easy to get
+  subtly wrong: `c < '0'` only checks the *lower* boundary, silently
+  ignoring the equally necessary upper boundary (`c > '9'`) -- so a
+  letter like `'a'`, whose character code (97) happens to be numerically
+  *greater* than `'0'`'s code (48), passes the check completely
+  unnoticed, incorrectly treated as if it were a digit. The bug isn't
+  in the general idea (comparing character codes against digit
+  boundaries is a legitimate technique), it's in the specific
+  implementation being incomplete -- and this exact kind of off-by-one-
+  boundary or missing-half-the-check mistake is common enough in
+  hand-rolled character classification that it's worth treating as a
+  category of bug to actively watch for, not a one-off slip.
+
+  `String.matches(regex)` sidesteps hand-writing this kind of logic
+  entirely by expressing the *rule* directly, using regular expression
+  syntax the standard library has already implemented correctly:
+  `\d` (written as `"\\d"` in a Java string literal, since the
+  backslash itself needs escaping) matches exactly one digit character,
+  and `+` means "one or more of the preceding element" -- so `"\\d+"`
+  as a whole pattern means "one or more digits, and nothing else,"
+  matched against the *entire* string (`.matches()` requires a full-
+  string match, unlike `.find()` on a `Matcher`, which would accept a
+  digit substring anywhere within a larger string). For validating that
+  a string conforms to some character-shape rule -- digits only,
+  alphanumeric only, a specific format like an email or a phone number
+  -- a regex pattern is almost always both more concise and less
+  error-prone than hand-rolled character-by-character range checks,
+  precisely because the pattern states the rule declaratively rather
+  than requiring the boundary conditions to be gotten exactly right by
+  hand, in every direction, every time.
 example_code: |
-  boolean allDigits = "482".matches("\\d+");
-  System.out.println(allDigits);
+  // The trap: only checks the LOWER boundary, silently missing the upper one.
+  static boolean isDigitsOnlyBroken(String s) {
+      for (char c : s.toCharArray()) {
+          if (c < '0') {                 // never checks c > '9' at all!
+              return false;
+          }
+      }
+      return true;
+  }
+  System.out.println(isDigitsOnlyBroken("12a34"));   // true -- WRONG, 'a' slipped through
+
+  // Fix: a regex expresses the rule directly and correctly.
+  static boolean isDigitsOnly(String s) {
+      return s.matches("\\d+");           // one or more digits, matched against the WHOLE string
+  }
+
+  public class Solution {
+      public static void main(String[] args) {
+          System.out.println(isDigitsOnly("12a34"));    // false -- correct
+          System.out.println(isDigitsOnly("482"));       // true
+
+          boolean allDigits = "482".matches("\\d+");
+          System.out.println(allDigits);                  // true
+      }
+  }
+
+  // .matches() requires the ENTIRE string to match -- a partial match fails:
+  System.out.println("12a34".matches("\\d+"));   // false -- the "a" breaks a full match
 starter_code: |
   public class Solution {
       static boolean isDigitsOnly(String s) {

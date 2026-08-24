@@ -4,15 +4,64 @@ language: java
 level: 126
 objective: "Fix a version comparison that's wrong because it compares version strings lexicographically instead of numerically."
 explanation: |
-  "10.0.0".compareTo("9.0.0") is negative -- String.compareTo compares
-  character by character, and '1' sorts before '9', so "10.0.0" looks
-  "smaller" than "9.0.0" even though version 10 is clearly newer. Real
-  version comparisons need to split on the dots and compare each numeric
-  component as an int, not as text.
+  `String.compareTo` compares two strings lexicographically -- character
+  by character, using each character's Unicode code point, the same way
+  a dictionary orders words. `"10.0.0".compareTo("9.0.0")` looks at the
+  very first character of each: `'1'` (from `"10.0.0"`) has a smaller
+  code point than `'9'` (from `"9.0.0"`), so the comparison resolves
+  right there in favor of `"9.0.0"` being "greater," and never even
+  looks at the rest of either string. The result is negative,
+  correctly reflecting *string* ordering, but not what a human means by
+  "which version is newer" -- version 10 is unambiguously newer than
+  version 9, even though the string `"10.0.0"` sorts *before* `"9.0.0"`
+  lexicographically. This is the exact same category of trap as `"2" .
+  compareTo("10")` being positive (`'2' > '1'`) even though `2 < 10`
+  numerically -- correct string comparison, wrong comparison for
+  numbers dressed up as strings.
+
+  The fix is to stop comparing the raw strings and start comparing the
+  actual numeric structure a version encodes: split each version on
+  `.` (note the escaped regex `"\\."`, since `.` is a regex metacharacter
+  meaning "any character," and `String.split` takes a regex), parse
+  each resulting piece with `Integer.parseInt`, and compare the
+  resulting integers component by component -- major first, then minor,
+  then patch, stopping at the first pair that actually differs. If
+  every component is equal all the way through, the versions are
+  considered equal. This part-by-part numeric comparison is the correct
+  general shape for comparing any dotted version scheme, and it's worth
+  recognizing as a distinct concern from the "does this class exist"
+  and "does this satisfy a minimum" checks covered elsewhere in this
+  category -- they're different questions, but they all rest on this
+  same underlying numeric-comparison fix.
 example_code: |
+  // The trap: String.compareTo is lexicographic, NOT numeric.
+  System.out.println("10.0.0".compareTo("9.0.0"));   // negative -- WRONG, looks "older"
+  System.out.println("2".compareTo("10"));             // positive -- same trap, simpler example
+
+  // Fix: split into integer components, compare numerically.
+  public class Solution {
+      static boolean isNewer(String versionA, String versionB) {
+          String[] a = versionA.split("\\.");
+          String[] b = versionB.split("\\.");
+          for (int i = 0; i < Math.max(a.length, b.length); i++) {
+              int partA = i < a.length ? Integer.parseInt(a[i]) : 0;
+              int partB = i < b.length ? Integer.parseInt(b[i]) : 0;
+              if (partA != partB) {
+                  return partA > partB;
+              }
+          }
+          return false;   // every part equal -- not strictly "newer"
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isNewer("10.0.0", "9.0.0"));   // true -- correct
+      }
+  }
+
   String[] a = "2.10.0".split("\\.");
   String[] b = "2.9.0".split("\\.");
   boolean newer = Integer.parseInt(a[1]) > Integer.parseInt(b[1]);
+  System.out.println(newer);   // true -- 10 > 9 at the minor component
 starter_code: |
   public class Solution {
       static boolean isNewer(String versionA, String versionB) {

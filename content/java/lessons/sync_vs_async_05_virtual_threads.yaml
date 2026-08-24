@@ -4,15 +4,85 @@ language: java
 level: 115
 objective: "Replace a small fixed platform-thread pool with a virtual-thread-per-task executor, so many blocking-style tasks don't have to queue for a scarce few threads."
 explanation: |
-  A fixed pool of platform threads is a genuinely scarce resource --
-  each one maps to a real OS thread, so a pool of 2 can only run 2 tasks
-  at once, however many are submitted. Virtual threads (Java 21+) are
-  lightweight, JVM-managed threads that can be created by the thousands
-  -- Executors.newVirtualThreadPerTaskExecutor() gives every submitted
-  task its own virtual thread instead of contending for a small pool,
-  which is exactly the right fit for blocking-style workloads.
+  A "platform thread" -- what `Thread` and `Executors.
+  newFixedThreadPool(n)` have always created -- maps directly one-to-one
+  onto a real operating-system thread, which is a genuinely scarce,
+  relatively expensive resource: each one reserves its own OS-level
+  stack memory and kernel scheduling overhead, which is why JVM
+  applications have traditionally capped thread pools at some modest
+  number (often in the tens to low hundreds) rather than creating one
+  per unit of work. A fixed pool of 2 platform threads can only ever
+  run 2 tasks *simultaneously*, no matter how many tasks are submitted
+  -- the other tasks simply queue and wait their turn, which is
+  perfectly fine for CPU-bound work (there's rarely a benefit to more
+  running threads than CPU cores anyway), but becomes an artificial
+  bottleneck for workloads that are mostly *blocking* -- waiting on a
+  network call, a database query, a file read -- where the actual CPU
+  work is minimal and most of a task's lifetime is spent simply idle,
+  waiting.
+
+  Virtual threads (a preview feature since Java 19, finalized in Java
+  21) invert that relationship entirely: they're lightweight threads
+  managed by the JVM itself, not mapped one-to-one onto OS threads --
+  the JVM multiplexes potentially thousands or millions of virtual
+  threads onto a much smaller number of underlying platform "carrier"
+  threads, automatically unmounting a virtual thread from its carrier
+  whenever it blocks (freeing that carrier to run a different virtual
+  thread in the meantime) and remounting it once it's ready to continue.
+  `Executors.newVirtualThreadPerTaskExecutor()` is a drop-in `
+  ExecutorService` replacement built on this: every task submitted gets
+  its *own* dedicated virtual thread rather than contending for a small
+  fixed pool, so blocking-style workloads (the common case for I/O-heavy
+  server code) no longer need artificial pool-size tuning to get
+  reasonable concurrency -- the JVM's own scheduling absorbs the
+  blocking cost far more cheaply than blocking a genuinely scarce OS
+  thread ever could. The API surface is deliberately unchanged from a
+  regular `ExecutorService` (`.submit()`, `Future.get()`, and so on),
+  which is exactly what makes swapping the factory method a genuinely
+  minimal, low-risk change for code already structured around `
+  ExecutorService`.
 example_code: |
+  import java.util.ArrayList;
+  import java.util.List;
+  import java.util.concurrent.ExecutorService;
   import java.util.concurrent.Executors;
+  import java.util.concurrent.Future;
+
+  // The trap: a fixed pool of 2 platform threads is a genuinely scarce resource.
+  public class SolutionFixed {
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newFixedThreadPool(2);   // only 2 run AT ONCE
+          List<Future<Integer>> futures = new ArrayList<>();
+          for (int i = 0; i < 4; i++) {
+              final int idx = i;
+              futures.add(pool.submit(() -> idx * idx));   // tasks 3 & 4 queue behind 1 & 2
+          }
+          int total = 0;
+          for (Future<Integer> f : futures) {
+              total += f.get();
+          }
+          pool.shutdown();
+          System.out.println(total);   // 14 -- correct, but doesn't scale for blocking workloads
+      }
+  }
+
+  // Fix: virtual threads -- every task gets its OWN lightweight thread.
+  public class Solution {
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
+          List<Future<Integer>> futures = new ArrayList<>();
+          for (int i = 0; i < 4; i++) {
+              final int idx = i;
+              futures.add(pool.submit(() -> idx * idx));   // each gets its own virtual thread
+          }
+          int total = 0;
+          for (Future<Integer> f : futures) {
+              total += f.get();
+          }
+          pool.shutdown();
+          System.out.println(total);   // 14 -- same result, scales to thousands of tasks
+      }
+  }
 
   try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
       pool.submit(() -> System.out.println("on a virtual thread"));

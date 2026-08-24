@@ -4,15 +4,65 @@ language: java
 level: 127
 objective: "Fix a dependency registry that always keeps whichever version was registered last, even if it's older than what's already there."
 explanation: |
-  A real build tool resolving a version conflict between two
-  dependencies pulling in different versions of the same artifact needs
-  to actually compare versions, not just let the last one registered
-  silently win -- otherwise a legitimate newer version can get quietly
-  downgraded by an unrelated, older transitive dependency that happens
-  to be processed later.
+  Real dependency resolution constantly deals with version conflicts: a
+  project might directly depend on `guava:31.0`, but also transitively
+  depend, through some unrelated third library, on `guava:28.0` as
+  *that* library's own stated requirement -- both requests for the same
+  artifact end up processed by the build tool, and only one final
+  version can actually end up on the classpath. `classpath.put(artifact,
+  version)` -- unconditionally overwriting whatever was there before --
+  implements the simplest possible resolution policy: whichever
+  registration happens to run *last*, silently wins, regardless of
+  whether it's newer or older than what was already recorded. That's
+  exactly backward from what any real build tool needs: a legitimate,
+  intentionally-chosen newer version (`31.0`, requested directly) can
+  get silently downgraded by an older version pulled in incidentally
+  through some unrelated dependency chain, purely because of processing
+  order -- with nothing in the resulting build to indicate that a
+  downgrade even happened.
+
+  A correct resolution policy has to actually *compare* the candidate
+  version against whatever's already registered before deciding whether
+  to overwrite: `if (existing == null || version.compareTo(existing) >
+  0) { classpath.put(artifact, version); }` only replaces the recorded
+  version when there wasn't one yet, or when the new candidate is
+  genuinely newer -- an older version arriving later in processing order
+  is correctly ignored, leaving the already-registered newer version in
+  place. (Real build tools like Maven and Gradle implement considerably
+  more nuanced resolution strategies than "highest version always wins"
+  -- nearest-wins-by-depth, explicit version pins, exclusions -- but "
+  compare before overwriting, rather than blindly overwriting" is the
+  foundational correctness property any of those more sophisticated
+  policies still has to get right.)
 example_code: |
-  if (existing == null || version.compareTo(existing) > 0) {
-      classpath.put(artifact, version);
+  import java.util.HashMap;
+  import java.util.Map;
+
+  // The trap: always overwrites, regardless of which version is actually newer.
+  static void registerBroken(Map<String, String> classpath, String artifact, String version) {
+      classpath.put(artifact, version);   // last write wins, no comparison at all
+  }
+
+  Map<String, String> classpathBroken = new HashMap<>();
+  registerBroken(classpathBroken, "guava", "31.0");
+  registerBroken(classpathBroken, "guava", "28.0");   // OLDER, but registered LAST
+  System.out.println(classpathBroken.get("guava"));    // 28.0 -- WRONG, silently downgraded
+
+  // Fix: compare against the existing version before overwriting.
+  public class Solution {
+      static void register(Map<String, String> classpath, String artifact, String version) {
+          String existing = classpath.get(artifact);
+          if (existing == null || version.compareTo(existing) > 0) {
+              classpath.put(artifact, version);
+          }
+      }
+
+      public static void main(String[] args) {
+          Map<String, String> classpath = new HashMap<>();
+          register(classpath, "guava", "31.0");
+          register(classpath, "guava", "28.0");   // older -- correctly ignored
+          System.out.println(classpath.get("guava"));   // 31.0 -- correct, no downgrade
+      }
   }
 starter_code: |
   import java.util.HashMap;

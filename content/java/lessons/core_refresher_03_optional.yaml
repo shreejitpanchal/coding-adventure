@@ -4,16 +4,67 @@ language: java
 level: 83
 objective: "Rewrite a manual null-check-and-fallback with java.util.Optional."
 explanation: |
-  Optional.ofNullable(value).orElse(fallback) expresses "use this value,
-  or fall back if it's null" in one expression instead of an explicit
-  if-null-return-fallback block -- the same behavior, but as a single
-  declarative pipeline that composes well with further Optional
-  operations (map, filter) if the logic grows.
+  `Optional.ofNullable(value).orElse(fallback)` expresses "use this
+  value, or fall back if it's null" as one continuous expression,
+  replacing the manual `if (name == null) { return fallback; } return
+  name;` pattern with something that reads as a single declarative
+  pipeline rather than an explicit branch. `Optional.ofNullable(...)`
+  wraps a possibly-null value into an `Optional` container -- either
+  one that holds the value (if it wasn't null) or an empty one (if it
+  was) -- and `.orElse(fallback)` unwraps it back into a plain value,
+  substituting `fallback` specifically in the empty case. For this
+  exact "null-check-with-a-fallback" shape, the practical behavior is
+  identical to the manual version; the real value of `Optional` shows
+  up once the logic needs to grow beyond a single fallback.
+
+  That's because `Optional` composes with further operations the same
+  way a stream does: `.map(transform)` applies a transformation only if
+  a value is actually present, doing nothing (staying empty) if it's
+  not, and `.filter(predicate)` can turn a present value into an empty
+  `Optional` if it fails some condition -- letting a chain like `Optional
+  .ofNullable(map.get(id)).map(String::trim).filter(s -> !s.isEmpty()).
+  orElse("unknown")` express several conditional steps without a single
+  explicit `if`. It's worth knowing where `Optional` is and isn't meant
+  to be used, though: it's designed as a *return type*, signaling to a
+  method's caller "this might legitimately have no value, handle that"
+  -- it's explicitly discouraged as a field type or a method parameter
+  type (the Optional Javadoc itself says so), where a plain nullable
+  reference, or simply avoiding null in the first place, is the more
+  conventional and lower-overhead choice.
 example_code: |
+  import java.util.Map;
   import java.util.Optional;
 
-  String name = Optional.ofNullable(null).orElse("guest");
-  System.out.println(name);
+  // The trap: not wrong, just an explicit branch for a simple substitution.
+  static String findNameManual(Map<Integer, String> map, int id) {
+      String name = map.get(id);
+      if (name == null) {
+          return "unknown";
+      }
+      return name;
+  }
+
+  // Fix: Optional expresses the same fallback as one continuous expression.
+  static String findName(Map<Integer, String> map, int id) {
+      return Optional.ofNullable(map.get(id)).orElse("unknown");
+  }
+
+  public class Solution {
+      public static void main(String[] args) {
+          Map<Integer, String> map = Map.of(1, "Ada");
+          System.out.println(findName(map, 2));         // unknown
+
+          // Optional composes further -- map/filter apply only if a value is present:
+          String result = Optional.ofNullable(map.get(1))
+                  .map(String::toUpperCase)
+                  .filter(s -> s.length() > 2)
+                  .orElse("n/a");
+          System.out.println(result);                     // ADA
+
+          String name = Optional.ofNullable((String) null).orElse("guest");
+          System.out.println(name);                        // guest
+      }
+  }
 starter_code: |
   import java.util.Map;
 

@@ -4,13 +4,57 @@ language: java
 level: 132
 objective: "Fix a validator that always claims a package name is valid, without actually checking the reverse-domain lowercase convention."
 explanation: |
-  Java package names conventionally follow reverse-domain notation --
-  lowercase letters/digits, dot-separated, no uppercase (the official
-  style guide explicitly reserves uppercase for class names, to avoid a
-  package colliding with a class of the same name). A validator for this
-  needs to actually check the string against that shape.
+  Java package names conventionally follow reverse-domain notation
+  (`com.example.app` for a project owned by `example.com`) -- and the
+  official Oracle style guide is specific about the character rules
+  beyond just "reverse the domain": every segment should be lowercase
+  letters and digits only, dot-separated, with no uppercase letters
+  anywhere. That last rule isn't arbitrary style preference -- it
+  exists to prevent a genuine naming collision: Java's own convention
+  for *class* names is UpperCamelCase, so reserving all-lowercase
+  exclusively for packages means a package can never be confused with,
+  or collide with, a class of a similar-looking name in the same
+  position of a fully-qualified name. `isValidPackageName` returning
+  `true` unconditionally, regardless of input, isn't a validator at
+  all -- it's a stub that never actually inspects the string it's given,
+  so `"com.Example.App"` (which clearly violates the lowercase
+  convention, with two capitalized segments) sails through as "valid"
+  with nothing to catch the violation.
+
+  A real validator has to check the input string's shape against the
+  convention explicitly, and a regex expresses that shape directly: `
+  "[a-z0-9]+(\\.[a-z0-9]+)*"` reads as "one or more lowercase letters or
+  digits, followed by zero or more groups of (a literal dot, then one
+  or more lowercase letters or digits)" -- matching `"com.example.app"`
+  and rejecting anything with uppercase, empty segments, leading/
+  trailing dots, or characters outside the allowed set. `.matches(...)`
+  requires the pattern to match the *entire* string (unlike `.find()`
+  on a `Matcher`, which would accept a match anywhere within a larger
+  string), which is exactly the right requirement here -- a package
+  name is either entirely valid by this convention or it isn't, there's
+  no meaningful notion of "partially matches."
 example_code: |
+  public class Solution {
+      // The trap: never actually checks anything -- always "valid" regardless of input.
+      static boolean isValidPackageNameBroken(String name) {
+          return true;
+      }
+
+      // Fix: a regex checks the WHOLE string against the lowercase, dot-separated convention.
+      static boolean isValidPackageName(String name) {
+          return name.matches("[a-z0-9]+(\\.[a-z0-9]+)*");
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isValidPackageName("com.Example.App"));   // false -- uppercase present
+          System.out.println(isValidPackageName("com.example.app"));    // true -- follows the convention
+          System.out.println(isValidPackageName("com..app"));            // false -- empty segment
+          System.out.println(isValidPackageName(".com.example"));         // false -- leading dot
+      }
+  }
+
   boolean valid = "com.example.app".matches("[a-z0-9]+(\\.[a-z0-9]+)*");
+  System.out.println(valid);   // true
 starter_code: |
   public class Solution {
       static boolean isValidPackageName(String name) {

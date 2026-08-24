@@ -4,18 +4,57 @@ language: java
 level: 76
 objective: "Fix a string comparison that uses == (reference equality) where .equals() (content equality) is what's actually needed."
 explanation: |
-  `==` on objects (including String) compares references -- whether two
-  variables point at the exact same object in memory -- not their
-  content. Two String objects built independently (e.g. via `new
-  String(...)`) can hold identical text but still be different objects,
-  so `==` returns false even though they're "equal" in the everyday
-  sense. `.equals()` is what actually compares content.
+  For any object type in Java (not just String), `==` compares
+  references -- it asks "do these two variables point at the exact same
+  object in memory," which is a completely different question from "do
+  these two objects represent the same content." That distinction is
+  invisible for primitives (`int a = 5; int b = 5; a == b` is `true`
+  because there's no separate "object identity" for a primitive at
+  all), which is exactly what makes it surprising the first time it
+  bites for `String`: `new String("hi")` explicitly constructs a *new*
+  `String` object holding the text `"hi"`, and calling `new String(...)`
+  twice creates two genuinely separate objects, even though both hold
+  identical text -- so `a == b` is `false`, correctly reflecting that
+  they're different objects, even though a human reading `"hi"` and
+  `"hi"` would call them equal. `.equals()` is the method Java's
+  standard library defines specifically to answer the *content*
+  question instead -- `String` overrides `Object.equals()` to compare
+  character-by-character, so `a.equals(b)` correctly returns `true`
+  regardless of whether `a` and `b` happen to be the same object or
+  merely hold the same text.
+
+  This trap is made worse by an unrelated Java optimization called
+  string interning: string *literals* written directly in source code
+  (`"hi"` written twice, with no `new String(...)`) are automatically
+  deduplicated by the JVM into a shared pool, so `String a = "hi";
+  String b = "hi";` actually *does* make `a == b` true -- both literals
+  resolve to the exact same pooled object. That means `==` can appear
+  to "work correctly" for string literals specifically, reinforcing the
+  bad habit, right up until a string built any other way (from user
+  input, from concatenation at runtime, from `new String(...)`, from
+  `.substring()`) breaks the illusion. The reliable rule, with no
+  exceptions to remember: always use `.equals()` for comparing String
+  *content*, and reserve `==` on Strings only for the rare, deliberate
+  case of checking whether two references point at the literal same
+  object.
 example_code: |
   public class Demo {
       public static void main(String[] args) {
+          // The trap: == on separately-constructed objects compares IDENTITY.
           String a = new String("hi");
           String b = new String("hi");
-          System.out.println(a.equals(b));
+          System.out.println(a == b);          // false -- different objects!
+          System.out.println(a.equals(b));      // true  -- same content
+
+          // Why == "seems to work" for literals -- string interning/pooling:
+          String c = "hi";
+          String d = "hi";
+          System.out.println(c == d);           // true -- same pooled literal object
+
+          // But the illusion breaks the moment a string is built at runtime:
+          String e = new String("hi");
+          System.out.println(c == e);           // false -- literal vs constructed object
+          System.out.println(c.equals(e));       // true -- .equals() is always reliable
       }
   }
 starter_code: |

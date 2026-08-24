@@ -4,15 +4,56 @@ language: java
 level: 131
 objective: "Parse a JAR-manifest-style key: value text to find the Main-Class entry."
 explanation: |
-  A JAR's META-INF/MANIFEST.MF is plain "Key: Value" text, one entry per
-  line -- Main-Class tells the JVM which class's main() to run when the
-  JAR is executed directly. Parsing it is just splitting each line on
-  the first ": " and matching the key you want.
+  Every JAR file contains a special entry, `META-INF/MANIFEST.MF`,
+  which is plain human-readable text in a simple `Key: Value` format,
+  one entry per line -- Java deliberately kept this format text-based
+  and minimal rather than inventing a more elaborate config syntax,
+  precisely so it stays trivial to generate and parse with basic
+  string operations. `Main-Class` is one specific, well-known key
+  within it: when a JAR is run directly (`java -jar app.jar`), the JVM
+  reads this manifest entry to determine which class's `public static
+  void main(String[] args)` to actually invoke -- without it (or with
+  it pointing at a nonexistent class), running the JAR directly fails
+  immediately with a clear error about a missing main class.
+
+  Parsing this format needs nothing more sophisticated than two nested
+  splits: first split the whole manifest text on newlines (`"\n"`) to
+  get individual lines, then split each line on `": "` to separate its
+  key from its value. The `2` passed as the second argument to `split(
+  ": ", 2)` is a meaningful detail, not incidental -- it limits the
+  split to at most 2 resulting pieces, so if a manifest *value* itself
+  happened to contain the literal text `": "` somewhere further along
+  the line, it wouldn't get incorrectly split into extra pieces; the
+  first `": "` in the line is always the key/value boundary, and
+  everything after it, colons included, belongs entirely to the value.
+  Once each line is split into its `parts[0]` (key) and `parts[1]`
+  (value), finding `Main-Class` specifically is just an equality check
+  against `parts[0]` -- the same simple line-oriented parsing approach
+  that works for reading any of a manifest's other well-known entries
+  (`Manifest-Version`, `Class-Path`, `Implementation-Version`) too.
 example_code: |
-  for (String line : manifest.split("\n")) {
+  public class Solution {
+      public static void main(String[] args) {
+          String manifest = "Manifest-Version: 1.0\nMain-Class: com.example.App\n";
+
+          // Fix: split into lines, then each line into key/value, match the key wanted.
+          for (String line : manifest.split("\n")) {
+              if (line.isEmpty()) continue;
+              String[] parts = line.split(": ", 2);   // limit 2 -- value keeps any later ": "
+              if (parts[0].equals("Main-Class")) {
+                  System.out.println(parts[1]);          // com.example.App
+              }
+          }
+      }
+  }
+
+  // The same pattern works for any manifest key, not just Main-Class:
+  String manifest2 = "Manifest-Version: 1.0\nImplementation-Version: 2.3.1\n";
+  for (String line : manifest2.split("\n")) {
+      if (line.isEmpty()) continue;
       String[] parts = line.split(": ", 2);
-      if (parts[0].equals("Main-Class")) {
-          System.out.println(parts[1]);
+      if (parts[0].equals("Implementation-Version")) {
+          System.out.println(parts[1]);   // 2.3.1
       }
   }
 starter_code: |

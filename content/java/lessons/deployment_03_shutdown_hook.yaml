@@ -4,14 +4,59 @@ language: java
 level: 138
 objective: "Fix cleanup code that never runs because it's placed after System.exit(), by registering it as a JVM shutdown hook instead."
 explanation: |
-  System.exit() terminates the JVM immediately -- any code written after
-  the call is simply never reached, because the process is already
-  gone. javac doesn't flag this as unreachable (System.exit is just an
-  ordinary method call from the compiler's point of view), so this bug
-  compiles fine and only shows up at runtime. Runtime.getRuntime().
-  addShutdownHook(thread), registered before the exit call, runs
-  during JVM shutdown -- including a shutdown triggered by System.exit().
+  `System.exit(status)` doesn't return control to the caller the way an
+  ordinary method call does -- it terminates the entire JVM process
+  immediately, at that exact point in execution. Any code written after
+  the call, in the same method or anywhere else still on the call
+  stack, is simply never reached, because the process itself no longer
+  exists by the time execution would otherwise get there. What makes
+  this trap easy to introduce by accident: `javac` has no special
+  understanding of `System.exit()`'s termination semantics -- from the
+  compiler's perspective, it's just an ordinary `void`-returning static
+  method call like any other, so there's no "unreachable code"
+  compiler error the way there would be for code placed after an
+  explicit `return` or `throw` that the compiler *can* statically
+  recognize as always terminating that method. The bug compiles fine
+  and looks superficially reasonable; it only reveals itself at
+  runtime, when `"cleanup"` conspicuously never prints.
+
+  The fix isn't to move the cleanup code somewhere earlier -- that would
+  make it run unconditionally, even along code paths that never call `
+  System.exit()` at all -- but to register it as a JVM shutdown hook: `
+  Runtime.getRuntime().addShutdownHook(new Thread(runnable))`, called
+  *before* `System.exit()`, registers a `Thread` that the JVM guarantees
+  to run during its own shutdown sequence, specifically including a
+  shutdown triggered by `System.exit()` itself (as well as normal
+  program termination and, on most platforms, external signals like
+  Ctrl+C) -- so the hook's code genuinely runs even though the calling
+  method's own execution never gets past the `System.exit()` line.
+  Shutdown hooks are the standard mechanism for exactly this kind of
+  guaranteed-cleanup-on-exit logic (closing resources, flushing logs,
+  releasing locks) in Java server and CLI applications, precisely
+  because they run regardless of *which* code path actually triggers
+  the JVM's termination.
 example_code: |
+  // The trap: code placed AFTER System.exit() is unreachable, but javac doesn't flag it.
+  public class SolutionBroken {
+      public static void main(String[] args) {
+          System.out.println("running");
+          System.exit(0);                    // JVM terminates HERE
+          System.out.println("cleanup");      // never reached -- compiles fine, silently skipped
+      }
+  }
+  // Output: just "running" -- "cleanup" never prints
+
+  // Fix: register cleanup as a shutdown hook BEFORE calling System.exit().
+  public class Solution {
+      public static void main(String[] args) {
+          System.out.println("running");
+          Runtime.getRuntime().addShutdownHook(
+                  new Thread(() -> System.out.println("cleanup")));
+          System.exit(0);                    // shutdown hooks run as part of THIS termination
+      }
+  }
+  // Output: "running" then "cleanup" -- the hook genuinely runs during shutdown
+
   Runtime.getRuntime().addShutdownHook(new Thread(() -> System.out.println("cleanup")));
   System.exit(0);
 starter_code: |

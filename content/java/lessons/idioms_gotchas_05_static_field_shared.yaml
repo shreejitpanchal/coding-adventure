@@ -4,15 +4,63 @@ language: java
 level: 80
 objective: "Fix a field that's marked static (shared by every instance of the class) when it was meant to be per-instance state."
 explanation: |
-  A `static` field belongs to the class itself, not to any one instance
-  -- every object of that class reads and writes the exact same value.
-  If the intent was "each object tracks its own count," the field needs
-  to be an ordinary (non-static) instance field instead, so each `new`
-  object gets its own independent copy.
+  The `static` keyword on a field is a deliberate statement: "this
+  value belongs to the *class itself*, not to any particular instance."
+  Every object created from that class shares exactly one copy of a
+  `static` field in memory -- `c1.count` and `c2.count` aren't two
+  separate values that happen to look the same, they're literally the
+  same memory location accessed through two different variable names.
+  Java even permits this ambiguity in the code: `c1.increment()` reads
+  as if it's operating on `c1`'s own state, but since `count` is
+  `static`, it's actually mutating the one shared class-level value,
+  and `c2.increment()` mutates that exact same value right along with
+  it -- which is why, in the buggy version, `c1.count` ends up showing
+  `2` even though only `c1` (not `c2`) was ever asked to increment
+  "its own" counter from the caller's point of view.
+
+  When the actual intent is "each object should track its own
+  independent piece of state" -- which is the overwhelmingly common
+  case for something named `count` on a `Counter` class -- the field
+  needs to be an ordinary instance field, simply omitting `static`.
+  Each `new Counter()` call then allocates its own separate storage for
+  `count`, entirely independent of every other `Counter` instance, so
+  `c1.increment()` only ever affects `c1`'s own value. The distinction
+  is worth stating as a simple test: if a field represents something
+  that's conceptually true of *the class as a whole* (a shared
+  configuration constant, a running total across every instance ever
+  created, a cache shared by all users of the type), `static` is
+  correct; if it represents something that's true of *one particular
+  object* (its own count, its own name, its own state), it needs to be
+  an instance field -- conflating the two is one of the most common
+  sources of "why is this value changing when I didn't touch it"
+  confusion in object-oriented code.
 example_code: |
-  static class Counter {
-      int count = 0;
-      void increment() { count++; }
+  public class Solution {
+      // The trap: static means ALL instances share the exact same field.
+      static class CounterBroken {
+          static int count = 0;       // ONE value, shared by every instance
+          void increment() { count++; }
+      }
+
+      // Fix: a plain instance field gives each object its OWN independent copy.
+      static class Counter {
+          int count = 0;               // no `static` -- per-instance storage
+          void increment() { count++; }
+      }
+
+      public static void main(String[] args) {
+          CounterBroken cb1 = new CounterBroken();
+          CounterBroken cb2 = new CounterBroken();
+          cb1.increment();
+          cb2.increment();             // this ALSO affects cb1's "count" -- same field!
+          System.out.println(cb1.count);   // 2 -- WRONG if independent counts were intended
+
+          Counter c1 = new Counter();
+          Counter c2 = new Counter();
+          c1.increment();
+          c2.increment();              // affects ONLY c2's own count
+          System.out.println(c1.count);    // 1 -- correct, independent per instance
+      }
   }
 starter_code: |
   public class Solution {

@@ -4,18 +4,59 @@ language: java
 level: 122
 objective: "Fix a StackOverflowError caused by recursing too deep, by converting the method to an iterative loop."
 explanation: |
-  Java's call stack is finite (a few thousand to tens of thousands of
-  frames, depending on frame size and -Xss), and Java has no tail-call
-  optimization -- a recursive method that needs one call per unit of
-  work will blow the stack on large inputs. Converting the recursion into
-  an explicit loop uses one stack frame no matter how much work it does.
+  Some languages optimize a specific shape of recursion -- a "tail
+  call," where the recursive call is the very last thing a method does,
+  with no work remaining after it returns -- by reusing the current
+  stack frame instead of pushing a new one, effectively turning
+  tail-recursive code into a loop under the hood. The JVM deliberately
+  does *not* perform this optimization (there's no tail-call handling
+  in the JVM specification at all), so every recursive call in Java,
+  regardless of its shape, consumes one real stack frame, and that call
+  stack is a genuinely finite resource -- a `StackOverflowError` is
+  Java's way of catching runaway recursion before it corrupts memory
+  beyond the JVM's control. `sumToN(int n)` needing one call per unit of
+  work means `sumToN(100000)` requires roughly 100,000 nested frames,
+  which blows straight through the stack's typical capacity long before
+  the recursion could ever bottom out and unwind.
+
+  Because the JVM won't quietly optimize this away, the practical fix
+  for recursion that genuinely needs to run deep on realistic inputs is
+  to convert it into an explicit loop instead, which uses exactly one
+  stack frame no matter how many iterations it performs -- there's no
+  growing call stack to overflow, since there's no additional frame
+  per unit of work at all. `long total = 0; for (int i = 0; i <= n; i++
+  ) { total += i; }` accumulates the identical sum a recursive `sumToN`
+  would, but as a running variable updated each iteration rather than a
+  chain of pending calls each waiting on the one below it to return.
+  This restructuring -- from "combine results as calls return" to
+  "accumulate a running value as iterations proceed" -- is the same
+  underlying transformation as the accumulator pattern covered
+  elsewhere in this app's recursion content, just applied here as the
+  full replacement of recursion with a loop rather than a lighter-weight
+  fix within the recursive structure itself.
 example_code: |
+  // The trap: one call per unit of work -- blows the stack on large n.
+  static long sumToNBroken(int n) {
+      if (n == 0) {
+          return 0;
+      }
+      return n + sumToNBroken(n - 1);
+  }
+  // sumToNBroken(100000) -- StackOverflowError, long before it finishes
+
+  // Fix: an explicit loop uses ONE stack frame regardless of how much work it does.
   static long sumIterative(int n) {
       long total = 0;
       for (int i = 0; i <= n; i++) {
           total += i;
       }
       return total;
+  }
+
+  public class Solution {
+      public static void main(String[] args) {
+          System.out.println(sumIterative(100000));   // 5000050000 -- no stack involved at all
+      }
   }
 starter_code: |
   public class Solution {

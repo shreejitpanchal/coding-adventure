@@ -4,17 +4,68 @@ language: java
 level: 140
 objective: "Fix a resource-creation step that always claims to 'create', even when re-run against a resource that already exists."
 explanation: |
-  Deploy steps get re-run -- a retried pipeline, a re-applied deployment,
-  a config re-sync. A step that isn't idempotent (safe to run more than
-  once with the same effect) causes duplicate work or misleading
-  reports; a step that checks "does this already exist?" before acting,
-  and reports accordingly, can be re-run safely without surprises.
+  Deploy pipelines get re-run far more often than the ideal single
+  successful pass suggests: a step times out and gets retried, a
+  deployment is re-applied to reconcile drift against actual
+  infrastructure state, a config sync runs repeatedly on a schedule
+  against a system that's mostly already correct. "Idempotent" is the
+  property that makes all of that safe: running the same step twice
+  (or fifty times) produces the same end state as running it once, with
+  no duplicated side effects and no misleading output. A step that
+  isn't idempotent -- one that unconditionally claims to `"created"` a
+  resource whether or not it already existed -- causes two distinct
+  kinds of harm: `resources.add(name)` on a `Set` is itself technically
+  a no-op if `name` is already present (a `Set`'s whole contract
+  guarantees no duplicates), so the *data* doesn't actually get
+  corrupted here -- but the *reporting* is still actively misleading,
+  printing `"created web-server"` in a deploy log for a resource that's
+  actually been running unchanged for months, obscuring what genuinely
+  happened during this particular run from whoever reads that log
+  later trying to understand the deployment's history.
+
+  The general fix is "check current state *before* acting, and let the
+  observed state -- not merely the fact that the method was invoked --
+  determine both the action taken and what gets reported": look up
+  whether the resource already exists first (`resources.contains(name)`
+  ), report `"already exists: " + name` and return immediately if so,
+  and only perform the actual `resources.add(name)` plus `"created "`
+  report along the path where it's genuinely new. This exact check-
+  then-act shape underlies most real idempotent infrastructure tooling
+  -- Terraform's plan/apply diffing against actual observed state,
+  Kubernetes' reconciliation loops continuously comparing desired
+  versus actual state -- the specific mechanism varies by tool, but the
+  underlying principle is identical: never assume "nothing exists yet"
+  purely because a step happened to be invoked; always check first,
+  and let what's actually true drive the response.
 example_code: |
-  if (resources.contains(name)) {
-      return "already exists: " + name;
+  import java.util.HashSet;
+  import java.util.Set;
+
+  // The trap: unconditionally reports "created", even on a re-run.
+  static Set<String> resourcesBroken = new HashSet<>(Set.of("web-server"));
+  static String ensureResourceBroken(String name) {
+      resourcesBroken.add(name);        // no-op if already present, but...
+      return "created " + name;          // ...ALWAYS says "created" regardless!
   }
-  resources.add(name);
-  return "created " + name;
+  System.out.println(ensureResourceBroken("web-server"));   // "created web-server" -- misleading
+
+  // Fix: check existing state FIRST, let it drive both action and report.
+  public class Solution {
+      static Set<String> resources = new HashSet<>(Set.of("web-server"));
+
+      static String ensureResource(String name) {
+          if (resources.contains(name)) {
+              return "already exists: " + name;
+          }
+          resources.add(name);
+          return "created " + name;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(ensureResource("web-server"));   // already exists: web-server
+          System.out.println(ensureResource("cache"));          // created cache -- genuinely new
+      }
+  }
 starter_code: |
   import java.util.HashSet;
   import java.util.Set;

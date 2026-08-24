@@ -4,17 +4,64 @@ language: java
 level: 116
 objective: "Replace a lambda that only forwards to an existing method with a method reference."
 explanation: |
-  When a lambda's entire body is just calling one existing method with
-  the lambda's own argument, a method reference expresses the exact same
-  thing more directly: `String::toUpperCase` instead of
-  `s -> s.toUpperCase()`. Same behavior, less noise.
+  `s -> s.toUpperCase()` is a lambda whose entire body does exactly one
+  thing: take its single argument and call one existing method on it,
+  with no additional logic, no extra arguments, nothing beyond that one
+  forwarding call. Whenever a lambda has that exact shape -- pure
+  delegation to an already-existing method, with the lambda's own
+  parameter(s) supplying the arguments -- Java lets it be written even
+  more directly as a *method reference*: `String::toUpperCase` names
+  the method being delegated to without introducing an explicit
+  parameter name or an arrow at all. Both forms compile to functionally
+  equivalent behavior when used as a `Function<String, String>` (or
+  wherever a matching functional interface is expected) -- the method
+  reference is purely a more concise way of expressing the identical
+  intent, not a different capability.
+
+  There are actually a few distinct method-reference *forms*, and
+  recognizing which lambda shape maps to which is useful: `String::
+  toUpperCase` here is an "unbound instance method reference" -- the
+  lambda's argument becomes the receiver the method is called *on*
+  (`s -> s.toUpperCase()` becomes `String::toUpperCase`, since `s` is
+  the object `.toUpperCase()` is invoked against). A *static* method
+  reference (`Integer::parseInt`, for `s -> Integer.parseInt(s)`) works
+  the same way but calls a static method instead. A *bound* instance
+  method reference (`someObject::someMethod`) refers to calling a
+  method on one already-known, specific object, not on the lambda's own
+  parameter. Recognizing "this lambda is nothing but a forwarding call"
+  is the trigger for reaching for a method reference -- and IDEs
+  commonly flag exactly this pattern with a suggestion to simplify,
+  since it's such a common, mechanical transformation.
 example_code: |
   import java.util.List;
   import java.util.stream.Collectors;
 
-  List<Integer> lengths = List.of("a", "bb").stream()
-          .map(String::length)
+  // The trap: a lambda that's PURELY forwarding to one existing method.
+  List<String> namesBroken = List.of("ada", "bob", "cy");
+  List<String> upperVerbose = namesBroken.stream()
+          .map(s -> s.toUpperCase())        // just forwards s to .toUpperCase()
           .collect(Collectors.toList());
+  System.out.println(upperVerbose);          // [ADA, BOB, CY]
+
+  // Fix: a method reference expresses the exact same forwarding, more directly.
+  List<String> upper = namesBroken.stream()
+          .map(String::toUpperCase)          // unbound instance method reference
+          .collect(Collectors.toList());
+  System.out.println(upper);                  // [ADA, BOB, CY]
+
+  List<Integer> lengths = List.of("a", "bb").stream()
+          .map(String::length)                // same pattern -- s -> s.length()
+          .collect(Collectors.toList());
+
+  // A STATIC method reference -- s -> Integer.parseInt(s) becomes:
+  List<Integer> parsed = List.of("1", "2").stream()
+          .map(Integer::parseInt)
+          .collect(Collectors.toList());
+
+  // A BOUND instance method reference -- calling a method on one KNOWN object:
+  String prefix = "Item: ";
+  java.util.function.Function<String, String> prepend = prefix::concat;
+  System.out.println(prepend.apply("apple"));   // Item: apple
 starter_code: |
   import java.util.List;
   import java.util.stream.Collectors;

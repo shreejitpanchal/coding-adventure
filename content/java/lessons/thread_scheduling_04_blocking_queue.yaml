@@ -4,19 +4,80 @@ language: java
 level: 109
 objective: "Use a BlockingQueue to hand work off between threads safely, instead of racing a non-blocking Deque."
 explanation: |
-  A plain ArrayDeque isn't thread-safe, and its poll() returns
-  immediately (often null) instead of waiting for an item to arrive --
-  code that assumes an item is always there the instant it asks is
-  racing the producer thread. java.util.concurrent.BlockingQueue's
-  take() blocks until an item is actually available, removing the race
-  entirely.
+  `ArrayDeque` is fast, but explicitly documented as *not* thread-safe
+  -- it's designed for single-threaded use, with no internal
+  synchronization protecting concurrent access at all, so having one
+  thread `.add()` to it while another concurrently `.poll()`s from it
+  is undefined behavior even setting aside the second problem here.
+  That second problem is just as important: `.poll()` is *non-blocking*
+  -- it returns immediately, either with the next available element or
+  `null` if the deque happens to be empty *at that exact moment* --
+  which means `total += queue.poll()` in a loop is really asking "is
+  there something here *right now*," not "wait until something arrives
+  ." If the producer thread hasn't gotten around to adding its next
+  item yet by the time the consumer's loop reaches that iteration, `.
+  poll()` returns `null`, and `total += null` doesn't even compile as
+  written (unboxing a `null` `Integer` into `int` throws `
+  NullPointerException` at runtime) -- either way, the consumer is
+  racing the producer's timing rather than correctly coordinating with
+  it.
+
+  `java.util.concurrent.BlockingQueue` (with `LinkedBlockingQueue` as a
+  common concrete implementation) solves both problems at once: it's
+  internally thread-safe, so concurrent `add`/`take` calls from
+  different threads are handled correctly without external
+  synchronization, and its `.take()` method is *blocking* -- rather
+  than immediately returning `null` on an empty queue, it waits until
+  an element genuinely becomes available, then returns it. That
+  blocking behavior is exactly the coordination a producer/consumer
+  handoff needs: the consumer simply calls `.take()` and gets an item
+  whenever the producer eventually provides one, with no polling loop,
+  no `null` checks, and no race against the producer's timing at all --
+  the queue itself handles making the consumer wait correctly.
 example_code: |
+  import java.util.ArrayDeque;
+  import java.util.Deque;
   import java.util.concurrent.BlockingQueue;
   import java.util.concurrent.LinkedBlockingQueue;
 
+  // The trap: ArrayDeque isn't thread-safe, and poll() doesn't wait for items.
+  public class SolutionBroken {
+      public static void main(String[] args) throws InterruptedException {
+          Deque<Integer> queue = new ArrayDeque<>();       // NOT thread-safe
+          Thread producer = new Thread(() -> {
+              for (int i = 0; i < 3; i++) {
+                  queue.add(i);
+              }
+          });
+          producer.start();
+          int total = 0;
+          for (int i = 0; i < 3; i++) {
+              // total += queue.poll();   // races the producer -- poll() may return null!
+          }
+      }
+  }
+
+  // Fix: BlockingQueue is thread-safe, and take() blocks until an item exists.
+  public class Solution {
+      public static void main(String[] args) throws InterruptedException {
+          BlockingQueue<Integer> queue = new LinkedBlockingQueue<>();
+          Thread producer = new Thread(() -> {
+              for (int i = 0; i < 3; i++) {
+                  queue.add(i);
+              }
+          });
+          producer.start();
+          int total = 0;
+          for (int i = 0; i < 3; i++) {
+              total += queue.take();      // waits for an item -- no race, no null
+          }
+          System.out.println(total);       // 3, reliably every time
+      }
+  }
+
   BlockingQueue<Integer> q = new LinkedBlockingQueue<>();
   new Thread(() -> q.add(1)).start();
-  System.out.println(q.take());
+  System.out.println(q.take());             // 1 -- waits if not yet added
 starter_code: |
   import java.util.ArrayDeque;
   import java.util.Deque;

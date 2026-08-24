@@ -4,14 +4,59 @@ language: java
 level: 130
 objective: "Parse a groupId:artifactId:version Maven coordinate string into its three parts."
 explanation: |
-  Maven identifies every dependency with a coordinate string in the
-  shape groupId:artifactId:version -- e.g.
-  com.google.guava:guava:31.0-jre. Splitting on ":" is all that's needed
-  to pull the three parts apart, since none of them can legally contain
-  a colon themselves.
+  Every Maven dependency is uniquely identified by a "coordinate" -- a
+  colon-separated string in the shape `groupId:artifactId:version`,
+  such as `com.google.guava:guava:31.0-jre`. `groupId` conventionally
+  mirrors a reversed domain name (`com.google.guava`, `org.junit`) to
+  namespace artifacts published by different organizations without
+  collision; `artifactId` is the specific library's name within that
+  group; `version` identifies which release. This three-part
+  convention is stable and predictable enough that pulling it apart
+  requires nothing more elaborate than `String.split(":")` -- none of
+  the three components can legally contain a literal colon themselves
+  (colons are reserved specifically as the coordinate's own field
+  separator), so splitting on `":"` cleanly yields exactly the three
+  parts in a fixed, known order, with no ambiguity about where one
+  field ends and the next begins.
+
+  `coordinate.split(":")` returns a `String[]` with `parts[0]` as the
+  groupId, `parts[1]` as the artifactId, and `parts[2]` as the version
+  -- and since the format is fixed-shape rather than variable-length
+  (unlike, say, a wheel filename's trailing platform tags covered
+  elsewhere in this app), indexing directly by position (`parts[0]`,
+  `parts[1]`, `parts[2]`) is both correct and the clearest way to
+  express "give me the groupId, artifactId, and version specifically,"
+  with no need for a catch-all pattern to absorb variable trailing
+  fields. This same shape recurs constantly in build-tooling and
+  package-management code across ecosystems -- a small number of fixed,
+  meaningfully-named fields joined by a reserved delimiter character
+  that's excluded from appearing inside any individual field -- which
+  is exactly what makes a simple `split` sufficient rather than
+  needing a more elaborate parser.
 example_code: |
-  String[] parts = "org.junit:junit:5.10.0".split(":");
-  System.out.println(parts[1]);
+  public class Solution {
+      public static void main(String[] args) {
+          String coordinate = "com.google.guava:guava:31.0-jre";
+
+          // Fix: split(":") cleanly separates the three fixed, positional fields.
+          String[] parts = coordinate.split(":");
+          String groupId = parts[0];
+          String artifactId = parts[1];
+          String version = parts[2];
+
+          System.out.println(groupId + " " + artifactId + " " + version);
+          // com.google.guava guava 31.0-jre
+      }
+  }
+
+  String[] junitParts = "org.junit:junit:5.10.0".split(":");
+  System.out.println(junitParts[1]);   // junit -- artifactId, by fixed position
+
+  // The full pattern, generalized: groupId:artifactId:version, always in that order.
+  String springCoord = "org.springframework:spring-core:6.1.0";
+  String[] springParts = springCoord.split(":");
+  System.out.println(springParts[0] + " / " + springParts[1] + " @ " + springParts[2]);
+  // org.springframework / spring-core @ 6.1.0
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

@@ -4,19 +4,65 @@ language: java
 level: 88
 objective: "Sort a list of records by a specific field using Comparator.comparingInt instead of relying on natural order."
 explanation: |
-  Comparator.comparingInt (and its comparing()/comparingLong/...
-  siblings) builds a comparator from a key-extractor function, so
-  sorting "by age" or "by name" is a one-liner instead of a hand-written
-  compare() implementation -- and it reads as exactly what it does.
+  Sorting a list of custom objects by a specific field traditionally
+  meant implementing `Comparator<T>`'s single abstract method,
+  `compare(T a, T b)`, by hand -- returning a negative number, zero, or
+  positive depending on how `a`'s field relates to `b`'s, a pattern
+  that's mechanical but still requires writing out the comparison logic
+  explicitly every time. `Comparator.comparingInt` (along with its
+  siblings `comparing()` for general `Comparable` keys, `comparingLong`,
+  `comparingDouble`) replaces that with a *key-extractor* function
+  instead: you tell it *what* to compare by (`Item::price`, a method
+  reference extracting the field to sort on), and it builds the actual
+  `Comparator` implementation for you, handling the negative/zero/
+  positive comparison logic internally. `items.sort(Comparator.
+  comparingInt(Item::price))` reads almost like English -- "sort items,
+  comparing by int, using price" -- which is exactly the point: the code
+  states the *intent* directly rather than the comparison *mechanism*.
+
+  This composes further for cases beyond a single sort key: `.
+  thenComparing(...)` chains a secondary comparator to break ties on the
+  first key (sort by last name, then by first name among people sharing
+  a last name), and `.reversed()` flips any comparator's direction
+  without needing to write a separate descending version by hand. The
+  underlying reason this all works cleanly is that a custom `record` (or
+  any class) doesn't need to implement `Comparable` itself to be sorted
+  this way -- `Comparator.comparingInt(Item::price)` builds an
+  *external* comparator that plugs into `.sort(...)`, so the same class
+  can be sorted different ways in different contexts without needing to
+  pick one single "natural order" baked into the class itself.
 example_code: |
+  import java.util.ArrayList;
   import java.util.Comparator;
   import java.util.List;
+
+  record Person(String name, int age) {}
+
+  public class Solution {
+      public static void main(String[] args) {
+          List<Person> people = new ArrayList<>(List.of(
+              new Person("Carol", 35),
+              new Person("Alice", 30),
+              new Person("Bob", 25)
+          ));
+
+          // Fix: comparingInt builds a comparator from a key-extractor function.
+          people.sort(Comparator.comparingInt(Person::age));
+          System.out.println(people);
+          // [Person[name=Bob, age=25], Person[name=Alice, age=30], Person[name=Carol, age=35]]
+
+          // Composable: sort by name, breaking ties with age, or reverse either way.
+          people.sort(Comparator.comparing(Person::name).thenComparingInt(Person::age));
+          people.sort(Comparator.comparingInt(Person::age).reversed());
+          System.out.println(people);   // Carol(35), Alice(30), Bob(25) -- descending
+      }
+  }
 
   record Item(String name, int price) {}
 
   List<Item> items = new java.util.ArrayList<>(List.of(new Item("b", 2), new Item("a", 1)));
   items.sort(Comparator.comparingInt(Item::price));
-  System.out.println(items);
+  System.out.println(items);          // [Item[name=a, price=1], Item[name=b, price=2]]
 starter_code: |
   import java.util.ArrayList;
   import java.util.List;

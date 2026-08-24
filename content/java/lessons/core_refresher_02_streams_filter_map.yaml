@@ -4,18 +4,63 @@ language: java
 level: 82
 objective: "Rewrite an explicit filter-then-transform loop using the Stream API."
 explanation: |
-  The Stream API expresses "filter, then transform, then collect" as a
-  declarative pipeline instead of an imperative loop with a manual
-  accumulator list -- filter() keeps matching elements, map() transforms
-  each one, and collect(Collectors.toList()) gathers the results.
+  The imperative version of "keep some elements, transform each,
+  collect the results" needs an explicit mutable accumulator (`new
+  ArrayList<>()`), a loop, an `if` check, and a manual `.add()` call --
+  four separate moving parts that together express one conceptually
+  simple idea. The Stream API collapses that into a declarative
+  pipeline that reads in the same order the operations conceptually
+  happen: `.stream()` turns the collection into a stream of elements,
+  `.filter(predicate)` keeps only the elements matching a condition
+  (discarding the rest, without needing an explicit `if`), `.map
+  (function)` transforms each surviving element into something else,
+  and `.collect(Collectors.toList())` gathers the final results into a
+  concrete `List` -- no manual accumulator variable ever appears in the
+  code at all, because the pipeline itself manages accumulation
+  internally.
+
+  Each stage only does its own single job, which is what makes stream
+  pipelines easy to read left-to-right as a sequence of transformations
+  rather than needing to trace a loop body's control flow to understand
+  what it does overall. It's worth being precise about *when* each
+  stage actually runs, though: `.filter()` and `.map()` are lazy --
+  calling them doesn't process any elements immediately, it just builds
+  up a description of the pipeline; the whole thing only actually
+  executes once a *terminal* operation like `.collect(...)` (or `.
+  forEach(...)`, `.count()`, `.reduce(...)`) is called, which is what
+  triggers elements to actually flow through `filter` then `map` then
+  into the collector, one element at a time. This laziness is also why
+  a stream can only be consumed *once* -- calling `.stream()` again on
+  the same already-terminated stream throws `IllegalStateException`;
+  each stream pipeline is a one-shot description of work, not a
+  reusable object.
 example_code: |
+  import java.util.ArrayList;
   import java.util.List;
   import java.util.stream.Collectors;
 
+  // The trap: not wrong, just four separate moving parts for one idea.
+  List<Integer> numbers = List.of(1, 2, 3, 4, 5, 6);
+  List<Integer> resultImperative = new ArrayList<>();
+  for (int n : numbers) {
+      if (n % 2 == 0) {
+          resultImperative.add(n * 10);
+      }
+  }
+  System.out.println(resultImperative);            // [20, 40, 60]
+
+  // Fix: a declarative pipeline -- filter, transform, collect, in order.
+  List<Integer> result = numbers.stream()
+          .filter(n -> n % 2 == 0)      // keep only even numbers
+          .map(n -> n * 10)              // transform each survivor
+          .collect(Collectors.toList()); // gather into a concrete List
+  System.out.println(result);            // [20, 40, 60]
+
+  // filter/map are LAZY -- nothing runs until a terminal op like collect():
   List<Integer> squares = List.of(1, 2, 3).stream()
           .map(n -> n * n)
           .collect(Collectors.toList());
-  System.out.println(squares);
+  System.out.println(squares);            // [1, 4, 9]
 starter_code: |
   import java.util.ArrayList;
   import java.util.List;

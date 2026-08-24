@@ -4,15 +4,54 @@ language: java
 level: 108
 objective: "Raise a thread's priority above the default, understanding it's a scheduling hint, not a guarantee."
 explanation: |
-  Every thread defaults to Thread.NORM_PRIORITY (5). setPriority() lets
-  you nudge the JVM's scheduler toward favoring one thread over another
-  -- but it's only a hint: the OS scheduler is free to mostly ignore it,
-  and priority values aren't portable in their effect across platforms.
-  It's a real, occasionally useful API, just not a strong guarantee.
+  Every `Thread` starts life with priority `Thread.NORM_PRIORITY` (the
+  constant `5`), on a scale from `Thread.MIN_PRIORITY` (`1`) to `Thread.
+  MAX_PRIORITY` (`10`). `setPriority()` lets code nudge that value up or
+  down, which sounds like a direct lever for controlling how much CPU
+  time a thread gets relative to others -- but the JVM's own
+  documentation is explicit that this is only a *hint* to the
+  underlying OS scheduler, never a guarantee. The actual thread
+  scheduler is provided by the host operating system, not the JVM
+  itself, and different OS schedulers interpret (or largely ignore) the
+  Java priority hint very differently -- some platforms have a coarse
+  or nonexistent mapping from Java's 1-10 scale onto their own native
+  priority mechanism, meaning `setPriority(Thread.MAX_PRIORITY)` might
+  meaningfully change scheduling behavior on one system and have
+  essentially no observable effect on another, all while the code and
+  the API call itself remain identical.
+
+  That unreliability is exactly why thread priority should never be
+  relied on as a *correctness* mechanism -- code should never depend on
+  "the high-priority thread will definitely run before the low-priority
+  one" for anything the program's actual correctness hinges on; that's
+  what real synchronization primitives (locks, `CompletableFuture`
+  chaining, explicit ordering via `join()`) exist for. Priority is
+  legitimately useful only as a soft, best-effort *preference* --
+  nudging the scheduler to favor a genuinely latency-sensitive thread
+  over background bookkeeping work, say -- with the explicit
+  understanding that it's advisory, platform-dependent, and never a
+  substitute for actual coordination logic when correctness is on the
+  line.
 example_code: |
-  Thread t = new Thread(() -> {});
-  t.setPriority(Thread.MIN_PRIORITY);
-  System.out.println(t.getPriority());
+  public class Solution {
+      public static void main(String[] args) {
+          Thread t = new Thread(() -> {});
+          System.out.println(t.getPriority());   // 5 -- Thread.NORM_PRIORITY, the default
+
+          // setPriority is a HINT, not a guarantee -- the OS scheduler decides how much it matters.
+          t.setPriority(Thread.MAX_PRIORITY);
+          System.out.println(t.getPriority());     // 10
+
+          Thread low = new Thread(() -> {});
+          low.setPriority(Thread.MIN_PRIORITY);
+          System.out.println(low.getPriority());    // 1
+
+          // The trap: NEVER rely on priority for actual correctness --
+          // "high priority thread definitely finishes first" is not guaranteed.
+          // For genuine ordering guarantees, use real synchronization instead:
+          // t.join(), a Lock, or CompletableFuture chaining -- not priority.
+      }
+  }
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

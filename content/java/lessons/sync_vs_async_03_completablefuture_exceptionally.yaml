@@ -4,16 +4,63 @@ language: java
 level: 113
 objective: "Fix an async pipeline that crashes on join() by recovering from the failure with exceptionally() instead of letting it propagate."
 explanation: |
-  If the function passed to supplyAsync throws, the future completes
-  exceptionally -- calling join() on it re-throws that failure wrapped
-  in a CompletionException. exceptionally(fn) lets you supply a fallback
-  value for exactly that case, turning a crash into a recovered result.
+  When the `Supplier` passed to `supplyAsync` throws instead of
+  returning normally, the resulting `CompletableFuture` doesn't just
+  silently produce no value -- it transitions into a distinct
+  "completed exceptionally" state, carrying the thrown exception with
+  it. Calling `.join()` on a future in that state doesn't return
+  normally either: it re-throws, wrapping the original exception inside
+  an unchecked `CompletionException` (this is `.join()`'s specific
+  behavior; the closely related `.get()` wraps it in a checked `
+  ExecutionException` instead) -- so `future.join()` on a future that
+  failed inside `supplyAsync` propagates that failure straight to
+  whatever called `.join()`, exactly like calling a method that itself
+  threw, just surfaced later, at the point the result is actually
+  retrieved rather than at the point the original computation ran.
+
+  `.exceptionally(fn)` is the recovery mechanism for exactly this
+  situation: chained onto a `CompletableFuture`, it supplies a fallback
+  function that runs *only* if the future it's attached to completed
+  exceptionally, receiving the exception as its argument and returning
+  a substitute value to use instead -- turning what would otherwise be
+  a propagating failure into a normally-completed future carrying the
+  fallback value. If the original future completes *normally* instead,
+  `.exceptionally()`'s function is simply never invoked at all, and the
+  original successful value passes through unchanged. The `<Integer>`
+  type witness on `CompletableFuture.<Integer>supplyAsync(...)` is a
+  real, occasionally necessary Java quirk worth understanding: when the
+  lambda passed to `supplyAsync` only ever throws and never actually
+  returns a value on any path, the compiler has nothing to infer the
+  future's generic type parameter *from* (no `return` statement
+  produces a type), so it has to be supplied explicitly the moment
+  another method is chained afterward that depends on knowing that type.
 example_code: |
   import java.util.concurrent.CompletableFuture;
 
-  int result = CompletableFuture.<Integer>supplyAsync(() -> { throw new RuntimeException(); })
+  // The trap: an unhandled failure propagates through join() as a CompletionException.
+  CompletableFuture<Integer> futureBroken = CompletableFuture.supplyAsync(() -> {
+      throw new RuntimeException("boom");
+  });
+  // int resultBroken = futureBroken.join();   // throws CompletionException wrapping "boom"
+
+  // Fix: exceptionally() supplies a fallback value for exactly the failure case.
+  int result = CompletableFuture.<Integer>supplyAsync(() -> {
+              throw new RuntimeException("boom");
+          })
+          .exceptionally(ex -> -1)             // runs ONLY if the future failed
+          .join();
+  System.out.println(result);                    // -1 -- recovered, no crash
+
+  int recovered = CompletableFuture.<Integer>supplyAsync(() -> { throw new RuntimeException(); })
           .exceptionally(ex -> 0)
           .join();
+  System.out.println(recovered);                  // 0
+
+  // exceptionally's function is SKIPPED entirely on a successful future:
+  int normal = CompletableFuture.supplyAsync(() -> 42)
+          .exceptionally(ex -> -1)                // never invoked -- no exception occurred
+          .join();
+  System.out.println(normal);                      // 42
 starter_code: |
   import java.util.concurrent.CompletableFuture;
 

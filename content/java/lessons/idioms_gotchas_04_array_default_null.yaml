@@ -4,15 +4,62 @@ language: java
 level: 79
 objective: "Fix a NullPointerException caused by using an object-array slot that was never assigned -- it defaults to null, not an empty instance."
 explanation: |
-  `new String[3]` allocates space for 3 references, but every slot
-  starts out as null -- there's no implicit "empty string" default the
-  way primitive arrays default to 0. Calling a method on an unassigned
-  slot (like .length() on names[0]) throws a NullPointerException until
-  something is actually assigned there.
+  `new String[3]` allocates space for exactly 3 reference slots, but
+  allocating the array is not the same as populating it -- each slot
+  starts out holding Java's default value for a reference type, which
+  is `null`, not any kind of "empty" `String`. This mirrors how
+  *primitive* arrays default their slots too (`new int[3]` defaults
+  every slot to `0`, `new boolean[3]` to `false`), but the difference
+  for object-type arrays is that there's no meaningful "zero value" for
+  most objects -- `null` is the only sensible default Java can pick,
+  since it can't know in advance what an "empty" instance of an
+  arbitrary class should even look like. That means every object-array
+  slot genuinely represents "nothing here yet" until something is
+  explicitly assigned to it, and treating an unassigned slot as if it
+  already held a usable object -- calling `.length()` on `names[0]`
+  before anything was ever put there -- throws `NullPointerException`,
+  Java's standard signal for "you tried to use a reference that points
+  at nothing."
+
+  This is worth contrasting directly with the primitive-array case,
+  since the asymmetry is exactly what trips people up: `new int[3]`
+  followed by `arr[0] + 1` works fine immediately, producing `1`,
+  because `0` is a perfectly usable default `int` value -- there's
+  nothing wrong with adding to it. But the equivalent assumption for an
+  object array (that an unassigned slot is somehow safe to call methods
+  on) is simply false, and the fix is always the same: assign something
+  real to a slot before using it, whether that's an explicit `""` for a
+  `String`, a `new SomeClass()` for a custom type, or explicitly
+  checking `if (names[0] != null)` before touching a slot whose
+  population isn't guaranteed by the surrounding code.
 example_code: |
-  String[] names = new String[2];
-  names[0] = "Ada";
-  System.out.println(names[0].length());
+  public class Solution {
+      public static void main(String[] args) {
+          // The trap: unassigned object-array slots are null, not "empty."
+          String[] names_broken = new String[3];
+          // System.out.println(names_broken[0].length());   // NullPointerException!
+
+          // Fix: assign something real before using a slot.
+          String[] names = new String[2];
+          names[0] = "Ada";
+          System.out.println(names[0].length());     // 2
+
+          String[] names2 = new String[3];
+          names2[0] = "";                              // explicit empty string, not null
+          System.out.println(names2[0].length());      // 0
+
+          // Contrast: PRIMITIVE arrays default to a genuinely usable value.
+          int[] counts = new int[3];
+          System.out.println(counts[0] + 1);            // 1 -- 0 is a safe default
+
+          // For a slot that might legitimately still be null, check first:
+          if (names2[1] != null) {
+              System.out.println(names2[1].length());
+          } else {
+              System.out.println("names2[1] was never set");
+          }
+      }
+  }
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

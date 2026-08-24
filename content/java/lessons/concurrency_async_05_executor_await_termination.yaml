@@ -4,18 +4,69 @@ language: java
 level: 100
 objective: "Fix code that reads results right after shutdown(), which only stops new submissions -- it doesn't wait for already-submitted tasks to finish."
 explanation: |
-  ExecutorService.shutdown() is non-blocking: it stops the pool from
-  accepting new tasks, but returns immediately, regardless of whether
-  already-submitted tasks have finished running. Reading shared state
-  right after shutdown() races against those tasks. awaitTermination()
-  actually blocks until every submitted task completes (or a timeout
-  elapses), which is what's needed before it's safe to read the results.
+  `ExecutorService.shutdown()`'s name is a common source of confusion --
+  it does *not* wait for anything to finish. Its actual job is narrower
+  and non-blocking: it tells the pool to stop accepting *new* task
+  submissions from this point forward, and it returns to the caller
+  immediately, regardless of whether tasks that were already submitted
+  before the `shutdown()` call have started, are still running, or have
+  finished. `pool.submit(task1); pool.submit(task2); pool.shutdown();
+  System.out.println(total[0]);` races the print statement against both
+  submitted tasks' actual execution -- there's no guarantee either task
+  has run to completion by the time `shutdown()` returns and the
+  following line executes, so `total[0]` might print `0`, `10`, `20`,
+  or `30` depending on how far the pool's worker threads happened to
+  get before the main thread reached the print statement, an
+  unpredictable race with no error raised anywhere to signal it.
+
+  `awaitTermination(timeout, unit)` is the method that actually blocks
+  -- it waits until either every previously-submitted task has finished
+  running (in which case the pool has fully shut down and `
+  awaitTermination` returns `true`), or the given timeout elapses first
+  (returning `false`, with the pool possibly still finishing up). The
+  correct, standard shutdown sequence is therefore always the pair
+  together: `shutdown()` first (stop accepting new work), immediately
+  followed by `awaitTermination(...)` (actually wait for the already-
+  accepted work to finish) -- only *after* that second call returns is
+  it safe to assume every submitted task has genuinely completed and
+  read any shared state those tasks were writing to. Reading shared
+  results right after `shutdown()` alone, skipping `awaitTermination`
+  entirely, is exactly the same category of mistake as forgetting `t.
+  join()` after starting a raw `Thread` -- both leave the main thread
+  racing against background work that hasn't necessarily finished yet.
 example_code: |
+  import java.util.concurrent.ExecutorService;
+  import java.util.concurrent.Executors;
   import java.util.concurrent.TimeUnit;
+
+  // The trap: shutdown() doesn't wait -- reading results right after is a race.
+  public class SolutionBroken {
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newFixedThreadPool(2);
+          int[] total = {0};
+          pool.submit(() -> { total[0] += 10; });
+          pool.submit(() -> { total[0] += 20; });
+          pool.shutdown();                    // does NOT wait for the tasks above!
+          System.out.println(total[0]);       // unreliable -- could be 0, 10, 20, or 30
+      }
+  }
+
+  // Fix: awaitTermination() after shutdown() actually waits for completion.
+  public class Solution {
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newFixedThreadPool(2);
+          int[] total = {0};
+          pool.submit(() -> { total[0] += 10; });
+          pool.submit(() -> { total[0] += 20; });
+          pool.shutdown();
+          pool.awaitTermination(5, TimeUnit.SECONDS);   // blocks until tasks finish
+          System.out.println(total[0]);                  // reliably 30, every time
+      }
+  }
 
   pool.shutdown();
   pool.awaitTermination(5, TimeUnit.SECONDS);
-  // safe to read shared results here
+  // safe to read shared results here -- both submitted tasks have genuinely finished
 starter_code: |
   import java.util.concurrent.ExecutorService;
   import java.util.concurrent.Executors;

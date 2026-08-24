@@ -4,13 +4,60 @@ language: java
 level: 92
 objective: "Replace manual string concatenation with String.format for a structured, readable output template."
 explanation: |
-  String.format (and its %s/%d/%f-style placeholders) separates the
-  template from the values being inserted, which reads more clearly
-  than interleaving literal text and variables with +, especially once
-  a message has more than one or two pieces of dynamic content.
+  `"Name: " + name + ", Age: " + age` interleaves literal text
+  fragments and variable references in one long chain of `+` operators
+  -- readable enough with just two variables, but the pattern degrades
+  quickly as a message grows: more pieces of dynamic content mean more
+  `+` operators to visually parse, and it's easy to lose track of
+  which literal fragment belongs next to which variable, or to
+  introduce a stray missing space or misplaced comma among the quote
+  marks. `String.format(template, args...)` separates those two
+  concerns cleanly: the *template* (`"Name: %s, Age: %d"`) is one
+  single readable string showing the entire structure of the output at
+  a glance, and the *values* to insert are supplied separately as
+  trailing arguments, matched up with the template's placeholders in
+  order. `%s` is a general-purpose placeholder that calls `.toString()`
+  on whatever's passed (works for any object, not just strings despite
+  the name), `%d` specifically expects an integer type, and there are
+  several more (`%f` for floating-point, `%b` for boolean, and so on)
+  each with their own formatting conventions.
+
+  Beyond just readability, `%`-format placeholders support formatting
+  options that plain `+` concatenation has no equivalent for at all --
+  `%5d` pads an integer to a minimum field width of 5 characters (right
+  -aligned by default), `%.2f` rounds a floating-point value to exactly
+  2 decimal places, `%-10s` left-aligns a string within a 10-character
+  field. Those formatting directives are exactly the kind of thing that
+  would otherwise require manual padding/rounding logic mixed into the
+  surrounding concatenation, and `String.format` expresses them
+  declaratively as part of the placeholder itself instead. Java 15+
+  also added text blocks (`"""..."""`) with `.formatted(args...)` as a
+  method-call alternative to `String.format(template, args...)` for
+  multi-line templates specifically, though the underlying placeholder
+  syntax and behavior are the same either way.
 example_code: |
+  // The trap: readable with 2 variables, but harder to scan as it grows.
+  String name = "Ada";
+  int age = 30;
+  System.out.println("Name: " + name + ", Age: " + age);   // fine, but scales poorly
+
+  // Fix: String.format separates the template from the values cleanly.
+  System.out.println(String.format("Name: %s, Age: %d", name, age));
+  // Name: Ada, Age: 30
+
   String msg = String.format("%s is %d", "Ada", 30);
-  System.out.println(msg);
+  System.out.println(msg);                                   // Ada is 30
+
+  // Formatting options plain + has no equivalent for at all:
+  System.out.println(String.format("%.2f", 3.14159));         // 3.14 -- rounded
+  System.out.println(String.format("[%5d]", 42));             // [   42] -- padded to width 5
+  System.out.println(String.format("[%-5d]", 42));            // [42   ] -- left-aligned
+
+  // Java 15+: text blocks with .formatted() for multi-line templates:
+  // String report = """
+  //     Name: %s
+  //     Age: %d
+  //     """.formatted(name, age);
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

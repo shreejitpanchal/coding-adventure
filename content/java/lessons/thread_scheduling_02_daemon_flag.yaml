@@ -4,16 +4,61 @@ language: java
 level: 107
 objective: "Set a background thread's daemon flag so it doesn't block the JVM from exiting."
 explanation: |
-  A non-daemon thread keeps the whole JVM alive until it finishes, even
-  after the main thread's work is done -- fine for work that must
-  complete, but wrong for an endless background task (a poller, a
-  heartbeat) that should simply be abandoned when the program exits.
-  setDaemon(true), called before start(), marks a thread as
-  background-only.
+  The JVM's default rule for when a program actually exits isn't "when
+  `main()` returns" -- it's "when every *non-daemon* thread has
+  finished," however long that takes. That's correct behavior for work
+  that genuinely must run to completion (finishing writing a file,
+  completing a network request already underway) -- terminating it
+  early would be a real, visible bug. But it's exactly the wrong
+  behavior for a thread doing open-ended background work with no
+  natural finishing point by design -- a polling loop, a periodic
+  heartbeat -- leaving that thread as non-daemon means the JVM can never
+  exit cleanly on its own once every other piece of "real" work is
+  done, hanging indefinitely until something forcibly kills the
+  process.
+
+  `t.setDaemon(true)`, called *before* `t.start()` (daemon status
+  cannot be changed once a thread is already running -- attempting to
+  set it afterward throws `IllegalThreadStateException`), marks a
+  thread as background-only: its continued existence is never a reason
+  for the JVM to stay alive. Once every non-daemon thread has finished,
+  the JVM exits immediately, and any daemon threads still running at
+  that moment are simply abandoned mid-execution -- no cleanup code
+  inside them is guaranteed to run, no `finally` block is guaranteed to
+  complete. That's the tradeoff to weigh: `daemon=true` is right for
+  work that genuinely doesn't need a graceful shutdown sequence, just
+  "stop existing when the program stops," and wrong for anything that
+  needs to flush a buffer, release an external resource, or otherwise
+  clean up deliberately before disappearing -- that kind of thread
+  needs either to stay non-daemon (with an explicit, cooperative way to
+  ask it to stop, like the interrupt-flag pattern from a nearby
+  exercise) or an intentional shutdown sequence the main thread
+  triggers before it exits.
 example_code: |
-  Thread t = new Thread(() -> {});
-  t.setDaemon(true);
-  System.out.println(t.isDaemon());
+  public class Solution {
+      public static void main(String[] args) {
+          // The trap: a never-ending background thread that's NOT marked daemon
+          // would keep the WHOLE JVM alive forever, blocking a clean exit.
+          Thread tBroken = new Thread(() -> {
+              // imagine an infinite polling loop here
+          });
+          System.out.println(tBroken.isDaemon());   // false -- would block JVM exit if run forever
+
+          // Fix: setDaemon(true), called BEFORE start() -- can't change it after.
+          Thread t = new Thread(() -> {});
+          t.setDaemon(true);
+          System.out.println(t.isDaemon());           // true
+
+          // Attempting to set it AFTER start() throws IllegalThreadStateException:
+          Thread t2 = new Thread(() -> {});
+          t2.start();
+          try {
+              t2.setDaemon(true);                       // too late -- already running
+          } catch (IllegalThreadStateException e) {
+              System.out.println("can't change daemon status after start()");
+          }
+      }
+  }
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

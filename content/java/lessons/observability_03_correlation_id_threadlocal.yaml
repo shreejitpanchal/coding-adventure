@@ -4,16 +4,76 @@ language: java
 level: 143
 objective: "Use ThreadLocal to attach a per-request correlation ID to every log line without passing it as an explicit parameter everywhere."
 explanation: |
-  Tracing a single request through many nested method calls needs a
-  correlation/request ID attached to every log line it touches --
-  threading that as an explicit parameter through every method signature
-  is invasive. ThreadLocal holds a value that's implicitly available
-  anywhere on the same thread, without passing it manually, which is
-  exactly the pattern real logging frameworks' MDC (Mapped Diagnostic
-  Context) is built on.
-example_code: |
-  static ThreadLocal<String> userId = ThreadLocal.withInitial(() -> "anonymous");
+  Tracing one request through a real application typically means it
+  passes through several layers -- a controller calls a service method,
+  which calls a repository method, which calls a logging helper -- and
+  every log line at every one of those layers should carry the same
+  correlation/request ID, so all of them can be grepped together later
+  when investigating that specific request. The naive approach, adding
+  `requestId` as an explicit parameter threaded through every method
+  signature along that whole call chain, is invasive: it pollutes
+  signatures that otherwise have nothing to do with logging or request
+  tracking, and it means every new method added anywhere in the chain
+  has to remember to accept and forward it too, indefinitely.
 
+  `ThreadLocal<T>` solves this by making a value implicitly available
+  to *any code running on the same thread*, without it being passed as
+  a parameter anywhere at all: `requestId.set("req-123")` stores a
+  value that any code calling `requestId.get()` later, from anywhere
+  further down the same thread's call stack, can read -- no matter how
+  many method calls deep it is. Each thread gets its own genuinely
+  independent copy of the `ThreadLocal`'s value (that's the entire
+  point of the name) -- in a typical thread-per-request server
+  architecture, where each incoming request is handled on its own
+  dedicated thread, that per-thread isolation naturally becomes
+  per-request isolation, with no extra coordination needed: one
+  request's `.set()` call is invisible to a different concurrently-
+  running request's `.get()` calls, since they're executing on
+  different threads entirely. `ThreadLocal.withInitial(() -> "unknown")`
+  supplies a sensible fallback for any thread that never explicitly
+  calls `.set()` at all, rather than returning `null`. This exact
+  mechanism is what real logging frameworks' MDC (Mapped Diagnostic
+  Context, in Log4j/Logback/SLF4J) is built on internally, just wrapped
+  in a friendlier API -- `ThreadLocal` is the foundational primitive
+  underneath it.
+example_code: |
+  // The trap: never calling .set() leaves every log line at the default.
+  static ThreadLocal<String> requestIdBroken = ThreadLocal.withInitial(() -> "unknown");
+
+  static void logBroken(String message) {
+      System.out.println("[" + requestIdBroken.get() + "] " + message);
+  }
+
+  static void handleRequestBroken() {
+      logBroken("handling request");   // [unknown] handling request -- no ID ever set!
+  }
+
+  // Fix: .set() the value once, .get() picks it up anywhere on the SAME thread.
+  public class Solution {
+      static ThreadLocal<String> requestId = ThreadLocal.withInitial(() -> "unknown");
+
+      static void log(String message) {
+          System.out.println("[" + requestId.get() + "] " + message);   // no parameter needed
+      }
+
+      static void deeplyNestedHelper() {
+          log("doing nested work");    // still sees the right ID, no threading needed
+      }
+
+      static void handleRequest() {
+          requestId.set("req-123");
+          log("handling request");
+          deeplyNestedHelper();
+      }
+
+      public static void main(String[] args) {
+          handleRequest();
+          // [req-123] handling request
+          // [req-123] doing nested work
+      }
+  }
+
+  static ThreadLocal<String> userId = ThreadLocal.withInitial(() -> "anonymous");
   static void log(String msg) {
       System.out.println("[" + userId.get() + "] " + msg);
   }

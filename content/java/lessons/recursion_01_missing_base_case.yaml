@@ -4,19 +4,67 @@ language: java
 level: 121
 objective: "Fix a StackOverflowError caused by a missing base case."
 explanation: |
-  Every recursive method needs at least one base case -- a condition
-  where it stops calling itself and just returns. Without one, each call
-  makes another call, forever, until the call stack is exhausted and a
-  StackOverflowError is thrown. The fix is always the same shape: check
-  the stopping condition first, and return directly instead of recursing
-  further.
+  Every recursive method needs two cooperating parts: a recursive case
+  (the method calling itself with a "smaller" version of the problem)
+  and at least one base case -- a condition where the problem is now
+  trivial enough to answer directly, stopping the recursion instead of
+  calling itself again. Without a base case that's ever actually
+  reached, each call makes another call, and each of those makes
+  another, with no way for the chain to unwind -- every nested call
+  consumes another frame on the JVM's call stack (holding that
+  invocation's local variables and return address), and the call stack
+  is a genuinely finite resource, sized at JVM startup (a few thousand
+  to tens of thousands of frames depending on frame size and the `
+  -Xss` flag). Once recursion goes deep enough to exhaust it, the JVM
+  throws `StackOverflowError` -- not a checked, recoverable exception,
+  but an `Error`, signaling something close to a fatal condition in the
+  running program. `countdown(int n)` with no base case at all doesn't
+  even have a *broken* stopping condition -- it never checks for one,
+  decrementing `n` through 0 into negative numbers indefinitely, until
+  the stack gives out.
+
+  The fix is always the same shape regardless of what the recursive
+  method actually computes: identify the simplest input the method
+  needs to handle directly (here, "we've counted down through 0, there
+  's nothing left"), check for that condition *before* making the
+  recursive call, and `return` immediately when it's met. It's worth
+  being deliberate about exactly *where* that check sits relative to
+  the rest of the method's work -- checking before doing this call's
+  own work versus after changes precisely which values get processed
+  before the method stops, and getting that ordering subtly wrong is
+  itself a common source of off-by-one errors in otherwise-correct
+  recursive code.
 example_code: |
-  static void countdown(int n) {
-      if (n < 0) {
-          return;
+  public class Solution {
+      // The trap: no base case at all -- n decrements forever past 0.
+      static void countdownBroken(int n) {
+          System.out.println(n);
+          countdownBroken(n - 1);   // never checks for a stopping condition
+      }
+      // countdownBroken(3) -- prints 3, 2, 1, 0, -1, -2, ... until StackOverflowError
+
+      // Fix: check the stopping condition FIRST, return directly when met.
+      static void countdown(int n) {
+          if (n < 0) {
+              return;                // base case: nothing left to count down
+          }
+          System.out.println(n);
+          countdown(n - 1);          // recursive case: smaller problem
+      }
+
+      public static void main(String[] args) {
+          countdown(3);               // 3, 2, 1, 0
+      }
+  }
+
+  // Placement matters -- this stops at the SAME point, just checked earlier:
+  static void countdownV2(int n) {
+      if (n == 0) {
+          System.out.println(n);
+          return;                     // base case checked before recursing further
       }
       System.out.println(n);
-      countdown(n - 1);
+      countdownV2(n - 1);
   }
 starter_code: |
   public class Solution {

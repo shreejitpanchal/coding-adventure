@@ -4,15 +4,72 @@ language: java
 level: 98
 objective: "Replace manually created and joined Thread objects with an ExecutorService thread pool."
 explanation: |
-  Manually creating, starting, and joining Thread objects one by one
-  doesn't scale past a handful of tasks and reuses nothing --
-  ExecutorService manages a pool of worker threads for you: submit()
-  hands off work, and the pool takes care of scheduling it across
-  whatever threads are available.
+  Creating a raw `Thread` object for each unit of work is fine for a
+  handful of tasks known at compile time, but it doesn't scale: a real
+  OS thread is a genuinely expensive resource to create (its own stack
+  memory, kernel-level bookkeeping), and manually building an array of
+  `Thread` objects, starting each one, and then joining each one in a
+  second loop is boilerplate that has to be re-derived for every place
+  concurrent work is needed. Worse, every `Thread` created this way is
+  used exactly once and then discarded -- there's no reuse of the
+  actual OS thread across multiple pieces of work, which becomes a real
+  cost once "a handful of tasks" turns into "hundreds or thousands of
+  tasks over the program's lifetime."
+
+  `ExecutorService` (obtained via factory methods on `Executors`, like
+  `Executors.newFixedThreadPool(n)`) inverts this: instead of the
+  caller managing individual `Thread` objects directly, a fixed pool of
+  worker threads is created once and reused across however many tasks
+  get submitted to it. `pool.submit(task)` hands a unit of work off to
+  the pool and returns immediately (with a `Future` representing the
+  eventual result, when there is one) -- the pool's own internal
+  scheduling decides which of its worker threads actually runs each
+  submitted task and when, entirely hidden from the caller. This
+  separates "how much concurrency work needs to happen" from "how many
+  actual OS threads are involved," letting a program submit far more
+  tasks than it has worker threads without the caller needing to
+  manually throttle anything -- the pool queues excess work
+  automatically. `shutdown()` (which stops the pool from accepting
+  *new* submissions, without waiting for already-submitted work to
+  finish) and `awaitTermination(...)` (which actually blocks until
+  submitted work completes) together form the standard, correct
+  shutdown sequence, covered in more depth in the next exercise.
 example_code: |
   import java.util.concurrent.ExecutorService;
   import java.util.concurrent.Executors;
   import java.util.concurrent.TimeUnit;
+
+  // The trap: manual Thread management -- boilerplate, no thread reuse.
+  public class SolutionManual {
+      public static void main(String[] args) throws InterruptedException {
+          Thread[] threads = new Thread[3];
+          int[] results = new int[3];
+          for (int i = 0; i < 3; i++) {
+              final int idx = i;
+              threads[i] = new Thread(() -> results[idx] = idx * idx);
+              threads[i].start();
+          }
+          for (Thread t : threads) {
+              t.join();                    // separate loop, easy to get wrong under errors
+          }
+          System.out.println(java.util.Arrays.toString(results));
+      }
+  }
+
+  // Fix: ExecutorService manages a reusable pool -- submit(), then shutdown properly.
+  public class Solution {
+      public static void main(String[] args) throws InterruptedException {
+          ExecutorService pool = Executors.newFixedThreadPool(3);
+          int[] results = new int[3];
+          for (int i = 0; i < 3; i++) {
+              final int idx = i;
+              pool.submit(() -> results[idx] = idx * idx);
+          }
+          pool.shutdown();
+          pool.awaitTermination(5, TimeUnit.SECONDS);
+          System.out.println(java.util.Arrays.toString(results));   // [0, 1, 4]
+      }
+  }
 
   ExecutorService pool = Executors.newFixedThreadPool(2);
   pool.submit(() -> System.out.println("task"));

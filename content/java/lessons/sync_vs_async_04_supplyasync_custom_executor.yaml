@@ -4,19 +4,60 @@ language: java
 level: 114
 objective: "Pass an explicit ExecutorService to supplyAsync instead of relying on the shared default common pool."
 explanation: |
-  CompletableFuture.supplyAsync(fn) with no executor runs on
-  ForkJoinPool.commonPool() -- a pool shared by every parallel stream and
-  every other default-pool CompletableFuture in the whole JVM. For work
-  that needs dedicated capacity (or shouldn't compete with unrelated
-  parallel work), supplyAsync(fn, executor) lets you supply your own
-  pool explicitly.
+  `CompletableFuture.supplyAsync(fn)`, called with no second argument,
+  doesn't create a new thread pool dedicated to that one call -- it
+  runs `fn` on `ForkJoinPool.commonPool()`, a single thread pool that's
+  shared, JVM-wide, by *every* piece of code in the entire process that
+  uses the no-executor overloads of `CompletableFuture` (or Java's
+  parallel streams, which also default to the common pool). That
+  sharing is normally invisible and fine -- the common pool is sized
+  sensibly by default and most concurrent work is short-lived -- but it
+  becomes a real concern once a specific piece of async work has needs
+  that don't mesh well with sharing: work that might block for a long
+  time (starving the common pool of threads other unrelated code is
+  also depending on), work that needs a guaranteed minimum amount of
+  dedicated concurrency regardless of what else is happening elsewhere
+  in the JVM, or simply work whose failure/slowdown shouldn't be able
+  to degrade unrelated parallel streams running concurrently elsewhere
+  in the same process.
+
+  `supplyAsync(fn, executor)` -- the two-argument overload -- lets the
+  caller supply an explicit `Executor` (typically an `ExecutorService`
+  from `Executors.newFixedThreadPool(...)` or similar) instead of
+  implicitly using the shared common pool. The async computation then
+  runs on threads drawn from that dedicated pool, fully isolated from
+  whatever else in the JVM might be using the common pool at the same
+  time. This is the same underlying idea as choosing between a shared
+  resource and a dedicated one in any system -- convenient defaults are
+  fine until isolation, dedicated capacity, or predictable behavior
+  under load actually matters, at which point being explicit about
+  which pool does the work becomes the right tradeoff, at the cost of
+  now being responsible for that pool's own lifecycle (creating it, and
+  eventually calling `.shutdown()` on it once it's no longer needed).
 example_code: |
   import java.util.concurrent.CompletableFuture;
+  import java.util.concurrent.ExecutorService;
   import java.util.concurrent.Executors;
 
-  var pool = Executors.newFixedThreadPool(2);
-  int result = CompletableFuture.supplyAsync(() -> 5, pool).join();
-  pool.shutdown();
+  // The trap: no executor specified -- runs on the JVM-wide shared common pool.
+  int resultBroken = CompletableFuture.supplyAsync(() -> 21 * 2).join();
+  System.out.println(resultBroken);   // 42 -- correct, but shares ForkJoinPool.commonPool()
+                                        // with every other default-pool async work in the JVM
+
+  // Fix: an explicit executor gives this work its OWN dedicated pool.
+  public class Solution {
+      public static void main(String[] args) {
+          ExecutorService pool = Executors.newFixedThreadPool(1);
+          int result = CompletableFuture.supplyAsync(() -> 21 * 2, pool).join();
+          pool.shutdown();              // caller owns the pool's lifecycle now
+          System.out.println(result);    // 42
+      }
+  }
+
+  var pool2 = Executors.newFixedThreadPool(2);
+  int result2 = CompletableFuture.supplyAsync(() -> 5, pool2).join();
+  pool2.shutdown();
+  System.out.println(result2);            // 5
 starter_code: |
   import java.util.concurrent.CompletableFuture;
 

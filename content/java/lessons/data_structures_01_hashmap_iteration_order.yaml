@@ -4,20 +4,61 @@ language: java
 level: 86
 objective: "Fix code that prints HashMap keys directly, relying on an iteration order the Map interface never actually guarantees."
 explanation: |
-  HashMap makes no promise about iteration order -- it depends on
-  internal bucket layout, which can change between JVM versions or even
-  between runs. Code that needs a reproducible, human-inspectable
-  order needs to sort explicitly rather than depend on however HashMap
-  happens to lay things out.
+  `HashMap`'s Javadoc is explicit that it makes *no guarantee* about
+  iteration order, and that's not a documentation formality -- the
+  order genuinely reflects internal implementation details (which
+  bucket a key's hash code lands in, the table's current capacity and
+  resize history) that have nothing to do with insertion order or any
+  other order a human would find meaningful. Because it's an
+  implementation detail rather than a contract, that order can differ
+  between JVM versions, between different JVM vendors, or even between
+  runs of the exact same program with the exact same inputs if internal
+  resizing happens differently -- which means code that iterates a `
+  HashMap` and depends on the order it happens to produce is depending
+  on something that was never promised to stay the same, even though it
+  might *look* stable during local testing on one particular JVM.
+
+  When a reproducible, human-inspectable order actually matters --
+  displaying results consistently, producing deterministic test output,
+  generating a diffable report -- the fix is to sort explicitly rather
+  than trust whatever order the map happens to iterate in. Wrapping the
+  key set in a `TreeSet` (which maintains sorted order via its own
+  internal tree structure) is one simple way to get a deterministic,
+  naturally-ordered view without changing the underlying map at all.
+  This is a different concern from `LinkedHashMap`, worth mentioning
+  since it's easy to conflate the two: `LinkedHashMap` *does* guarantee
+  a stable, predictable order (insertion order, by default) as part of
+  its actual contract -- so if the goal is specifically "iterate in the
+  order things were added," `LinkedHashMap` is the right tool, while
+  `TreeMap`/`TreeSet` are the right tool for "iterate in sorted order,"
+  and plain `HashMap` is only appropriate when no particular order is
+  needed at all.
 example_code: |
   import java.util.HashMap;
   import java.util.Map;
   import java.util.TreeSet;
 
+  // The trap: printing a HashMap's keySet() directly depends on unspecified order.
+  Map<String, Integer> scoresBroken = new HashMap<>();
+  scoresBroken.put("charlie", 3);
+  scoresBroken.put("alice", 1);
+  scoresBroken.put("bob", 2);
+  System.out.println(scoresBroken.keySet());   // order NOT guaranteed -- don't rely on this
+
+  // Fix: sort explicitly for a reproducible, deterministic order.
+  System.out.println(new TreeSet<>(scoresBroken.keySet()));   // [alice, bob, charlie]
+
   Map<String, Integer> m = new HashMap<>();
   m.put("b", 2);
   m.put("a", 1);
-  System.out.println(new TreeSet<>(m.keySet()));
+  System.out.println(new TreeSet<>(m.keySet()));   // [a, b] -- always, regardless of JVM
+
+  // Related but different: LinkedHashMap DOES guarantee insertion order --
+  // the right tool when "order added" (not "sorted order") is what's needed.
+  Map<String, Integer> insertionOrdered = new java.util.LinkedHashMap<>();
+  insertionOrdered.put("charlie", 3);
+  insertionOrdered.put("alice", 1);
+  System.out.println(insertionOrdered.keySet());   // [charlie, alice] -- guaranteed, stable
 starter_code: |
   import java.util.HashMap;
   import java.util.Map;

@@ -4,16 +4,62 @@ language: java
 level: 81
 objective: "Rewrite a single-method anonymous inner class as a lambda expression."
 explanation: |
-  A functional interface (one abstract method, like java.util.function.
-  Function) can be implemented with a lambda instead of a verbose
-  anonymous inner class -- the lambda is the parameter list, an arrow,
-  and the body, with the interface and method name inferred from
-  context. It's the same behavior with far less boilerplate.
+  A functional interface is any interface with exactly one abstract
+  method -- `java.util.function.Function<T, R>`, with its single `R
+  apply(T t)` method, is one of several built into the standard library
+  specifically to be implemented ad hoc wherever a small piece of
+  behavior needs to be passed around as a value. The anonymous-inner-
+  class syntax (`new Function<Integer, Integer>() { public Integer apply
+  (Integer x) { return x * x; } }`) is Java's older, pre-lambda way of
+  doing this: it works, but it's heavy for what it expresses -- most of
+  those characters are boilerplate the compiler could reasonably infer
+  (the interface name, the method name, the return type) rather than
+  content that actually varies from one implementation to the next. A
+  lambda expression strips all of that inferrable scaffolding away,
+  leaving only what's genuinely unique to this particular
+  implementation: the parameter list, an arrow (`->`), and the body --
+  `x -> x * x` says everything the anonymous class said, with the
+  interface type, the method name `apply`, and the `Integer` boxing all
+  inferred from the context the lambda is assigned into.
+
+  This isn't just cosmetic compression -- a lambda and the equivalent
+  single-method anonymous class compile to genuinely comparable
+  behavior (calling `.apply(4)` on either invokes the same underlying
+  logic), so the choice between them is purely about expressiveness,
+  not correctness or performance in any way that matters at this
+  level. The functional-interface constraint is what makes this
+  translation always mechanical: because the interface has exactly one
+  abstract method, there's never any ambiguity about which method the
+  lambda's body is implementing, which is precisely what lets the `x ->
+  x * x` shorthand omit the method name entirely without becoming
+  ambiguous. `java.util.function` ships several of the most common
+  shapes pre-defined (`Function<T,R>` for one-argument-to-result,
+  `Supplier<T>` for zero-argument-to-result, `Consumer<T>` for
+  argument-to-nothing, `Predicate<T>` for argument-to-boolean), so most
+  everyday lambda use doesn't even require defining a custom
+  interface -- one of these standard shapes usually already fits.
 example_code: |
   import java.util.function.Function;
 
+  // The trap: a single-method anonymous class is correct, just verbose.
+  Function<Integer, Integer> squareVerbose = new Function<Integer, Integer>() {
+      public Integer apply(Integer x) {
+          return x * x;
+      }
+  };
+  System.out.println(squareVerbose.apply(5));    // 25
+
+  // Fix: a lambda expresses the exact same behavior far more concisely.
+  Function<Integer, Integer> square = x -> x * x;
+  System.out.println(square.apply(5));            // 25
+
   Function<Integer, Integer> triple = x -> x * 3;
-  System.out.println(triple.apply(4));
+  System.out.println(triple.apply(4));             // 12
+
+  // Other common built-in functional interfaces, same lambda shorthand:
+  java.util.function.Predicate<Integer> isEven = n -> n % 2 == 0;
+  java.util.function.Supplier<String> greeting = () -> "hello";
+  java.util.function.Consumer<String> printer = s -> System.out.println(s);
 starter_code: |
   import java.util.function.Function;
 

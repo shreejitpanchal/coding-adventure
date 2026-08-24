@@ -4,16 +4,63 @@ language: java
 level: 135
 objective: "Parse a built artifact's name and version out of its JAR filename, splitting on the last dash before the extension."
 explanation: |
-  A built JAR's filename typically follows artifact-version.jar -- but
-  the artifact name itself can contain dashes, so the version is
-  reliably found by splitting on the LAST dash before ".jar", not the
-  first one. Getting this boundary right is a genuinely practical
-  packaging-tooling skill.
+  A built JAR's filename follows the convention `artifact-version.jar`
+  -- but unlike a Python wheel's filename (a fixed number of dash-
+  separated fields, covered elsewhere in this app), the artifact name
+  itself is genuinely free to contain dashes of its own (`my-lib`,
+  `spring-core`), which means splitting on the *first* dash would
+  incorrectly cut `"my-lib-2.0.jar"` into `"my"` and the rest, treating
+  part of the actual artifact name as if it were the start of the
+  version. The version, by contrast, reliably sits at the very *end* of
+  the filename (just before `.jar`), so the boundary between name and
+  version is reliably the *last* dash in the filename, not the first --
+  everything after that final dash is the version, and everything
+  before it (dashes and all) is the artifact name, however many dashes
+  the name itself happens to contain.
+
+  `.lastIndexOf('-')` is exactly the tool for finding that boundary --
+  it scans from the end of the string and returns the index of the
+  rightmost occurrence of the given character, rather than `.indexOf(
+  '-')`'s leftmost-occurrence behavior. `stem.substring(0, lastDash)`
+  then extracts everything before that final dash (the artifact name,
+  dashes included), and `stem.substring(lastDash + 1)` extracts
+  everything after it (the version) -- with `.jar` already stripped off
+  beforehand via a fixed-length `substring` (`.jar` is always exactly 4
+  characters, so `filename.length() - 4` reliably marks where the
+  extension begins, regardless of how long the rest of the filename
+  is). Getting this "last, not first" boundary right is a genuinely
+  practical detail in real packaging tooling -- an artifact-name-parsing
+  bug that only manifests for artifacts whose names happen to contain a
+  dash is exactly the kind of edge case that's easy to miss until a
+  real multi-word library name exposes it.
 example_code: |
-  String stem = "my-lib-2.0.jar".substring(0, "my-lib-2.0.jar".length() - 4);
-  int lastDash = stem.lastIndexOf('-');
-  String name = stem.substring(0, lastDash);
-  String version = stem.substring(lastDash + 1);
+  // The trap: splitting on the FIRST dash breaks when the artifact name has one.
+  static String[] parseJarFilenameBroken(String filename) {
+      return new String[]{filename, ""};   // doesn't even attempt to parse
+  }
+  System.out.println(parseJarFilenameBroken("guava-31.0.jar")[0]);   // guava-31.0.jar -- unparsed
+
+  // A first-dash split would ALSO be wrong for multi-word artifact names:
+  // "my-lib-2.0.jar".split("-", 2) -> ["my", "lib-2.0.jar"] -- WRONG, cuts the name apart
+
+  // Fix: find the LAST dash -- the version always sits at the very end.
+  public class Solution {
+      static String[] parseJarFilename(String filename) {
+          String stem = filename.substring(0, filename.length() - 4);   // strip ".jar"
+          int lastDash = stem.lastIndexOf('-');
+          String name = stem.substring(0, lastDash);
+          String version = stem.substring(lastDash + 1);
+          return new String[]{name, version};
+      }
+
+      public static void main(String[] args) {
+          String[] parts = parseJarFilename("guava-31.0.jar");
+          System.out.println(parts[0] + " " + parts[1]);   // guava 31.0
+
+          String[] multiWord = parseJarFilename("my-lib-2.0.jar");
+          System.out.println(multiWord[0] + " " + multiWord[1]);   // my-lib 2.0 -- name kept intact
+      }
+  }
 starter_code: |
   public class Solution {
       static String[] parseJarFilename(String filename) {

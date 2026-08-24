@@ -4,15 +4,60 @@ language: java
 level: 77
 objective: "Fix a boxed-Integer comparison that relies on == instead of .equals(), which only works by accident inside the -128..127 cache range."
 explanation: |
-  Java caches boxed Integer objects for values -128 to 127 -- so `==`
-  between two boxed Integers in that range can accidentally appear to
-  work, while the exact same comparison silently breaks for any value
-  outside it. Relying on this is a well-known trap; `.equals()` is the
-  only comparison that's correct for boxed types regardless of value.
+  `Integer` is the boxed (object) wrapper around the primitive `int` --
+  autoboxing is what lets `Integer a = 1000;` implicitly wrap a plain
+  `int` literal into an `Integer` object without an explicit
+  `Integer.valueOf(1000)` call. Because `Integer` is an object type, `==`
+  between two `Integer` variables compares references, exactly the same
+  identity-comparison trap as the previous `String` exercise --
+  except Java's own `Integer.valueOf()` implementation adds a specific
+  wrinkle that makes this trap even sneakier: the JVM maintains a cache
+  of pre-built `Integer` objects for the value range -128 to 127
+  (guaranteed by the JLS, since these small values are extremely common
+  and caching them avoids constant re-allocation), and autoboxing a
+  value in that range reuses the cached object rather than constructing
+  a new one. That means `Integer a = 100; Integer b = 100; a == b` is
+  `true` -- not because `==` is somehow correct for boxed integers, but
+  purely as a side effect of both variables happening to reference the
+  *same cached object*.
+
+  The moment a value falls outside that -128..127 range, autoboxing
+  constructs a genuinely new `Integer` object each time, and the
+  illusion collapses: `Integer a = 1000; Integer b = 1000;` produces
+  two *different* objects holding the same value, so `a == b` is
+  `false`. This is exactly why it's a well-known, notorious trap rather
+  than an obscure one -- code that happens to only ever test with small
+  values (0, 1, 42, common loop counters) can look completely correct
+  in development and testing, then silently misbehave the first time a
+  real value larger than 127 flows through the exact same comparison in
+  production, with nothing about the code itself having changed.
+  `.equals()` is unconditionally correct regardless of value, since it
+  compares the wrapped `int` values directly rather than object
+  identity -- there is no value range where `==` is actually the
+  "right" choice for boxed types, even though small values can make it
+  look that way.
 example_code: |
+  // The trap: == "works" for small values purely due to Integer caching.
+  Integer small_a = 100;
+  Integer small_b = 100;
+  System.out.println(small_a == small_b);   // true -- but ONLY because both are cached
+
+  // The same comparison, outside the -128..127 cache range, breaks silently:
   Integer a = 1000;
   Integer b = 1000;
-  System.out.println(a.equals(b));
+  System.out.println(a == b);                // false -- different objects, same value!
+
+  // Fix: .equals() is correct for EVERY value, cached or not.
+  System.out.println(a.equals(b));            // true -- always reliable
+
+  // The cache boundary itself, made explicit:
+  Integer edge_cached = 127;
+  Integer edge_cached2 = 127;
+  System.out.println(edge_cached == edge_cached2);   // true -- last cached value
+
+  Integer edge_uncached = 128;
+  Integer edge_uncached2 = 128;
+  System.out.println(edge_uncached == edge_uncached2); // false -- one past the cache
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

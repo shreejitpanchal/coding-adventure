@@ -4,14 +4,66 @@ language: java
 level: 104
 objective: "Fix a silent int overflow -- Java wraps around past Integer.MAX_VALUE instead of raising any kind of error."
 explanation: |
-  Unlike some languages, Java's int arithmetic never throws on overflow
-  -- Integer.MAX_VALUE + 1 silently wraps around to
-  Integer.MIN_VALUE, with no warning at all. Any computation that might
-  genuinely exceed int's ~2.1 billion range needs to use `long` (or
-  Math.addExact()/similar, which does throw) instead.
+  Java's `int` is a fixed 32-bit two's-complement type, capable of
+  representing values from `Integer.MIN_VALUE` (-2,147,483,648) to `
+  Integer.MAX_VALUE` (2,147,483,647) and nothing outside that range --
+  and critically, Java's `int` arithmetic *never* throws an exception
+  on overflow, unlike, say, an explicit checked-arithmetic mode in some
+  other languages. `Integer.MAX_VALUE + 1` doesn't raise any error at
+  all; it silently *wraps around* to `Integer.MIN_VALUE`, because the
+  32-bit binary representation that would naturally follow `MAX_VALUE`
+  by incrementing is, bit-for-bit, exactly the representation Java
+  interprets as the most negative possible value. This is genuinely
+  dangerous precisely because it's silent: a computation that overflows
+  produces a plausible-looking (if wildly wrong) integer, with nothing
+  about the program's behavior -- no exception, no warning, no crash --
+  indicating that anything went wrong at all, unlike almost every other
+  kind of arithmetic error in Java.
+
+  The fix depends on what's actually needed: if the true range of
+  possible values genuinely exceeds what `int` can hold (financial
+  totals, accumulated counts across a long-running process, anything
+  approaching or exceeding ~2.1 billion), switch to `long`, which has
+  the same wraparound behavior but at a vastly larger range (roughly
+  ±9.2 quintillion) that's effectively unreachable for most realistic
+  workloads. The cast matters, though: `(long) max + 1` casts `max` to `
+  long` *before* the addition happens, so the addition itself is
+  performed using 64-bit `long` arithmetic and never overflows; writing
+  `max + 1` first and casting the *result* to `long` would be too late
+  -- the overflow would already have happened in 32-bit `int` arithmetic
+  before the cast ever gets a chance to help. For situations where
+  silently wrong results would be actively dangerous and overflow
+  should be treated as a hard error instead of tolerated, `Math.
+  addExact()`/`multiplyExact()`/etc. perform the same arithmetic but
+  throw `ArithmeticException` the moment an overflow would occur,
+  trading silent wraparound for a loud, catchable failure.
 example_code: |
+  public class Solution {
+      public static void main(String[] args) {
+          // The trap: int arithmetic overflows SILENTLY -- no exception, no warning.
+          int max = Integer.MAX_VALUE;
+          int resultBroken = max + 1;
+          System.out.println(resultBroken);    // -2147483648 -- wrapped to MIN_VALUE!
+
+          // Fix: cast to long BEFORE the addition, so it never overflows at all.
+          long result = (long) max + 1;         // the cast happens first, addition is 64-bit
+          System.out.println(result);            // 2147483648 -- correct
+
+          // The trap within the fix: casting AFTER the addition is too late.
+          long stillBroken = (long) (max + 1);   // overflow already happened in int arithmetic!
+          System.out.println(stillBroken);        // -2147483648 -- still wrong
+
+          // For a hard failure instead of silent wraparound:
+          try {
+              int checked = Math.addExact(max, 1);   // throws instead of wrapping
+          } catch (ArithmeticException e) {
+              System.out.println("overflow detected: " + e.getMessage());
+          }
+      }
+  }
+
   long safe = (long) Integer.MAX_VALUE + 1;
-  System.out.println(safe);
+  System.out.println(safe);                        // 2147483648
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

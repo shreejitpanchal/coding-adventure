@@ -4,17 +4,58 @@ language: java
 level: 101
 objective: "Fix an off-by-one loop bound that reads one element past the end of an array."
 explanation: |
-  `i <= arr.length` lets i reach arr.length itself, which is one past the
-  last valid index (arrays are 0-indexed, so valid indices are 0 through
-  length-1) -- accessing arr[arr.length] throws
-  ArrayIndexOutOfBoundsException. The fix is the classic one: `<`
-  instead of `<=`.
+  Java arrays are zero-indexed: a 3-element array has valid indices
+  `0`, `1`, and `2` -- the last valid index is always `arr.length - 1`,
+  never `arr.length` itself. `i <= arr.length` as a loop condition lets
+  `i` reach `arr.length` on its final iteration (since `<=` includes
+  equality, the loop doesn't stop until `i` exceeds `arr.length`, one
+  step past where it should), and `arr[arr.length]` reads a slot that
+  simply doesn't exist -- there is no element at that index, so Java
+  throws `ArrayIndexOutOfBoundsException` rather than silently reading
+  garbage or wrapping around. The fix is the single most classic
+  loop-bound correction there is: `<` instead of `<=`, so the loop's
+  final iteration uses `i = arr.length - 1`, the true last valid index,
+  and stops before `i` ever reaches `arr.length` at all.
+
+  This exact `<` vs `<=` confusion recurs constantly in loop-writing
+  precisely because both read as plausible at a glance -- "loop while i
+  is at most the length" sounds reasonable in English, but "at most the
+  length" and "a valid index" are subtly different concepts once you
+  remember indices start at 0 rather than 1. A reliable habit for
+  catching this by inspection, rather than by running the code and
+  seeing it crash: mentally substitute the smallest concrete array size
+  that still has elements (a 1-element array, indices `{0}` only) and
+  check whether the loop condition actually stops at the right point --
+  `i <= 1` would let `i` reach `1` for a 1-element array, immediately
+  revealing the off-by-one that might be harder to spot by eye for a
+  larger, more abstract `arr.length`.
 example_code: |
-  int[] arr = {1, 2, 3};
-  int sum = 0;
-  for (int i = 0; i < arr.length; i++) {
-      sum += arr[i];
+  public class Solution {
+      public static void main(String[] args) {
+          int[] arr = {10, 20, 30};
+
+          // The trap: <= lets i reach arr.length itself -- one past the last valid index.
+          int sumBroken = 0;
+          for (int i = 0; i <= arr.length; i++) {
+              // sumBroken += arr[i];   // ArrayIndexOutOfBoundsException when i == 3
+          }
+
+          // Fix: < stops the loop at the correct final valid index.
+          int sum = 0;
+          for (int i = 0; i < arr.length; i++) {
+              sum += arr[i];             // valid indices only: 0, 1, 2
+          }
+          System.out.println(sum);        // 60
+      }
   }
+
+  // A quick sanity check: try the smallest non-empty array size, {0} only.
+  int[] single = {99};
+  int total = 0;
+  for (int i = 0; i < single.length; i++) {    // i < 1 -- only i=0 runs, correctly
+      total += single[i];
+  }
+  System.out.println(total);                     // 99
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

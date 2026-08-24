@@ -4,14 +4,68 @@ language: java
 level: 133
 objective: "Implement a semantic-version bump: incrementing one part resets every part below it to zero."
 explanation: |
-  Semantic versioning (major.minor.patch) encodes meaning in each
-  position -- bumping the minor version for a new backward-compatible
-  feature should reset the patch number back to 0, since patch numbers
-  are only meaningful relative to a specific minor release.
+  Semantic versioning's `major.minor.patch` scheme encodes an actual
+  meaning in each position, not just an arbitrary counter: `patch`
+  increments for backward-compatible bug fixes, `minor` for
+  backward-compatible new features, `major` for breaking changes. That
+  meaning drives a cascading reset rule: a patch number is only
+  meaningful *relative to a specific minor release*, so bumping `minor`
+  starts a fresh release line whose patch history begins again at `0`
+  -- `1.2.3` bumped to minor becomes `1.3.0`, never `1.3.3`, because
+  "patch 3" was a fact about the now-superseded `1.2.x` line and
+  carries no meaning forward into `1.3.x`. The same cascading logic
+  applies one level up too: bumping `major` resets *both* `minor` and `
+  patch` back to `0` (`1.2.3` → `2.0.0`), since an entirely new major
+  line starts its own minor and patch numbering completely fresh. Only
+  a `patch` bump leaves everything above it untouched, since there's
+  nothing positioned below `patch` left to reset.
+
+  `bumpVersion` returning its input completely unchanged, regardless of
+  which `part` was requested, isn't a partial or buggy implementation
+  of this rule -- it's simply not implementing it at all. A correct
+  implementation needs to parse the version into its three integer
+  components (`split("\\.")`, then `Integer.parseInt` on each piece),
+  branch on which `part` was requested, and reassemble the result as a
+  string with the appropriate components incremented and the
+  appropriate components reset to `0`. The rule worth internalizing,
+  rather than memorizing three separate cases: reset everything
+  strictly *below* the bumped position, leave everything *above* it
+  untouched -- a framing that generalizes cleanly even to hypothetical
+  versioning schemes with more than three components.
 example_code: |
+  // The trap: doesn't bump anything at all -- just echoes the input back.
+  static String bumpVersionBroken(String version, String part) {
+      return version;
+  }
+  System.out.println(bumpVersionBroken("1.2.3", "minor"));   // 1.2.3 -- unchanged, WRONG
+
+  // Fix: parse into components, reset everything BELOW the bumped position.
+  public class Solution {
+      static String bumpVersion(String version, String part) {
+          String[] p = version.split("\\.");
+          int major = Integer.parseInt(p[0]);
+          int minor = Integer.parseInt(p[1]);
+          int patch = Integer.parseInt(p[2]);
+
+          if (part.equals("major")) {
+              return (major + 1) + ".0.0";                 // resets BOTH minor and patch
+          } else if (part.equals("minor")) {
+              return major + "." + (minor + 1) + ".0";       // resets patch
+          } else {
+              return major + "." + minor + "." + (patch + 1);   // nothing below patch to reset
+          }
+      }
+
+      public static void main(String[] args) {
+          System.out.println(bumpVersion("1.2.3", "minor"));   // 1.3.0 -- correct
+          System.out.println(bumpVersion("1.2.3", "major"));    // 2.0.0 -- cascades down
+      }
+  }
+
   String[] p = "1.0.0".split("\\.");
   int patch = Integer.parseInt(p[2]);
   String bumped = p[0] + "." + p[1] + "." + (patch + 1);
+  System.out.println(bumped);   // 1.0.1
 starter_code: |
   public class Solution {
       static String bumpVersion(String version, String part) {

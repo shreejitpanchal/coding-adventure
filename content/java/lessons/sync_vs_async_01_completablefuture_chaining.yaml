@@ -4,17 +4,61 @@ language: java
 level: 111
 objective: "Use thenApply to chain a transformation onto a CompletableFuture instead of blocking with join() and computing separately."
 explanation: |
-  Blocking on join() the moment a future completes, then computing
-  something with the result, forces the computation to also happen on
-  the calling thread. thenApply(fn) attaches the transformation to the
-  future itself -- it runs as part of the async pipeline, and you only
-  block (if at all) once, at the very end.
+  `future.join()` immediately followed by a computation on its result --
+  `int raw = future.join(); int result = raw * 7;` -- works, but it
+  forces two things that don't have to happen together: the calling
+  thread blocks the moment it wants the async result at all, and the
+  subsequent transformation (`* 7`) then runs synchronously on that same
+  calling thread, after the block, rather than as part of the
+  asynchronous pipeline. For a single simple transformation this
+  distinction barely matters, but it stops scaling the moment a
+  pipeline needs several chained steps, or needs to avoid blocking the
+  calling thread at all until the very end.
+
+  `.thenApply(fn)` attaches a transformation *to the future itself*,
+  returning a *new* `CompletableFuture` representing "the original
+  result, with `fn` applied" -- and critically, that transformation
+  becomes part of the async computation graph, potentially running on a
+  background thread as soon as the original future completes, with no
+  blocking required to set it up. `CompletableFuture.supplyAsync(() ->
+  6).thenApply(n -> n * 7)` describes an entire pipeline -- compute 6
+  asynchronously, then multiply by 7 once that's done -- as a single
+  continuous expression, and the calling thread only actually blocks at
+  the very end, when `.join()` is called to retrieve the final result
+  (and only if blocking is even wanted at that point at all -- a
+  well-composed async pipeline often chains further instead of blocking
+  early). This composability is the actual point of `CompletableFuture`
+  's design: `.thenApply()`, `.thenCompose()`, `.thenCombine()` (a
+  neighboring exercise) all let a chain of dependent async steps be
+  described declaratively, with blocking pushed to the single point
+  where a concrete value is genuinely needed, rather than scattered
+  throughout the pipeline at every intermediate step.
 example_code: |
   import java.util.concurrent.CompletableFuture;
 
-  int result = CompletableFuture.supplyAsync(() -> 10)
+  // The trap: blocking early, then computing separately on the calling thread.
+  CompletableFuture<Integer> futureBroken = CompletableFuture.supplyAsync(() -> 6);
+  int raw = futureBroken.join();          // blocks HERE, on the calling thread
+  int resultBroken = raw * 7;              // then computes separately, also on this thread
+  System.out.println(resultBroken);         // 42 -- correct, but not composed as a pipeline
+
+  // Fix: thenApply attaches the transformation to the future itself.
+  int result = CompletableFuture.supplyAsync(() -> 6)
+          .thenApply(n -> n * 7)            // part of the async pipeline
+          .join();                           // blocks only ONCE, at the very end
+  System.out.println(result);                 // 42
+
+  int chained = CompletableFuture.supplyAsync(() -> 10)
           .thenApply(n -> n + 1)
           .join();
+  System.out.println(chained);                 // 11
+
+  // Multiple chained transformations -- still only one block at the end:
+  int multiStep = CompletableFuture.supplyAsync(() -> 2)
+          .thenApply(n -> n * 3)
+          .thenApply(n -> n + 1)
+          .join();
+  System.out.println(multiStep);                // 7
 starter_code: |
   import java.util.concurrent.CompletableFuture;
 

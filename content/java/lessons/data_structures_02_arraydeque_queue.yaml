@@ -4,16 +4,55 @@ language: java
 level: 87
 objective: "Replace an ArrayList used as a queue (remove(0)) with ArrayDeque for O(1) operations at both ends."
 explanation: |
-  ArrayList.remove(0) is O(n) -- every remaining element has to shift
-  left one slot. ArrayDeque supports O(1) addFirst/addLast and
-  removeFirst/removeLast, making it the right structure whenever a list
-  is being used as a queue or stack.
+  `ArrayList` is backed by a plain contiguous array, which is exactly
+  what makes indexed access (`.get(i)`) O(1) but also exactly what makes
+  removing from the *front* expensive: `remove(0)` has to shift every
+  single remaining element one slot to the left to keep the array
+  contiguous with no gap, which is O(n) work for a list of n elements.
+  Using an `ArrayList` as a queue (repeatedly calling `remove(0)` to
+  dequeue) means paying that O(n) shifting cost on *every* dequeue --
+  turning what should be a cheap, constant-time operation into one that
+  gets progressively more expensive to call the more elements are still
+  in the queue, which compounds badly under any real load.
+
+  `ArrayDeque` ("array double-ended queue") is backed by a circular
+  buffer specifically designed to support cheap operations at *both*
+  ends: `addFirst`/`addLast` and `removeFirst`/`removeLast` are all O(1)
+  , since the buffer's logical start and end are tracked as movable
+  indices rather than the array always starting at index 0 -- removing
+  from the front just moves the "start" pointer forward, no shifting
+  required. This makes `ArrayDeque` the right structure any time a
+  collection is being used as a queue (FIFO: add at one end, remove
+  from the other) or a stack (LIFO: add and remove from the same end),
+  and it's generally preferred over the older `Stack`/`LinkedList`
+  classes for both roles in modern Java code -- `ArrayDeque` documents
+  itself as likely faster than `Stack` when used as a stack, and faster
+  than `LinkedList` when used as a queue, since it avoids the per-node
+  allocation overhead a linked structure incurs for every element.
 example_code: |
   import java.util.ArrayDeque;
+  import java.util.ArrayList;
   import java.util.Deque;
+  import java.util.List;
 
-  Deque<Integer> d = new ArrayDeque<>(java.util.List.of(1, 2, 3));
-  System.out.println(d.removeFirst());
+  // The trap: ArrayList.remove(0) is O(n) -- shifts every remaining element.
+  List<Integer> queueBroken = new ArrayList<>(List.of(1, 2, 3));
+  int firstBroken = queueBroken.remove(0);      // shifts 2 and 3 left, every call
+  System.out.println(firstBroken + " " + queueBroken);   // 1 [2, 3]
+
+  // Fix: ArrayDeque gives O(1) removal from the front (and the back).
+  Deque<Integer> queue = new ArrayDeque<>(List.of(1, 2, 3));
+  int first = queue.removeFirst();               // O(1) -- no shifting needed
+  System.out.println(first + " " + queue);        // 1 [2, 3]
+
+  Deque<Integer> d = new ArrayDeque<>(List.of(1, 2, 3));
+  System.out.println(d.removeFirst());             // 1
+
+  // ArrayDeque works equally well as a STACK -- push/pop at one end:
+  Deque<Integer> stack = new ArrayDeque<>();
+  stack.push(1);
+  stack.push(2);
+  System.out.println(stack.pop());                  // 2 -- LIFO, O(1)
 starter_code: |
   import java.util.ArrayList;
   import java.util.List;

@@ -4,17 +4,64 @@ language: java
 level: 91
 objective: "Replace repeated String += concatenation in a loop with StringBuilder, avoiding a new object allocation on every iteration."
 explanation: |
-  Strings are immutable in Java -- `result += i` doesn't modify result
-  in place, it creates a brand-new String every single time, copying
-  everything built so far. StringBuilder is a mutable buffer designed
-  exactly for building up a string incrementally, making a loop like
-  this O(n) instead of O(n^2).
+  Every `String` in Java is immutable -- once created, its character
+  content can never change. `result += i` doesn't modify `result` in
+  place the way it might appear to; it desugars to `result = result +
+  String.valueOf(i)`, which allocates a brand-new `String` object large
+  enough to hold the old content plus the new piece, copies every
+  character from the old `result` into it, appends the new part, and
+  reassigns `result` to point at that new object -- the previous string
+  becomes garbage, discarded entirely. Inside a loop, that means every
+  single iteration re-copies the *entire* string built so far, not just
+  appends the new piece: iteration 1 copies 0 characters, iteration 2
+  copies 1, iteration 3 copies 2, and so on, so the total copying work
+  across n iterations sums to O(n²) even though the final string is
+  only O(n) characters long -- exactly the same quadratic-blowup shape
+  as Python's list-concatenation-in-recursion trap covered elsewhere in
+  this app, just manifesting through string immutability instead.
+
+  `StringBuilder` exists specifically to avoid this: it's a genuinely
+  *mutable* character buffer, internally backed by a resizable array
+  that grows in amortized-O(1) chunks rather than allocating fresh on
+  every single append. `sb.append(i)` adds characters onto the existing
+  buffer in place -- no copying of everything built so far, no
+  discarding a previous object -- so a loop of n appends does O(n) total
+  work, not O(n²). `.toString()` (called implicitly by `System.out.
+  println(sb)`, since `println` accepts any `Object` and calls `.
+  toString()` on it) converts the buffer into a final immutable `String
+  ` only once, at the end, when the building is actually done. The
+  practical rule: any time a string is being built incrementally inside
+  a loop, `StringBuilder` is the right tool; for a small, fixed number
+  of concatenations known in advance (not inside a loop), plain `+` is
+  fine and arguably more readable, since the compiler itself already
+  optimizes a handful of `+` operations in a single expression into
+  one `StringBuilder` internally.
 example_code: |
+  // The trap: += inside a loop re-copies the ENTIRE string every iteration.
+  String resultBroken = "";
+  for (int i = 0; i < 5; i++) {
+      resultBroken += i;          // allocates a NEW String, copies everything so far
+  }
+  System.out.println(resultBroken);   // 01234 -- correct, but O(n^2) work
+
+  // Fix: StringBuilder mutates a buffer in place -- O(n) total work.
+  StringBuilder result = new StringBuilder();
+  for (int i = 0; i < 5; i++) {
+      result.append(i);            // appends onto the EXISTING buffer, no full copy
+  }
+  System.out.println(result);        // 01234 -- same output, O(n) this time
+
   StringBuilder sb = new StringBuilder();
   for (int i = 0; i < 3; i++) {
       sb.append(i);
   }
-  System.out.println(sb);
+  System.out.println(sb);             // 012
+
+  // A handful of + concatenations OUTSIDE a loop is fine -- the compiler
+  // already optimizes it into one StringBuilder internally:
+  String name = "Ada";
+  int age = 30;
+  String msg = "Name: " + name + ", Age: " + age;   // fine, not a loop
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

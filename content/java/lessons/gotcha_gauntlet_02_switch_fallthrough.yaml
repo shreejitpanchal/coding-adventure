@@ -4,18 +4,80 @@ language: java
 level: 102
 objective: "Fix a classic switch statement bug -- a missing break lets execution fall through into the next case instead of stopping."
 explanation: |
-  A traditional Java switch statement doesn't stop at the matching case
-  automatically -- without a `break`, execution falls through into every
-  subsequent case (and the default), each one overwriting whatever the
-  previous case set. Every case needs its own break unless the
-  fall-through is genuinely intentional.
+  A traditional Java `switch` statement's default behavior is genuinely
+  different from what most other control-flow constructs do: finding a
+  matching `case` doesn't automatically stop execution there -- once
+  Java jumps into a matching case's code, it keeps executing straight
+  through every subsequent case's code too (and `default`, if present),
+  regardless of whether their own conditions match, until it either
+  hits an explicit `break` or reaches the end of the entire `switch`
+  block. That's "fall-through," and it's the historical, C-inherited
+  design of `switch` -- not a bug in the language, but a genuine trap
+  for anyone who (reasonably) expects each case to be self-contained
+  the way an `if`/`else if` chain's branches are. `describe(1)` matching
+  `case 1:` executes `result = "Monday";`, then -- with no `break` to
+  stop it -- falls straight into `case 2:`'s `result = "Tuesday";`
+  (overwriting the previous assignment), then straight into `default:`
+  's `result = "Unknown";` too, so the final value bears no relationship
+  to which case actually matched.
+
+  The fix is mechanical once the fall-through behavior is understood:
+  every case that should behave independently needs its own explicit
+  `break;` at the end, stopping execution from spilling into the next
+  case. Deliberate fall-through *is* occasionally useful and
+  intentional (several cases sharing identical handling, stacked with
+  no `break` between them specifically so they all run the same code),
+  but it should be a conscious choice, not an accidental omission --
+  and it's exactly this ambiguity between "intentional" and "forgot the
+  break" that led Java's newer arrow-syntax switch (`case 1 -> ...;`,
+  introduced alongside switch expressions) to *not* fall through at all
+  by default, making the traditional colon-syntax `switch`'s
+  fall-through behavior something modern Java code increasingly avoids
+  needing to reason about in the first place.
 example_code: |
-  int day = 1;
-  String result;
-  switch (day) {
-      case 1: result = "Mon"; break;
-      default: result = "?";
+  public class Solution {
+      // The trap: missing break lets execution fall through every case.
+      static String describeBroken(int day) {
+          String result = "";
+          switch (day) {
+              case 1:
+                  result = "Monday";     // falls through -- no break!
+              case 2:
+                  result = "Tuesday";     // falls through -- no break!
+              default:
+                  result = "Unknown";      // this ALWAYS runs last, overwriting everything
+          }
+          return result;
+      }
+      // describeBroken(1) returns "Unknown" -- NOT "Monday"
+
+      // Fix: an explicit break after each case stops the fall-through.
+      static String describe(int day) {
+          String result = "";
+          switch (day) {
+              case 1:
+                  result = "Monday";
+                  break;                  // stops here -- doesn't reach case 2
+              case 2:
+                  result = "Tuesday";
+                  break;
+              default:
+                  result = "Unknown";
+          }
+          return result;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(describe(1));   // Monday
+      }
   }
+
+  // Modern arrow-syntax switch never falls through by default -- no break needed:
+  int day = 1;
+  String result = switch (day) {
+      case 1 -> "Mon";
+      default -> "?";
+  };
 starter_code: |
   public class Solution {
       static String describe(int day) {

@@ -4,17 +4,70 @@ language: java
 level: 78
 objective: "Fix a finally block that silently overrides the try block's return value, instead of just doing cleanup."
 explanation: |
-  A `return` inside `finally` unconditionally overrides whatever the
-  `try` (or `catch`) block was about to return -- or even an exception
-  it was about to throw -- silently discarding it. This is almost never
-  intentional; `finally` should be used for cleanup work (closing a
-  resource, logging), not for producing the method's actual result.
+  `finally` is guaranteed to run no matter how the `try` block exits --
+  normal completion, a `return`, or an exception being thrown -- which
+  is precisely what makes it the right place for cleanup logic (closing
+  a file, releasing a lock, logging that an operation finished) that
+  absolutely must happen either way. But that same "runs no matter what
+  " guarantee has a sharp edge: if `finally` itself contains a `return`
+  statement, that return unconditionally wins over whatever the `try`
+  or `catch` block was in the middle of doing -- including a value it
+  had already computed and was about to return, *and even an exception
+  it was already in the process of throwing*. The `try` block's `return
+  1` doesn't get skipped exactly, but its result never actually
+  reaches the caller: control passes into `finally` before the method
+  truly exits, and `finally`'s own `return 2` silently discards the
+  pending `1` and takes over. The scarier version of this bug swallows
+  a genuine exception the same way -- a real `RuntimeException` thrown
+  in `try`, mid-propagation, gets silently discarded if `finally`
+  itself returns, with no trace that anything went wrong at all.
+
+  Because of this, a `return` (or, just as bad, an uncaught exception)
+  inside `finally` is almost never what was actually intended -- it's
+  virtually always an accident, often from code that was refactored
+  without noticing where a stray `return` ended up. The fix is
+  conceptual as much as mechanical: `finally` exists for *side effects*
+  that need to happen regardless of outcome -- closing a resource,
+  releasing a lock, writing a log line -- never for producing or
+  altering the method's actual result. If `finally` needs to run
+  cleanup logic that could itself throw, that's a separate, deliberate
+  design decision (and generally still avoided in favor of try-with-
+  resources, which handles the equivalent cleanup correctly without
+  this trap at all) -- but simply moving `return` out of `finally` and
+  into an ordinary statement is the fix for the vast majority of real
+  cases.
 example_code: |
+  // The trap: return inside finally silently overrides try's return.
+  static int getValueBroken() {
+      try {
+          return 1;
+      } finally {
+          return 2;              // this ALWAYS wins, no matter what try did
+      }
+  }
+  // getValueBroken() always returns 2 -- the "return 1" never reaches the caller
+
+  // Even worse: finally's return can silently swallow a real exception.
+  static int getValueSwallowsException() {
+      try {
+          throw new RuntimeException("something broke");
+      } finally {
+          return 99;              // the RuntimeException is DISCARDED, never propagates!
+      }
+  }
+
+  // Fix: finally does cleanup ONLY -- never returns or alters the result.
   static int getValue() {
       try {
           return 1;
       } finally {
-          System.out.println("cleanup");
+          System.out.println("cleanup");   // side effect only, no return here
+      }
+  }
+
+  public class Solution {
+      public static void main(String[] args) {
+          System.out.println(getValue());   // cleanup, then 1 -- try's return is honored
       }
   }
 starter_code: |

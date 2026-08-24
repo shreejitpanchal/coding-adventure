@@ -4,16 +4,59 @@ language: java
 level: 94
 objective: "Replace manual millisecond-to-minutes arithmetic with java.time.Duration, which expresses the unit conversion directly."
 explanation: |
-  Hand-rolled time math (dividing milliseconds by 1000, then by 60...)
-  is error-prone and doesn't self-document its units. java.time.Duration
-  wraps an elapsed amount of time and exposes conversions
-  (toMinutes(), toSeconds(), ...) directly, making the intent explicit
-  and the arithmetic itself impossible to get wrong.
+  `(endMillis - startMillis) / 1000` followed by `/ 60` computes the
+  right answer here, but every one of those raw numeric constants (
+  `1000`, `60`) is a unit-conversion fact that has to live entirely in
+  the programmer's head -- nothing about the code itself documents that
+  this is "milliseconds to seconds to minutes" rather than any other
+  arbitrary arithmetic, and a typo (dividing by `100` instead of `1000`
+  , or forgetting the second division entirely) would silently produce
+  a wrong-but-plausible-looking number with no error at any point. This
+  is exactly the kind of unit-conversion code that's simple enough to
+  write correctly on the first try but easy to get subtly wrong during
+  a later edit, since the numbers alone give no hint about what they
+  actually represent.
+
+  `java.time.Duration` fixes this by making the conversion self-
+  documenting: it wraps an elapsed span of time as a proper value type
+  (constructed via `Duration.ofMillis(...)`, `.ofSeconds(...)`, `.
+  ofMinutes(...)`, etc.) and exposes named conversion methods --
+  `.toMinutes()`, `.toSeconds()`, `.toHours()` -- that read as exactly
+  what they do, with the actual conversion arithmetic implemented once,
+  correctly, inside the standard library rather than re-derived by hand
+  at every call site. `Duration.ofMillis(endMillis - startMillis).
+  toMinutes()` states the intent directly: "the elapsed time between
+  these two millisecond timestamps, expressed in minutes" -- no
+  intermediate variable holding an unlabeled "seconds" value, no manual
+  division chain to double-check. `java.time.Duration` is part of the
+  broader `java.time` package (introduced in Java 8, replacing the
+  much-maligned old `Date`/`Calendar` classes) which similarly wraps
+  every other time-related concept -- `Instant`, `LocalDate`, `Period`
+  -- as its own explicit, self-documenting type rather than relying on
+  raw numeric fields whose units are only knowable from context or
+  documentation.
 example_code: |
+  // The trap: raw numeric conversion constants, no self-documentation of units.
+  long startMillis = 0;
+  long endMillis = 90000;
+  long totalSecondsBroken = (endMillis - startMillis) / 1000;   // "1000" means... ms->s?
+  long minutesBroken = totalSecondsBroken / 60;                  // "60" means... s->min?
+  System.out.println(minutesBroken);       // 1 -- correct, but the units are implicit
+
+  // Fix: Duration expresses the conversion directly, self-documenting.
   import java.time.Duration;
 
-  long minutes = Duration.ofSeconds(150).toMinutes();
-  System.out.println(minutes);
+  long minutes = Duration.ofMillis(endMillis - startMillis).toMinutes();
+  System.out.println(minutes);              // 1 -- same result, explicit intent
+
+  long minutesFromSeconds = Duration.ofSeconds(150).toMinutes();
+  System.out.println(minutesFromSeconds);    // 2
+
+  // Duration exposes several named conversions, each self-explanatory:
+  Duration d = Duration.ofMillis(90000);
+  System.out.println(d.toSeconds());          // 90
+  System.out.println(d.toMinutes());          // 1
+  System.out.println(d.getSeconds());          // 90 -- total whole seconds represented
 starter_code: |
   public class Solution {
       public static void main(String[] args) {

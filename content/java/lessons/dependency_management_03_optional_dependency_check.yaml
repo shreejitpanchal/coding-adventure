@@ -4,17 +4,62 @@ language: java
 level: 128
 objective: "Fix code that crashes with ClassNotFoundException when checking for an optional class that isn't on the classpath."
 explanation: |
-  Class.forName(name) is the standard way to check whether a class (and
-  therefore, typically, the library providing it) is actually available
-  at runtime -- but it throws ClassNotFoundException if it isn't. A
-  feature-detection helper needs to catch that specific exception and
-  report "not available" rather than letting the whole caller crash.
+  `Class.forName(name)` looks up a class by its fully-qualified name at
+  runtime and loads it if found -- it's the standard reflective way to
+  check whether a particular class (and by extension, typically,
+  whichever library or JAR provides it) is genuinely present on the
+  classpath at runtime, without needing a compile-time dependency on it
+  at all. This is exactly the mechanism behind optional-dependency
+  feature detection: code that wants to use a library *if* it happens
+  to be present, but degrade gracefully if it isn't, can ask `Class.
+  forName` rather than requiring the library unconditionally. But `
+  Class.forName` reflects "not found" the same way most of Java's
+  checked-exception-based APIs do -- it throws `ClassNotFoundException`
+  (a *checked* exception, meaning callers are required to either catch
+  it or declare it in their own `throws` clause) rather than returning
+  some sentinel "not found" value.
+
+  `static boolean isAvailable(String className) throws Exception {
+  Class.forName(className); return true; }` handles the *checked
+  exception* requirement by declaring `throws Exception` and simply
+  letting it propagate -- which technically compiles, but defeats the
+  entire purpose of a feature-detection helper: the whole point of `
+  isAvailable` is to answer the "is it there" question cleanly, and
+  instead it crashes the caller with an uncaught exception the moment
+  the answer happens to be "no." The fix is to actually catch `
+  ClassNotFoundException` where it's thrown and convert it into the
+  boolean answer the method's own name promises: `try { Class.forName(
+  className); return true; } catch (ClassNotFoundException e) { return
+  false; }` -- a class genuinely present resolves normally and returns `
+  true`; a class that isn't present throws, gets caught right there,
+  and returns `false` instead of propagating anywhere. This mirrors
+  the same "catch the one specific expected exception, convert it to a
+  clean sentinel result" pattern that recurs throughout defensive code
+  wherever "doesn't exist" is a normal, expected outcome rather than a
+  genuine error.
 example_code: |
-  try {
-      Class.forName("com.optional.Library");
+  // The trap: declaring `throws Exception` just defers the crash to the caller.
+  static boolean isAvailableBroken(String className) throws Exception {
+      Class.forName(className);   // throws ClassNotFoundException if missing
       return true;
-  } catch (ClassNotFoundException e) {
-      return false;
+  }
+  // isAvailableBroken("com.definitely.not.a.RealClass") -- throws, doesn't return false at all
+
+  // Fix: catch the specific expected exception, convert it to a clean boolean.
+  public class Solution {
+      static boolean isAvailable(String className) {
+          try {
+              Class.forName(className);
+              return true;
+          } catch (ClassNotFoundException e) {
+              return false;          // "not present" is an expected outcome, not a crash
+          }
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isAvailable("com.definitely.not.a.RealClass"));   // false
+          System.out.println(isAvailable("java.lang.String"));                  // true -- always present
+      }
   }
 starter_code: |
   public class Solution {

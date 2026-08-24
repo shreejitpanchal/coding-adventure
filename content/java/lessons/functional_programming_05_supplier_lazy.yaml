@@ -4,17 +4,74 @@ language: java
 level: 120
 objective: "Use Supplier to defer an expensive computation until it's actually needed, instead of always computing it eagerly."
 explanation: |
-  A plain method call evaluates eagerly -- the moment expensive() is
-  called, it runs, whether or not the result ends up being used. Wrapping
-  it as a Supplier<T> (a zero-argument functional interface) defers that
-  work: nothing happens until .get() is actually called, so a branch
-  that never needs the value never pays for it.
+  `int value = expensive();` evaluates eagerly, unconditionally --
+  Java's method-call semantics run the call the moment control reaches
+  that line, computing (and paying the cost of) the result *before* any
+  subsequent branching decides whether that result is actually needed
+  at all. Here, `useIt` is `false`, so `value` never gets used anywhere
+  -- but `expensive()` already ran, already printed `"computing"`,
+  already paid whatever real cost it represents (imagine a slow
+  database query or an expensive calculation standing in for the
+  `System.out.println`), entirely wastefully. This is a common source
+  of unnecessary work in code that computes a value "just in case" it's
+  needed further down, rather than only when a branch that actually
+  needs it is reached.
+
+  `Supplier<T>` is a zero-argument functional interface (its one
+  abstract method is `T get()`) purpose-built for deferring exactly
+  this kind of eager evaluation: wrapping a computation as `Supplier<
+  Integer> value = Solution::expensive;` (or an equivalent lambda)
+  doesn't run `expensive()` at all -- it just packages "here's how to
+  compute this, whenever someone asks" as a value that can be passed
+  around, stored, or conditionally invoked later. The actual computation
+  only happens at the exact moment `.get()` is called on the supplier --
+  if that call is placed inside a conditional branch that never
+  executes, the wrapped computation never runs either, and its cost
+  (and any side effects, like the `"computing"` print) simply never
+  occurs. This "wrap it, only unwrap when genuinely needed" pattern
+  shows up throughout the JDK wherever a value might be expensive to
+  produce and might not always be needed -- logging frameworks commonly
+  accept a `Supplier<String>` for a log message specifically so that
+  expensive message-formatting only happens if that log level is
+  actually enabled, exactly mirroring the `useIt` branch here.
 example_code: |
+  // The trap: expensive() runs EAGERLY, even when its result is never used.
+  static int expensiveBroken() {
+      System.out.println("computing");
+      return 42;
+  }
+
+  int valueBroken = expensiveBroken();     // runs immediately -- "computing" prints
+  boolean useItBroken = false;
+  if (useItBroken) {
+      System.out.println(valueBroken);
+  } else {
+      System.out.println("skipped");        // "computing" already printed, wastefully
+  }
+
+  // Fix: Supplier defers the computation until .get() is actually called.
   import java.util.function.Supplier;
+
+  public class Solution {
+      static int expensive() {
+          System.out.println("computing");
+          return 42;
+      }
+
+      public static void main(String[] args) {
+          Supplier<Integer> value = Solution::expensive;   // nothing runs yet
+          boolean useIt = false;
+          if (useIt) {
+              System.out.println(value.get());               // .get() would trigger it HERE
+          } else {
+              System.out.println("skipped");                  // never called -- "computing" never prints
+          }
+      }
+  }
 
   Supplier<Integer> lazy = () -> { System.out.println("computing"); return 42; };
   // nothing printed yet
-  int value = lazy.get(); // prints "computing" now
+  int computed = lazy.get();   // prints "computing" NOW, only when .get() is called
 starter_code: |
   public class Solution {
       static int expensive() {

@@ -4,17 +4,62 @@ language: java
 level: 89
 objective: "Replace a HashMap wrapped in a sorted-copy step with a TreeMap, which keeps its keys sorted automatically."
 explanation: |
-  TreeMap maintains its keys in sorted order at all times (backed by a
-  red-black tree) -- if a map's keys need to stay sorted, using TreeMap
-  directly is simpler and clearer than inserting into a HashMap and
-  re-sorting a copy of the keys every time they're read.
+  Wrapping a `HashMap`'s `keySet()` in a `TreeSet` every time sorted
+  keys are needed (as the previous exercise's fix does) is a correct
+  workaround, but it's re-sorting from scratch on every single read --
+  each call rebuilds an entirely new sorted structure from whatever
+  order `HashMap` happened to produce. `TreeMap` sidesteps that
+  repeated work by maintaining sorted order *continuously*, as an
+  intrinsic property of the map itself rather than something computed
+  after the fact: internally backed by a red-black tree (a
+  self-balancing binary search tree), every `put()` inserts the new key
+  directly into its correct sorted position, so `keySet()` is *already*
+  in sorted order the moment it's called -- there's no separate sorting
+  step needed at read time at all, because the map never stops being
+  sorted in the first place.
+
+  Reaching for `TreeMap` directly, instead of `HashMap` plus an ad hoc
+  sorting step, is simpler code (no wrapping, no extra collection type
+  involved) and clearer intent (the map's own type signature says
+  "these keys are always sorted," rather than that guarantee being
+  something a reader has to notice is being manually re-established
+  every time the map is read). The tradeoff worth knowing: `TreeMap`'s
+  `put`/`get`/`remove` are O(log n), slightly slower than `HashMap`'s
+  average-case O(1), because maintaining sorted order on every
+  insertion has a real cost -- so `TreeMap` is the right choice
+  specifically when sorted iteration is a genuine, ongoing requirement,
+  while plain `HashMap` remains the better default whenever no
+  particular order is actually needed and raw lookup speed matters
+  more.
 example_code: |
+  import java.util.HashMap;
+  import java.util.Map;
   import java.util.TreeMap;
+  import java.util.TreeSet;
+
+  // The trap: re-sorting a copy of the keys EVERY time they're read.
+  Map<Integer, String> agesBroken = new HashMap<>();
+  agesBroken.put(30, "Alice");
+  agesBroken.put(10, "Bob");
+  agesBroken.put(20, "Carol");
+  System.out.println(new TreeSet<>(agesBroken.keySet()));   // re-sorts from scratch, every call
+
+  // Fix: TreeMap stays sorted continuously -- no re-sorting needed at read time.
+  Map<Integer, String> ages = new TreeMap<>();
+  ages.put(30, "Alice");
+  ages.put(10, "Bob");
+  ages.put(20, "Carol");
+  System.out.println(ages.keySet());     // [10, 20, 30] -- already sorted, directly
 
   TreeMap<Integer, String> m = new TreeMap<>();
   m.put(3, "c");
   m.put(1, "a");
-  System.out.println(m.keySet());
+  System.out.println(m.keySet());        // [1, 3]
+
+  // TreeMap also supports range queries HashMap has no equivalent for:
+  TreeMap<Integer, String> tm = new TreeMap<>(ages);
+  System.out.println(tm.firstKey());      // 10 -- smallest key, O(log n)
+  System.out.println(tm.headMap(20));      // {10=Bob} -- keys strictly less than 20
 starter_code: |
   import java.util.HashMap;
   import java.util.Map;

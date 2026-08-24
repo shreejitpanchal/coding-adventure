@@ -4,13 +4,54 @@ language: java
 level: 136
 objective: "Fix config-loading code that crashes when an environment variable isn't set, instead of falling back to a sensible default."
 explanation: |
-  System.getenv("NAME") returns null if the variable isn't set --
-  parsing that null directly (e.g. with Integer.parseInt) throws a
-  NumberFormatException. System.getenv() (no argument) returns the
-  whole environment as a Map, whose getOrDefault(name, fallback) never
-  returns null.
+  `System.getenv("NAME")`, the single-argument overload, returns `null`
+  -- not an empty string, not an exception, just `null` -- whenever
+  that particular environment variable isn't set. That's a reasonable
+  contract on its own, but it means anything downstream that assumes a
+  non-null string is dangerously fragile: `Integer.parseInt(null)`
+  doesn't produce a sensible "no value" result, it throws `
+  NumberFormatException` (specifically because `parseInt` tries to
+  interpret the literal text `"null"` conceptually and fails, or more
+  precisely, throws on encountering an actual `null` reference where it
+  expected string content), crashing `getPort()` outright the moment
+  `PORT` happens to be unset -- which is exactly the situation a fresh
+  environment, a local dev machine, or an incompletely configured
+  deployment produces routinely.
+
+  `System.getenv()`, the *no-argument* overload, returns the entire
+  environment as an unmodifiable `Map<String, String>` rather than a
+  single lookup -- and once the environment is in `Map` form, `.
+  getOrDefault(key, fallback)` behaves exactly like it does on any other
+  `Map`: it returns the fallback string instead of `null` whenever the
+  key is absent, guaranteeing a genuinely usable, always-non-null result
+  regardless of whether the variable was actually set. `System.getenv()
+  .getOrDefault("PORT", "8000")` therefore never risks handing a `null`
+  to `Integer.parseInt` -- unset means the fallback `"8000"` flows
+  through, set means the real value flows through, and either way the
+  result is a parseable string. Note that the fallback itself has to be
+  a *string* (`"8000"`, not the `int` `8000`) since every environment
+  variable's underlying representation is text -- the conversion to `int
+  ` happens once, at the very end, wrapping the whole `getOrDefault(...)`
+  expression in `Integer.parseInt(...)`.
 example_code: |
+  // The trap: System.getenv("NAME") returns null when unset -- parsing null crashes.
+  static int getPortBroken() {
+      return Integer.parseInt(System.getenv("PORT"));   // NumberFormatException if PORT unset!
+  }
+
+  // Fix: System.getenv() (no arg) returns a Map -- getOrDefault never returns null.
+  public class Solution {
+      static int getPort() {
+          return Integer.parseInt(System.getenv().getOrDefault("PORT", "8000"));
+      }
+
+      public static void main(String[] args) {
+          System.out.println(getPort());   // 8000 if unset, or the real value if set
+      }
+  }
+
   int timeout = Integer.parseInt(System.getenv().getOrDefault("TIMEOUT_SECONDS", "30"));
+  System.out.println(timeout);   // 30, or whatever TIMEOUT_SECONDS is actually set to
 starter_code: |
   public class Solution {
       static int getPort() {

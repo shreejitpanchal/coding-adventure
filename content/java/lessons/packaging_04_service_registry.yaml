@@ -4,17 +4,60 @@ language: java
 level: 134
 objective: "Fix a register() call that never actually stores anything, mimicking the kind of registry ServiceLoader uses to discover implementations by name."
 explanation: |
-  A plugin/service registry -- mapping a name to a callable -- is the
-  in-process version of what Java's real ServiceLoader mechanism does
-  via META-INF/services files: something has to actually record the
-  association before it can be looked up later. A register() function
-  that doesn't store its arguments anywhere is a no-op, however it
-  looks.
-example_code: |
-  static Map<String, Runnable> COMMANDS = new HashMap<>();
+  Java's real service-discovery mechanism, `ServiceLoader`, works by
+  reading a text file at `META-INF/services/<InterfaceName>` bundled
+  inside a JAR, listing the fully-qualified class names of every
+  implementation that JAR provides for that interface -- this is what
+  lets a consuming application discover and load plugin implementations
+  it never directly imports or references by name, purely by scanning
+  the classpath for these declaration files at runtime. A simple in-
+  process `Map<String, Runnable>` registry, keyed by name, is the
+  conceptual miniature of exactly that idea: "record an association
+  between a name and something invokable, so it can be looked up and
+  invoked later by that name alone, without the caller needing a direct
+  reference to it."
 
-  static void register(String name, Runnable action) {
-      COMMANDS.put(name, action);
+  But that association has to actually be *recorded* somewhere for the
+  lookup to ever work -- `register(String name, Runnable action) { }`,
+  with an empty body, looks like it's doing something (it has the right
+  signature, it's called with sensible arguments, it doesn't throw
+  anything), but it performs no side effect whatsoever, so `COMMANDS`
+  never receives an entry no matter how many times `register(...)` is
+  called. `COMMANDS.get("greet")` afterward returns `null` (a `HashMap`
+  's standard behavior for a key that was never `put`), and calling `.
+  run()` on that `null` throws `NullPointerException` -- not because
+  anything about the lookup logic is wrong, but because the
+  registration step it depends on silently did nothing. The fix is the
+  one missing line: `COMMANDS.put(name, action);` inside `register`,
+  actually storing the association as a side effect before the method
+  returns -- exactly the same "the function's whole job is to record a
+  mapping as a side effect" shape covered by the Python track's
+  entry-point-decorator exercise, just expressed here as an ordinary
+  method rather than a decorator.
+example_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+
+  // The trap: register() has the right signature but does NOTHING.
+  static Map<String, Runnable> COMMANDS_BROKEN = new HashMap<>();
+  static void registerBroken(String name, Runnable action) {
+      // empty body -- never actually stores anything!
+  }
+  // registerBroken("greet", () -> System.out.println("hello"));
+  // COMMANDS_BROKEN.get("greet") -- null, then .run() throws NullPointerException
+
+  // Fix: register() must actually record the association as a side effect.
+  public class Solution {
+      static Map<String, Runnable> COMMANDS = new HashMap<>();
+
+      static void register(String name, Runnable action) {
+          COMMANDS.put(name, action);   // the missing side effect
+      }
+
+      public static void main(String[] args) {
+          register("greet", () -> System.out.println("hello"));
+          COMMANDS.get("greet").run();    // hello -- looked up by NAME, not a direct reference
+      }
   }
 starter_code: |
   import java.util.HashMap;

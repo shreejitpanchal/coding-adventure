@@ -4,16 +4,59 @@ language: java
 level: 118
 objective: "Fix an UnsupportedOperationException from mutating a List.of() result -- it's genuinely immutable, not just conventionally so."
 explanation: |
-  List.of(...) returns a truly immutable list -- any mutating call
-  (add, remove, set) throws UnsupportedOperationException unconditionally,
-  regardless of what you're adding. When mutation is actually needed,
-  wrap it in a real mutable copy first: `new ArrayList<>(List.of(...))`.
+  `List.of(1, 2, 3)` (introduced in Java 9 as one of several
+  "collection factory" methods, alongside `Set.of`/`Map.of`) returns a
+  list that's genuinely, unconditionally immutable -- not just "please
+  don't mutate this by convention," the way an unmodifiable *view* of a
+  mutable list might be, but structurally incapable of being changed at
+  all. Any mutating call -- `.add()`, `.remove()`, `.set()`, `.clear()`
+  -- throws `UnsupportedOperationException` the instant it's called,
+  regardless of what's being added or how the list is currently used;
+  this isn't a runtime check on the *content* of the operation, it's
+  the list implementation itself simply not supporting mutation as a
+  capability. This is a deliberate design choice distinct from `
+  Collections.unmodifiableList(existingList)` from earlier Java
+  versions, which wraps a *still-mutable* underlying list in an
+  immutable-looking view -- the view itself can't be mutated, but the
+  underlying list it wraps still can be, through a separate reference,
+  which can silently change what the "immutable" view shows. `List.of(
+  ...)`'s immutability has no such underlying escape hatch at all.
+
+  This makes `List.of(...)` an excellent default for genuinely constant
+  data (fixed lookup tables, configuration defaults, anything that
+  should never change once constructed) -- but it means reaching for it
+  when mutation is actually needed later produces a hard, immediate
+  crash rather than a subtle bug, which is arguably the better failure
+  mode (fail fast and loud) but still needs to be understood and worked
+  around. The fix, when a genuinely mutable starting point is needed,
+  is to explicitly wrap the immutable list in a real mutable collection
+  -- `new ArrayList<>(List.of(1, 2, 3))` copies the immutable list's
+  elements into a fresh, ordinary `ArrayList` that fully supports
+  mutation, leaving the original `List.of(...)` result untouched and
+  still immutable.
 example_code: |
   import java.util.ArrayList;
   import java.util.List;
 
+  // The trap: List.of() is UNCONDITIONALLY immutable -- any mutation crashes.
+  List<Integer> numbersBroken = List.of(1, 2, 3);
+  // numbersBroken.add(4);   // UnsupportedOperationException -- no exceptions to this rule
+
+  // Fix: wrap it in a genuinely mutable ArrayList copy first.
+  List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
+  numbers.add(4);
+  System.out.println(numbers);          // [1, 2, 3, 4]
+
   List<Integer> mutable = new ArrayList<>(List.of(1, 2, 3));
   mutable.add(4);
+  System.out.println(mutable);           // [1, 2, 3, 4]
+
+  // Contrast: Collections.unmodifiableList wraps a STILL-mutable underlying list.
+  List<Integer> underlying = new ArrayList<>(List.of(1, 2, 3));
+  List<Integer> view = java.util.Collections.unmodifiableList(underlying);
+  // view.add(4);           // still throws -- the VIEW can't be mutated directly
+  underlying.add(4);          // but the underlying list CAN -- and the view reflects it!
+  System.out.println(view);    // [1, 2, 3, 4] -- changed via the underlying reference
 starter_code: |
   import java.util.List;
 

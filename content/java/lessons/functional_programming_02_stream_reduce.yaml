@@ -4,14 +4,64 @@ language: java
 level: 117
 objective: "Use Stream.reduce to combine a sequence into one value instead of a manual accumulator loop."
 explanation: |
-  reduce(identity, accumulator) repeatedly applies a two-argument
-  function, carrying an accumulated value forward -- the general-purpose
-  "fold" operation for a stream. It's the right tool whenever a manual
-  loop is just accumulating one running value.
+  `int product = 1; for (int n : numbers) { product *= n; }` is a
+  manual accumulation loop -- a running value (`product`) starts at
+  some initial state and gets combined with each element in turn. This
+  exact shape -- start with an identity value, repeatedly combine it
+  with the next element using some two-argument function -- is common
+  enough across completely different accumulations (summing, taking a
+  product, finding a maximum, concatenating strings) that it has a
+  name: a "fold" (or "reduce"). `Stream.reduce(identity, accumulator)`
+  is the Stream API's built-in implementation of exactly that pattern:
+  `identity` is the starting value (what the result would be for an
+  empty stream, and also the value the very first combination starts
+  from), and `accumulator` is a `BinaryOperator<T>` describing how to
+  fold the next element into the running value so far.
+  `numbers.stream().reduce(1, (a, b) -> a * b)` reads as "start from 1,
+  and repeatedly multiply the running total by the next element" --
+  the exact same operation the manual loop performs, expressed as one
+  declarative call instead of an explicit loop with a mutable
+  accumulator variable.
+
+  `reduce` is the right tool specifically when a loop's *entire* job is
+  "accumulate one running value across every element" -- the moment a
+  loop needs to do more than that (branch differently per element,
+  accumulate into more than one variable, have side effects beyond the
+  fold itself), forcing it into `reduce` usually produces code that's
+  harder to follow than the original loop, not easier, so it's worth
+  recognizing the pattern rather than reaching for `reduce` reflexively
+  everywhere a loop appears. The identity value matters for
+  correctness, not just as a starting point: it must be a true identity
+  for the accumulator function (multiplying by `1` changes nothing,
+  adding `0` changes nothing) so that folding it with the first real
+  element produces exactly that element's own contribution, unmodified
+  -- picking the wrong identity (accidentally starting a product fold
+  from `0`, say) silently produces a wrong result for every input.
 example_code: |
   import java.util.List;
 
+  // The trap: not wrong, just a manual accumulator loop for a common fold shape.
+  List<Integer> numbers = List.of(1, 2, 3, 4);
+  int productManual = 1;
+  for (int n : numbers) {
+      productManual *= n;
+  }
+  System.out.println(productManual);   // 24
+
+  // Fix: reduce expresses the same fold declaratively.
+  int product = numbers.stream().reduce(1, (a, b) -> a * b);
+  System.out.println(product);          // 24
+
   int sum = List.of(1, 2, 3).stream().reduce(0, Integer::sum);
+  System.out.println(sum);               // 6
+
+  // Getting the identity WRONG silently breaks the result:
+  int wrongIdentity = numbers.stream().reduce(0, (a, b) -> a * b);   // starts from 0!
+  System.out.println(wrongIdentity);      // 0 -- every product collapses to 0
+
+  // Other common folds, same shape:
+  int max = numbers.stream().reduce(Integer.MIN_VALUE, Integer::max);
+  System.out.println(max);                 // 4
 starter_code: |
   import java.util.List;
 

@@ -4,16 +4,68 @@ language: java
 level: 84
 objective: "Replace a hand-written immutable data class with a record."
 explanation: |
-  A `record` generates the constructor, accessors, equals(), hashCode(),
-  and toString() for a set of fields automatically -- for a class that's
-  purely an immutable bundle of data (like a Point), this removes
-  exactly the boilerplate this class hand-writes, with identical
-  behavior.
+  A large share of everyday Java classes exist purely to bundle a
+  handful of immutable values together -- a `Point` with `x`/`y`, a
+  `Coord` with `lat`/`lon` -- and for that shape of class, the actual
+  hand-written code is almost entirely boilerplate: a constructor that
+  just assigns each parameter to a matching field, accessor methods
+  that just return each field, an `equals()`/`hashCode()` pair that
+  compares every field, and a `toString()` that formats them all. None
+  of that is genuinely custom logic -- it's mechanically derivable from
+  the field list alone, which is exactly what `record` automates:
+  `record Point(int x, int y) {}` declares the field list once, and the
+  compiler generates the canonical constructor, `x()`/`y()` accessors
+  (note: `x()`, not `getX()` -- records use a lighter accessor naming
+  convention than the traditional JavaBeans style), a structural `equals
+  ()`/`hashCode()` that compares field values (not object identity),
+  and a `toString()` in the `Point[x=1, y=2]` format shown here --
+  with behavior identical to a correctly hand-written equivalent, just
+  without writing any of it out by hand.
+
+  Records are also implicitly `final` (can't be subclassed) and every
+  field is implicitly `private final` (immutable after construction,
+  matching the fact that this whole feature exists specifically for
+  immutable data bundles) -- both restrictions that a hand-written class
+  would need to opt into deliberately but that a record simply assumes,
+  since they're almost always what's wanted for a pure data carrier.
+  The tradeoff is scope: records are the right tool specifically for
+  "this class's entire job is to hold these values together," not for
+  classes with real behavior, mutable state, or an inheritance
+  hierarchy -- reaching for a record when a class actually needs custom
+  logic beyond its data (validation beyond a compact constructor,
+  computed derived fields, mutability) means fighting the feature
+  rather than benefiting from it.
 example_code: |
+  // The trap: hand-written boilerplate for a class that's PURELY data.
+  public class Solution {
+      static final class PointVerbose {
+          private final int x;
+          private final int y;
+          PointVerbose(int x, int y) { this.x = x; this.y = y; }
+          int x() { return x; }
+          int y() { return y; }
+          public String toString() { return "Point[x=" + x + ", y=" + y + "]"; }
+          // equals()/hashCode() omitted here, but would need hand-writing too
+      }
+
+      // Fix: a record generates ALL of that automatically from the field list.
+      record Point(int x, int y) {}
+
+      public static void main(String[] args) {
+          Point p = new Point(1, 2);
+          System.out.println(p);              // Point[x=1, y=2] -- generated toString()
+
+          Point p2 = new Point(1, 2);
+          System.out.println(p.equals(p2));    // true -- structural equality, generated
+
+          System.out.println(p.x());            // 1 -- generated accessor, not getX()
+      }
+  }
+
   record Coord(double lat, double lon) {}
 
   Coord c = new Coord(1.0, 2.0);
-  System.out.println(c);
+  System.out.println(c);                        // Coord[lat=1.0, lon=2.0]
 starter_code: |
   public class Solution {
       static final class Point {

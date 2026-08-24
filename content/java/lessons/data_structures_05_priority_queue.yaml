@@ -4,16 +4,62 @@ language: java
 level: 90
 objective: "Use PriorityQueue (a min-heap) to read off the smallest element instead of sorting the entire list just to look at the first item."
 explanation: |
-  Collections.sort() on the whole list is O(n log n) just to read the
-  minimum. PriorityQueue is a heap-backed structure where peek() reads
-  the smallest element in O(1) (after O(n) construction) -- the right
-  tool whenever you need repeated access to the current minimum/maximum
-  without needing the rest fully sorted.
+  `Collections.sort(nums)` followed by `nums.get(0)` is doing far more
+  work than the goal actually requires: sorting the entire list is
+  O(n log n), fully ordering every element, just to look at the single
+  smallest one -- the rest of that sorted order goes completely unused
+  if all that's needed is the minimum. `PriorityQueue` is a heap-backed
+  structure (specifically a binary min-heap by default) purpose-built
+  for exactly this situation: it maintains just enough internal
+  structure to always know which element is smallest, without fully
+  sorting everything else. Constructing a `PriorityQueue` from an
+  existing collection is O(n) (heapifying is cheaper than fully
+  sorting), and once built, `.peek()` reads the smallest element in O(1)
+  -- no further work needed to answer "what's currently smallest."
+
+  The real advantage over a one-time sort shows up with *repeated*
+  access to a changing minimum: `.poll()` removes and returns the
+  current smallest element in O(log n) (cheaper than re-sorting the
+  whole remaining collection), and `.add(x)` inserts a new element while
+  maintaining the heap property, also in O(log n) -- so a `PriorityQueue`
+  is the right structure whenever a program needs to repeatedly ask "
+  what's the current minimum" while elements keep being added and
+  removed, rather than sorting once and reading a fixed answer. Common
+  real uses follow that shape directly: a task scheduler that always
+  needs to run the next-highest-priority job, Dijkstra's shortest-path
+  algorithm repeatedly extracting the nearest unvisited node, or a
+  top-k tracking structure. By default `PriorityQueue` orders by
+  natural ordering (smallest first, a min-heap) -- passing a `Comparator
+  ` to the constructor (or `Comparator.reverseOrder()`) flips it into a
+  max-heap instead, when the largest element is what's needed repeatedly.
 example_code: |
+  import java.util.ArrayList;
+  import java.util.Collections;
+  import java.util.Comparator;
+  import java.util.List;
   import java.util.PriorityQueue;
 
-  PriorityQueue<Integer> pq = new PriorityQueue<>(java.util.List.of(9, 3, 7));
-  System.out.println(pq.peek());
+  // The trap: sorting the WHOLE list just to read the minimum once.
+  List<Integer> numsBroken = new ArrayList<>(List.of(5, 1, 4, 2, 3));
+  Collections.sort(numsBroken);          // O(n log n) -- fully sorts, but only .get(0) is used
+  System.out.println(numsBroken.get(0)); // 1
+
+  // Fix: PriorityQueue gives O(1) peek() at the minimum, O(n) to build.
+  PriorityQueue<Integer> pqFix = new PriorityQueue<>(List.of(5, 1, 4, 2, 3));
+  System.out.println(pqFix.peek());       // 1 -- no full sort needed
+
+  PriorityQueue<Integer> pq = new PriorityQueue<>(List.of(9, 3, 7));
+  System.out.println(pq.peek());           // 3
+
+  // Repeated removal stays cheap -- O(log n) per poll(), not a full re-sort:
+  pq.add(1);
+  System.out.println(pq.poll());           // 1 -- smallest removed and returned
+  System.out.println(pq.poll());           // 3 -- next smallest
+
+  // A max-heap instead, via a reversed Comparator:
+  PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());
+  maxHeap.addAll(List.of(5, 1, 4));
+  System.out.println(maxHeap.peek());      // 5 -- largest first
 starter_code: |
   import java.util.ArrayList;
   import java.util.Collections;

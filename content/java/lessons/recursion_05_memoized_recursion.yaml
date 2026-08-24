@@ -4,21 +4,61 @@ language: java
 level: 125
 objective: "Speed up an exponential naive-recursive Fibonacci with a HashMap cache, since Java has no built-in memoization decorator."
 explanation: |
-  Naive recursive fib(n) recomputes the same sub-calls exponentially many
-  times -- fib(50) alone makes billions of calls and is far too slow.
-  Unlike Python's @lru_cache, Java has no built-in memoization annotation
-  -- the standard fix is to hand-roll it: check a cache (a Map<Integer,
-  Long>) before computing, and store the result before returning, so
-  each distinct n is only ever computed once.
-example_code: |
-  static Map<Integer, Long> cache = new HashMap<>();
+  Naive recursive `fib(n) = fib(n-1) + fib(n-2)` is correct but
+  catastrophically wasteful: computing `fib(n)` recomputes `fib(n-2)`
+  from scratch as part of *both* `fib(n-1)`'s call tree and directly,
+  and that duplication compounds at every level -- the total number of
+  calls grows exponentially with `n`, roughly doubling with each
+  increment. `fib(50)` alone makes billions of redundant calls, the
+  overwhelming majority of them recomputing a value that's already been
+  computed many times before, for no new information gained. The
+  underlying insight that fixes this: `fib(n)` for any given `n` always
+  produces the *same* result no matter how many times or from how many
+  different call paths it's asked for -- so once computed, it never
+  needs to be recomputed again, only looked up.
 
-  static long fib(int n) {
+  This technique -- caching a function's result keyed by its input, so
+  repeat calls with the same input are answered from the cache instead
+  of recomputing -- is called memoization. Some languages provide it as
+  a built-in decorator (Python's `@functools.lru_cache`, covered
+  elsewhere in this app), but Java has no equivalent built-in
+  annotation or standard-library wrapper for arbitrary recursive
+  methods -- the standard approach is to hand-roll it explicitly: a `Map
+  <Integer, Long>` at class scope holds every `n` already computed, `fib
+  (n)` checks that map *before* doing any recursive work (`if (cache.
+  containsKey(n)) return cache.get(n);`), and stores its result into
+  the map *before* returning, right after computing it (`cache.put(n,
+  result);`). With that cache in place, each distinct value of `n` is
+  computed at most once across the entire program's execution -- every
+  subsequent request for that same `n`, from anywhere in the call tree,
+  is answered by a cheap map lookup instead of re-deriving it, turning
+  the exponential blowup into work proportional to `n` itself.
+example_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+
+  // The trap: naive recursion recomputes the SAME sub-calls exponentially many times.
+  static long fibBroken(int n) {
       if (n < 2) return n;
-      if (cache.containsKey(n)) return cache.get(n);
-      long result = fib(n - 1) + fib(n - 2);
-      cache.put(n, result);
-      return result;
+      return fibBroken(n - 1) + fibBroken(n - 2);    // fib(n-2) recomputed from scratch, repeatedly
+  }
+  // fibBroken(50) -- technically correct, but billions of calls, far too slow
+
+  // Fix: a cache checked BEFORE recursing, populated AFTER computing.
+  public class Solution {
+      static Map<Integer, Long> cache = new HashMap<>();
+
+      static long fib(int n) {
+          if (n < 2) return n;                        // base case
+          if (cache.containsKey(n)) return cache.get(n);   // check cache FIRST
+          long result = fib(n - 1) + fib(n - 2);
+          cache.put(n, result);                         // store BEFORE returning
+          return result;
+      }
+
+      public static void main(String[] args) {
+          System.out.println(fib(50));                  // 12586269025 -- fast, each n computed once
+      }
   }
 starter_code: |
   public class Solution {

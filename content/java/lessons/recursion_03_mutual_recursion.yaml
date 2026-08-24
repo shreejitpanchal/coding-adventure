@@ -4,17 +4,73 @@ language: java
 level: 123
 objective: "Fix a mutually recursive pair of methods whose base case returns the wrong value."
 explanation: |
-  Mutual recursion is two (or more) methods that call each other instead
-  of themselves directly -- isEven(n) calling isOdd(n-1) and vice versa
-  is a classic example. It works the same way ordinary recursion does:
-  each method needs a correct base case, since a wrong one propagates
-  through every level of the mutual call chain.
+  Mutual recursion is what happens when two (or more) methods call
+  *each other* instead of each calling itself directly -- `isEven(n)`
+  delegating to `isOdd(n - 1)`, which delegates back to `isEven(n - 2)`,
+  alternating between the two until one of them hits its base case.
+  Everything that applies to ordinary single-method recursion applies
+  here too -- each method still needs a correct base case -- except now
+  there are *multiple* base cases, one per method in the mutual cycle,
+  and each has to be independently correct, since the two methods are
+  implicitly trusting each other's correctness across every call
+  boundary between them.
+
+  That mutual trust is exactly what makes a wrong base case in mutual
+  recursion easy to overlook: `isEven(0)` returning `false` is an
+  obviously wrong, self-contained fact (`0` is even, by mathematical
+  definition), but its effect doesn't stay contained to the calls that
+  directly reach it -- it silently corrupts every result computed
+  through it. `isEven(10)` calls `isOdd(9)`, which calls `isEven(8)`,
+  and so on down to `isEven(0)`, and that single wrong base case flips
+  the correctness of the *entire* chain built on top of it, even though
+  every other line of logic in both methods -- including `isOdd`'s own
+  base case, which is correct -- is completely fine. Debugging a
+  mutual-recursion bug like this is usually most effective by checking
+  each method's base case in isolation, independent of the mutual call
+  structure, rather than tracing the full alternating call chain, since
+  the actual defect is typically a small, local, single-line mistake
+  that a full trace only makes look more complicated than it is.
 example_code: |
-  static boolean isEven(int n) {
+  // The trap: one wrong base case corrupts every result built on top of it.
+  static boolean isEvenBroken(int n) {
       if (n == 0) {
-          return true;
+          return false;             // WRONG -- 0 is even!
       }
-      return isOdd(n - 1);
+      return isOddBroken(n - 1);
+  }
+
+  static boolean isOddBroken(int n) {
+      if (n == 0) {
+          return false;              // correct: 0 is not odd
+      }
+      return isEvenBroken(n - 1);
+  }
+  // isEvenBroken(4) returns false -- WRONG, corrupted by the bad base case
+
+  // Fix: correct isEven's base case -- isOdd's was already right.
+  public class Solution {
+      static boolean isEven(int n) {
+          if (n == 0) {
+              return true;            // 0 IS even
+          }
+          return isOdd(n - 1);
+      }
+
+      static boolean isOdd(int n) {
+          if (n == 0) {
+              return false;
+          }
+          return isEven(n - 1);
+      }
+
+      public static void main(String[] args) {
+          System.out.println(isEven(10));   // true
+          System.out.println(isOdd(7));      // true
+
+          // Debugging tip: check each base case IN ISOLATION first.
+          System.out.println(isEven(0));      // true -- verify the base case directly
+          System.out.println(isOdd(0));        // false
+      }
   }
 starter_code: |
   public class Solution {

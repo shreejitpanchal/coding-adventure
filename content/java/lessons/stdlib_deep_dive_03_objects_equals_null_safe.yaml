@@ -4,15 +4,55 @@ language: java
 level: 93
 objective: "Fix a NullPointerException from calling .equals() on a value that might be null, using the null-safe Objects.equals() instead."
 explanation: |
-  `a.equals(b)` throws a NullPointerException the instant `a` is null --
-  there's no object there to call the method on. java.util.Objects.
-  equals(a, b) handles null on either side safely, returning true only
-  if both are null or both are non-null and equal, without ever risking
-  an NPE.
+  Calling any instance method on a `null` reference -- `a.equals(b)`
+  when `a` is `null` -- throws `NullPointerException` immediately, before
+  `equals`'s own logic even runs, because there's no actual object at
+  that reference for the JVM to dispatch the method call to; `.equals()`
+  is defined *on* `Object`, and a `null` reference isn't pointing at any
+  `Object` at all. This makes `a.equals(b)` fundamentally asymmetric
+  and fragile: it happens to work fine if `a` is non-null (regardless of
+  whether `b` is null -- `Object.equals` implementations are expected to
+  handle a null argument gracefully, just not a null *receiver*), but
+  crashes outright the moment `a` itself is null, which is exactly the
+  situation `sameName(null, "Ada")` triggers here.
+
+  `java.util.Objects.equals(a, b)` (a static utility method, not an
+  instance method, so there's no risk of calling it "on" a null
+  reference in the first place) sidesteps the whole problem by checking
+  for null explicitly before delegating: it returns `true` if both `a`
+  and `b` are `null` (two nulls are considered equal to each other),
+  `false` if exactly one of them is `null` (never a crash, since it
+  never calls `.equals()` on a known-null value), and otherwise
+  delegates to `a.equals(b)` once it's already confirmed `a` is
+  non-null. This one utility method replaces what would otherwise be an
+  explicit `if (a == null) { return b == null; } return a.equals(b);`
+  guard written out by hand at every call site that can't guarantee its
+  arguments are non-null -- which, for public methods accepting
+  arbitrary caller-supplied values, is often exactly the situation
+  where this null-safety actually matters most.
 example_code: |
   import java.util.Objects;
 
-  System.out.println(Objects.equals(null, "hi"));
+  // The trap: a.equals(b) crashes the instant `a` itself is null.
+  static boolean sameNameBroken(String a, String b) {
+      return a.equals(b);          // NullPointerException if a is null!
+  }
+  // sameNameBroken(null, "Ada") -- throws NullPointerException
+
+  // Fix: Objects.equals handles null on EITHER side safely.
+  static boolean sameName(String a, String b) {
+      return Objects.equals(a, b);
+  }
+
+  public class Solution {
+      public static void main(String[] args) {
+          System.out.println(sameName(null, "Ada"));   // false -- no crash
+
+          System.out.println(Objects.equals(null, "hi"));   // false
+          System.out.println(Objects.equals(null, null));   // true -- both null counts as equal
+          System.out.println(Objects.equals("hi", "hi"));   // true -- delegates to equals() safely
+      }
+  }
 starter_code: |
   public class Solution {
       static boolean sameName(String a, String b) {

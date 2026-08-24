@@ -4,19 +4,79 @@ language: java
 level: 96
 objective: "Fix a race condition where two threads increment a shared counter without synchronization, losing updates."
 explanation: |
-  `counter++` isn't atomic -- it's a read, an increment, and a write as
-  separate steps, and the JVM can interleave two threads' steps
-  arbitrarily. With enough iterations, some increments get lost when
-  two threads read the same value before either writes back.
-  `synchronized` around the critical section makes each increment atomic
-  with respect to other threads, guaranteeing the final count is exact.
-example_code: |
-  static int counter = 0;
-  static final Object lock = new Object();
+  `counter++` compiles down to three distinct steps: read the current
+  value of `counter`, add one to it, write the result back. On the JVM,
+  with genuine OS-level threads running in parallel on multiple cores,
+  those three steps aren't protected from interleaving with another
+  thread's steps unless something explicitly makes them so -- two
+  threads can both read the same value of `counter` before either has
+  written back its incremented result, and both then write back the
+  same "+1" result, silently losing one of the two increments. Run two
+  threads each doing 100,000 unsynchronized increments and the final
+  count usually lands somewhere below the expected 200,000, by a
+  different, unpredictable amount on different runs -- the hallmark of
+  a genuine race condition rather than a deterministic logic bug, and
+  the exact same fundamental shape as Python's `counter += 1` race
+  discussed elsewhere in this app, just triggered by real parallel
+  threads here instead of GIL-release timing.
 
-  static void increment() {
-      synchronized (lock) {
-          counter++;
+  `synchronized (lock) { counter++; }` fixes this by making the block
+  atomic *with respect to any other thread synchronizing on that same
+  lock object*: only one thread can be executing code inside a `
+  synchronized (lock)` block for a given `lock` at any moment -- any
+  other thread that reaches a `synchronized` block using the same lock
+  object simply blocks, waiting its turn, until the current holder
+  exits the block. That serializes the read-increment-write sequence
+  completely, eliminating the interleaving that caused lost updates.
+  Using a dedicated `private static final Object lock = new Object();`
+  purely as a lock handle (rather than synchronizing on some other
+  object that already has a semantic purpose) is a deliberate,
+  conventional choice -- it makes the lock's *only* job explicit and
+  avoids accidentally sharing lock scope with unrelated code that might
+  also happen to synchronize on the same object for a different reason.
+example_code: |
+  // The trap: counter++ isn't atomic -- concurrent increments can be lost.
+  public class SolutionBroken {
+      static int counter = 0;
+
+      static void increment() {
+          for (int i = 0; i < 100000; i++) {
+              counter++;                  // read, add, write -- not thread-safe
+          }
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          Thread t1 = new Thread(SolutionBroken::increment);
+          Thread t2 = new Thread(SolutionBroken::increment);
+          t1.start();
+          t2.start();
+          t1.join();
+          t2.join();
+          System.out.println(counter);    // usually LESS than 200000 -- lost updates
+      }
+  }
+
+  // Fix: synchronized makes the critical section atomic across threads.
+  public class Solution {
+      static int counter = 0;
+      static final Object lock = new Object();
+
+      static void increment() {
+          for (int i = 0; i < 100000; i++) {
+              synchronized (lock) {
+                  counter++;                // atomic w.r.t. any other thread using `lock`
+              }
+          }
+      }
+
+      public static void main(String[] args) throws InterruptedException {
+          Thread t1 = new Thread(Solution::increment);
+          Thread t2 = new Thread(Solution::increment);
+          t1.start();
+          t2.start();
+          t1.join();
+          t2.join();
+          System.out.println(counter);      // always exactly 200000
       }
   }
 starter_code: |

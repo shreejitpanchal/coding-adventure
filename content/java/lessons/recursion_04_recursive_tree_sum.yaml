@@ -4,16 +4,67 @@ language: java
 level: 124
 objective: "Fix a tree-sum method that ignores both children entirely, only ever returning the root's own value."
 explanation: |
-  A binary tree is a naturally recursive data structure -- summing it
-  needs a recursive method: for a null node, contribute 0; otherwise,
-  contribute the node's own value plus whatever its left and right
-  subtrees sum to (each computed by recursing into them).
+  A binary tree -- each `Node` holding a value plus references to a
+  `left` and `right` child, either of which might themselves be `null`
+  or another whole subtree -- is a naturally recursive data structure:
+  a tree's own left child is, structurally, itself a complete (smaller)
+  tree, and the same is true of the right child. That recursive
+  structure is exactly what a recursive summing method should mirror: `
+  sum(node)` only ever really needs to answer "what does *this* node
+  contribute, plus whatever its two children's own subtrees contribute"
+  -- and each child's contribution is answered by calling the *exact
+  same* `sum` method on it, since a subtree is summed identically
+  regardless of how deep it happens to sit in the overall tree.
+
+  `return node.value;` -- the buggy version here -- only ever answers
+  the first half of that question; it completely ignores both `node.
+  left` and `node.right`, so no matter how large or deep the tree
+  actually is, the result is always just the root's own single value.
+  The fix has two necessary parts, and both matter: a base case for `
+  node == null` (an empty subtree, a child that doesn't exist,
+  contributes `0` to the total -- not an error, not a value to skip
+  over incorrectly, just the natural "nothing here" case), and a
+  recursive case that combines the current node's own value with *both*
+  children's recursively-computed sums: `node.value + sum(node.left) +
+  sum(node.right)`. Each of those two recursive calls independently
+  walks its own subtree down to its own `null` leaves, and the results
+  combine back up as the calls return -- the same fundamental shape as
+  summing a nested list (covered elsewhere in this app), just branching
+  in two directions per node instead of iterating linearly through
+  elements.
 example_code: |
-  static int sum(Node node) {
-      if (node == null) {
-          return 0;
+  public class Solution {
+      static class Node {
+          int value;
+          Node left, right;
+          Node(int value, Node left, Node right) {
+              this.value = value;
+              this.left = left;
+              this.right = right;
+          }
       }
-      return node.value + sum(node.left) + sum(node.right);
+
+      // The trap: only ever returns the CURRENT node's value, ignoring children entirely.
+      static int sumBroken(Node node) {
+          return node.value;          // both children completely ignored!
+      }
+
+      // Fix: base case for null, recursive case combines value + both subtrees.
+      static int sum(Node node) {
+          if (node == null) {
+              return 0;                // empty subtree contributes nothing
+          }
+          return node.value + sum(node.left) + sum(node.right);
+      }
+
+      public static void main(String[] args) {
+          Node tree = new Node(1,
+                  new Node(2, null, null),
+                  new Node(3, new Node(4, null, null), null));
+
+          System.out.println(sumBroken(tree));   // 1 -- WRONG, ignores 2, 3, and 4
+          System.out.println(sum(tree));           // 10 -- 1 + 2 + 3 + 4, correct
+      }
   }
 starter_code: |
   public class Solution {

@@ -4,17 +4,68 @@ language: java
 level: 99
 objective: "Run a computation asynchronously with CompletableFuture.supplyAsync instead of calling it directly, then read the result with join()."
 explanation: |
-  CompletableFuture.supplyAsync(supplier) runs a computation on a
-  background thread (from the common ForkJoinPool by default) and
-  returns immediately with a handle to the eventual result --
-  join() blocks until that result is ready. It's Java's core building
-  block for asynchronous, composable computation, roughly analogous to
-  a Promise/Future in other languages.
+  Calling `slowSquare(6)` directly runs it synchronously on the calling
+  thread -- the caller waits for it to finish before moving on to
+  anything else, which is fine for something genuinely fast, but wrong
+  once the computation might be slow (a database call, a network
+  request) and the caller has other useful work it could be doing in
+  the meantime. `CompletableFuture.supplyAsync(supplier)` runs the given
+  `Supplier` on a background thread (drawn, by default, from the shared
+  `ForkJoinPool.commonPool()` rather than a thread the caller has to
+  manage) and returns *immediately* with a `CompletableFuture<T>` --
+  not the actual result yet, but a handle representing "the eventual
+  result, once it's ready." The calling thread is free to continue
+  doing other work right away, rather than blocking for however long
+  the computation takes.
+
+  `.join()` is what eventually reconnects with that result: it blocks
+  the calling thread until the async computation completes, then
+  returns the actual value (or throws an unchecked exception if the
+  computation itself threw). `CompletableFuture` is Java's core
+  building block for this "start now, combine and retrieve later"
+  style of asynchronous programming -- conceptually similar to a
+  Promise/Future in JavaScript or other languages, and it earns the "
+  Completable" half of its name from supporting rich composition beyond
+  just "run one thing and wait": `.thenApply(...)` transforms a result
+  once it arrives, `.thenCompose(...)` chains together a sequence of
+  async steps, and `.exceptionally(...)` handles a failure -- all
+  without the caller needing to manually block and re-dispatch between
+  each step, letting an entire pipeline of async work be described
+  declaratively and only actually block (via `.join()` or `.get()`)
+  once, at the very end, when a final result is genuinely needed.
 example_code: |
   import java.util.concurrent.CompletableFuture;
 
+  // The trap: calling directly blocks the caller for the full duration.
+  static int slowSquare(int n) {
+      return n * n;                     // imagine this is genuinely slow
+  }
+
+  public class SolutionSync {
+      public static void main(String[] args) {
+          int result = slowSquare(6);   // caller blocks here, can't do anything else meanwhile
+          System.out.println(result);
+      }
+  }
+
+  // Fix: supplyAsync runs it on a background thread, returns immediately.
+  public class Solution {
+      public static void main(String[] args) {
+          CompletableFuture<Integer> future = CompletableFuture.supplyAsync(() -> slowSquare(6));
+          // ... the calling thread could do other work HERE, before joining ...
+          int result = future.join();    // blocks only when the result is actually needed
+          System.out.println(result);     // 36
+      }
+  }
+
   CompletableFuture<Integer> f = CompletableFuture.supplyAsync(() -> 6 * 7);
-  System.out.println(f.join());
+  System.out.println(f.join());            // 42
+
+  // Composable without manually blocking between steps:
+  CompletableFuture<Integer> chained = CompletableFuture
+          .supplyAsync(() -> slowSquare(6))
+          .thenApply(n -> n + 1);           // transforms the result once it's ready
+  System.out.println(chained.join());        // 37
 starter_code: |
   public class Solution {
       static int slowSquare(int n) {

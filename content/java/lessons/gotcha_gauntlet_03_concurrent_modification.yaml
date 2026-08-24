@@ -4,19 +4,79 @@ language: java
 level: 103
 objective: "Fix a ConcurrentModificationException from removing elements out of an ArrayList during a for-each loop over it."
 explanation: |
-  A for-each loop uses an Iterator internally, and that iterator detects
-  when the underlying list is structurally modified mid-iteration
-  (adding or removing elements) -- it throws
-  ConcurrentModificationException rather than silently producing
-  unreliable results. Collection.removeIf() is the safe, idiomatic way
-  to remove matching elements while iterating.
+  A Java for-each loop (`for (int score : scores)`) is syntactic sugar
+  over an explicit `Iterator` -- under the hood, it calls `scores.
+  iterator()` once and repeatedly calls `.hasNext()`/`.next()` on that
+  iterator to walk the list. Most of the JDK's built-in collections
+  (including `ArrayList`) use "fail-fast" iterators, which track a
+  modification count on the underlying collection and check it on every
+  `.next()` call: if that count has changed since the iterator was
+  created -- meaning the list was *structurally* modified (an element
+  added or removed, changing its size) while iteration is still in
+  progress -- the iterator throws `ConcurrentModificationException`
+  immediately, rather than continuing and risking silently skipped
+  elements, revisited elements, or worse, depending on how the
+  underlying array shifted. `scores.remove(...)` called directly on the
+  list from inside the for-each loop's body is exactly this kind of
+  structural modification, and it triggers the check on the *next*
+  iteration of the loop -- the exception's location can make it look
+  like the crash is somewhere unrelated to the actual `remove()` call
+  that caused it.
+
+  This fail-fast behavior is a deliberate defensive design, not an
+  arbitrary restriction -- the alternative (silently allowing
+  mid-iteration structural changes) would produce unpredictable,
+  data-dependent bugs that are far harder to notice and debug than a
+  loud, immediate exception. `Collection.removeIf(predicate)` is the
+  standard, safe way to remove multiple matching elements: it's
+  implemented internally to handle the removal correctly without
+  external iteration ever seeing an inconsistent state, expressing "
+  remove every element matching this condition" as a single call rather
+  than a loop-plus-manual-removal that's fundamentally unsafe against
+  the collection it's iterating. The same shape appears in Python's
+  standard library too (covered elsewhere in this app) -- "don't
+  mutate a collection's size while iterating over it directly; use a
+  purpose-built removal method or iterate over a separate snapshot
+  instead" is a pattern that recurs across languages for the same
+  underlying reason.
 example_code: |
   import java.util.ArrayList;
   import java.util.List;
 
+  // The trap: removing from a list while a for-each loop iterates over it.
+  public class SolutionBroken {
+      public static void main(String[] args) {
+          List<Integer> scores = new ArrayList<>(List.of(10, -5, 8, -3));
+          for (int score : scores) {
+              if (score < 0) {
+                  // scores.remove(Integer.valueOf(score));  // ConcurrentModificationException!
+              }
+          }
+      }
+  }
+
+  // Fix: removeIf() safely removes every matching element in one call.
+  public class Solution {
+      public static void main(String[] args) {
+          List<Integer> scores = new ArrayList<>(List.of(10, -5, 8, -3));
+          scores.removeIf(score -> score < 0);    // replaces the whole unsafe loop
+          System.out.println(scores);              // [10, 8]
+      }
+  }
+
   List<Integer> nums = new ArrayList<>(List.of(1, -2, 3));
   nums.removeIf(n -> n < 0);
-  System.out.println(nums);
+  System.out.println(nums);                          // [1, 3]
+
+  // A manual alternative, using Iterator.remove() -- also safe (it's what
+  // removeIf() itself is built on), just more verbose:
+  List<Integer> manual = new ArrayList<>(List.of(1, -2, 3));
+  var it = manual.iterator();
+  while (it.hasNext()) {
+      if (it.next() < 0) {
+          it.remove();          // safe -- removes through the SAME iterator, not the list directly
+      }
+  }
 starter_code: |
   import java.util.ArrayList;
   import java.util.List;

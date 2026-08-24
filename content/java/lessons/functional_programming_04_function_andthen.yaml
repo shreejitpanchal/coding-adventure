@@ -4,16 +4,57 @@ language: java
 level: 119
 objective: "Use Function.andThen to compose two functions into one instead of nesting the calls manually."
 explanation: |
-  f.andThen(g) builds a new function equivalent to first applying f,
-  then passing its result to g -- expressing "run this, then that" as a
-  named, reusable pipeline instead of nested calls that get harder to
-  read as more steps are added.
+  `incrementIt.apply(doubleIt.apply(5))` computes the right value, but
+  the *order the code reads in* is the reverse of the order the
+  operations actually happen in -- `doubleIt` runs first even though `
+  incrementIt.apply(...)` appears first in the expression, because
+  Java evaluates the innermost call first. That's inherent to nested
+  function calls generally (the innermost is always evaluated first,
+  regardless of which one is written outermost), and it gets
+  progressively harder to read as more steps get nested -- three or
+  four operations deep, tracing which one actually runs first requires
+  reading from the inside out, opposite to how the code is laid out on
+  the page.
+
+  `Function<T, R>`'s `.andThen(after)` default method builds a *new*
+  function that runs `this` first, then feeds its result into `after`
+  -- and crucially, it reads in the same order the operations actually
+  execute: `doubleIt.andThen(incrementIt)` says "double, then increment"
+  , matching both the code's left-to-right reading order and its
+  actual runtime order, unlike the nested-call version where those two
+  orders diverge. This composed function is also a genuine, reusable
+  value -- `Function<Integer, Integer> combined = doubleIt.andThen(
+  incrementIt);` can be stored, passed around, and applied to many
+  different inputs, rather than being tied to one specific nested-call
+  expression. `Function` also provides `.compose(before)` as the mirror
+  image -- `f.compose(g)` runs `g` first, then `f`, matching the
+  mathematical `f(g(x))` convention instead of the left-to-right `
+  andThen` convention -- so which one to reach for depends on whether
+  the composition reads more naturally left-to-right (`andThen`) or
+  matches an existing "innermost first" mental model (`compose`).
 example_code: |
   import java.util.function.Function;
 
+  Function<Integer, Integer> doubleIt = x -> x * 2;
+  Function<Integer, Integer> incrementIt = x -> x + 1;
+
+  // The trap: nested calls read in the OPPOSITE order they execute.
+  int resultBroken = incrementIt.apply(doubleIt.apply(5));   // doubleIt runs FIRST, despite reading last
+  System.out.println(resultBroken);   // 11
+
+  // Fix: andThen reads left-to-right, matching actual execution order.
+  int result = doubleIt.andThen(incrementIt).apply(5);        // "double, then increment" -- reads as it runs
+  System.out.println(result);          // 11
+
+  Function<Integer, Integer> combined = doubleIt.andThen(incrementIt);
+  System.out.println(combined.apply(10));   // 21 -- a genuine, reusable composed function
+
   Function<Integer, Integer> square = x -> x * x;
   Function<Integer, Integer> negate = x -> -x;
-  int result = square.andThen(negate).apply(3);
+  System.out.println(square.andThen(negate).apply(3));   // -9 -- square first, then negate
+
+  // compose() is the mirror image -- runs the ARGUMENT first, matches f(g(x)):
+  System.out.println(square.compose(negate).apply(3));    // 9 -- negate first (-3), then square
 starter_code: |
   import java.util.function.Function;
 

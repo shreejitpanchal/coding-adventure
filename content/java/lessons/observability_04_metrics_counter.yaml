@@ -4,14 +4,70 @@ language: java
 level: 144
 objective: "Implement the simplest possible observability primitive: a named counter that increments on each call."
 explanation: |
-  Almost every real metrics system (Micrometer counters, Prometheus,
-  StatsD) boils down to this same core idea: a name maps to a number
-  that only goes up, incremented once per occurrence of the thing being
-  measured. Map.merge(key, 1, Integer::sum) is a concise, correct way to
-  express "increment this key's count, defaulting to 0 if it's new."
+  Strip away the network client, the export protocol, and the
+  aggregation backend, and almost every real metrics system (Micrometer
+  counters, Prometheus, StatsD) reduces to this same core idea: a name
+  maps to a number that only ever increases, going up by exactly one
+  each time the thing it's measuring happens (once per request served,
+  per error raised, per retry attempted). Implementing that from a
+  plain `Map<String, Integer>` -- entirely in-process, with no network
+  call involved -- needs a way to say "increment this key's count,
+  treating a not-yet-seen key as if it started at zero," and `Map.merge
+  (key, value, remappingFunction)` is purpose-built for exactly that:
+  if `key` isn't already present, `merge` simply inserts `value`
+  directly as the initial entry; if `key` *is* already present, it
+  combines the existing value with `value` using `remappingFunction`
+  and stores the result. `metrics.merge(name, 1, Integer::sum)` reads
+  as "add 1 to this metric, or start it at 1 if it's brand new" in one
+  concise call, correctly handling both the first-ever increment for a
+  name and every subsequent one with the identical expression -- no
+  separate "does this key exist yet" branch needs to be written by
+  hand.
+
+  `increment(String name) { }`, with an empty body, is the same class of
+  bug seen in the packaging category's service-registry exercise: it
+  looks like a real method with a sensible name and signature, but
+  performs no side effect at all, so `metrics` stays permanently empty
+  regardless of how many times `increment(...)` is called. The fix is
+  the one missing line -- `metrics.merge(name, 1, Integer::sum);` --
+  which is doing genuinely more work than a naive `metrics.put(name,
+  metrics.get(name) + 1)` would, since that naive version throws `
+  NullPointerException` the moment `name` hasn't been seen before (`
+  metrics.get(name)` returns `null` for an absent key, and unboxing `
+  null` into `int` fails); `merge`'s remapping function is only ever
+  invoked when there's already a value to combine with, sidestepping
+  that null-handling concern entirely.
 example_code: |
+  import java.util.HashMap;
+  import java.util.Map;
+  import java.util.TreeMap;
+
+  // The trap: increment() has the right signature but does NOTHING.
+  static Map<String, Integer> metricsBroken = new HashMap<>();
+  static void incrementBroken(String name) {
+      // empty body -- metrics stays permanently empty
+  }
+
+  // Fix: merge() increments, correctly defaulting a NEW name to 0 first.
+  public class Solution {
+      static Map<String, Integer> metrics = new HashMap<>();
+
+      static void increment(String name) {
+          metrics.merge(name, 1, Integer::sum);
+      }
+
+      public static void main(String[] args) {
+          increment("requests_total");
+          increment("requests_total");
+          increment("errors_total");
+          System.out.println(new TreeMap<>(metrics));   // {errors_total=1, requests_total=2}
+      }
+  }
+
   Map<String, Integer> counts = new HashMap<>();
   counts.merge("hits", 1, Integer::sum);
+  counts.merge("hits", 1, Integer::sum);
+  System.out.println(counts.get("hits"));   // 2
 starter_code: |
   import java.util.HashMap;
   import java.util.Map;

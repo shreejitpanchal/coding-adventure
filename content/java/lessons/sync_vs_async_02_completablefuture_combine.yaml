@@ -4,17 +4,57 @@ language: java
 level: 112
 objective: "Use thenCombine to combine two independent CompletableFutures instead of blocking on each one sequentially."
 explanation: |
-  Calling join() on one future, then join() on a second, forces them to
-  be waited on one after another even though they were started
-  concurrently and don't depend on each other. thenCombine(other, fn)
-  expresses "combine these two results once both are ready" directly,
-  without an explicit sequential wait on each.
+  `a` and `b` here are both started with `supplyAsync` and run
+  genuinely concurrently, independent of each other -- neither depends
+  on the other's result, so there's no actual reason to wait for them
+  one after another. But `int aVal = a.join(); int bVal = b.join();`
+  does exactly that structurally: it blocks on `a` completely first,
+  and only *after* that block returns does it even ask about `b`. In
+  practice this often doesn't cost extra wall-clock time (both `a` and
+  `b` were already running concurrently in the background before either
+  `join()` was called, so by the time the first `join()` unblocks, `b`
+  may well already be done too) -- but the code's *structure* still
+  imposes an artificial sequential dependency that isn't really there,
+  and it doesn't generalize cleanly: chaining more independent futures
+  this way means more sequential `join()` calls stacking up, each one
+  a separate blocking point.
+
+  `.thenCombine(other, fn)` expresses the actual relationship directly:
+  "once *both* `a` and `other` have completed, combine their two
+  results with `fn`." It returns a new `CompletableFuture` representing
+  that combination, without the caller ever needing to `join()` on `a`
+  and `b` individually -- the combination itself becomes part of the
+  async pipeline, and the calling thread blocks (via `.join()` on the
+  *combined* future) only once, waiting for whichever of the two
+  original futures happens to finish last, rather than always waiting
+  for `a` first regardless of which one is actually still running.
+  `Integer::sum` here is a method reference used as the two-argument
+  combining function -- any `BiFunction<T, U, R>` works, letting the
+  combination logic be as simple or as involved as the actual
+  relationship between the two results requires.
 example_code: |
   import java.util.concurrent.CompletableFuture;
 
-  CompletableFuture<Integer> a = CompletableFuture.supplyAsync(() -> 2);
-  CompletableFuture<Integer> b = CompletableFuture.supplyAsync(() -> 5);
-  int result = a.thenCombine(b, Integer::sum).join();
+  // The trap: sequential joins impose an artificial ordering on independent work.
+  CompletableFuture<Integer> aBroken = CompletableFuture.supplyAsync(() -> 3);
+  CompletableFuture<Integer> bBroken = CompletableFuture.supplyAsync(() -> 4);
+  int aVal = aBroken.join();          // blocks on a FIRST
+  int bVal = bBroken.join();           // only then even asks about b
+  System.out.println(aVal + bVal);      // 7 -- correct, but structurally sequential
+
+  // Fix: thenCombine expresses "combine once BOTH are ready" directly.
+  CompletableFuture<Integer> a = CompletableFuture.supplyAsync(() -> 3);
+  CompletableFuture<Integer> b = CompletableFuture.supplyAsync(() -> 4);
+  int result = a.thenCombine(b, Integer::sum).join();   // one block, waits for the SLOWER of the two
+  System.out.println(result);                             // 7
+
+  CompletableFuture<Integer> x = CompletableFuture.supplyAsync(() -> 2);
+  CompletableFuture<Integer> y = CompletableFuture.supplyAsync(() -> 5);
+  System.out.println(x.thenCombine(y, Integer::sum).join());   // 7
+
+  // Any BiFunction works as the combiner, not just sum:
+  CompletableFuture<String> combined = x.thenCombine(y, (xVal, yVal) -> xVal + " and " + yVal);
+  System.out.println(combined.join());                          // 2 and 5
 starter_code: |
   import java.util.concurrent.CompletableFuture;
 

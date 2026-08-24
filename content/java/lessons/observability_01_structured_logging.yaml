@@ -4,16 +4,66 @@ language: java
 level: 141
 objective: "Replace a print statement with the already-configured Logger call it should have used."
 explanation: |
-  java.util.logging.Logger supports severity levels and pluggable
-  formatting -- but by default it writes verbose, timestamped records to
-  stderr, so real code configures an explicit Handler and Formatter (as
-  this snippet already does) to control exactly where and how log
-  output appears. Once that's set up, the actual logging calls should go
-  through the logger, not bypass it with println.
+  `java.util.logging.Logger` (part of the JDK itself, no external
+  dependency required) supports the same kind of infrastructure `print
+  ()`-based debugging lacks: severity levels (`FINE`, `INFO`, `WARNING`,
+  `SEVERE`, ...), globally adjustable filtering by level, and pluggable
+  output formatting -- but out of the box, its default behavior is
+  fairly verbose and writes to `stderr` with its own built-in format,
+  which real applications almost always want to customize. That's
+  exactly what the setup here does: `logger.setUseParentHandlers(false)`
+  disables the default console output the JDK would otherwise attach
+  automatically, a custom `StreamHandler` directs output to `System.out`
+  instead of the default `stderr`, and an anonymous `Formatter`
+  subclass controls the exact text shape each log line takes (`record.
+  getLevel() + ": " + record.getMessage()`, deliberately simple here).
+  Both the handler's own level and the logger's level are explicitly
+  set to `Level.ALL`, ensuring nothing gets filtered out at either
+  stage (the two-level filtering mechanism itself is the subject of the
+  next exercise).
+
+  All of that configuration exists specifically to control how logging
+  *calls* eventually appear -- but it only has any effect on code that
+  actually *routes through the logger*. `System.out.println("Processing
+  order 42")` bypasses the entire configured pipeline completely: it
+  writes directly to `System.out` with no level, no formatting, no
+  filtering, none of the infrastructure just built. The fully-configured
+  `logger` sitting unused, right next to a `println` doing the actual
+  output, is a subtle but real bug -- all the setup work is present and
+  correct, but the one line that should have used it doesn't, so none
+  of that configuration's benefits (level-based filtering, consistent
+  formatting) ever actually apply to this message. The fix is simply to
+  route the message through the already-correctly-configured logger: `
+  logger.info("Processing order 42")` instead of the raw `println`.
 example_code: |
-  Logger logger = Logger.getLogger("app");
-  // ... handler/formatter setup ...
-  logger.info("started");
+  import java.util.logging.Formatter;
+  import java.util.logging.Level;
+  import java.util.logging.LogRecord;
+  import java.util.logging.Logger;
+  import java.util.logging.StreamHandler;
+
+  public class Solution {
+      public static void main(String[] args) {
+          Logger logger = Logger.getLogger("app");
+          logger.setUseParentHandlers(false);
+          StreamHandler handler = new StreamHandler(System.out, new Formatter() {
+              public String format(LogRecord record) {
+                  return record.getLevel() + ": " + record.getMessage() + "\n";
+              }
+          });
+          handler.setLevel(Level.ALL);
+          logger.addHandler(handler);
+          logger.setLevel(Level.ALL);
+
+          // The trap: fully configured logger sits unused -- println bypasses it entirely.
+          // System.out.println("Processing order 42");   // no level, no formatting, no filtering
+
+          // Fix: route the message through the logger that's already configured.
+          logger.info("Processing order 42");   // INFO: Processing order 42
+
+          handler.flush();
+      }
+  }
 starter_code: |
   import java.util.logging.Formatter;
   import java.util.logging.Level;

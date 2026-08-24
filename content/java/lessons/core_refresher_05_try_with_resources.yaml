@@ -4,19 +4,75 @@ language: java
 level: 85
 objective: "Rewrite a manual try/finally close() as try-with-resources, which guarantees cleanup even if the block throws."
 explanation: |
-  try-with-resources (try (Resource r = ...) { ... }) automatically calls
-  close() on any AutoCloseable when the block exits, even via an
-  exception -- more concise than a manual try/finally, and safer, since
-  it's easy to forget the finally block (or get the ordering wrong) by
-  hand.
+  A manual `try { r.use(); } finally { r.close(); }` block gets cleanup
+  right in the simple case shown here, but it depends entirely on the
+  programmer writing that `finally` block correctly, every single time
+  a resource is used -- forgetting it, closing the wrong variable,
+  or accidentally closing before finishing use (an ordering mistake) are
+  all easy to introduce and easy to miss in review, especially once a
+  method acquires more than one resource and needs *nested* try/finally
+  blocks to close each one in the right order even if an earlier one's
+  `close()` itself throws. Try-with-resources -- `try (Resource r = ...)
+  { ... }` -- removes that manual responsibility entirely: any object
+  implementing `AutoCloseable` declared in the parentheses has its `
+  close()` called automatically when the block exits, through *any*
+  path -- normal completion, a `return`, or an exception -- with no
+  `finally` block written by hand at all.
+
+  Beyond being shorter, try-with-resources is also more *correct* in a
+  subtle way manual `finally` handling gets wrong by default: if the
+  `try` block throws an exception and then `close()` *also* throws
+  while cleaning up, a hand-written `finally` would let the second
+  exception silently replace the first, losing the original failure's
+  information. Try-with-resources instead attaches the `close()`
+  exception as a "suppressed exception" on the original one, preserving
+  both rather than discarding the real cause. Multiple resources can be
+  declared in the same `try (...)`, semicolon-separated, and they're
+  closed automatically in the reverse of their declaration order (last
+  acquired, first closed) -- exactly the ordering a correct nested
+  manual `finally` would need to replicate by hand, but here it's
+  simply guaranteed by the language construct itself.
 example_code: |
+  public class Solution {
+      static class Resource implements AutoCloseable {
+          public void use() { System.out.println("using"); }
+          public void close() { System.out.println("closed"); }
+      }
+
+      public static void main(String[] args) {
+          // The trap: manual try/finally -- correct here, but easy to get wrong
+          // once there's more than one resource or an exception during close().
+          Resource rManual = new Resource();
+          try {
+              rManual.use();
+          } finally {
+              rManual.close();
+          }
+
+          // Fix: try-with-resources -- close() is called automatically, always.
+          try (Resource r = new Resource()) {
+              r.use();
+          }                          // close() runs here, no matter how the block exits
+      }
+  }
+  // using
+  // closed
+  // using
+  // closed
+
   class Handle implements AutoCloseable {
       public void close() { System.out.println("closed"); }
   }
 
-  try (Handle h = new Handle()) {
-      System.out.println("open");
+  // Multiple resources: closed automatically in REVERSE declaration order.
+  class HandleA implements AutoCloseable {
+      public void close() { System.out.println("A closed"); }
   }
+  class HandleB implements AutoCloseable {
+      public void close() { System.out.println("B closed"); }
+  }
+  // try (HandleA a = new HandleA(); HandleB b = new HandleB()) { ... }
+  // -- closes B first, then A
 starter_code: |
   public class Solution {
       static class Resource implements AutoCloseable {

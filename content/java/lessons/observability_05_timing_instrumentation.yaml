@@ -4,20 +4,73 @@ language: java
 level: 145
 objective: "Fix a try-with-resources Timer whose close() never actually records the elapsed duration of the block it wraps."
 explanation: |
-  A timing helper built around AutoCloseable is a natural fit for
-  try-with-resources: the constructor records a start timestamp, and
-  close() (called automatically at the end of the block) computes the
-  elapsed time -- using System.nanoTime() rather than
-  System.currentTimeMillis(), since nanoTime() is guaranteed monotonic
-  and can't be thrown off by a wall-clock adjustment mid-measurement.
+  A timing helper built around `AutoCloseable` is a natural fit for
+  try-with-resources, since the two lifecycle points a duration
+  measurement needs -- "record when the block started" and "compute the
+  elapsed time once the block ends" -- map directly onto object
+  construction and `close()`. Constructing `new Timer()` at the top of
+  the `try (...)` records the start timestamp immediately (as an
+  instance-field initializer, run at construction time), and `close()`,
+  guaranteed to run automatically when the `try` block exits (normally
+  or via an exception, the same guarantee try-with-resources provides
+  for any `AutoCloseable`), is exactly where the elapsed time should be
+  computed and stored for the caller to read afterward.
+
+  The clock choice matters here more than it might first appear: `
+  System.nanoTime()` is specifically documented as suitable for
+  measuring *elapsed* time and is guaranteed monotonic (it can never
+  decrease), whereas `System.currentTimeMillis()` reflects actual
+  wall-clock time and *can* jump -- backward or forward -- if the
+  system clock gets adjusted mid-measurement (NTP synchronization, a
+  manual clock change). If a duration were computed from `
+  currentTimeMillis()` and the wall clock happened to be adjusted
+  backward during the measurement, the resulting "elapsed time" could
+  come out negative, which is nonsensical for a duration and would
+  silently corrupt any metric built from it. `nanoTime()`'s return
+  value has no defined relationship to wall-clock time at all -- it's
+  only meaningful as a *difference* between two calls, and that
+  difference is always correct for events that genuinely happened in
+  order, which is precisely the property a duration measurement needs
+  and nothing else about it matters.
 example_code: |
-  static class Timer implements AutoCloseable {
-      long start = System.nanoTime();
-      long durationNanos;
-      public void close() {
-          durationNanos = System.nanoTime() - start;
+  public class Solution {
+      // The trap: close() never actually computes or stores anything.
+      static class TimerBroken implements AutoCloseable {
+          long start = System.nanoTime();
+          Long durationNanos;
+
+          public void close() {
+              // empty -- durationNanos stays null forever
+          }
+      }
+
+      // Fix: close() computes elapsed time from the constructor-recorded start.
+      static class Timer implements AutoCloseable {
+          long start = System.nanoTime();
+          Long durationNanos;
+
+          public void close() {
+              durationNanos = System.nanoTime() - start;
+          }
+      }
+
+      public static void main(String[] args) {
+          Timer t;
+          try (Timer timer = new Timer()) {
+              t = timer;
+              long total = 0;
+              for (int i = 0; i < 1000; i++) {
+                  total += i;
+              }
+          }   // close() runs HERE automatically, computing the duration
+          System.out.println(t.durationNanos != null);   // true
       }
   }
+
+  // Why nanoTime(), not currentTimeMillis(): wall-clock time can jump backward,
+  // which could make a duration computation come out NEGATIVE -- nanoTime() never can.
+  long startWrong = System.currentTimeMillis();   // wall-clock -- NOT safe for durations
+  long startRight = System.nanoTime();              // monotonic -- always safe for durations
 starter_code: |
   public class Solution {
       static class Timer implements AutoCloseable {
