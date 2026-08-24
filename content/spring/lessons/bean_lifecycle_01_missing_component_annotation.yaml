@@ -4,17 +4,50 @@ language: spring
 level: 6
 objective: "Fix a NoSuchBeanDefinitionException by registering a plain class as a bean with @Component."
 explanation: |
-  A plain Java class, no matter how correctly written, is invisible to
-  Spring's container unless something tells the container to manage it --
-  @Component is that signal for component-scanned classes.
-  ctx.getBean(HealthCheck.class) on an unregistered class fails with
-  NoSuchBeanDefinitionException, since the class simply never became a
-  bean in the first place.
+  Spring's `ApplicationContext` doesn't know about every class in a
+  project just because it's compiled and on the classpath -- it only
+  manages classes that have been explicitly identified as *beans*, the
+  objects the container is actually responsible for constructing and
+  wiring. A plain Java class with no such marker, however correctly
+  written its own logic is, is completely invisible to the container:
+  Spring has no reason to know it should be constructed, no reason to
+  scan it for dependencies to inject, and no way to hand it back when
+  asked. `@Component` is the fundamental signal that tells Spring's
+  component-scanning mechanism "this class should become a bean" --
+  without it, `HealthCheck` compiles and works perfectly fine as an
+  ordinary Java class, but it simply never enters the container's
+  awareness at all.
+
+  `ctx.getBean(HealthCheck.class)` asks the context "give me the
+  managed instance of this type" -- and if `HealthCheck` was never
+  registered as a bean in the first place (no `@Component`, and not
+  otherwise declared through an `@Configuration` class's `@Bean`
+  method), there's nothing for the container to return. It fails with `
+  NoSuchBeanDefinitionException`, a clear signal that the *type itself*
+  was never recognized as bean-eligible, distinct from the ambiguity
+  errors covered elsewhere in this app (`NoUniqueBeanDefinitionException
+  `, which means the type *was* found, just more than once). Adding `
+  @Component` above the class declaration is the entire fix -- it's the
+  minimal signal needed for component scanning to pick the class up,
+  register it, and make it available for the container to construct and
+  return on request.
 example_code: |
+  package com.codingadventure.exercise;
+
+  // The trap: a plain class, no annotation -- Spring's container never knows it exists.
+  public class HealthCheckBroken {
+      public String status() { return "OK"; }
+  }
+  // ctx.getBean(HealthCheckBroken.class) -- NoSuchBeanDefinitionException, never registered
+
+  // Fix: @Component signals to Spring's component scan "manage this class as a bean."
+  import org.springframework.stereotype.Component;
+
   @Component
   public class HealthCheck {
       public String status() { return "OK"; }
   }
+  // ctx.getBean(HealthCheck.class) -- returns a fully constructed, managed instance
 starter_code: |
   package com.codingadventure.exercise;
 

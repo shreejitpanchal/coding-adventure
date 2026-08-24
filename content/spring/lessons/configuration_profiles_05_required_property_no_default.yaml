@@ -4,18 +4,77 @@ language: spring
 level: 15
 objective: "Require a property to be explicitly supplied (no fallback default) for values where a silent default would be actively dangerous."
 explanation: |
-  @Value("${key:default}") is convenient, but a default isn't always the
-  right choice -- for something like a production database URL, silently
-  falling back to a placeholder value if the real config was never
-  supplied would fail in a much worse way (connecting to the wrong place,
-  or failing mysteriously later) than failing loudly at startup.
-  @Value("${key}") with no `:default` at all does exactly that: if the
-  property genuinely isn't set, context refresh fails immediately with a
-  clear "could not resolve placeholder" error instead of limping along
-  with a wrong value.
+  `@Value("${db.url:jdbc:h2:mem:default}")`'s default fallback is
+  convenient in general -- it lets a bean start up even when a property
+  wasn't explicitly configured, which is genuinely useful for values
+  where "just use a sensible default" is the right behavior. But a
+  default isn't always the right choice, and a production database URL
+  is exactly the kind of value where it's actively *dangerous*:
+  silently falling back to a placeholder in-memory database URL if the
+  real production configuration was somehow never supplied wouldn't
+  produce an obvious, loud failure -- it would produce an application
+  that starts up successfully, appears to be running fine, and quietly
+  connects to the wrong database entirely (or a throwaway in-memory one
+  that discards all data), a failure mode that's far worse than an
+  immediate startup crash, since it can go unnoticed until real damage
+  has already occurred.
+
+  `@Value("${db.url}")`, with *no* `:default` fallback syntax at all, is
+  the deliberate opposite choice: if the `db.url` property genuinely
+  isn't supplied anywhere the container looks, context refresh fails
+  *immediately*, with a clear "could not resolve placeholder 'db.url'"
+  error, rather than silently substituting a value that was never
+  actually intended for this deployment. This is precisely the same
+  underlying design principle as choosing when a health check should
+  fail loudly versus degrade gracefully, or when a deploy step should
+  crash versus retry -- for genuinely critical configuration where a
+  wrong silent default could cause real, hard-to-detect harm, failing
+  fast and loud at startup is strictly better than limping along with a
+  plausible-looking but wrong value. Recognizing which category a given
+  configuration value falls into -- "fine to default, useful for
+  robustness" versus "must be explicit, dangerous to guess at" -- is a
+  real design judgment call, not a rule to apply uniformly to every `
+  @Value` in an application.
 example_code: |
-  @Value("${db.url}")
-  private String url;
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Value;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.context.annotation.Profile;
+  import org.springframework.stereotype.Component;
+
+  // The trap: a default silently falls back to the WRONG database if db.url is unset.
+  @Component
+  @Profile("prod")
+  class ProdDataSourceBroken {
+      @Value("${db.url:jdbc:h2:mem:default}")
+      private String url;   // if unconfigured, silently connects to a throwaway in-memory DB!
+
+      public String connectionInfo() { return "connecting to " + url; }
+  }
+
+  // Fix: no default -- context refresh fails LOUDLY if db.url is genuinely unset.
+  import org.springframework.beans.factory.config.PropertySourcesPlaceholderConfigurer;
+  import org.springframework.context.annotation.Bean;
+
+  @Configuration
+  public class DbConfig {
+      @Bean
+      public static PropertySourcesPlaceholderConfigurer placeholderConfigurer() {
+          return new PropertySourcesPlaceholderConfigurer();
+      }
+  }
+
+  @Component
+  @Profile("prod")
+  class ProdDataSource {
+      @Value("${db.url}")
+      private String url;    // required -- missing config fails startup immediately
+
+      public String connectionInfo() { return "connecting to " + url; }
+  }
+  // with db.url properly configured: "connecting to jdbc:postgresql://prod-host/app"
+  // with db.url MISSING: context refresh fails immediately -- no silent wrong-database connection
 starter_code: |
   package com.codingadventure.exercise;
 

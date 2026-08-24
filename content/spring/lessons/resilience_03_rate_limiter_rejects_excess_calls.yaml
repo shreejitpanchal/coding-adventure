@@ -4,17 +4,71 @@ language: spring
 level: 28
 objective: "Use Resilience4j's RateLimiter to cap how many calls can go through within a given period, rejecting anything over the limit."
 explanation: |
-  A rate limiter caps the number of permitted calls within a rolling
-  time window -- useful for staying under a downstream API's rate
-  limit, or protecting your own service from being overwhelmed.
-  RateLimiter.decorateSupplier(limiter, supplier) wraps a call so that
-  once the configured number of permits for the current period is used
-  up, further calls are rejected with RequestNotPermitted (with a
-  timeoutDuration of zero, meaning "reject immediately" rather than
-  "wait for a permit to free up").
+  `call()` with no rate limiting at all has no concept of "too many
+  calls too fast" -- it can be invoked as often as anything wants,
+  arbitrarily rapidly, with zero protection against exceeding whatever
+  limit a downstream dependency might actually impose (many external
+  APIs enforce their own rate limits and will start rejecting or
+  throttling requests once exceeded) or against a service being
+  overwhelmed by its own excessive call volume from callers that aren't
+  pacing themselves. A rate limiter exists specifically to cap the
+  number of permitted calls within a given period, enforced on the
+  *calling* side, before those calls even reach whatever they're
+  actually calling -- staying comfortably under a downstream API's own
+  limit rather than discovering it the hard way through rejected
+  requests, or protecting a service's own capacity from being consumed
+  faster than it can handle.
+
+  `RateLimiter.decorateSupplier(limiter, supplier)` wraps a call so
+  that each invocation first checks whether a "permit" is available for
+  the current period -- `limitForPeriod(1)` here means exactly one
+  permitted call per `limitRefreshPeriod` (a 10-second window in this
+  configuration). Once the period's permits are exhausted, further
+  calls are rejected with `RequestNotPermitted` rather than being
+  allowed through. The `timeoutDuration` setting controls what happens
+  when a call arrives with no permit currently available: `Duration.
+  ZERO` means "reject this specific call immediately" rather than
+  "block and wait for a permit to become available on the next
+  refresh" -- a deliberate choice matching the "fail fast rather than
+  silently degrade responsiveness" philosophy that runs through this
+  whole resilience category, the same reasoning behind a circuit
+  breaker's fast-failure behavior once it's open.
 example_code: |
-  RateLimiter limiter = RateLimiter.of("payment", config);
-  Supplier<String> decorated = RateLimiter.decorateSupplier(limiter, () -> "ok");
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.ratelimiter.RateLimiter;
+  import io.github.resilience4j.ratelimiter.RateLimiterConfig;
+  import org.springframework.stereotype.Component;
+  import java.time.Duration;
+
+  // The trap: no rate limiting at all -- callable arbitrarily often, no protection.
+  @Component
+  class PaymentGatewayBroken {
+      public String call() {
+          return "ok";   // no cap on how often this can be invoked
+      }
+  }
+
+  // Fix: RateLimiter caps calls per period, rejecting anything over the limit.
+  @Component
+  public class PaymentGateway {
+      private final RateLimiter rateLimiter;
+
+      public PaymentGateway() {
+          RateLimiterConfig config = RateLimiterConfig.custom()
+                  .limitForPeriod(1)                          // 1 call allowed per period
+                  .limitRefreshPeriod(Duration.ofSeconds(10))   // the period's length
+                  .timeoutDuration(Duration.ZERO)               // reject immediately, don't wait
+                  .build();
+          rateLimiter = RateLimiter.of("payment", config);
+      }
+
+      public String call() {
+          return RateLimiter.decorateSupplier(rateLimiter, () -> "ok").get();
+      }
+  }
+  // gw.call() -> "ok"  (first call within the period, permit available)
+  // gw.call() -> throws RequestNotPermitted  (second call, SAME period, no permit left)
 starter_code: |
   package com.codingadventure.exercise;
 

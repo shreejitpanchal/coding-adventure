@@ -4,20 +4,78 @@ language: spring
 level: 11
 objective: "Register a PropertySourcesPlaceholderConfigurer bean so @Value(\"${...}\") placeholders actually get resolved."
 explanation: |
-  In plain Spring (unlike Spring Boot, which wires this up
-  automatically), @Value("${...}") placeholders only get resolved if a
-  PropertySourcesPlaceholderConfigurer bean is registered in the context
-  -- without one, the container doesn't know it needs to process those
-  expressions at all, and bean creation fails outright. Registering it as
-  a static @Bean method in a @Configuration class is the standard way to
-  opt into placeholder resolution (static is required here specifically
-  because this particular bean has to run during a very early phase of
-  context startup, before normal bean instantiation).
+  `@Value("${greeting.prefix:Hello}")` looks self-contained -- the
+  annotation itself specifies both the property key and a default -- but
+  in plain Spring (using `AnnotationConfigApplicationContext` directly,
+  as opposed to Spring Boot, which wires this up automatically as part
+  of its auto-configuration), nothing in the container actually knows
+  to *process* that `${...}` placeholder syntax unless something tells
+  it to. Without an explicit opt-in, `@Value`'s string is treated as an
+  ordinary literal field value rather than an expression to resolve --
+  and Spring's placeholder-resolution machinery specifically requires a
+  particular bean, `PropertySourcesPlaceholderConfigurer`, to be present
+  in the context for `${...}` expressions to be recognized and resolved
+  at all. Without it registered, bean creation for anything using `
+  @Value("${...}")` fails outright, since the container has no
+  mechanism in place to turn that placeholder string into an actual
+  value.
+
+  Registering `PropertySourcesPlaceholderConfigurer` as a `@Bean`
+  method inside an `@Configuration` class is the standard way to opt
+  into placeholder resolution in plain Spring -- but there's a specific
+  detail that matters beyond just adding the bean: the method has to be
+  declared `static`. This is required because `PropertySourcesPlace
+  holderConfigurer` is a `BeanFactoryPostProcessor`, a special category
+  of bean that needs to run during a very early phase of context
+  startup -- *before* normal bean instantiation happens, so it can
+  process every other bean definition's placeholder expressions ahead
+  of time. A non-static `@Bean` method would require the enclosing `
+  @Configuration` class itself to be instantiated first, which is
+  exactly the normal bean-instantiation sequence this particular bean
+  needs to run *ahead of* -- `static` sidesteps that circular
+  dependency, letting the configurer be constructed without needing the
+  rest of the configuration class's own instance state at all.
 example_code: |
-  @Bean
-  public static PropertySourcesPlaceholderConfigurer placeholderConfigurer() {
-      return new PropertySourcesPlaceholderConfigurer();
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Value;
+  import org.springframework.context.annotation.Configuration;
+  import org.springframework.stereotype.Component;
+
+  // The trap: no PropertySourcesPlaceholderConfigurer -- ${...} is never resolved at all.
+  @Configuration
+  class AppConfigBroken {
+      // nothing registers placeholder resolution
   }
+
+  @Component
+  class GreeterBroken {
+      @Value("${greeting.prefix:Hello}")
+      private String prefix;   // bean creation fails -- placeholder syntax never processed
+  }
+
+  // Fix: a static @Bean PropertySourcesPlaceholderConfigurer enables ${...} resolution.
+  import org.springframework.beans.factory.config.PropertySourcesPlaceholderConfigurer;
+  import org.springframework.context.annotation.Bean;
+
+  @Configuration
+  public class AppConfig {
+      @Bean
+      public static PropertySourcesPlaceholderConfigurer placeholderConfigurer() {
+          return new PropertySourcesPlaceholderConfigurer();   // MUST be static
+      }
+  }
+
+  @Component
+  class Greeter {
+      @Value("${greeting.prefix:Hello}")
+      private String prefix;    // now resolves correctly -- to "Hello" if unset
+
+      public String greet(String name) {
+          return prefix + ", " + name + "!";
+      }
+  }
+  // greeter.greet("Ada") -> "Hello, Ada!"
 starter_code: |
   package com.codingadventure.exercise;
 

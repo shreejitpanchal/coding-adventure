@@ -4,18 +4,70 @@ language: spring
 level: 7
 objective: "Fix unexpectedly shared mutable state by declaring a bean prototype-scoped instead of relying on the default singleton scope."
 explanation: |
-  Every @Component is a singleton by default -- exactly one instance
-  exists in the container, and every getBean() call (or injection point)
-  returns the *same* object. That's fine for stateless services, but for
-  something meant to hold per-use mutable state, it's a trap: two
-  "separate" getBean() calls actually hand back the same instance, so
-  mutating one is indistinguishable from mutating the other.
-  @Scope("prototype") tells Spring to construct a brand-new instance on
-  every request instead.
+  Spring's default bean scope is `singleton` -- for any given bean
+  definition, the container constructs exactly *one* instance,
+  regardless of how many times it's requested, and every `getBean()`
+  call or injection point handed that type receives a reference to that
+  *same* underlying object. This is exactly the right behavior for
+  stateless services (a formatter, a validator, anything that computes
+  from its arguments alone with no internal mutable state), where
+  sharing one instance across every consumer is both correct and
+  efficient. But it's a genuine trap for a class like `RequestContext`,
+  whose entire purpose is to hold *per-use* mutable state -- `first =
+  ctx.getBean(RequestContext.class)` and `second = ctx.getBean(
+  RequestContext.class)` look like they should be two independent
+  instances (the variable names even suggest it), but under the default
+  singleton scope, they're actually the *exact same object* referenced
+  through two different variable names. Calling `first.recordHit()`
+  twice and then reading `second.getHits()` doesn't show `0` the way a
+  genuinely fresh instance should -- it shows `2`, because `first` and `
+  second` were never actually separate to begin with.
+
+  `@Scope("prototype")` changes this contract entirely: instead of one
+  shared instance, the container constructs a brand-new, genuinely
+  independent object on *every single* request for that bean --
+  whether via `getBean()` or an injection point. With `@Scope(
+  "prototype")` added, `first` and `second` become two truly distinct `
+  RequestContext` objects, each with its own independent `hits` field,
+  so mutating one has no effect whatsoever on the other. Recognizing
+  which scope a bean actually needs is a real design decision:
+  singleton (the default) for anything stateless or meant to be shared,
+  prototype for anything that represents per-use, per-request state
+  that should never leak between separate consumers.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: default singleton scope -- "two" getBean() calls are actually ONE shared instance.
+  @Component
+  class RequestContextBroken {
+      private int hits = 0;
+      public void recordHit() { hits++; }
+      public int getHits() { return hits; }
+  }
+  // RequestContextBroken first = ctx.getBean(...); first.recordHit(); first.recordHit();
+  // RequestContextBroken second = ctx.getBean(...);
+  // second.getHits() -> 2, NOT 0 -- first and second are the SAME object!
+
+  // Fix: @Scope("prototype") constructs a genuinely NEW instance every time.
+  import org.springframework.context.annotation.Scope;
+
   @Component
   @Scope("prototype")
-  public class RequestContext { ... }
+  public class RequestContext {
+      private int hits = 0;
+
+      public void recordHit() {
+          hits++;
+      }
+
+      public int getHits() {
+          return hits;
+      }
+  }
+  // first and second are now genuinely INDEPENDENT instances --
+  // recording hits on `first` has zero effect on `second.getHits()`
 starter_code: |
   package com.codingadventure.exercise;
 

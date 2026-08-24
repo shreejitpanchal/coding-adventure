@@ -4,20 +4,80 @@ language: spring
 level: 16
 objective: "Publish an application event via ApplicationEventPublisher so a registered @EventListener actually fires."
 explanation: |
-  Spring's event system decouples "something happened" from "here's
-  what should happen in response" -- a service publishes an event via
-  ApplicationEventPublisher.publishEvent(), and any bean with a matching
-  @EventListener method gets called automatically, with no direct
-  reference between the two. If the publishing side never actually
-  calls publishEvent(), the listener is registered correctly but simply
-  never has anything to react to -- the wiring is only half-built.
-example_code: |
-  @Autowired
-  private ApplicationEventPublisher publisher;
+  Spring's event system is built specifically to decouple "something
+  happened" from "here's what should happen in response" -- a
+  publisher doesn't need to know or care what listeners exist, and a
+  listener doesn't need any direct reference back to whatever published
+  the event. The connection happens entirely through the event *type*
+  itself: a service calls `ApplicationEventPublisher.publishEvent(event)`
+  , and any bean with a matching `@EventListener` method (one whose
+  parameter type matches the published event's type) gets invoked
+  automatically by Spring's container, with no explicit wiring between
+  the two sides at all. This is genuinely useful for decoupling --
+  `OrderService` can trigger a reaction in `OrderListener` without ever
+  importing or referencing it directly -- but that same decoupling
+  means the two halves of the connection (publishing and listening) are
+  each independently, silently capable of being incomplete.
 
-  public void placeOrder(String orderId) {
-      publisher.publishEvent(new OrderPlacedEvent(this, orderId));
+  `OrderListener`'s `@EventListener` method here is entirely correctly
+  set up -- properly annotated, correctly typed to `OrderPlacedEvent`,
+  registered as a bean -- but a correctly configured listener has
+  nothing to listen *to* if nothing ever actually publishes a matching
+  event. `OrderService.placeOrder(orderId)` with an empty body (or a
+  comment where the publish call should be) never triggers anything at
+  all -- not because the listener is broken, but because the publishing
+  half of the connection was simply never written. The fix is exactly
+  that missing half: inject `ApplicationEventPublisher` (itself
+  available for injection like any other Spring-managed bean), and call
+  `publisher.publishEvent(new OrderPlacedEvent(this, orderId))` at the
+  point in `placeOrder` where the event should actually fire. Only once
+  both halves exist -- a listener registered to receive the event type,
+  and a publisher that actually emits it -- does the whole mechanism
+  connect end to end.
+example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  // The trap: the listener is correctly set up, but NOTHING ever publishes the event.
+  @Component
+  class OrderServiceBroken {
+      public void placeOrder(String orderId) {
+          // forgot to publish an event -- OrderListener has nothing to react to
+      }
   }
+
+  class OrderPlacedEvent {
+      private final Object source;
+      private final String orderId;
+      OrderPlacedEvent(Object source, String orderId) { this.source = source; this.orderId = orderId; }
+      String getOrderId() { return orderId; }
+  }
+
+  @Component
+  class OrderListener {
+      static int received = 0;
+      @EventListener
+      public void onOrderPlaced(OrderPlacedEvent event) {
+          received++;   // this method is CORRECT, but never invoked -- nothing fires it
+      }
+  }
+
+  // Fix: inject ApplicationEventPublisher, actually call publishEvent().
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEventPublisher;
+
+  @Component
+  public class OrderService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+
+      public void placeOrder(String orderId) {
+          publisher.publishEvent(new OrderPlacedEvent(this, orderId));   // the missing half
+      }
+  }
+  // service.placeOrder("42") -> OrderListener.onOrderPlaced runs -> received becomes 1
 starter_code: |
   package com.codingadventure.exercise;
 

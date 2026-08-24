@@ -4,17 +4,86 @@ language: spring
 level: 17
 objective: "Add @EventListener to a method so Spring actually recognizes it as an event handler, and publish the event that should trigger it."
 explanation: |
-  A plain method named onSomething() isn't automatically wired up as an
-  event handler -- Spring only treats a method as a listener when it's
-  annotated @EventListener (or the bean implements
-  ApplicationListener<T> directly). Without the annotation, the method
-  just sits there unused, and without a corresponding publishEvent()
-  call, nothing ever reaches it even if it were wired up correctly.
+  A method named `onPaymentReceived` that accepts a `PaymentEvent`
+  parameter *looks* like an event listener to a human reader, but
+  naming and shape alone mean nothing to Spring's event dispatch
+  mechanism -- it only ever calls a method as an event handler when
+  that method is explicitly annotated `@EventListener` (or,
+  alternatively, when the bean implements `ApplicationListener<T>`
+  directly, an older, more verbose interface-based style `@EventListener`
+  largely superseded). Without the annotation, `onPaymentReceived`
+  is just an ordinary public method on the class -- perfectly valid
+  Java, entirely inert as far as Spring's event system is concerned,
+  never invoked by anything unless something calls it directly.
+
+  This exercise deliberately combines that missing-annotation problem
+  with the missing-`publishEvent()`-call problem from a neighboring
+  exercise, because they're genuinely independent failure points that
+  both have to be fixed for the event mechanism to work end to end: `
+  @EventListener` has to be present for Spring to recognize and
+  register the method as a handler *at all*, and a corresponding `
+  publisher.publishEvent(...)` call has to actually exist somewhere for
+  there to be an event for that handler to react to. Fixing only one
+  half leaves the mechanism broken -- an annotated listener with
+  nothing publishing to it never fires (the previous exercise's bug), and
+  a correctly published event with no annotated listener has nowhere to
+  go (this exercise's first bug); both pieces genuinely need to be in
+  place simultaneously for anything to actually happen when `charge()`
+  runs.
 example_code: |
-  @EventListener
-  public void onPaymentReceived(PaymentEvent event) {
-      received++;
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: looks like a listener, but has NO @EventListener annotation.
+  @Component
+  class PaymentListenerBroken {
+      static int received = 0;
+
+      public void onPaymentReceived(PaymentEvent event) {   // never recognized as a handler!
+          received++;
+      }
   }
+
+  class PaymentEvent {
+      private final Object source;
+      PaymentEvent(Object source) { this.source = source; }
+  }
+
+  // ALSO broken: nothing publishes a PaymentEvent at all.
+  @Component
+  class PaymentServiceBroken {
+      public void charge() {
+          // no publishEvent() call either -- two separate problems compounding
+      }
+  }
+
+  // Fix: BOTH halves need to be correct -- the annotation AND the publish call.
+  import org.springframework.context.event.EventListener;
+
+  @Component
+  public class PaymentListener {
+      static int received = 0;
+
+      @EventListener
+      public void onPaymentReceived(PaymentEvent event) {   // now genuinely recognized
+          received++;
+      }
+  }
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEventPublisher;
+
+  @Component
+  class PaymentService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+
+      public void charge() {
+          publisher.publishEvent(new PaymentEvent(this));   // now genuinely publishes
+      }
+  }
+  // service.charge() -> PaymentListener.onPaymentReceived runs -> received becomes 1
 starter_code: |
   package com.codingadventure.exercise;
 

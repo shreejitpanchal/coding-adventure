@@ -4,23 +4,63 @@ language: spring
 level: 1
 objective: "Replace field injection with constructor injection so the class can be constructed directly, without a Spring context."
 explanation: |
-  @Autowired on a private field only works because Spring's container uses
-  reflection to reach in and set it after construction -- plain `new
-  OrderNotifier()` leaves that field null, since nothing outside the
-  container can populate it. Constructor injection makes every dependency
-  an explicit, required constructor parameter instead: the object simply
-  cannot exist in a half-wired state, and a plain unit test can build one
-  with `new` and a hand-made fake, no Spring context needed at all. This is
-  why constructor injection is the modern default recommendation over
-  field injection.
+  `@Autowired` on a private field looks like it "just works," but the
+  mechanism behind it is entirely dependent on Spring's container:
+  after calling the class's normal (often implicit, no-argument)
+  constructor, Spring uses *reflection* to reach directly into that
+  private field and assign it a value, bypassing the class's own public
+  API entirely. That's a capability only the Spring container has --
+  ordinary code, including a unit test, has no equivalent way to
+  populate a private `@Autowired` field. `new OrderNotifier()`,
+  called directly rather than through a Spring context, constructs the
+  object and stops there -- the field-injection step that would
+  normally follow never happens, so `sender` is left at its default
+  value, `null`. Calling `notifyOrder(...)` on an object built this way
+  crashes with `NullPointerException` the moment it tries to use `
+  sender`, not because of any bug in the business logic, but because
+  the object was never actually fully wired -- it exists in a
+  permanently *half-constructed* state that only looks complete.
+
+  Constructor injection eliminates this entire class of problem by
+  making every dependency an explicit, required *constructor
+  parameter*: `public Greeter(Translator translator) { this.translator
+  = translator; }` means there is no way to construct a `Greeter`
+  *without* supplying a `Translator` -- the object simply cannot exist
+  in a half-wired state, because the compiler itself enforces that the
+  dependency is provided at construction time, for every caller,
+  Spring container or plain test code alike. This is precisely why a
+  unit test can build a fully-working `OrderNotifier` with `new` and a
+  hand-crafted fake `MessageSender`, with zero Spring context involved
+  at all -- the class's own constructor is the complete, honest
+  contract for what it needs to function, not something reflection has
+  to reach around from outside. This testability difference, more than
+  anything else, is why constructor injection is the modern, broadly
+  recommended default over field injection in current Spring guidance.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: @Autowired on a private field only works INSIDE a Spring container.
+  class GreeterBroken {
+      // @Autowired
+      // private TranslatorBroken translator;   // populated by reflection -- new alone leaves it null
+  }
+  // new GreeterBroken() outside a container -- translator stays null, crashes on use
+
+  // Fix: constructor injection makes the dependency explicit and required.
   @Component
   public class Greeter {
       private final Translator translator;
 
       public Greeter(Translator translator) {
-          this.translator = translator;
+          this.translator = translator;    // set directly, no reflection needed
       }
+  }
+  // new Greeter(new Translator()) works perfectly in a plain unit test, no Spring context needed
+
+  interface Translator {
+      String translate(String text);
   }
 starter_code: |
   package com.codingadventure.exercise;

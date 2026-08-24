@@ -4,20 +4,63 @@ language: spring
 level: 14
 objective: "Inject the Environment and read a property from it dynamically, instead of hardcoding a value."
 explanation: |
-  @Value is the declarative way to pull in a single property, but
-  sometimes code needs to read configuration programmatically -- with a
-  computed key, a fallback chain, or just because it's more natural at
-  that point in the code. Spring's Environment abstraction represents
-  every configured property source (system properties, property files,
-  explicitly registered sources) as one queryable object, injectable like
-  any other bean via @Autowired.
-example_code: |
-  @Autowired
-  private Environment environment;
+  `return "DefaultApp";`, hardcoded directly into `appName()`'s body,
+  is a literal, fixed value baked into the compiled code -- it can
+  never reflect whatever configuration a given deployment or test
+  environment actually has set, because there's no lookup happening at
+  all, just a constant. `@Value("${app.name:DefaultApp}")` (the
+  declarative approach covered in a neighboring exercise) would solve
+  this for a simple, fixed property key known entirely at compile time
+  -- but sometimes code needs more flexibility than a single static
+  annotation offers: a property key computed at runtime, a fallback
+  chain trying several keys in sequence, or simply a point in the code
+  where reading configuration programmatically fits more naturally than
+  a field-level annotation would.
 
-  public String appName() {
-      return environment.getProperty("app.name", "DefaultApp");
+  Spring's `Environment` abstraction is the programmatic equivalent of
+  `@Value`'s declarative lookup -- it represents *every* configured
+  property source the application knows about (system properties,
+  environment variables, property files, explicitly registered sources
+  like the test's `MapPropertySource` here) as a single, unified,
+  queryable object, checked in a defined priority order. `Environment`
+  is itself injectable exactly like any other Spring-managed dependency
+  -- `@Autowired private Environment environment;` wires it in, and `
+  environment.getProperty("app.name", "DefaultApp")` reads the `"app.
+  name"` key from whatever property sources are actually registered,
+  falling back to `"DefaultApp"` only if that key genuinely isn't found
+  anywhere. This makes `appName()` genuinely responsive to configuration
+  -- a test registering `"app.name" -> "TestApp"` as a property source
+  gets `"TestApp"` back; a real deployment with different configuration
+  gets whatever it actually has configured -- rather than a fixed
+  string that could never reflect anything beyond what was compiled in.
+example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: a hardcoded literal -- can NEVER reflect actual configuration.
+  @Component
+  class BrandingServiceBroken {
+      public String appName() {
+          return "DefaultApp";   // fixed at compile time, ignores every property source
+      }
   }
+
+  // Fix: Environment reads the property dynamically, from whatever source has it.
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.core.env.Environment;
+
+  @Component
+  public class BrandingService {
+      @Autowired
+      private Environment environment;
+
+      public String appName() {
+          return environment.getProperty("app.name", "DefaultApp");   // dynamic lookup
+      }
+  }
+  // with "app.name" -> "TestApp" registered as a property source: appName() returns "TestApp"
+  // with no such property registered anywhere: falls back to "DefaultApp"
 starter_code: |
   package com.codingadventure.exercise;
 

@@ -4,19 +4,70 @@ language: spring
 level: 29
 objective: "Use Resilience4j's Decorators.ofSupplier(...).withFallback(...) to return a sensible default when a call fails, instead of propagating the exception."
 explanation: |
-  Not every failure needs to become the caller's problem -- if a
-  pricing service is briefly unavailable, returning a cached or default
-  price is often a better user experience than an error page.
-  Decorators.ofSupplier(risky).withFallback(exceptionTypes, handler)
-  builds a decorated supplier that, when the wrapped call throws one of
-  the listed exception types, calls the fallback function instead and
-  returns its result -- the caller never even sees the exception. This
-  composes cleanly with circuit breakers and retries too (a fallback is
-  often the last decorator in the chain, catching whatever gets through).
+  `fetchPrice(true)` with no fallback logic propagates its exception
+  directly to the caller -- and whatever's calling this method now has
+  to deal with a pricing failure as a hard error, typically surfacing
+  as a failed request or an error page for whoever's ultimately waiting
+  on a price. But not every failure genuinely needs to become the
+  caller's problem to solve: if a pricing service is briefly
+  unavailable, showing a slightly stale cached price (or a sensible
+  default) is very often a *better* outcome for whoever's using the
+  application than an outright failure -- the request still completes
+  usefully, just with slightly less-fresh data, rather than failing
+  entirely over a transient backend hiccup.
+
+  `Decorators.ofSupplier(risky).withFallback(exceptionTypes, handler).
+  decorate()` builds a decorated supplier that catches specifically the
+  listed exception types (`List.of(RuntimeException.class)` here) when
+  the wrapped call throws one of them, and instead of letting that
+  exception propagate to the caller, invokes the fallback function and
+  returns *its* result instead -- the caller of the decorated supplier
+  never even observes that an exception occurred at all; from its
+  perspective, the call simply returned `"cached-price"`, full stop.
+  This is graceful degradation, expressed as a decorator: the risky
+  logic and the recovery logic stay cleanly separated, rather than
+  tangled together in a manual `try`/`catch` inside the business logic
+  itself. `Decorators` composes cleanly with the other resilience
+  primitives covered elsewhere in this category too -- a fallback is
+  frequently the *outermost* decorator in a chain that also includes a
+  circuit breaker or retry, catching whatever failure ultimately gets
+  through all of the other protective layers and turning it into a
+  usable result rather than a propagated exception.
 example_code: |
-  Supplier<String> decorated = Decorators.ofSupplier(risky)
-      .withFallback(List.of(RuntimeException.class), e -> "cached-price")
-      .decorate();
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: an exception propagates straight to the caller -- no graceful degradation.
+  @Component
+  class PaymentGatewayBroken {
+      public String fetchPrice(boolean shouldFail) {
+          if (shouldFail) throw new RuntimeException("pricing service down");
+          return "live-price";
+      }
+  }
+  // gw.fetchPrice(true) -- throws, caller has to handle the failure directly
+
+  // Fix: withFallback catches the failure and substitutes a usable result instead.
+  import io.github.resilience4j.decorators.Decorators;
+  import java.util.List;
+  import java.util.function.Supplier;
+
+  @Component
+  public class PaymentGateway {
+      public String fetchPrice(boolean shouldFail) {
+          Supplier<String> risky = () -> {
+              if (shouldFail) throw new RuntimeException("pricing service down");
+              return "live-price";
+          };
+          return Decorators.ofSupplier(risky)
+                  .withFallback(List.of(RuntimeException.class), e -> "cached-price")
+                  .decorate()
+                  .get();
+      }
+  }
+  // gw.fetchPrice(false) -> "live-price" -- normal, unaffected path
+  // gw.fetchPrice(true)  -> "cached-price" -- caller never even sees the exception
 starter_code: |
   package com.codingadventure.exercise;
 

@@ -4,23 +4,59 @@ language: spring
 level: 30
 objective: "Fix the decoration order of a combined CircuitBreaker + Retry so the circuit breaker sits inside the retry, letting it actually stop repeated attempts from reaching a failing dependency."
 explanation: |
-  When combining a circuit breaker and a retry around the same call,
-  decoration order matters more than it looks. If the circuit breaker
-  wraps the retry (CircuitBreaker.decorateSupplier(cb,
-  Retry.decorateSupplier(retry, risky))), the breaker only ever sees
-  ONE outcome per logical call -- the retry silently absorbs every
-  individual attempt internally, so the breaker's sliding window never
-  fills up fast enough to actually open and protect anything; every
-  retry attempt still genuinely hits the failing dependency. Flipping
-  the order so retry wraps the circuit breaker
-  (Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(cb,
-  risky))) means each individual attempt is separately recorded by the
-  breaker -- once it opens, later retry attempts fail fast with
-  CallNotPermittedException instead of reaching the dependency at all.
+  Combining a circuit breaker and a retry around the same underlying
+  call is a genuinely common resilience pattern -- but *decoration
+  order* between the two matters far more than it might look, because
+  it determines what each decorator actually *observes*. `CircuitBreaker
+  .decorateSupplier(cb, Retry.decorateSupplier(retry, risky))` nests
+  the retry *inside* the circuit breaker: from the circuit breaker's
+  point of view, the thing it's wrapping is "the retry-decorated
+  supplier," a single unit that internally may make several attempts
+  before finally settling on one outcome -- success, or failure once
+  every retry attempt is exhausted. The breaker never sees the
+  individual attempts at all, only that one final, already-resolved
+  outcome per logical call. That means the breaker's sliding window
+  fills up far too slowly to ever actually protect anything: every
+  individual retry attempt still genuinely reaches the failing
+  dependency internally, invisible to the breaker, which only records
+  one outcome no matter how many attempts happened underneath it.
+
+  Flipping the order -- `Retry.decorateSupplier(retry, CircuitBreaker.
+  decorateSupplier(cb, risky))`, retry *outside*, circuit breaker
+  *inside* -- changes what each layer actually observes. Now the retry
+  is the one repeatedly invoking "the circuit-breaker-decorated
+  supplier," which means *each individual retry attempt* passes through
+  the circuit breaker separately, and the breaker records *each one*
+  as its own distinct outcome in its sliding window. Once enough of
+  those individually-recorded failures cross the breaker's threshold,
+  it opens -- and any *subsequent* retry attempt, still within the same
+  overall retry sequence, now hits the now-open breaker and fails
+  immediately with `CallNotPermittedException`, without ever reaching
+  the real failing dependency again. The general principle worth
+  internalizing: whichever decorator is applied *outermost* determines
+  what unit of work the *inner* decorator perceives as "one call" --
+  getting that nesting backward silently defeats the inner decorator's
+  entire purpose, even though both configurations compile and run
+  without any error.
 example_code: |
-  // circuit breaker INSIDE, retry OUTSIDE -- each attempt is separately
-  // recorded by the breaker, so it can actually open mid-retry-sequence
-  Retry.decorateSupplier(retry, CircuitBreaker.decorateSupplier(circuitBreaker, risky));
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+  import io.github.resilience4j.retry.Retry;
+  import java.util.function.Supplier;
+
+  // The trap: circuit breaker OUTSIDE the retry -- it only sees ONE outcome per logical call.
+  // CircuitBreaker.decorateSupplier(circuitBreaker, Retry.decorateSupplier(retry, risky));
+  // -- every individual retry attempt still genuinely reaches the failing dependency,
+  //    invisible to the breaker's sliding window, which never fills up fast enough to open
+
+  // Fix: circuit breaker INSIDE, retry OUTSIDE -- each individual attempt is recorded separately.
+  Supplier<String> risky = () -> { throw new RuntimeException("downstream is down"); };
+  Supplier<String> decorated = Retry.decorateSupplier(retry,
+          CircuitBreaker.decorateSupplier(circuitBreaker, risky));
+  // decorated.get() -- each retry attempt passes through the breaker individually;
+  // once enough real failures accumulate, the breaker opens, and REMAINING retry
+  // attempts fail fast with CallNotPermittedException instead of reaching `risky` again
 starter_code: |
   package com.codingadventure.exercise;
 

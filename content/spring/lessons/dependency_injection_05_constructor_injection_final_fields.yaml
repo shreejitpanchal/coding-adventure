@@ -4,22 +4,82 @@ language: spring
 level: 5
 objective: "Consolidate multiple field-injected dependencies into a single constructor with final fields."
 explanation: |
-  Multiple @Autowired fields hide a class's real dependencies behind
-  reflection and allow the object to exist in a partially-constructed
-  state. Collecting every dependency into one constructor with final
-  fields does two things at once: the dependencies become visible and
-  required right in the class's public signature (no separate
-  documentation needed), and `final` guarantees they can never be
-  reassigned after construction -- the object is fully valid the moment
-  it exists, and testable with plain `new` and hand-made fakes.
-example_code: |
-  private final Formatter formatter;
-  private final Store store;
+  `ReportGenerator` with two separate `@Autowired` fields has exactly
+  the same fundamental problem as the single-field case covered earlier
+  in this category, just compounded: both `formatter` and `store` are
+  populated only via Spring's reflection-based field injection after
+  construction, so `new ReportGenerator()` outside a container leaves
+  *both* fields `null`, and nothing about the class's public API (its
+  constructor signature is empty) reveals that it actually depends on
+  anything at all -- a reader has to look inside the class body, past
+  the constructor, to discover what it genuinely needs to function.
+  That's the deeper cost of field injection beyond just "harder to unit
+  test": it hides a class's real dependency list from anyone reading
+  its public interface, since Java constructors are normally where a
+  class states what it needs.
 
-  public ReportGenerator(Formatter formatter, Store store) {
-      this.formatter = formatter;
-      this.store = store;
+  Consolidating every field-injected dependency into one constructor
+  fixes both problems simultaneously. First, visibility: `public Report
+  Generator(ReportFormatter formatter, ReportStore store)` puts every
+  dependency directly in the class's public signature -- reading the
+  constructor *is* reading the complete list of what this class
+  requires, no separate documentation or field-scanning needed. Second,
+  immutability: declaring the corresponding fields `final` (`private
+  final ReportFormatter formatter;`) means the compiler itself
+  guarantees they're assigned exactly once, at construction, and can
+  never be reassigned afterward -- there's no code path anywhere that
+  could leave the object in a state where `formatter` points at
+  something different than what it was constructed with. Together,
+  these two properties mean the object is fully, correctly, and
+  permanently wired the instant it exists -- there's no window where it
+  could be observed half-constructed, and (the same testability payoff
+  as the single-dependency case) a unit test can build a fully working
+  instance with `new` and hand-crafted fakes, no Spring context
+  required at all.
+example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: multiple field-injected dependencies -- hidden AND unbuildable outside Spring.
+  @Component
+  class ReportGeneratorBroken {
+      // @Autowired
+      // private ReportFormatterBroken formatter;   // hidden dependency, null outside a container
+      // @Autowired
+      // private ReportStoreBroken store;             // same problem, second dependency
   }
+  // new ReportGeneratorBroken() -- both fields stay null, unusable and untestable directly
+
+  // Fix: every dependency consolidated into ONE constructor, all fields final.
+  @Component
+  public class ReportGenerator {
+      private final ReportFormatter formatter;
+      private final ReportStore store;
+
+      public ReportGenerator(ReportFormatter formatter, ReportStore store) {
+          this.formatter = formatter;   // assigned exactly once, guaranteed by `final`
+          this.store = store;
+      }
+
+      public String generate(String data) {
+          String formatted = formatter.format(data);
+          store.save(formatted);
+          return formatted;
+      }
+  }
+
+  @Component
+  class ReportFormatter {
+      public String format(String data) { return "[REPORT] " + data; }
+  }
+
+  @Component
+  class ReportStore {
+      public void save(String report) { /* no-op for the exercise */ }
+  }
+  // new ReportGenerator(new ReportFormatter(), new ReportStore()) -- fully valid, no Spring needed
+  // generator.generate("sales") -> "[REPORT] sales"
 starter_code: |
   package com.codingadventure.exercise;
 

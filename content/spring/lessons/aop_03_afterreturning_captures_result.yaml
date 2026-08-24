@@ -4,17 +4,71 @@ language: spring
 level: 23
 objective: "Use @AfterReturning with a returning parameter to capture a method's actual return value, since plain @After can't access it."
 explanation: |
-  @After runs after a method completes, whether it returned normally or
-  threw -- but it has no access to what the method actually returned.
-  @AfterReturning is specifically for the "completed successfully"
-  case, and its `returning` attribute binds the method's return value to
-  a parameter of the advice method by name, giving the aspect real
-  access to the result rather than just knowing "something happened."
+  `@After` is intentionally a *finally*-block-like advice type -- its
+  method runs after the intercepted method completes, unconditionally,
+  whether that method returned normally *or* threw an exception. That
+  unconditional-completion semantics is exactly why `@After` has no way
+  to access what the method actually returned: for the "it threw" case,
+  there simply *is* no return value to expose, so the advice type that
+  handles both outcomes uniformly can't offer a return-value parameter
+  at all. `ResultLoggerAspect`'s `@After`-annotated `logResult()` can
+  only ever know "square() finished running" -- it has no mechanism to
+  find out *what* `square()` actually computed, which is why it's stuck
+  hardcoding `"unknown"` rather than the genuine result.
+
+  `@AfterReturning` is the advice type specifically for the "completed
+  successfully" case, and it comes with a capability `@After` fundamentally
+  can't offer: a `returning` attribute that binds the intercepted
+  method's actual return value to a named parameter on the advice
+  method itself. `@AfterReturning(pointcut = "...", returning = "result")`
+  paired with a matching `public void logResult(Object result)`
+  parameter means Spring passes `square()`'s genuine return value
+  directly into `result` when the advice runs -- the parameter name (`
+  "result"`) has to match between the `returning` attribute's string
+  value and the advice method's actual parameter name for this binding
+  to work. This gives the aspect real, concrete access to what happened,
+  not merely the fact that something happened -- the distinction between
+  "I know a method ran" and "I know what it produced," which is exactly
+  the gap `@AfterReturning`'s `returning` parameter closes.
 example_code: |
-  @AfterReturning(pointcut = "execution(* ...Calculator.square(..))", returning = "result")
-  public void logResult(Object result) {
-      lastResult = String.valueOf(result);
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.After;
+  import org.aspectj.lang.annotation.Aspect;
+  import org.springframework.stereotype.Component;
+
+  // The trap: @After has NO access to the method's return value at all.
+  @Aspect
+  @Component
+  class ResultLoggerAspectBroken {
+      public static String lastResult = null;
+
+      @After("execution(* com.codingadventure.exercise.Calculator.square(..))")
+      public void logResult() {
+          lastResult = "unknown";    // can't see square()'s real return value
+      }
   }
+
+  // Fix: @AfterReturning's `returning` attribute binds the actual return value.
+  import org.aspectj.lang.annotation.AfterReturning;
+
+  @Aspect
+  @Component
+  public class ResultLoggerAspect {
+      public static String lastResult = null;
+
+      @AfterReturning(pointcut = "execution(* com.codingadventure.exercise.Calculator.square(..))",
+                       returning = "result")
+      public void logResult(Object result) {   // parameter NAME must match "returning"
+          lastResult = String.valueOf(result);   // the REAL computed value
+      }
+  }
+
+  @Component
+  class Calculator {
+      public int square(int n) { return n * n; }
+  }
+  // calc.square(6) -> logResult(36) fires -> lastResult becomes "36"
 starter_code: |
   package com.codingadventure.exercise;
 

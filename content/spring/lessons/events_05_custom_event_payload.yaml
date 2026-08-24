@@ -4,22 +4,80 @@ language: spring
 level: 20
 objective: "Give a custom ApplicationEvent subclass an actual payload field and getter, so listeners can find out what happened, not just that something did."
 explanation: |
-  Extending ApplicationEvent gives access to Spring's event
-  infrastructure (timestamps, the source object), but the *content*
-  specific to your event -- an order ID, a tracking number, an amount --
-  has to be added explicitly as your own field, set in the constructor,
-  and exposed via a getter. Without that, listeners can react to "a
-  ShipmentEvent happened" but have no way to find out which shipment,
-  making the event far less useful than it looks.
+  Extending `ApplicationEvent` immediately grants access to Spring's
+  built-in event infrastructure -- a timestamp of when the event was
+  created, the `source` object that triggered it, and integration with
+  the whole publish/listen dispatch mechanism covered elsewhere in this
+  category. But none of that built-in infrastructure has any idea what
+  a *particular* event's application-specific content should be -- an
+  order ID, a tracking number, a purchase amount -- because that
+  content is entirely specific to the meaning of the custom event being
+  defined, not something `ApplicationEvent` could possibly know about
+  generically. `ShipmentEvent`'s constructor here *receives* `
+  trackingNumber` as a parameter, but never actually stores it anywhere
+  -- it's used only to satisfy the constructor's own parameter list and
+  then discarded the instant the constructor returns, since nothing
+  assigns it to a field.
+
+  The result is an event that carries no genuinely useful payload at
+  all: a listener receiving this `ShipmentEvent` can tell *that* a
+  shipment event happened (the type itself carries that much
+  information), but has absolutely no way to find out *which* shipment
+  -- there's no field to read the tracking number back from, so `
+  ShipmentListener` is forced to hardcode `"unknown"` as a placeholder,
+  since the real value was never preserved anywhere accessible. The fix
+  follows the standard shape for adding a payload to any custom event:
+  declare a field for the actual content (`private final String
+  trackingNumber;`), assign it from the constructor parameter (`this.
+  trackingNumber = trackingNumber;`, immediately after the mandatory `
+  super(source)` call to properly initialize the `ApplicationEvent`
+  base class), and expose it through a public getter (`getTracking
+  Number()`) so listeners can actually retrieve it. Only with all three
+  pieces in place does the event genuinely communicate *what happened*,
+  not merely *that something happened* -- the entire point of giving an
+  event a payload in the first place.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.ApplicationEvent;
+
+  // The trap: the constructor receives the payload but never actually STORES it.
+  class ShipmentEventBroken extends ApplicationEvent {
+      public ShipmentEventBroken(Object source, String trackingNumber) {
+          super(source);
+          // trackingNumber is discarded here -- never assigned to a field!
+      }
+      // no getter possible -- there's no field to expose
+  }
+  // any listener receiving this event has NO way to find out which shipment it was
+
+  // Fix: store the payload in a field, expose it via a getter.
   class ShipmentEvent extends ApplicationEvent {
       private final String trackingNumber;
+
       public ShipmentEvent(Object source, String trackingNumber) {
-          super(source);
-          this.trackingNumber = trackingNumber;
+          super(source);                              // initializes the ApplicationEvent base
+          this.trackingNumber = trackingNumber;         // actually preserves the payload
       }
-      public String getTrackingNumber() { return trackingNumber; }
+
+      public String getTrackingNumber() {
+          return trackingNumber;                        // listeners can now retrieve it
+      }
   }
+
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  @Component
+  class ShipmentListener {
+      static String lastTrackingNumber = null;
+
+      @EventListener
+      public void onShipment(ShipmentEvent event) {
+          lastTrackingNumber = event.getTrackingNumber();   // reads the REAL value now
+      }
+  }
+  // service.ship("TRACK-123") -> ShipmentListener.lastTrackingNumber becomes "TRACK-123"
 starter_code: |
   package com.codingadventure.exercise;
 

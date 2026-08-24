@@ -4,19 +4,82 @@ language: spring
 level: 27
 objective: "Wrap a transiently-failing call in Resilience4j's Retry decorator so it's automatically retried up to a bounded number of attempts before giving up."
 explanation: |
-  Some failures are transient -- a momentary network blip, a downstream
-  service that's briefly overloaded -- and succeed if simply tried
-  again a moment later. Retry.decorateSupplier(retry, supplier) wraps a
-  call so that, on failure, it's automatically retried according to a
-  configured policy (a maximum attempt count, a wait duration between
-  attempts) instead of failing on the very first hiccup. The caller
-  only ever sees the final outcome: success, or the last failure once
-  every attempt is exhausted.
+  Not every failure means the underlying operation is genuinely broken
+  -- some are transient by nature: a momentary network blip, a
+  downstream service that's briefly overloaded but recovers within
+  milliseconds, a lock that's held for just an instant longer than
+  expected. `flakyThenSucceeds()`, called with no retry logic at all,
+  propagates its very first failure straight to the caller -- even
+  though the exact same underlying operation would have succeeded if
+  simply attempted again a moment later (its own internal counter shows
+  it succeeds on the third call). Failing immediately on the first
+  transient hiccup, rather than giving the operation another chance,
+  turns a momentary blip into a hard failure the caller has to deal
+  with, even though nothing about the *operation itself* was
+  permanently broken.
+
+  `Retry.decorateSupplier(retry, supplier)` wraps a call with automatic
+  retry behavior: on failure, instead of propagating that failure
+  immediately, the wrapped supplier is invoked again, according to a
+  configured policy -- a maximum number of attempts (`maxAttempts(3)`
+  here), and typically a wait duration between attempts (giving a
+  transient condition time to actually clear before trying again). The
+  caller of the *decorated* supplier only ever observes the *final*
+  outcome of this whole retry sequence: either eventual success (once
+  any attempt succeeds), or the last failure once every configured
+  attempt has been exhausted -- the intermediate failed attempts are
+  handled entirely internally by the `Retry` decorator, invisible to
+  the calling code. This is precisely why wrapping `flakyThenSucceeds()`
+  's risky logic in `Retry.decorateSupplier(...)` turns three actual
+  underlying calls (two failures, one success) into what looks, from
+  the caller's perspective, like a single successful call that simply
+  took a bit longer.
 example_code: |
-  Retry retry = Retry.of("payment", config);
-  Supplier<String> decorated = Retry.decorateSupplier(retry, () -> {
-      ...
-  });
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.retry.Retry;
+  import io.github.resilience4j.retry.RetryConfig;
+  import org.springframework.stereotype.Component;
+  import java.time.Duration;
+  import java.util.function.Supplier;
+
+  // The trap: the first failure propagates immediately -- no chance to recover.
+  @Component
+  class PaymentGatewayBroken {
+      public int attempts = 0;
+      public String flakyThenSucceeds() {
+          attempts++;
+          if (attempts < 3) throw new RuntimeException("transient failure");   // fails caller's ONE call
+          return "charged";
+      }
+  }
+  // caller's first invocation always throws -- never even reaches the eventual success
+
+  // Fix: Retry automatically re-attempts on failure, up to a bounded count.
+  @Component
+  public class PaymentGateway {
+      private final Retry retry;
+      public int attempts = 0;
+
+      public PaymentGateway() {
+          RetryConfig config = RetryConfig.custom()
+                  .maxAttempts(3)
+                  .waitDuration(Duration.ofMillis(1))
+                  .build();
+          retry = Retry.of("payment", config);
+      }
+
+      public String flakyThenSucceeds() {
+          Supplier<String> risky = () -> {
+              attempts++;
+              if (attempts < 3) throw new RuntimeException("transient failure");
+              return "charged";
+          };
+          return Retry.decorateSupplier(retry, risky).get();
+      }
+  }
+  // gw.flakyThenSucceeds() -> "charged" -- the caller sees ONE successful result,
+  // even though internally it took 3 attempts (attempts ends up at exactly 3)
 starter_code: |
   package com.codingadventure.exercise;
 

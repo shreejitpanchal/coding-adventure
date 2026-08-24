@@ -4,18 +4,71 @@ language: spring
 level: 12
 objective: "Use @Profile to register environment-specific implementations of the same interface, activated by which profile is active."
 explanation: |
-  @Profile("name") on a bean means "only register this bean when that
-  profile is active." It's the standard way to swap an implementation
-  based on environment -- a dev implementation that just logs, versus a
-  prod implementation that actually calls an external system -- without
-  any if/else in application code. Which profile is active is set on the
-  Environment before the context refreshes (in a real app, typically via
-  a command-line flag or environment variable; here, the test sets it
-  directly for a deterministic, isolated run).
+  Without any profile annotation, both `DevMailService` and `Prod
+  MailService` register as ordinary beans, unconditionally, at every
+  context startup -- exactly the same `NoUniqueBeanDefinitionException`
+  ambiguity covered elsewhere in this app, since both implement the
+  same `MailService` interface and nothing distinguishes when each one
+  should actually be active. `@Profile("name")` on a bean definition
+  changes that from "always registered" to conditional: "only register
+  this bean when the named profile is among the currently *active*
+  profiles" -- a bean with `@Profile("dev")` simply doesn't exist in the
+  container at all unless `"dev"` happens to be active for this
+  particular run, the same way an unregistered `@Component`-less class
+  doesn't exist as a bean.
+
+  This is the standard, idiomatic way to swap an entire implementation
+  based on deployment environment -- a `DevMailService` that just logs
+  what it would have sent, versus a `ProdMailService` that genuinely
+  calls an external mail provider -- without a single `if`/`else`
+  branch anywhere in application code checking "which environment am I
+  in." The application code simply depends on the `MailService`
+  interface; *which* concrete implementation actually gets wired in is
+  decided entirely by which profile is active when the context starts,
+  external to the business logic itself. Which profile is active is set
+  on the `Environment` before the context refreshes -- in a real
+  deployed application, typically via a command-line flag (`--spring.
+  profiles.active=prod`) or an environment variable, read automatically
+  by Spring Boot's startup machinery; here, the test sets it directly
+  via `ctx.getEnvironment().setActiveProfiles("dev")` for a
+  deterministic, fully isolated test run that doesn't depend on any
+  external configuration.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.annotation.Profile;
+  import org.springframework.stereotype.Component;
+
+  interface MailService {
+      String send(String to);
+  }
+
+  // The trap: neither implementation is profile-scoped -- BOTH always register, ambiguous.
+  @Component
+  class DevMailServiceBroken implements MailService {
+      public String send(String to) { return "LOGGED (dev): mail to " + to; }
+  }
+  @Component
+  class ProdMailServiceBroken implements MailService {
+      public String send(String to) { return "SENT (prod): mail to " + to; }
+  }
+  // injecting a plain MailService -- NoUniqueBeanDefinitionException, both are always active
+
+  // Fix: @Profile makes each implementation conditional on the active profile.
   @Component
   @Profile("dev")
-  class DevMailService implements MailService { ... }
+  class DevMailService implements MailService {
+      public String send(String to) { return "LOGGED (dev): mail to " + to; }
+  }
+
+  @Component
+  @Profile("prod")
+  class ProdMailService implements MailService {
+      public String send(String to) { return "SENT (prod): mail to " + to; }
+  }
+  // with "dev" active: ONLY DevMailService registers -- injection is unambiguous
+  // ctx.getEnvironment().setActiveProfiles("dev"); ctx.register(DevMailService.class, ProdMailService.class); ctx.refresh();
+  // service.send("ada@example.com") -> "LOGGED (dev): mail to ada@example.com"
 starter_code: |
   package com.codingadventure.exercise;
 

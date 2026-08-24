@@ -4,18 +4,69 @@ language: spring
 level: 10
 objective: "Use @Lazy to defer a singleton bean's construction until it's actually first used, instead of eagerly at context startup."
 explanation: |
-  By default, every singleton bean is constructed eagerly when the
-  context refreshes -- even one that might never actually be used during
-  a given run. For a genuinely expensive bean (heavy setup, a slow
-  connection, a large in-memory structure), that's wasted work on every
-  startup that doesn't need it. @Lazy defers construction until the first
-  time something actually asks for the bean (via injection or
-  getBean()), trading a small first-access delay for not paying the cost
-  at all when it's never needed.
+  Spring's default behavior for singleton beans isn't just "construct
+  it once" -- it's "construct it once, *eagerly*, the moment the
+  context refreshes," before the application has even finished starting
+  up and regardless of whether that particular bean ever actually gets
+  used during this run. That's a deliberate default (it front-loads
+  every failure to startup time, so a misconfigured bean fails loudly
+  and immediately rather than mysteriously mid-request), but it has a
+  real cost for genuinely expensive beans -- one with heavy setup work,
+  a slow external connection, or a large in-memory structure to build.
+  `ExpensiveEngine`'s constructor runs the moment the context refreshes,
+  incrementing `constructions` to `1` immediately, *before* anything in
+  the application has actually asked for it -- if this run of the
+  application never ends up needing an `ExpensiveEngine` at all, that
+  construction cost was paid entirely for nothing.
+
+  `@Lazy` changes this contract: instead of constructing the bean
+  eagerly during context refresh, Spring defers its actual construction
+  until the *first* time something genuinely requests it -- whether
+  through an injection point that needs it, or an explicit `getBean()`
+  call. Everything up until that first request proceeds with the bean
+  simply not existing yet; only the moment it's actually asked for does
+  the container finally construct it, and every subsequent request
+  (since it's still a singleton by default) reuses that same now-
+  constructed instance. This trades a small delay on first access
+  (construction now happens at that moment, rather than having already
+  happened ahead of time) for the ability to avoid the construction
+  cost *entirely* on any run where the bean is never actually needed --
+  a worthwhile tradeoff specifically for expensive, conditionally-used
+  beans, though not something to reach for universally, since it also
+  means startup no longer surfaces that particular bean's configuration
+  problems immediately.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: eager construction the MOMENT the context refreshes, whether needed or not.
+  @Component
+  class ExpensiveEngineBroken {
+      public static int constructions = 0;
+      public ExpensiveEngineBroken() { constructions++; }
+      public String run() { return "computed"; }
+  }
+  // right after context startup: constructions == 1 -- ALREADY built, even if never used
+
+  // Fix: @Lazy defers construction until the bean is genuinely first requested.
+  import org.springframework.context.annotation.Lazy;
+
   @Component
   @Lazy
-  public class ExpensiveEngine { ... }
+  public class ExpensiveEngine {
+      public static int constructions = 0;
+
+      public ExpensiveEngine() {
+          constructions++;
+      }
+
+      public String run() {
+          return "computed";
+      }
+  }
+  // right after context startup: constructions == 0 -- not built yet
+  // ctx.getBean(ExpensiveEngine.class) -- NOW it's constructed: constructions becomes 1
 starter_code: |
   package com.codingadventure.exercise;
 

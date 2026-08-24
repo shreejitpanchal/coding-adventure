@@ -4,24 +4,89 @@ language: spring
 level: 25
 objective: "Fix Spring AOP's best-known gotcha: a method calling another advised method on 'this' bypasses the proxy entirely, so the advice never fires for that internal call."
 explanation: |
-  Spring AOP works by wrapping a bean in a proxy -- external callers get
-  the proxy, and the proxy is what actually checks pointcuts and runs
-  advice before delegating to the real object. But code *inside* the
-  bean calling another method on itself (`this.method()`, or just
-  `method()`) calls the real object directly, never going through the
-  proxy at all -- so any advice that would normally apply to that method
-  silently doesn't fire. The standard fix is self-injection: autowiring
-  a reference to the bean's own proxy (with @Lazy, to avoid a circular
-  dependency during construction) and calling through that reference
-  instead of through `this`.
-example_code: |
-  @Autowired
-  @Lazy
-  private Greeter self;
+  Spring AOP's mechanism for weaving advice into method calls is built
+  entirely around *proxies*: when a bean has applicable aspects, Spring
+  doesn't hand callers the real object directly -- it hands them a proxy
+  object that wraps the real bean, and every call to the proxy first
+  checks whether any pointcuts match, runs the matching advice, and only
+  then delegates to the actual underlying method. `ctx.getBean(Greeter.
+  class)` from *outside* the bean correctly returns this proxy, so
+  `greeter.greetTwice("Ada")` called from `main`, or from a test, goes
+  through the proxy exactly as intended. But `greetTwice()`'s own
+  *internal* call to `greet(name)` -- an implicit `this.greet(name)`,
+  the way any unqualified method call inside a class works -- doesn't
+  go through the proxy at all. From inside the bean's own compiled
+  code, `this` refers to the *real*, unproxied object, since the proxy
+  wrapping only exists at the boundary Spring's container manages
+  externally -- internal calls never pass through that boundary, they
+  call the real object's methods directly.
 
-  public String greetTwice(String name) {
-      return self.greet(name) + self.greet(name);
+  This means any advice that would normally apply to `greet(...)`
+  simply never fires for calls made this way -- not because anything is
+  misconfigured, but because the call structurally never reaches the
+  proxy that's responsible for triggering the advice in the first
+  place. This is widely known as Spring AOP's single most notorious
+  gotcha, precisely because the code *looks* completely ordinary (`
+  greet(name)` inside `Greeter` reads like any normal method call) with
+  nothing visually suggesting anything is being bypassed. The standard
+  fix is self-injection: giving the bean an `@Autowired` field of its
+  *own* type, wired to reference the bean's own proxy rather than the
+  raw object, and routing internal calls through that field instead of
+  through implicit `this`. The field needs `@Lazy` specifically to
+  avoid a circular dependency during construction -- without it, Spring
+  would need to fully construct `Greeter` in order to inject `Greeter`
+  into itself, a chicken-and-egg problem `@Lazy` sidesteps by deferring
+  that self-reference's actual resolution until it's first used, well
+  after construction has already completed.
+example_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.Aspect;
+  import org.aspectj.lang.annotation.Before;
+  import org.springframework.stereotype.Component;
+
+  @Aspect
+  @Component
+  class CallCounterAspect {
+      public static int calls = 0;
+
+      @Before("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public void countCall() {
+          calls++;
+      }
   }
+
+  // The trap: internal calls bypass the proxy -- advice never fires for them.
+  @Component
+  class GreeterBroken {
+      public String greetTwice(String name) {
+          return greet(name) + greet(name);   // implicit `this.greet(...)` -- SKIPS the proxy!
+      }
+      public String greet(String name) {
+          return "hi " + name;
+      }
+  }
+  // greeterBroken.greetTwice("Ada") -- greet() runs twice, but CallCounterAspect.calls stays 0!
+
+  // Fix: self-injection routes internal calls back THROUGH the proxy.
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.annotation.Lazy;
+
+  @Component
+  public class Greeter {
+      @Autowired
+      @Lazy
+      private Greeter self;   // a reference to THIS bean's own proxy, resolved lazily
+
+      public String greetTwice(String name) {
+          return self.greet(name) + self.greet(name);   // routed through the proxy this time
+      }
+
+      public String greet(String name) {
+          return "hi " + name;
+      }
+  }
+  // greeter.greetTwice("Ada") -> "hi Adahi Ada", CallCounterAspect.calls becomes 2
 starter_code: |
   package com.codingadventure.exercise;
 

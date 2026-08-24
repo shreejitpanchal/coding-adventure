@@ -4,16 +4,57 @@ language: spring
 level: 13
 objective: "Use @Profile's negation syntax (!name) to register a bean everywhere except one specific environment."
 explanation: |
-  @Profile accepts a `!` prefix meaning "not this profile" -- @Profile
-  ("!prod") registers the bean whenever "prod" is *not* among the active
-  profiles, including when no profile is set at all. This is the natural
-  way to express "a dev/debug convenience that should exist by default,
-  but must never appear in production" without having to separately list
-  every non-prod profile that does exist.
+  `@Profile("prod")` on `DebugToolbar` says the exact opposite of what a
+  debug-only convenience actually needs: it registers the bean *only
+  when* `"prod"` is active, meaning a debug toolbar would appear
+  specifically in production -- the one environment it should
+  absolutely never show up in -- and be entirely absent everywhere else,
+  including the common "no profile set at all" default case most local
+  development and testing runs use. The test here sets no active
+  profile whatsoever (the typical default), so `@Profile("prod")`
+  correctly-but-backwards excludes `DebugToolbar` from that run,
+  producing `NoSuchBeanDefinitionException` -- the profile condition is
+  doing exactly what it says, it's just the wrong condition for the
+  actual intent.
+
+  `@Profile` supports a `!` negation prefix specifically for expressing
+  "active whenever this profile is *not* set," which is the actual
+  shape "active everywhere except one specific environment" needs: `
+  @Profile("!prod")` registers the bean whenever `"prod"` is *not*
+  among the currently active profiles -- including the common case
+  where *no* profile is active at all (the default when nothing else
+  has been configured), and including every other profile that might
+  exist (`dev`, `staging`, `test`, or any future one), all without
+  needing to enumerate them individually. This negation form is exactly
+  the right tool for "a convenience that should exist by default,
+  everywhere, except explicitly excluded in one particular environment"
+  -- expressing the same intent as a positive list of every non-prod
+  profile would require maintaining that list manually and keeping it
+  in sync as new profiles get introduced, while `!prod` captures the
+  actual intent directly and automatically covers any profile added
+  later.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.annotation.Profile;
+  import org.springframework.stereotype.Component;
+
+  // The trap: @Profile("prod") is backwards -- only active IN prod, the opposite of intent.
+  @Component
+  @Profile("prod")
+  class DebugToolbarBroken {
+      public String render() { return "DEBUG TOOLBAR"; }
+  }
+  // with no active profile (the common default case): NoSuchBeanDefinitionException!
+
+  // Fix: !prod means "active whenever prod is NOT the active profile."
   @Component
   @Profile("!prod")
-  public class DebugToolbar { ... }
+  public class DebugToolbar {
+      public String render() { return "DEBUG TOOLBAR"; }
+  }
+  // with no active profile set at all: DebugToolbar IS registered -- correct default behavior
+  // with "prod" explicitly active: DebugToolbar is correctly excluded
 starter_code: |
   package com.codingadventure.exercise;
 

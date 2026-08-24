@@ -4,19 +4,79 @@ language: spring
 level: 8
 objective: "Move initialization logic that depends on an injected field out of the constructor and into a @PostConstruct method."
 explanation: |
-  Field injection populates @Autowired fields *after* the constructor
-  runs -- the container has to construct the object first before it has
-  anything to reflectively inject into. Code in the constructor that
-  reads an @Autowired field is reading it before it's ever been set,
-  getting a NullPointerException. @PostConstruct marks a method to run
-  once construction *and* dependency injection are both fully complete,
-  which is the right place for initialization logic that depends on
-  injected collaborators.
+  There's an unavoidable ordering constraint in how Spring builds an
+  object with field-injected dependencies: the *constructor* has to run
+  first, before the object even exists for Spring to reflectively reach
+  into and populate its `@Autowired` fields -- injection can only happen
+  *after* construction, never during it or before it. `CatalogCache`'s
+  constructor calling `source.load()` reads `source` at a point in the
+  object's lifecycle where it hasn't been assigned yet -- it's still at
+  its default value, `null`, because field injection is a step that
+  only happens *after* this exact constructor finishes running. `source.
+  load()` on a `null` `source` throws `NullPointerException`, not
+  because `CatalogSource` is misconfigured or missing, but purely
+  because of *when* the constructor tries to use it relative to when
+  Spring actually populates it.
+
+  `@PostConstruct` marks a method to run at a specific, later point in
+  the bean's lifecycle: after the constructor has completed *and* after
+  every dependency injection (field, setter, or otherwise) has finished
+  -- the object is guaranteed to be fully wired by the time a `@Post
+  Construct` method actually runs. Moving the initialization logic
+  (`cachedSummary = "CACHED: " + source.load();`) out of the
+  constructor and into a separate method annotated `@PostConstruct`
+  places it at exactly the point in the lifecycle where `source` is
+  guaranteed to already be populated -- the same computation, just
+  correctly sequenced relative to when dependency injection actually
+  completes. This makes `@PostConstruct` the standard, correct home for
+  any initialization logic that needs to *use* an injected collaborator
+  -- warming a cache, validating configuration pulled from a dependency,
+  establishing an initial connection -- as opposed to a constructor,
+  which (for a field-injected bean) fundamentally cannot rely on
+  injected dependencies being available yet.
 example_code: |
-  @PostConstruct
-  public void warmUp() {
-      cachedSummary = "CACHED: " + source.load();
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  // The trap: constructor reads a field-injected dependency BEFORE it's populated.
+  @Component
+  class CatalogCacheBroken {
+      @Autowired
+      private CatalogSourceBroken source;
+      private String cachedSummary;
+
+      public CatalogCacheBroken() {
+          cachedSummary = "CACHED: " + source.load();   // source is still null HERE!
+      }
+      // NullPointerException during bean creation -- injection hasn't happened yet
   }
+
+  // Fix: @PostConstruct runs AFTER construction AND injection are both complete.
+  import jakarta.annotation.PostConstruct;
+
+  @Component
+  public class CatalogCache {
+      @Autowired
+      private CatalogSource source;
+      private String cachedSummary;
+
+      @PostConstruct
+      public void warmUp() {
+          cachedSummary = "CACHED: " + source.load();   // source is guaranteed populated by now
+      }
+
+      public String summary() {
+          return cachedSummary;
+      }
+  }
+
+  @Component
+  class CatalogSource {
+      public String load() { return "catalog-data"; }
+  }
+  // cache.summary() -> "CACHED: catalog-data"
 starter_code: |
   package com.codingadventure.exercise;
 

@@ -4,18 +4,62 @@ language: spring
 level: 9
 objective: "Add a @PreDestroy method so a bean's cleanup logic actually runs when the ApplicationContext shuts down."
 explanation: |
-  Closing a context (ctx.close(), or the JVM shutting down cleanly) tears
-  down every singleton bean, but only calls cleanup logic that's actually
-  registered for it -- a plain method sitting on the class does nothing
-  on its own. @PreDestroy marks a method to run automatically during that
-  teardown, the natural place for releasing resources (closing
-  connections, flushing buffers, releasing locks) a bean acquired during
-  its lifetime.
+  `ctx.close()` (or a clean JVM shutdown) tears down every singleton
+  bean the context manages -- but "tearing down" only means invoking
+  whatever cleanup logic each bean has actually *registered itself*
+  for, not calling every method that happens to look like cleanup by
+  name or intent. `ConnectionPool`'s `shutdown()` method correctly sets
+  `closed = true` when it's called, but nothing in the class tells
+  Spring that this particular method *is* the cleanup logic to invoke
+  during context teardown -- from the container's perspective, `
+  shutdown()` is just an ordinary public method, indistinguishable from
+  any other method on the class, and closing the context has no reason
+  to call it. `ctx.close()` runs, `shutdown()` is never invoked, and `
+  ConnectionPool.closed` stays `false`.
+
+  `@PreDestroy` is the annotation that establishes exactly that missing
+  connection -- it marks a method as the bean's designated
+  destruction-time cleanup logic, and Spring automatically invokes it
+  as part of tearing down that bean when the context closes. Adding
+  `@PreDestroy` directly above `shutdown()` is the entire fix: no other
+  code changes, just the explicit signal that tells Spring "call this
+  method during shutdown." This makes `@PreDestroy` the natural,
+  standard home for any cleanup a bean needs to perform when it's about
+  to be destroyed -- closing database connections, flushing buffered
+  writes to disk, releasing file handles or locks -- anything a bean
+  acquired or opened during its lifetime that needs an explicit
+  release step rather than simply being garbage-collected, which
+  provides no such guarantee about *when* (or whether) cleanup actually
+  happens.
 example_code: |
-  @PreDestroy
-  public void shutdown() {
-      closed = true;
+  package com.codingadventure.exercise;
+
+  import org.springframework.stereotype.Component;
+
+  // The trap: a plain method -- correct logic, but Spring has no reason to call it.
+  @Component
+  class ConnectionPoolBroken {
+      public static boolean closed = false;
+
+      public void shutdown() {
+          closed = true;
+      }
+      // NOT annotated -- ctx.close() never invokes this, closed stays false
   }
+
+  // Fix: @PreDestroy tells Spring to call this method during context teardown.
+  import jakarta.annotation.PreDestroy;
+
+  @Component
+  public class ConnectionPool {
+      public static boolean closed = false;
+
+      @PreDestroy
+      public void shutdown() {
+          closed = true;    // now genuinely invoked when the context closes
+      }
+  }
+  // ctx.close() -> shutdown() runs automatically -> ConnectionPool.closed becomes true
 starter_code: |
   package com.codingadventure.exercise;
 

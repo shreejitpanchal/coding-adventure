@@ -4,20 +4,71 @@ language: spring
 level: 24
 objective: "Use @Around advice to intercept a method call and transform its return value before it reaches the caller."
 explanation: |
-  @Around is the most powerful advice type: it wraps the entire method
-  call, receiving a ProceedingJoinPoint that must be explicitly told to
-  proceed() (unlike @Before/@After, which run automatically around a
-  call that always happens). Because @Around advice controls what gets
-  returned from pjp.proceed(), it can inspect, transform, or even
-  entirely replace the result before handing it back to the original
-  caller -- something @Before/@After/@AfterReturning can't do, since
-  none of them control the return value.
+  `@Before`, `@After`, and `@AfterReturning` (covered in neighboring
+  exercises) all run automatically around a method call that's going to
+  happen regardless -- they can observe the call and its outcome, but
+  none of them control whether the underlying method actually executes,
+  or what value ultimately reaches the caller. `@Around` is different
+  in kind, not just degree: instead of a plain method body, an `@Around`
+  advice method receives a `ProceedingJoinPoint` representing the
+  intercepted call itself, and the advice has to *explicitly* call `pjp.
+  proceed()` to actually invoke the underlying method -- if the advice
+  never calls `proceed()` at all, the original method simply never runs.
+  This inversion of control -- the advice decides *whether* and *when*
+  the real method executes, not the other way around -- is what makes `
+  @Around` the most powerful (and most easily misused) advice type.
+
+  Because `@Around` advice literally receives `pjp.proceed()`'s return
+  value as an ordinary Java expression, it can do anything with that
+  value before returning it from the advice method itself: inspect it,
+  transform it, wrap it, or replace it entirely with something
+  unrelated -- whatever the advice method's own `return` statement
+  produces is what the *original caller* actually receives, not
+  necessarily what the intercepted method itself returned. `UppercaseAspect
+  `'s `shout` method here calls `pjp.proceed()` correctly, capturing
+  `greet()`'s genuine return value, but then simply returns it
+  unchanged -- the transformation step is missing. Adding `String.
+  valueOf(result).toUpperCase()` before the `return` is what actually
+  performs the interception's whole point: the caller of `greeter.greet
+  ("Ada")` receives `"HI ADA"`, not the original `"hi Ada"`, because the
+  `@Around` advice substituted its own transformed value for the
+  underlying method's actual result -- a capability none of the other
+  advice types (`@Before`, `@After`, `@AfterReturning`) can offer at
+  all, since none of them control the return value in the first place.
 example_code: |
-  @Around("execution(* ...Greeter.greet(..))")
-  public Object shout(ProceedingJoinPoint pjp) throws Throwable {
-      Object result = pjp.proceed();
-      return String.valueOf(result).toUpperCase();
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.ProceedingJoinPoint;
+  import org.aspectj.lang.annotation.Around;
+  import org.aspectj.lang.annotation.Aspect;
+  import org.springframework.stereotype.Component;
+
+  // The trap: proceed() is called correctly, but the result is returned UNCHANGED.
+  @Aspect
+  @Component
+  class UppercaseAspectBroken {
+      @Around("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public Object shout(ProceedingJoinPoint pjp) throws Throwable {
+          return pjp.proceed();   // no transformation -- caller gets the ORIGINAL value
+      }
   }
+
+  // Fix: transform the result before returning it -- the caller receives the NEW value.
+  @Aspect
+  @Component
+  public class UppercaseAspect {
+      @Around("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public Object shout(ProceedingJoinPoint pjp) throws Throwable {
+          Object result = pjp.proceed();                    // invoke the real method
+          return String.valueOf(result).toUpperCase();        // substitute the transformed value
+      }
+  }
+
+  @Component
+  class Greeter {
+      public String greet(String name) { return "hi " + name; }
+  }
+  // greeter.greet("Ada") -> "HI ADA" -- the caller sees the ADVICE's transformed result
 starter_code: |
   package com.codingadventure.exercise;
 

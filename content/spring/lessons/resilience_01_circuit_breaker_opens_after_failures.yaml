@@ -4,21 +4,83 @@ language: spring
 level: 26
 objective: "Wrap a risky call in a Resilience4j CircuitBreaker so repeated failures trip it open and short-circuit further calls instead of hammering a failing dependency."
 explanation: |
-  A circuit breaker tracks recent outcomes (a sliding window) and, once
-  the failure rate crosses a threshold, "opens" -- for a configured
-  duration, every call is rejected immediately with
-  CallNotPermittedException instead of ever reaching the real
-  function. This protects an already-struggling downstream dependency
-  from being hit with even more traffic while it recovers, and gives
-  the calling code a fast, predictable failure instead of waiting on
-  (or retrying against) something that's already down.
-  CircuitBreaker.decorateSupplier(breaker, supplier) wraps any
-  Supplier<T> with this behavior.
+  `PaymentGateway.charge(...)` with no protection at all does exactly
+  what its code says, every single time it's called: if `shouldFail` is
+  `true`, it throws -- unconditionally, regardless of how many times in
+  a row that's just happened. A downstream dependency that's genuinely
+  struggling (overloaded, degraded, temporarily down) gets hit with
+  every single retry or repeated call an application throws at it,
+  which is exactly the wrong behavior during an outage -- continuing to
+  hammer an already-failing service with full traffic can actively
+  prevent it from recovering, on top of each individual call still
+  wasting time waiting for a response (or a timeout) that was never
+  going to succeed anyway.
+
+  A circuit breaker addresses this by tracking recent call *outcomes*
+  over a sliding window (a fixed number of the most recent calls) and
+  computing a rolling failure rate from them. Once that failure rate
+  crosses a configured threshold, the breaker "opens" -- for a
+  configured duration afterward, every call is rejected *immediately*,
+  with `CallNotPermittedException`, without ever reaching the real
+  function at all. This serves two purposes simultaneously: it protects
+  the struggling downstream dependency from additional traffic while
+  it has a chance to recover, and it gives the *calling* code a fast,
+  predictable, cheap failure instead of repeatedly waiting on (or
+  blindly retrying against) something that's demonstrably already
+  down. `CircuitBreaker.decorateSupplier(breaker, supplier)` wraps any `
+  Supplier<T>` with exactly this behavior -- the risky call logic stays
+  the same, but every invocation now passes through the breaker's
+  outcome-tracking and open/closed state first.
 example_code: |
-  CircuitBreaker breaker = CircuitBreaker.of("payment", config);
-  Supplier<String> decorated = CircuitBreaker.decorateSupplier(breaker, () -> {
-      ...
-  });
+  package com.codingadventure.exercise;
+
+  import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+  import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+  import org.springframework.stereotype.Component;
+  import java.time.Duration;
+  import java.util.function.Supplier;
+
+  // The trap: no protection at all -- every call reaches the dependency, no matter what.
+  @Component
+  class PaymentGatewayBroken {
+      public int failures = 0;
+      public String charge(boolean shouldFail) {
+          if (shouldFail) {
+              failures++;
+              throw new RuntimeException("payment failed");   // always reaches here
+          }
+          return "charged";
+      }
+  }
+
+  // Fix: a CircuitBreaker tracks outcomes and short-circuits once the failure rate is too high.
+  @Component
+  public class PaymentGateway {
+      private final CircuitBreaker circuitBreaker;
+      public int failures = 0;
+
+      public PaymentGateway() {
+          CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+                  .slidingWindowSize(4)
+                  .failureRateThreshold(50)
+                  .waitDurationInOpenState(Duration.ofSeconds(30))
+                  .build();
+          circuitBreaker = CircuitBreaker.of("payment", config);
+      }
+
+      public String charge(boolean shouldFail) {
+          Supplier<String> risky = () -> {
+              if (shouldFail) {
+                  failures++;
+                  throw new RuntimeException("payment failed");
+              }
+              return "charged";
+          };
+          return CircuitBreaker.decorateSupplier(circuitBreaker, risky).get();
+      }
+  }
+  // enough consecutive failures -> breaker opens -> further calls throw
+  // CallNotPermittedException immediately, WITHOUT incrementing failures again
 starter_code: |
   package com.codingadventure.exercise;
 

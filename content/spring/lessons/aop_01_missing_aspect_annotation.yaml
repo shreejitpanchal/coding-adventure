@@ -4,20 +4,70 @@ language: spring
 level: 21
 objective: "Add @Aspect to a class alongside its @Before advice method, since without it Spring/AspectJ doesn't recognize the class as an aspect at all."
 explanation: |
-  @Before (and the other advice annotations like @After, @Around) only
-  mean something on a class that's also annotated @Aspect -- that's
-  what tells the AspectJ auto-proxying machinery (enabled via
-  @EnableAspectJAutoProxy) to actually scan this class for pointcuts and
-  weave its advice into matching method calls. A class with advice
-  annotations but no @Aspect is just a plain bean with unused
-  annotations sitting on it; nothing ever calls countCall().
+  `@Before("execution(...)")` on a method looks self-contained -- it
+  names a pointcut expression right there in the annotation, so it's
+  natural to assume that's enough to make the advice active. But `
+  @Before` (and its siblings `@After`, `@Around`, `@AfterReturning`)
+  only carry meaning *within the context of an aspect* -- they're not
+  independently recognized by Spring's component scanning or general
+  bean processing at all. What actually triggers Spring/AspectJ's
+  auto-proxying machinery (enabled via `@EnableAspectJAutoProxy` on
+  the configuration class) to scan a bean's methods for advice
+  annotations in the first place is the class-level `@Aspect`
+  annotation -- without it, the advice annotations are simply inert
+  metadata sitting on an ordinary method of an ordinary bean, never
+  inspected by the AOP machinery at all.
+
+  `CallCounterAspect` here is a perfectly normal `@Component`, and `
+  countCall()` is a perfectly normal method with a `@Before` annotation
+  attached -- but with no `@Aspect` on the class, Spring never treats it
+  as something to weave into other beans' method calls; it's just a
+  bean like any other, and `countCall()` is a method nobody ever
+  invokes, since nothing in the application calls it directly either.
+  `Greeter.greet(...)` runs completely unaffected, with no advice
+  intercepting it at all -- the pointcut expression inside `@Before`
+  is syntactically valid and would work correctly, but it's never even
+  evaluated, because the class hosting it was never recognized as an
+  aspect to begin with. Adding `@Aspect` above the class is the entire
+  fix: it's the signal that tells the AOP machinery "scan this
+  specific bean's methods for advice annotations and actually weave
+  them into matching call sites."
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.aspectj.lang.annotation.Before;
+  import org.springframework.stereotype.Component;
+
+  // The trap: @Before with no @Aspect on the class -- inert, never scanned or woven in.
+  @Component
+  class CallCounterAspectBroken {
+      public static int calls = 0;
+
+      @Before("execution(* com.codingadventure.exercise.Greeter.greet(..))")
+      public void countCall() {
+          calls++;    // NEVER runs -- the annotation is meaningless without @Aspect
+      }
+  }
+
+  // Fix: @Aspect makes the class recognized by the AOP auto-proxying machinery.
+  import org.aspectj.lang.annotation.Aspect;
+
   @Aspect
   @Component
   public class CallCounterAspect {
+      public static int calls = 0;
+
       @Before("execution(* com.codingadventure.exercise.Greeter.greet(..))")
-      public void countCall() { calls++; }
+      public void countCall() {
+          calls++;    // now genuinely woven into greet() calls
+      }
   }
+
+  @Component
+  class Greeter {
+      public String greet(String name) { return "hi " + name; }
+  }
+  // greeter.greet("Ada") -> countCall() fires first -> calls becomes 1
 starter_code: |
   package com.codingadventure.exercise;
 

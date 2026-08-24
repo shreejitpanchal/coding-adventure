@@ -4,16 +4,74 @@ language: spring
 level: 3
 objective: "Use @Primary to resolve ambiguity by declaring one implementation the default, instead of qualifying every injection point."
 explanation: |
-  @Qualifier works at each injection site, but if most callers want the
-  same default implementation and only a few need the alternative,
-  marking that default @Primary is less repetitive -- it tells Spring
-  "when nothing else disambiguates, use this one." @Qualifier still wins
-  at any specific site that adds it; @Primary is just the tiebreaker for
-  everywhere else.
+  `@Qualifier` (covered in the previous exercise) resolves ambiguity at
+  *each individual injection site* -- correct, but repetitive the
+  moment an application has many places that all want the *same*
+  default implementation of an interface, with only a handful of
+  exceptions wanting something different. Annotating every single one
+  of those "just give me the default" injection sites with an identical
+  `@Qualifier("standardPricing")` works, but it's needless repetition
+  for something that's really a single, application-wide policy: "when
+  nothing more specific is asked for, use `StandardPricing`."
+
+  `@Primary`, placed on the bean definition itself rather than at each
+  injection point, expresses that policy directly and once: `@Component
+  @Primary class StandardPricing implements PricingStrategy { ... }`
+  tells Spring "when resolving a `PricingStrategy` and nothing else
+  disambiguates the choice, prefer this one." Every injection point
+  that doesn't specify an explicit `@Qualifier` of its own then
+  resolves to the `@Primary` bean automatically, with zero repeated
+  annotations needed at each of those call sites. `@Qualifier` still
+  takes precedence over `@Primary` at any *specific* site that adds
+  one -- `@Primary` is purely the fallback tiebreaker for everywhere
+  else, not an override that trumps an explicit, more specific request.
+  This division of labor -- `@Primary` for "the sensible default almost
+  everyone wants," `@Qualifier` for "this particular spot needs
+  something different" -- keeps the common case terse while still
+  allowing exceptions to be expressed precisely where they're actually
+  needed.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.context.annotation.Primary;
+  import org.springframework.stereotype.Component;
+
+  interface PricingStrategy {
+      double price(double base);
+  }
+
+  // The trap: two beans implement PricingStrategy, no tiebreaker -- ambiguous everywhere.
+  // @Component
+  // class StandardPricingBroken implements PricingStrategy { ... }
+  // @Component
+  // class DiscountPricingBroken implements PricingStrategy { ... }
+  // -- NoUniqueBeanDefinitionException at every plain injection point
+
+  // Fix: @Primary marks the sensible default -- no @Qualifier needed at most call sites.
   @Component
   @Primary
-  class StandardPricing implements PricingStrategy { ... }
+  class StandardPricing implements PricingStrategy {
+      public double price(double base) { return base; }
+  }
+
+  @Component
+  class DiscountPricing implements PricingStrategy {
+      public double price(double base) { return base * 0.9; }
+  }
+
+  @Component
+  public class Checkout {
+      private final PricingStrategy strategy;
+
+      public Checkout(PricingStrategy strategy) {    // no @Qualifier needed -- resolves to @Primary
+          this.strategy = strategy;
+      }
+
+      public double total(double base) {
+          return strategy.price(base);
+      }
+  }
+  // checkout.total(100.0) -> 100.0 -- wired to StandardPricing, the @Primary default
 starter_code: |
   package com.codingadventure.exercise;
 

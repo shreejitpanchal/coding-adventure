@@ -4,19 +4,82 @@ language: spring
 level: 19
 objective: "Use @EventListener's condition attribute (a SpEL expression) so a listener only reacts to events matching a specific criterion."
 explanation: |
-  @EventListener accepts a `condition` attribute -- a SpEL expression
-  evaluated against the published event -- so the listener method's
-  body only runs when the condition is true, filtering out events it
-  shouldn't react to without any manual `if` check inside the method.
-  Referencing the listener method's own parameter by name in the SpEL
-  expression (e.g. #event.amount) requires the compiler to preserve
-  parameter names, which this project's Maven scaffold is already
-  configured for.
+  `FraudAlertListener`'s plain `@EventListener` fires its method body
+  for *every* `PurchaseEvent`, with no distinction between a trivial
+  $50 purchase and a genuinely suspicious $150 one -- the listener
+  itself has no way to be selective about which events it actually
+  cares about. The straightforward fix would be an `if (event.getAmount
+  () > 100)` check inside the method body, filtering manually -- and
+  that works, but `@EventListener` offers a more declarative
+  alternative built directly into the annotation: the `condition`
+  attribute accepts a SpEL (Spring Expression Language) expression,
+  evaluated against the published event *before* the listener method's
+  body ever runs. If the condition evaluates to `false`, the method
+  body is simply never invoked at all for that particular event --
+  filtering happens entirely at the dispatch level, outside the method,
+  rather than as the method's own first line of logic.
+
+  `@EventListener(condition = "#event.amount > 100")` expresses "only
+  invoke this listener for events where `amount` exceeds 100" directly
+  in the annotation itself -- `#event` refers to the listener method's
+  own event parameter within the SpEL expression, and `.amount`
+  accesses its `getAmount()` property (SpEL follows JavaBean getter
+  conventions for property access). This keeps the actual business
+  logic in the method body focused purely on *what to do* when the
+  condition is met, with the *filtering* criterion declared separately
+  and explicitly in the annotation, readable at a glance without
+  needing to read into the method body to discover what triggers it.
+  One implementation detail worth knowing: referencing a parameter by
+  its actual name (`#event`, not an index-based reference) in a SpEL
+  condition requires the compiler to have preserved parameter names in
+  the compiled bytecode (the `-parameters` javac flag, or equivalent
+  build configuration) -- something this project's build scaffold is
+  already set up for, but worth being aware of as a prerequisite in any
+  Spring project reaching for this feature.
 example_code: |
-  @EventListener(condition = "#event.amount > 100")
-  public void onPurchase(PurchaseEvent event) {
-      alerts++;
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEventPublisher;
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  class PurchaseEvent {
+      private final Object source;
+      private final int amount;
+      PurchaseEvent(Object source, int amount) { this.source = source; this.amount = amount; }
+      public int getAmount() { return amount; }
   }
+
+  @Component
+  class PurchaseService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+      public void purchase(int amount) { publisher.publishEvent(new PurchaseEvent(this, amount)); }
+  }
+
+  // The trap: fires for EVERY purchase, with no filtering at all.
+  @Component
+  class FraudAlertListenerBroken {
+      static int alerts = 0;
+      @EventListener
+      public void onPurchase(PurchaseEvent event) {
+          alerts++;    // even a $1 purchase triggers this!
+      }
+  }
+
+  // Fix: condition filters at the DISPATCH level, before the method body runs.
+  @Component
+  class FraudAlertListener {
+      static int alerts = 0;
+
+      @EventListener(condition = "#event.amount > 100")
+      public void onPurchase(PurchaseEvent event) {
+          alerts++;    // only invoked when the condition is true
+      }
+  }
+  // service.purchase(50);  -- condition false, method never invoked
+  // service.purchase(150); -- condition true, alerts becomes 1
 starter_code: |
   package com.codingadventure.exercise;
 

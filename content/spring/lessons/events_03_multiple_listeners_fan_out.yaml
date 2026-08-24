@@ -4,19 +4,79 @@ language: spring
 level: 18
 objective: "Register a second @EventListener bean so one published event correctly fans out to every listener that cares about it, not just the first."
 explanation: |
-  Nothing about publishing an event limits it to a single listener --
-  every registered bean with a matching @EventListener method gets
-  called when that event is published. But "registered" is the key
-  word: a listener class still needs @Component (or explicit
-  registration) for Spring to know about it at all. A perfectly correct
-  @EventListener method on a class Spring never scanned or registered
-  simply never runs.
+  Spring's event dispatch has no built-in notion of "only the first
+  matching listener" -- publishing one event genuinely fans out to
+  *every* registered bean with a matching `@EventListener` method,
+  regardless of how many there are. `EmailWelcomeListener` and `
+  AnalyticsListener` both declaring an `@EventListener` method for `
+  SignupEvent` is entirely legitimate; one published `SignupEvent`
+  should trigger both, independently. But "registered" is doing real
+  work in that sentence -- a listener's *method* being correctly
+  annotated is only half the requirement; the *class itself* also needs
+  to be a recognized Spring bean (via `@Component`, or explicit
+  registration through an `@Configuration` class) for the container to
+  even know the listener exists, let alone invoke its methods on a
+  published event.
+
+  `AnalyticsListener`'s `onSignup` method here is written perfectly
+  correctly -- properly annotated `@EventListener`, correctly typed --
+  but the class is missing `@Component`, so Spring's component scan
+  never picks it up as a bean at all. From the container's perspective,
+  `AnalyticsListener` doesn't exist any more than an unregistered plain
+  class from the earlier bean-lifecycle exercise does -- there's no
+  instance of it in the context to invoke a method on, regardless of
+  how correct that method's own logic and annotation are. `Email
+  WelcomeListener`, with `@Component` present, correctly fires when `
+  SignupEvent` is published; `AnalyticsListener`, missing exactly that
+  one annotation, silently never fires at all, with no error anywhere
+  to indicate the listener was even supposed to run -- it simply was
+  never part of the application's bean graph to begin with. Adding `
+  @Component` to `AnalyticsListener` is the entire fix: once it's a
+  recognized bean, its already-correct `@EventListener` method
+  participates in the fan-out exactly like `EmailWelcomeListener`'s
+  does.
 example_code: |
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.context.ApplicationEventPublisher;
+  import org.springframework.context.event.EventListener;
+  import org.springframework.stereotype.Component;
+
+  class SignupEvent {
+      private final Object source;
+      SignupEvent(Object source) { this.source = source; }
+  }
+
+  @Component
+  class SignupService {
+      @Autowired
+      private ApplicationEventPublisher publisher;
+      public void signup() { publisher.publishEvent(new SignupEvent(this)); }
+  }
+
+  @Component
+  class EmailWelcomeListener {
+      static int fired = 0;
+      @EventListener
+      public void onSignup(SignupEvent event) { fired++; }    // registered -- fires correctly
+  }
+
+  // The trap: correct @EventListener method, but the CLASS itself was never registered.
+  class AnalyticsListenerBroken {
+      static int fired = 0;
+      @EventListener
+      public void onSignup(SignupEvent event) { fired++; }    // NEVER runs -- not a bean at all!
+  }
+
+  // Fix: @Component makes the class itself a recognized bean, letting its listener participate.
   @Component
   class AnalyticsListener {
+      static int fired = 0;
       @EventListener
-      public void onSignup(SignupEvent event) { ... }
+      public void onSignup(SignupEvent event) { fired++; }
   }
+  // signup() now fans out to BOTH: EmailWelcomeListener.fired == 1, AnalyticsListener.fired == 1
 starter_code: |
   package com.codingadventure.exercise;
 

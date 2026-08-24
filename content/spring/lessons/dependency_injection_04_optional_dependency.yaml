@@ -4,16 +4,77 @@ language: spring
 level: 4
 objective: "Mark a dependency as optional with @Autowired(required = false) so its absence doesn't crash the context."
 explanation: |
-  By default, @Autowired requires a matching bean to exist -- if none is
-  registered, the context fails to refresh with
-  NoSuchBeanDefinitionException. When a collaborator is genuinely
-  optional (present in some deployments, absent in others), @Autowired
-  (required = false) tells Spring "wire it in if it exists, leave the
-  field null otherwise" instead of treating its absence as a startup
-  error.
+  `@Autowired`'s default behavior is to treat the dependency it
+  annotates as *mandatory* -- if the container can't find a matching
+  bean to satisfy it, that's treated as a fatal misconfiguration, not a
+  recoverable situation, and Spring fails the entire context refresh
+  with `NoSuchBeanDefinitionException` before the application even
+  finishes starting up. That's the right default for genuinely required
+  collaborators (an application almost certainly *should* fail loudly
+  at startup if a truly essential dependency is missing, rather than
+  limping along and failing mysteriously later at runtime) -- but it's
+  the wrong behavior for a dependency that's *legitimately* optional,
+  present in some deployments or configurations and absent in others by
+  design. `AuditLogger`'s own code already anticipates this with an
+  explicit `if (sink == null)` check -- but that defensive code never
+  gets a chance to run at all, because the mandatory `@Autowired` fails
+  the context *before* `AuditLogger` is even fully constructed,
+  regardless of how gracefully its own logic would have handled a
+  missing `sink`.
+
+  `@Autowired(required = false)` changes the contract from "this
+  dependency must exist" to "wire it in if a matching bean happens to
+  exist, otherwise leave the field at its default (`null` for object
+  types)" -- the container no longer treats absence as a startup
+  failure at all. This lets the class's own existing null-check logic
+  actually run and do its job: with `sink` genuinely absent from the
+  context, `record(...)` reaches the `if (sink == null)` branch as
+  intended and returns the graceful `"SKIPPED: ..."` fallback, rather
+  than the whole application failing to start. The key judgment call is
+  recognizing which category a given dependency actually falls into --
+  `required = false` is the right tool specifically for dependencies
+  whose absence is an expected, handled case in the application's own
+  logic, not a general-purpose way to silence configuration errors that
+  really should be failing loudly at startup.
 example_code: |
-  @Autowired(required = false)
-  private MetricsRecorder metrics;
+  package com.codingadventure.exercise;
+
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.stereotype.Component;
+
+  // The trap: required @Autowired fails the WHOLE context if the bean is missing.
+  @Component
+  class AuditLoggerBroken {
+      @Autowired
+      private SlowAuditSink sink;    // MANDATORY -- context refresh fails if unregistered
+
+      public String record(String event) {
+          if (sink == null) {          // this code never even gets a chance to run!
+              return "SKIPPED: " + event;
+          }
+          return sink.write(event);
+      }
+  }
+  // if SlowAuditSink is never registered: NoSuchBeanDefinitionException at STARTUP
+
+  // Fix: required = false lets the field stay null gracefully instead of failing startup.
+  @Component
+  public class AuditLogger {
+      @Autowired(required = false)
+      private SlowAuditSink sink;    // optional -- null if no matching bean exists
+
+      public String record(String event) {
+          if (sink == null) {
+              return "SKIPPED: " + event;   // now genuinely reached
+          }
+          return sink.write(event);
+      }
+  }
+  // logger.record("login") -> "SKIPPED: login" -- context starts fine, gracefully degraded
+
+  class SlowAuditSink {
+      public String write(String event) { return "AUDITED: " + event; }
+  }
 starter_code: |
   package com.codingadventure.exercise;
 
