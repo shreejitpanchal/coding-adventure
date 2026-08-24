@@ -7,7 +7,7 @@ from __future__ import annotations
 import flet as ft
 
 from app.engine.languages import LANGUAGE_ORDER, get_language
-from app.execution.toolchain_check import check_toolchain
+from app.execution.toolchain_check import check_toolchain, get_install_guide
 from app.ui.app_state import AppState
 from app.ui.theme import scaled
 
@@ -79,6 +79,9 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
         if not info.available:
             page.show_dialog(ft.SnackBar(ft.Text(f"{info.title} is coming soon.")))
             return
+        if not toolchain_ready:
+            _show_install_guide_dialog(page, state, info)
+            return
         state.select_language(info.key)
         page.go("/hub")
 
@@ -101,3 +104,75 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
         opacity=1.0 if info.available else 0.7,
         on_click=on_click, ink=info.available,
     )
+
+
+def _show_install_guide_dialog(page: ft.Page, state: AppState, info) -> None:
+    """Shows a step-by-step, OS-specific install guide for a missing
+    toolchain, with a "Continue anyway" escape hatch to the hub (the
+    track just stays locked from actually running code until the
+    toolchain shows up on PATH)."""
+    theme = state.theme
+    fs = lambda base: scaled(base, state.font_scale)  # noqa: E731
+
+    guide = get_install_guide(info.key)
+
+    def close(_e: ft.ControlEvent | None = None) -> None:
+        page.pop_dialog()
+
+    def continue_anyway(_e: ft.ControlEvent) -> None:
+        page.pop_dialog()
+        state.select_language(info.key)
+        page.go("/hub")
+
+    if guide is None:
+        content: ft.Control = ft.Text(
+            f"{info.title} needs a local toolchain that wasn't found on this computer.",
+            size=fs(14), color=theme.text,
+        )
+    else:
+        steps, verify_command = guide
+        step_rows = [
+            ft.Row(
+                [
+                    ft.Text(f"{i}.", size=fs(13), weight=ft.FontWeight.BOLD, color=theme.primary),
+                    ft.Text(step, size=fs(13), color=theme.text, expand=True, selectable=True),
+                ],
+                spacing=8, vertical_alignment=ft.CrossAxisAlignment.START,
+            )
+            for i, step in enumerate(steps, start=1)
+        ]
+        content = ft.Column(
+            [
+                ft.Text(
+                    f"{info.title} needs a toolchain that wasn't found on this computer. "
+                    "Follow these steps, then relaunch the app:",
+                    size=fs(13), color=theme.text_muted,
+                ),
+                ft.Container(height=4),
+                *step_rows,
+                ft.Container(height=8),
+                ft.Text("Verify it worked by running:", size=fs(12), color=theme.text_muted),
+                ft.Container(
+                    content=ft.Text(verify_command, size=fs(13), color=theme.text, selectable=True,
+                                     font_family="Consolas, 'Courier New', monospace"),
+                    bgcolor=theme.bg, border_radius=6, padding=ft.padding.Padding.symmetric(horizontal=10, vertical=6),
+                ),
+            ],
+            spacing=6, tight=True,
+        )
+
+    dialog = ft.AlertDialog(
+        modal=False,
+        bgcolor=theme.card,
+        title=ft.Text(f"Install {info.title}'s toolchain", size=fs(18), weight=ft.FontWeight.BOLD, color=theme.text),
+        content=ft.Container(content=content, width=440),
+        scrollable=True,
+        actions=[
+            ft.Button("Continue anyway", on_click=continue_anyway,
+                      style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF")),
+            ft.Button("Got it", on_click=close,
+                      style=ft.ButtonStyle(bgcolor=theme.primary, color="#FFFFFF")),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    page.show_dialog(dialog)

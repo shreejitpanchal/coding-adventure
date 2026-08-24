@@ -45,6 +45,8 @@ if not exist ".venv\Scripts\python.exe" (
     echo.
 )
 
+call "scripts\ensure_toolchains.bat"
+
 if "%CODING_ADVENTURE_WEB_PORT%"=="" set CODING_ADVENTURE_WEB_PORT=8550
 
 REM Ctrl+C on a previous run doesn't always kill the underlying Python
@@ -56,7 +58,10 @@ powershell -NoProfile -Command "$conns = Get-NetTCPConnection -LocalPort %CODING
 
 echo ============================================
 echo   Coding Adventure web UI starting on port %CODING_ADVENTURE_WEB_PORT%
-echo   Open http://localhost:%CODING_ADVENTURE_WEB_PORT% in your browser.
+echo   Open https://localhost:%CODING_ADVENTURE_WEB_PORT% in your browser
+echo   (opens automatically). It's a self-signed certificate, so your
+echo   browser will show a one-time warning -- click "Advanced" then
+echo   "Proceed to localhost" to continue.
 echo   (Set CODING_ADVENTURE_WEB_PORT before running this to use a
 echo   different port.)
 echo   Press Ctrl+C to stop.

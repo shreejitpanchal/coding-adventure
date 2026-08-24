@@ -48,4 +48,6 @@ if [ -z "$PYEXE" ]; then
     echo
 fi
 
+bash "scripts/ensure_toolchains.sh" || true
+
 "$PYEXE" main.py

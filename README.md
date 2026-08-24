@@ -93,8 +93,15 @@ without a display server, or just to poke around in Chrome. It's a
 one-off preview only, not a supported way to actually run exercises: the
 app is desktop-only by design (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#why-no-android-build)) since
 running code needs a real local compiler/interpreter subprocess a browser
-sandbox can't provide. The script prints the port it started on
-(`http://localhost:8550` by default); to use a different port, set
+sandbox can't provide. It's served over HTTPS with a self-signed
+certificate (CN `coding-adventure`, generated automatically on first run
+and cached in `data/certs/`) rather than plain HTTP — your browser will
+show a one-time "connection isn't private" warning the first time you
+visit, since the certificate isn't from a trusted CA; click "Advanced"
+then "Proceed to localhost" to continue, this is expected for a
+self-signed, local-only certificate. The script prints the port it
+started on and opens your browser automatically
+(`https://localhost:8550` by default); to use a different port, set
 `CODING_ADVENTURE_WEB_PORT` before running it:
 
 ```powershell

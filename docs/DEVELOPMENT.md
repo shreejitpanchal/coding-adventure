@@ -33,15 +33,26 @@ Manually, if you prefer:
 
 There's also a browser-preview entry point, `main_web.py` /
 `run_app_web_ui.bat` / `run_app_web_ui.sh`, which opens the same UI in a
-browser tab instead of a native window via `ft.run(..., view=ft.AppView.
-WEB_BROWSER)`. It's a one-off way to look at the screens (e.g. in Chrome,
-or on a machine with no display server) — not a second supported way to
-run the app day to day, since exercises need a real local subprocess
-(compiler/interpreter) a browser sandbox can't provide; see "Why no
-Android build" below for the same underlying constraint. The port is
-configurable via the `CODING_ADVENTURE_WEB_PORT` environment variable
-(default `8550`); the script echoes whichever port it actually started
-on.
+browser tab instead of a native window. It's a one-off way to look at the
+screens (e.g. in Chrome, or on a machine with no display server) — not a
+second supported way to run the app day to day, since exercises need a
+real local subprocess (compiler/interpreter) a browser sandbox can't
+provide; see "Why no Android build" below for the same underlying
+constraint. The port is configurable via the `CODING_ADVENTURE_WEB_PORT`
+environment variable (default `8550`); the script echoes whichever port
+it actually started on and opens the browser automatically.
+
+It's served over HTTPS, not plain HTTP: `main_web.py` gets a plain
+FastAPI ASGI app out of Flet via `ft.run(main, export_asgi_app=True)`
+(rather than letting `ft.run` start its own, HTTP-only server) and serves
+it directly with `uvicorn.run(app, ssl_certfile=..., ssl_keyfile=...)`,
+since TLS termination can only be configured at that layer. The
+certificate is self-signed (CN `coding-adventure`, ~2 year validity,
+`localhost`/`127.0.0.1` in its SAN), generated on first use and cached in
+`data/certs/` by `app/config/ssl_cert.py` — regenerated automatically
+once it's within 7 days of expiring. Because it's self-signed rather than
+CA-issued, browsers show a one-time "connection isn't private" warning on
+first visit; that's expected for a local-only preview certificate.
 
 Running Java exercises additionally needs a local JDK (`javac`/`java` on
 PATH); running C++ exercises needs a local `g++` (e.g. MinGW-w64 on
@@ -52,11 +63,25 @@ first time someone tries to run code. The Spring track's first `mvn
 test` run needs network access once, to download its dependencies into
 the local `~/.m2` repository — every run after that is fully offline.
 
-A toolchain installed mid-session (e.g. via `winget`) won't be picked up
-until whatever launched the app is restarted — Windows doesn't push
-`PATH` changes into already-running processes, so a freshly-installed
-compiler stays invisible to `shutil.which()` until VS Code/the terminal
-is reopened.
+`run_app_window_mode.bat/.sh` and `run_app_web_ui.bat/.sh` all `call`/
+`bash` a shared helper (`scripts/ensure_toolchains.bat` on Windows,
+`scripts/ensure_toolchains.sh` elsewhere) right after the venv bootstrap,
+on every launch. It checks for `javac` and `g++` on PATH and, only for
+whichever is actually missing, asks a plain `[y/N]` question before
+installing anything — `winget` on Windows, Homebrew/Xcode Command Line
+Tools on macOS, `apt`/`dnf`/`pacman` (whichever is present) on Linux. It
+never installs without that explicit "y", and it's a no-op once both
+tools are already on PATH. Clicking a "Toolchain needed" card in the app
+itself shows the same install steps for the detected OS as a dialog (see
+`get_install_guide()` in `toolchain_check.py`), with a "Continue anyway"
+escape hatch into the hub for anyone who'd rather install manually later.
+
+A toolchain installed mid-session (via the auto-installer above, or
+manually) won't be picked up until whatever launched the app is
+restarted — Windows doesn't push `PATH` changes into already-running
+processes, so a freshly-installed compiler stays invisible to `shutil.
+which()` until VS Code/the terminal is reopened. Both installer scripts
+print this explicitly after a successful install.
 
 ## Running the tests
 
@@ -84,7 +109,8 @@ app/
                # (see "Execution engines" below), toolchain detection,
                # error-message translation
   progress/    # SQLite-backed progress, keyed per language track
-  config/      # settings persistence + platform-appropriate data directory
+  config/      # settings persistence + platform-appropriate data directory,
+               # ssl_cert.py (self-signed cert for the browser preview)
 content/
   python/
     lessons/   # one YAML file per exercise
@@ -107,8 +133,11 @@ graphify-out/  # knowledge-graph snapshot of the codebase (see repo root
                # CLAUDE.md's graphify section) -- regenerate with the
                # graphify skill, not meant to be hand-edited
 main.py        # Flet entry point, native desktop window (`ft.run(main)`)
-main_web.py    # Browser-preview entry point (`ft.run(main, view=WEB_BROWSER)`),
-               # port configurable via CODING_ADVENTURE_WEB_PORT
+main_web.py    # Browser-preview entry point, served over HTTPS via uvicorn
+               # + a self-signed cert; port via CODING_ADVENTURE_WEB_PORT
+scripts/
+  ensure_toolchains.bat/.sh  # shared toolchain auto-install helper, called
+                             # from all 4 run_app_*.bat/.sh below
 run_app_window_mode.bat/.sh # first-run venv bootstrap + launch (desktop window)
 run_app_web_ui.bat/.sh      # first-run venv bootstrap + launch (browser preview)
 ```

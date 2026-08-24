@@ -45,6 +45,8 @@ if not exist ".venv\Scripts\python.exe" (
     echo.
 )
 
+call "scripts\ensure_toolchains.bat"
+
 if exist ".venv\Scripts\pythonw.exe" (
     start "" ".venv\Scripts\pythonw.exe" "main.py"
 ) else (

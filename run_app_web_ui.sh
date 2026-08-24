@@ -51,6 +51,8 @@ if [ -z "$PYEXE" ]; then
     echo
 fi
 
+bash "scripts/ensure_toolchains.sh" || true
+
 : "${CODING_ADVENTURE_WEB_PORT:=8550}"
 export CODING_ADVENTURE_WEB_PORT
 
@@ -93,7 +95,10 @@ fi
 
 echo "============================================"
 echo "  Coding Adventure web UI starting on port $CODING_ADVENTURE_WEB_PORT"
-echo "  Open http://localhost:$CODING_ADVENTURE_WEB_PORT in your browser."
+echo "  Open https://localhost:$CODING_ADVENTURE_WEB_PORT in your browser"
+echo "  (opens automatically). It's a self-signed certificate, so your"
+echo "  browser will show a one-time warning -- click \"Advanced\" then"
+echo "  \"Proceed to localhost\" to continue."
 echo "  (Set CODING_ADVENTURE_WEB_PORT before running this to use a"
 echo "  different port.)"
 echo "  Press Ctrl+C to stop."
