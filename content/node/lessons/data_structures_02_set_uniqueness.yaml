@@ -1,0 +1,55 @@
+id: data_structures_02
+title: "De-duplicating with Set Instead of includes()"
+language: node
+level: 12
+objective: "Replace a manual dedup loop (with .includes() on a growing array) with a Set."
+explanation: |
+  Deduplicating by hand means keeping a results array and checking
+  `.includes()` against it before pushing each new element -- correct,
+  but `.includes()` is an O(n) scan of everything collected so far, so
+  the whole loop is O(n^2) in the worst case (every element unique).
+  It also takes several lines to express something conceptually simple:
+  "keep only the first occurrence of each value."
+
+  `Set` stores only unique values by construction -- `new Set(arr)`
+  collapses duplicates in one pass, and spreading it back into an array
+  (`[...new Set(arr)]`) preserves insertion order, matching exactly what
+  the manual "first occurrence wins" loop was already doing, just without
+  the repeated linear scan or the explicit accumulator.
+example_code: |
+  const nums = [1, 2, 2, 3, 1, 4];
+
+  // The trap: an O(n^2) manual dedup with a growing includes() check.
+  const uniqueManual = [];
+  for (const x of nums) {
+    if (!uniqueManual.includes(x)) uniqueManual.push(x);
+  }
+  console.log(uniqueManual.join(","));   // 1,2,3,4
+
+  // The fix: Set dedups in one pass, spread preserves order.
+  const uniqueSet = [...new Set(nums)];
+  console.log(uniqueSet.join(","));       // 1,2,3,4
+starter_code: |
+  function unique(arr) {
+    const result = [];
+    for (const x of arr) {
+      if (!result.includes(x)) result.push(x);
+    }
+    return result;
+  }
+  console.log(unique([1, 2, 2, 3, 1, 4]).join(","));
+challenge: |
+  Rewrite `unique` to dedup with a `Set` (spread back into an array)
+  instead of the manual `.includes()` loop, keeping the same output.
+expected_output: |
+  1,2,3,4
+hints:
+  - "return [...new Set(arr)];"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "new Set\\("
+concept_tags: [set, deduplication, includes]

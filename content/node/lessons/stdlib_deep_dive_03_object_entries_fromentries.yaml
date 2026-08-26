@@ -1,0 +1,60 @@
+id: stdlib_deep_dive_03
+title: "Transforming Every Value with entries/fromEntries"
+language: node
+level: 18
+objective: "Replace a for-in loop building a new object with an Object.entries -> map -> Object.fromEntries pipeline."
+explanation: |
+  Building a transformed copy of an object by hand means looping over
+  its keys with `for...in` and assigning into a fresh result object one
+  key at a time -- correct, but it's imperative bookkeeping (create an
+  empty object, loop, assign) around what's conceptually a single
+  transformation: "double every value, keep the same keys."
+
+  `Object.entries()` turns an object into an array of `[key, value]`
+  pairs, which can then be transformed with the same `.map()` used on any
+  array, and `Object.fromEntries()` turns the transformed pairs back into
+  an object. `Object.fromEntries(Object.entries(prices).map(([key,
+  val]) => [key, val * 2]))` treats "transform every value" as a data
+  pipeline -- object to pairs, pairs to new pairs, new pairs back to an
+  object -- rather than a loop with a mutable accumulator.
+example_code: |
+  const prices = { apple: 1, pear: 2 };
+
+  // The trap: an empty object plus a for-in loop to build the result.
+  const doubledManual = {};
+  for (const key in prices) {
+    doubledManual[key] = prices[key] * 2;
+  }
+  console.log(JSON.stringify(doubledManual));  // {"apple":2,"pear":4}
+
+  // The fix: entries -> map -> fromEntries as one pipeline.
+  const doubled = Object.fromEntries(
+    Object.entries(prices).map(([key, val]) => [key, val * 2])
+  );
+  console.log(JSON.stringify(doubled));  // {"apple":2,"pear":4}
+starter_code: |
+  function doublePrices(prices) {
+    const result = {};
+    for (const key in prices) {
+      result[key] = prices[key] * 2;
+    }
+    return result;
+  }
+  console.log(JSON.stringify(doublePrices({ apple: 1, pear: 2 })));
+challenge: |
+  Rewrite `doublePrices` using `Object.entries()`, `.map()`, and
+  `Object.fromEntries()` instead of the `for...in` loop, keeping the
+  same result.
+expected_output: |
+  {"apple":2,"pear":4}
+hints:
+  - "Object.fromEntries(Object.entries(prices).map(([key, val]) => [key, val * 2]))"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "Object\\.entries\\("
+  - "Object\\.fromEntries\\("
+concept_tags: [object_entries, object_fromentries, for_in]

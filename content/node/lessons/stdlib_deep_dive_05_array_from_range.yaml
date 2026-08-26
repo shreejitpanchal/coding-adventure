@@ -1,0 +1,60 @@
+id: stdlib_deep_dive_05
+title: "Generating a Range with Array.from"
+language: node
+level: 20
+objective: "Replace a manual push loop with Array.from's length+mapper form to build a computed sequence."
+explanation: |
+  Building a computed sequence by hand means creating an empty array,
+  looping a fixed number of times, and pushing each computed value in
+  turn -- three separate moving parts (the accumulator, the loop bound,
+  the push) to express what's really just "the sequence of `i*i` for `i`
+  from 0 to n-1."
+
+  `Array.from()` accepts an array-like object -- `{ length: n }` counts,
+  even though it has no actual elements -- plus an optional mapper
+  function applied to each resulting index, and builds the whole array
+  in one call: `Array.from({ length: n }, (_, i) => i * i)`. There's no
+  accumulator to initialize and no loop to write; the length and the
+  per-index computation are the only two things that actually vary
+  between one use of this pattern and another, and that's exactly what
+  `Array.from`'s two arguments capture.
+example_code: |
+  // The trap: an accumulator, a loop, and a push -- for a pure computed sequence.
+  function rangeManual(n) {
+    const result = [];
+    for (let i = 0; i < n; i++) {
+      result.push(i * i);
+    }
+    return result;
+  }
+  console.log(rangeManual(5).join(","));  // 0,1,4,9,16
+
+  // The fix: Array.from builds the whole sequence from length + mapper.
+  function range(n) {
+    return Array.from({ length: n }, (_, i) => i * i);
+  }
+  console.log(range(5).join(","));  // 0,1,4,9,16
+starter_code: |
+  function range(n) {
+    const result = [];
+    for (let i = 0; i < n; i++) {
+      result.push(i * i);
+    }
+    return result;
+  }
+  console.log(range(5).join(","));
+challenge: |
+  Rewrite `range` using `Array.from({ length: n }, (_, i) => i * i)`
+  instead of the manual accumulator loop, keeping the same output.
+expected_output: |
+  0,1,4,9,16
+hints:
+  - "return Array.from({ length: n }, (_, i) => i * i);"
+xp_reward: 10
+achievement: stdlib_deep_dive_master
+category: stdlib_deep_dive
+category_level: 5
+difficulty: core
+contains_patterns:
+  - "Array\\.from\\("
+concept_tags: [array_from, range_generation]

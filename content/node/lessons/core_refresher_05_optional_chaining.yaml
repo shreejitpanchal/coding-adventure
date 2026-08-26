@@ -1,0 +1,64 @@
+id: core_refresher_05
+title: "Optional Chaining and Nullish Coalescing"
+language: node
+level: 10
+objective: "Replace a manual && guard and ternary fallback with optional chaining (?.) and nullish coalescing (??)."
+explanation: |
+  Safely reading a possibly-missing nested property by hand means
+  guarding every step with `&&` before finally falling back with a
+  ternary: `user.address && user.address.city ? user.address.city : "Unknown"`
+  repeats `user.address.city` three times just to say "read this safely,
+  and if it's not there, use a default."
+
+  Optional chaining (`?.`) short-circuits to `undefined` the moment any
+  link in the chain is `null`/`undefined`, instead of throwing --
+  `user.address?.city` reads exactly like the direct property access it
+  replaces, just tolerant of a missing `address`. Nullish coalescing
+  (`??`) then supplies a fallback only when the left side is specifically
+  `null` or `undefined` -- unlike `||`, which would also override a
+  legitimately falsy value like `0` or `""`. Chained together,
+  `user.address?.city ?? "Unknown"` says the whole thing in one line with
+  no repeated property path and no accidental match on a genuinely falsy
+  (but present) value.
+example_code: |
+  const withCity = { address: { city: "Boston" } };
+  const withoutAddress = {};
+
+  // The trap: repeats the property path three times.
+  function getCityManual(user) {
+    return user.address && user.address.city ? user.address.city : "Unknown";
+  }
+  console.log(getCityManual(withCity));        // Boston
+  console.log(getCityManual(withoutAddress));  // Unknown
+
+  // The fix: ?. and ?? say the same thing without repetition.
+  function getCity(user) {
+    return user.address?.city ?? "Unknown";
+  }
+  console.log(getCity(withCity));              // Boston
+  console.log(getCity(withoutAddress));        // Unknown
+starter_code: |
+  function getCity(user) {
+    return user.address && user.address.city ? user.address.city : "Unknown";
+  }
+  console.log(getCity({ address: { city: "Boston" } }));
+  console.log(getCity({}));
+  console.log(getCity({ address: {} }));
+challenge: |
+  Rewrite `getCity` using optional chaining (`?.`) and nullish coalescing
+  (`??`) instead of the `&&`/ternary guard, keeping the same output.
+expected_output: |
+  Boston
+  Unknown
+  Unknown
+hints:
+  - "return user.address?.city ?? \"Unknown\";"
+xp_reward: 10
+achievement: core_refresher_master
+category: core_refresher
+category_level: 5
+difficulty: core
+contains_patterns:
+  - "\\?\\."
+  - "\\?\\?"
+concept_tags: [optional_chaining, nullish_coalescing]

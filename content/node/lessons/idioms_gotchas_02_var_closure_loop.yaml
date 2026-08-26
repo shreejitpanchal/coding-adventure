@@ -1,0 +1,70 @@
+id: idioms_gotchas_02
+title: "var's Shared Loop Variable"
+language: node
+level: 2
+objective: "Replace `var` with `let` in a for-loop so each closure captures its own iteration's value."
+explanation: |
+  `var` is function-scoped, not block-scoped -- a `for (var i = ...)`
+  loop doesn't create a fresh `i` on every iteration, it reuses exactly
+  one `i` for the entire function. Any closure created inside that loop
+  body captures a reference to that single shared variable, not a
+  snapshot of its value at the time the closure was made. By the time
+  those closures actually run, the loop has already finished and `i`
+  holds whatever it was left at after the final iteration -- so every
+  closure reports the same, final value, regardless of which iteration
+  supposedly created it.
+
+  `let` fixes this by being block-scoped *and* by getting special
+  treatment in `for` loops specifically: the spec creates a brand new
+  binding of the loop variable for each iteration, initialized from the
+  previous iteration's value. That's why simply swapping `var` for `let`
+  is enough -- each closure now captures its own iteration's binding
+  instead of one shared variable, with no other code change needed.
+example_code: |
+  // The trap: var is shared across every iteration.
+  function makeAddersVar() {
+    const adders = [];
+    for (var i = 0; i < 3; i++) {
+      adders.push((n) => n + i);
+    }
+    return adders;
+  }
+  const addersVar = makeAddersVar();
+  console.log(addersVar.map((f) => f(10)).join(","));  // 13,13,13 -- all use the final i (3)
+
+  // The fix: let gives each iteration its own binding.
+  function makeAddersLet() {
+    const adders = [];
+    for (let i = 0; i < 3; i++) {
+      adders.push((n) => n + i);
+    }
+    return adders;
+  }
+  const addersLet = makeAddersLet();
+  console.log(addersLet.map((f) => f(10)).join(","));  // 10,11,12
+starter_code: |
+  function makeFns() {
+    const fns = [];
+    for (var i = 0; i < 3; i++) {
+      fns.push(function () { return i; });
+    }
+    return fns;
+  }
+  const fns = makeFns();
+  console.log(fns.map((fn) => fn()).join(","));
+challenge: |
+  Change `var i` to `let i` in the for-loop so each pushed function
+  returns the value `i` had during its own iteration (0, 1, 2), not the
+  loop's final value.
+expected_output: |
+  0,1,2
+hints:
+  - "Only the loop declaration needs to change: for (let i = 0; ...)."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "for \\(let i"
+concept_tags: [var_vs_let, closures, scoping]

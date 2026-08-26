@@ -12,8 +12,11 @@
 # app/execution/android_platform.is_android() is true. Java, C++, and
 # Spring need a real javac/g++/mvn toolchain that can't exist on Android
 # and can't be bundled into an app sandbox -- they simply won't find their
-# toolchain there, and the language picker shows them as "Desktop only"
-# rather than the desktop install-guide dialog (see language_select.py).
+# toolchain there, and the language picker still shows them as "Available"
+# (subtitle explains Run needs a desktop computer) rather than the desktop
+# install-guide dialog (see language_select.py); every category/level in
+# those three tracks is also unlocked on Android since completion is never
+# reachable there (see ExerciseEngine.is_unlocked in lesson_engine.py).
 # --module-name is NOT needed here (unlike python-adventure-kids' own
 # build_apk.sh): `flet build` already defaults to looking for main.py,
 # and that's genuinely this app's real Flet entry point, with no naming

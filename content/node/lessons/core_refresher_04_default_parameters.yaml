@@ -1,0 +1,59 @@
+id: core_refresher_04
+title: "Manual Fallback to a Default Parameter"
+language: node
+level: 9
+objective: "Replace a manual `if (x === undefined)` fallback with a default parameter value."
+explanation: |
+  Giving a parameter a fallback value by hand means checking for
+  `undefined` inside the function body before the parameter is used for
+  anything else -- correct, but it separates "what the parameter
+  defaults to" from the parameter list itself, so a reader has to scan
+  the whole function body just to learn a default even exists.
+
+  Default parameters (`function power(base, exp = 2)`) put that fallback
+  directly in the signature, evaluated only when the argument is actually
+  `undefined` (either omitted entirely or explicitly passed as
+  `undefined`) -- passing `null` or `0` does *not* trigger the default,
+  since only `undefined` does, matching exactly what the manual
+  `=== undefined` check was already doing. The default expression is
+  also re-evaluated on every call that needs it (it can even reference
+  earlier parameters), not computed once and cached -- but for a simple
+  constant like `2` that distinction rarely matters in practice.
+example_code: |
+  // The trap: the default lives inside the body, not the signature.
+  function powerManual(base, exp) {
+    if (exp === undefined) exp = 2;
+    return Math.pow(base, exp);
+  }
+  console.log(powerManual(3));       // 9
+  console.log(powerManual(2, 5));    // 32
+
+  // The fix: the default is visible right in the parameter list.
+  function power(base, exp = 2) {
+    return Math.pow(base, exp);
+  }
+  console.log(power(3));             // 9
+  console.log(power(2, 5));          // 32
+starter_code: |
+  function power(base, exp) {
+    if (exp === undefined) exp = 2;
+    return Math.pow(base, exp);
+  }
+  console.log(power(3));
+  console.log(power(2, 5));
+challenge: |
+  Rewrite `power` to use a default parameter value (`exp = 2`) instead of
+  the manual `if (exp === undefined)` check, keeping the same output.
+expected_output: |
+  9
+  32
+hints:
+  - "function power(base, exp = 2) { return Math.pow(base, exp); }"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "\\(base, exp = 2\\)"
+concept_tags: [default_parameters, function_signatures]

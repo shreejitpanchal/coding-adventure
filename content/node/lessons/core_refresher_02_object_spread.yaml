@@ -1,0 +1,57 @@
+id: core_refresher_02
+title: "Merging Objects with Spread"
+language: node
+level: 7
+objective: "Replace a manual for-in copy loop with the object spread operator."
+explanation: |
+  Merging two objects by hand means looping over each one's own keys and
+  copying them across in order, so later sources overwrite earlier ones
+  -- correct, but it's five lines of bookkeeping to express "combine
+  these, letting override win." The `for...in` loop also technically
+  walks inherited enumerable properties, not just the object's own keys,
+  which is rarely what's intended.
+
+  The object spread operator (`{ ...base, ...override }`) does the same
+  "own enumerable keys, later wins" merge in one expression, with no
+  loop, no key iteration, and no inherited-property surprise. Properties
+  are copied left to right, so anything in `override` that shares a key
+  with `base` simply overwrites it -- exactly mirroring what the manual
+  loop was doing, just spelled out declaratively instead of imperatively.
+example_code: |
+  const base = { a: 1, b: 2 };
+  const override = { b: 3, c: 4 };
+
+  // The trap: a manual loop to express a simple merge.
+  const mergedManual = {};
+  for (const k in base) mergedManual[k] = base[k];
+  for (const k in override) mergedManual[k] = override[k];
+  console.log(mergedManual);          // { a: 1, b: 3, c: 4 }
+
+  // The fix: spread expresses the same merge directly.
+  const merged = { ...base, ...override };
+  console.log(merged);                 // { a: 1, b: 3, c: 4 }
+starter_code: |
+  function mergeConfigs(base, override) {
+    const merged = {};
+    for (const k in base) merged[k] = base[k];
+    for (const k in override) merged[k] = override[k];
+    return merged;
+  }
+  console.log(JSON.stringify(mergeConfigs({ a: 1, b: 2 }, { b: 3, c: 4 })));
+challenge: |
+  Rewrite `mergeConfigs` to build the merged object with the spread
+  operator (`{ ...base, ...override }`) instead of the two for-in loops,
+  keeping the same result.
+expected_output: |
+  {"a":1,"b":3,"c":4}
+hints:
+  - "return { ...base, ...override }; replaces the whole loop body."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "\\.\\.\\.base"
+  - "\\.\\.\\.override"
+concept_tags: [object_spread, merging, for_in]

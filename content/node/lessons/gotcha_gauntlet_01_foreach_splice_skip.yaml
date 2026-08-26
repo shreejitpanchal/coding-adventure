@@ -1,0 +1,61 @@
+id: gotcha_gauntlet_01
+title: "forEach + splice: The Silent Skip"
+language: node
+level: 26
+objective: "Replace an in-place forEach/splice removal with .filter() so no element gets silently skipped."
+explanation: |
+  `forEach` walks an array by index, and `splice` inside the callback
+  removes the current element by shifting every later element one
+  position to the left. That shift is the trap: `forEach` still moves to
+  the *next* index on its next iteration, but the element that used to
+  be there has already slid into the current index and been skipped
+  entirely -- it's never visited. This doesn't corrupt every case (an
+  isolated removal surrounded by kept elements can look fine), but two
+  matching elements sitting next to each other reliably loses one of
+  them, because the second one shifts into the slot the loop just
+  finished with.
+
+  `.filter()` sidesteps the whole problem by never mutating the array
+  being iterated at all -- it builds a brand-new array containing only
+  the elements that pass the predicate, reading the original array
+  exactly once, in order, with no index ever shifting underneath it.
+  This is the general lesson, not specific to `splice`: mutating a
+  collection while iterating over it is a common source of skipped or
+  double-visited elements in *any* language, and building a new
+  collection instead is almost always the safer default.
+example_code: |
+  // The trap: splice shifts elements left, so the loop skips one.
+  const numsTrap = [1, 2, 2, 3, 4, 5];
+  numsTrap.forEach((n, idx) => {
+    if (n % 2 === 0) numsTrap.splice(idx, 1);
+  });
+  console.log(numsTrap.join(","));  // 1,2,3,5 -- one "2" survived!
+
+  // The fix: filter never mutates what it's iterating over.
+  const nums = [1, 2, 2, 3, 4, 5];
+  const odds = nums.filter((n) => n % 2 !== 0);
+  console.log(odds.join(","));       // 1,3,5
+starter_code: |
+  const nums = [1, 2, 2, 3, 4, 5];
+  nums.forEach((n, idx) => {
+    if (n % 2 === 0) {
+      nums.splice(idx, 1);
+    }
+  });
+  console.log(nums.join(","));
+challenge: |
+  Fix this so every even number is actually removed (the correct result
+  is `1,3,5`, not a partial removal) -- use `.filter()` instead of
+  mutating the array with `.splice()` while iterating it.
+expected_output: |
+  1,3,5
+hints:
+  - "const odds = nums.filter((n) => n % 2 !== 0); console.log(odds.join(\",\"));"
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "\\.filter\\("
+concept_tags: [foreach, splice, mutation_during_iteration, filter]

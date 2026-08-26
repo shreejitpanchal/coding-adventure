@@ -1,0 +1,50 @@
+id: gotcha_gauntlet_02
+title: "NaN Never Equals Itself"
+language: node
+level: 27
+objective: "Replace a === comparison against NaN with Number.isNaN, since NaN === NaN is always false."
+explanation: |
+  `NaN` is the one value in JavaScript that isn't equal to itself under
+  `===` -- `NaN === NaN` evaluates to `false`, by design, following the
+  IEEE-754 floating-point standard that defines `NaN` as "not comparable
+  to anything, including itself." That means `nums.some((n) => n ===
+  NaN)` can never return `true` for *any* array, no matter how many
+  `NaN`s it contains -- the comparison inside the callback silently fails
+  every single time, with no error to signal that anything went wrong.
+
+  `Number.isNaN()` exists specifically to check for `NaN` correctly: it
+  returns `true` if and only if the value is actually `NaN`, sidestepping
+  the self-inequality entirely by not using `===` at all internally.
+  (`Array.prototype.includes()` also handles this correctly on its own,
+  using a comparison algorithm that treats `NaN` as equal to `NaN`
+  specifically for this reason -- but a hand-written `===` check, as here,
+  needs `Number.isNaN()` explicitly.)
+example_code: |
+  const nums = [1, 2, NaN, 4];
+
+  // The trap: NaN === NaN is always false, so this never matches.
+  console.log(nums.some((n) => n === NaN));       // false -- always, even though NaN is right there!
+
+  // The fix: Number.isNaN checks correctly.
+  console.log(nums.some((n) => Number.isNaN(n))); // true
+starter_code: |
+  function containsInvalid(nums) {
+    return nums.some((n) => n === NaN);
+  }
+  console.log(containsInvalid([1, 2, NaN, 4]));
+challenge: |
+  Fix `containsInvalid` so it correctly detects the `NaN` in the array
+  (it should print `true`) -- replace the `=== NaN` comparison with
+  `Number.isNaN()`.
+expected_output: |
+  true
+hints:
+  - "nums.some((n) => Number.isNaN(n))"
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "Number\\.isNaN\\("
+concept_tags: [nan, number_isnan, self_equality]

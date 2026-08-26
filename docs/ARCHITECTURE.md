@@ -65,7 +65,7 @@ flowchart LR
         engine["app/engine\nExerciseEngine, QuizEngine,\nvalidator, categories, languages"]
         progress["app/progress\nProgressStore (SQLite, per-language)"]
         config["app/config\nSettings, load/save,\nplatform data dir"]
-        execution["app/execution\nExecutionEngine ABC +\nPythonEngine / JavaEngine /\nCppEngine / SpringEngine"]
+        execution["app/execution\nExecutionEngine ABC +\nPythonEngine / JavaEngine /\nCppEngine / SpringEngine / NodeEngine"]
     end
 
     ui --> shared
@@ -151,6 +151,10 @@ classDiagram
     class PythonEngine
     class JavaEngine
     class CppEngine
+    class NodeEngine {
+        no compile step -- runs
+        source directly with node
+    }
     class SpringEngine {
         scaffolds a temp Maven project per run,
         needs `exercise` for spring_test_code
@@ -158,6 +162,7 @@ classDiagram
     ExecutionEngine <|-- PythonEngine
     ExecutionEngine <|-- JavaEngine
     ExecutionEngine <|-- CppEngine
+    ExecutionEngine <|-- NodeEngine
     ExecutionEngine <|-- SpringEngine
 
     class ExecutionResult {
@@ -368,7 +373,7 @@ sequenceDiagram
     User->>Screen: click Run
     Screen->>Screen: run_button.disabled = true
     Screen->>Engine: run(code, timeout=8.0, handle, stdin_text) (off the UI thread)
-    alt toolchain missing (Java: no JDK, C++: no g++)
+    alt toolchain missing (Java: no JDK, C++: no g++, Node: no node)
         Engine-->>Screen: ExecutionResult(blocked=True, blocked_message)
         Screen-->>User: install-hint message
     else timed out
@@ -520,6 +525,10 @@ default.
   tracks, and still required zero changes to
   `ExerciseEngine`/`CATEGORY_META`'s lookup logic — only new
   `CATEGORY_META` *entries* for display, same as any other new category.
+  Node.js, added later, reused C++'s exact 6-category set outright (same
+  keys, same `CATEGORY_META` entries already in place) rather than
+  defining new ones, since the same "bare language, no package
+  manager/framework" reasoning applied unchanged.
 - **Crash-containment, not a safety sandbox.** The kids' app this one is
   architecturally based on runs an AST-based builtins/import allowlist
   because it has to defend against accidental-or-adversarial child
@@ -540,9 +549,17 @@ default.
   every method takes `language` as an explicit argument, rather than
   maintaining a separate SQLite file per track. One connection, one
   schema, complete isolation between tracks' XP/streaks/completions.
-- **Desktop-only is a decision, not a gap.** See DEVELOPMENT.md's "Why
-  no Android build" — both execution engines fundamentally depend on
-  spawning real subprocess binaries Android won't allow, and Java
-  additionally has no in-process fallback at all (unlike the sibling
-  app's Python-only AST-watchdog workaround), so shipping an Android
-  build would mean shipping a Run button that doesn't work.
+- **Android support is Python-only by necessity, not by omission.** See
+  DEVELOPMENT.md's "Android build (Python-only)" — Java/C++/Spring/Node
+  all fundamentally depend on spawning a real subprocess toolchain
+  (`javac`+`java`, `g++`, `mvn`, `node`) that can't exist inside a
+  non-rooted Android app sandbox, and none of them have an in-process
+  fallback the way Python does (`PythonInProcessEngine`, ported from the
+  sibling app's AST-watchdog workaround). Rather than block those four
+  tracks from the Android build entirely, `language_select.py` still
+  lets a mobile user browse their content and edit code freely, just
+  with the Run button disabled — and since normal completion-gated
+  category progression is structurally unreachable there too,
+  `ExerciseEngine.is_unlocked()` unconditionally unlocks every
+  category/level for those four languages specifically on Android (see
+  `MOBILE_ALWAYS_UNLOCKED_LANGUAGES` in `app/engine/lesson_engine.py`).

@@ -1,0 +1,67 @@
+id: gotcha_gauntlet_04
+title: "sort() Mutates the Original Array"
+language: node
+level: 29
+objective: "Fix a function that unexpectedly reorders the caller's original array, by sorting a copy instead of the array itself."
+explanation: |
+  `Array.prototype.sort()` doesn't return a new, sorted array -- it sorts
+  the array *in place* and returns the same reference back, purely for
+  chaining convenience. `const sorted = scores.sort(...)` doesn't create
+  an independent sorted copy; `sorted` and the original `scores` are the
+  exact same array, now permanently reordered. Any other code holding
+  onto that original `scores` reference -- including the caller who
+  passed it in -- sees the reordering too, even though nothing about
+  calling `topThree(scores)` looked like it should touch the caller's
+  own array.
+
+  This is easy to miss because `.map()` and `.filter()` (the two array
+  methods most often chained alongside `.sort()`) both return brand-new
+  arrays and never mutate their input -- `.sort()` is the odd one out.
+  The fix is to sort a *copy*: spreading the array first (`[...scores]`)
+  creates a new array to sort, leaving the original completely
+  untouched, exactly matching the behavior a reader would expect from
+  seeing `.map()`/`.filter()` used right next to it.
+example_code: |
+  const scoresTrap = [5, 3, 9, 1, 7];
+
+  // The trap: sort() mutates scoresTrap itself, not a copy.
+  function topThreeTrap(scores) {
+    return scores.sort((a, b) => b - a).slice(0, 3);
+  }
+  console.log(topThreeTrap(scoresTrap).join(","));  // 9,7,5
+  console.log(scoresTrap.join(","));                 // 9,7,5,3,1 -- the original got reordered!
+
+  // The fix: spread first, so sort() mutates a copy instead.
+  const scores = [5, 3, 9, 1, 7];
+  function topThree(input) {
+    return [...input].sort((a, b) => b - a).slice(0, 3);
+  }
+  console.log(topThree(scores).join(","));  // 9,7,5
+  console.log(scores.join(","));             // 5,3,9,1,7 -- untouched
+starter_code: |
+  function topThree(scores) {
+    const sorted = scores.sort((a, b) => b - a);
+    return sorted.slice(0, 3);
+  }
+  const scores = [5, 3, 9, 1, 7];
+  const top = topThree(scores);
+  console.log(top.join(","));
+  console.log(scores.join(","));
+challenge: |
+  Fix `topThree` so it doesn't mutate the caller's original `scores`
+  array -- sort a copy (`[...scores]`) instead of sorting `scores`
+  directly, so the second printed line still shows the original,
+  unsorted order.
+expected_output: |
+  9,7,5
+  5,3,9,1,7
+hints:
+  - "const sorted = [...scores].sort((a, b) => b - a);"
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\[\\.\\.\\.scores\\]"
+concept_tags: [array_sort, in_place_mutation, spread]

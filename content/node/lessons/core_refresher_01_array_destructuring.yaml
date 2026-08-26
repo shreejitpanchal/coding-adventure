@@ -1,0 +1,53 @@
+id: core_refresher_01
+title: "Array Destructuring with Rest"
+language: node
+level: 6
+objective: "Replace manual index access and .slice(1) with array destructuring and a rest element."
+explanation: |
+  `arr[0]` plus `arr.slice(1)` gets the job done, but it says nothing
+  about *why* those two pieces belong together -- they're two unrelated
+  statements that happen to both read from `arr`, and a reader has to
+  mentally connect "index 0" and "everything after index 0" into the
+  concept of "first element and the rest" themselves.
+
+  Destructuring assignment lets a pattern on the left name that structure
+  directly: `const [first, ...rest] = arr` says exactly what's happening
+  in one line -- `first` is the first element, `rest` is every element
+  after it, collected into a real array via the rest element (`...rest`,
+  which must be the last item in a destructuring pattern). This is the
+  same underlying rest/spread syntax used in function parameters and
+  object literals -- one concept, three places it shows up.
+example_code: |
+  const nums = [1, 2, 3, 4];
+
+  // The trap: two disconnected statements to express one idea.
+  const first = nums[0];
+  const rest = nums.slice(1);
+  console.log(first, rest);              // 1 [ 2, 3, 4 ]
+
+  // The fix: one destructuring pattern says it directly.
+  const [head, ...tail] = nums;
+  console.log(head, tail);               // 1 [ 2, 3, 4 ]
+starter_code: |
+  function firstAndRest(arr) {
+    const first = arr[0];
+    const rest = arr.slice(1);
+    return `${first} | ${rest.join(",")}`;
+  }
+  console.log(firstAndRest([1, 2, 3, 4]));
+challenge: |
+  Rewrite `firstAndRest` to get `first` and `rest` via array
+  destructuring with a rest element instead of indexing and `.slice()`,
+  keeping the same output.
+expected_output: |
+  1 | 2,3,4
+hints:
+  - "const [first, ...rest] = arr; replaces both lines."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "\\[first, \\.\\.\\.rest\\]"
+concept_tags: [destructuring, rest_element, arrays]

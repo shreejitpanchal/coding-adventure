@@ -1,4 +1,5 @@
 from app.engine.lesson_engine import ExerciseEngine
+from app.engine import lesson_engine as lesson_engine_module
 
 
 def test_loads_python_content():
@@ -29,6 +30,39 @@ def test_locked_until_earlier_levels_complete():
     second = engine.get("idioms_gotchas_02")
     assert not engine.is_unlocked(second, completed_ids=set())
     assert engine.is_unlocked(second, completed_ids={"idioms_gotchas_01"})
+
+
+def test_loads_node_content():
+    engine = ExerciseEngine("node")
+    assert len(engine) == 30
+    assert engine.has("idioms_gotchas_01")
+    categories = engine.categories()
+    assert set(categories) == {
+        "idioms_gotchas", "core_refresher", "data_structures",
+        "stdlib_deep_dive", "concurrency_async", "gotcha_gauntlet",
+    }
+
+
+def test_java_locked_normally_when_not_android(monkeypatch):
+    monkeypatch.setattr(lesson_engine_module, "is_android", lambda: False)
+    engine = ExerciseEngine("java")
+    lessons = engine.lessons_in_category(engine.categories()[0])
+    if len(lessons) > 1:
+        assert not engine.is_unlocked(lessons[1], completed_ids=set())
+
+
+def test_java_all_unlocked_on_android(monkeypatch):
+    monkeypatch.setattr(lesson_engine_module, "is_android", lambda: True)
+    engine = ExerciseEngine("java")
+    for ex in engine.all_in_order():
+        assert engine.is_unlocked(ex, completed_ids=set())
+
+
+def test_python_still_gated_on_android(monkeypatch):
+    monkeypatch.setattr(lesson_engine_module, "is_android", lambda: True)
+    engine = ExerciseEngine("python")
+    second = engine.get("idioms_gotchas_02")
+    assert not engine.is_unlocked(second, completed_ids=set())
 
 
 def test_next_unlocked_in_category():

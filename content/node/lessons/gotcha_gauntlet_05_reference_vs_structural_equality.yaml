@@ -1,0 +1,59 @@
+id: gotcha_gauntlet_05
+title: "Reference Equality on Two Identical-Looking Arrays"
+language: node
+level: 30
+objective: "Fix a === comparison between two arrays so it checks their contents instead of their identity."
+explanation: |
+  `===` between two objects or arrays checks whether both sides are the
+  *exact same object in memory* -- not whether they look alike. Two
+  separately created arrays with identical contents,
+  `[1, 2, 3] === [1, 2, 3]`, are always `false`, because they're two
+  distinct arrays that happen to hold equal elements; there's no
+  structural comparison built into `===` at all for non-primitive
+  values. This trips people up specifically because it's the opposite of
+  how `===` behaves for primitives (`1 === 1` is `true` because numbers
+  are compared by value) -- objects and arrays are compared by identity
+  instead, full stop.
+
+  When the actual goal is "do these contain the same data" rather than
+  "are these literally the same array," a quick and common fix for plain
+  JSON-safe data is comparing their serialized form:
+  `JSON.stringify(a) === JSON.stringify(b)`. It's not bulletproof for
+  every possible value (key order matters, and it can't handle functions
+  or circular references), but for arrays/objects of plain data -- like
+  a shopping cart of item IDs -- it's a simple, genuinely correct way to
+  compare contents instead of identity.
+example_code: |
+  // The trap: === compares identity, not contents.
+  console.log([1, 2, 3] === [1, 2, 3]);  // false -- two different arrays
+
+  // The fix: compare their serialized contents instead.
+  function sameContents(a, b) {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+  console.log(sameContents([1, 2, 3], [1, 2, 3]));     // true
+  console.log(sameContents([1, 2, 3], [1, 2, 3, 4]));  // false
+starter_code: |
+  function isSameCart(cartA, cartB) {
+    return cartA === cartB;
+  }
+  console.log(isSameCart([1, 2, 3], [1, 2, 3]));
+  console.log(isSameCart([1, 2, 3], [1, 2, 3, 4]));
+challenge: |
+  Fix `isSameCart` so two carts with identical contents are reported as
+  the same (`true`), while carts with different contents are still
+  `false` -- compare their serialized contents with `JSON.stringify`
+  instead of comparing the arrays themselves with `===`.
+expected_output: |
+  true
+  false
+hints:
+  - "return JSON.stringify(cartA) === JSON.stringify(cartB);"
+xp_reward: 15
+achievement: gotcha_gauntlet_master
+category: gotcha_gauntlet
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "JSON\\.stringify\\(cartA\\)"
+concept_tags: [reference_equality, structural_equality, json_stringify]

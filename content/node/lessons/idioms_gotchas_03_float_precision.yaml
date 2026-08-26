@@ -1,0 +1,55 @@
+id: idioms_gotchas_03
+title: "Comparing Floats Without Epsilon"
+language: node
+level: 3
+objective: "Fix a broken floating-point equality check by comparing within a tolerance instead of exactly."
+explanation: |
+  JavaScript has exactly one numeric type for non-BigInt numbers:
+  IEEE-754 double-precision float. Most decimal fractions -- including
+  something as simple as `0.1` -- have no exact binary representation,
+  so `0.1 + 0.2` doesn't produce `0.3`, it produces
+  `0.30000000000000004`. This isn't a JavaScript bug; every language
+  using IEEE-754 floats (which is nearly all of them) has the exact same
+  behavior. `0.1 + 0.2 === 0.3` is `false` because the left side really
+  is a different, slightly-larger number than the literal `0.3`.
+
+  The fix is never to expect exact equality from a chain of float
+  arithmetic in the first place -- compare within a small tolerance
+  instead. `Number.EPSILON` is the smallest representable difference
+  between 1 and the next distinct double, and `Math.abs(a - b) <
+  Number.EPSILON` is the standard idiom for "these are equal, allowing
+  for float rounding error." (For values far from 1, a tolerance scaled
+  to the magnitude of the numbers would be more correct, but a fixed
+  `Number.EPSILON` comparison is the right first move to know when you're
+  fighting float representation rather than an actual logic bug.)
+example_code: |
+  // The trap: exact equality on the result of float arithmetic.
+  console.log(0.1 + 0.2);              // 0.30000000000000004
+  console.log(0.1 + 0.2 === 0.3);      // false
+
+  // The fix: compare within a small tolerance instead of exactly.
+  function nearlyEqual(a, b) {
+    return Math.abs(a - b) < Number.EPSILON;
+  }
+  console.log(nearlyEqual(0.1 + 0.2, 0.3));  // true
+starter_code: |
+  function nearlyEqual(a, b) {
+    return a === b;
+  }
+  console.log(nearlyEqual(0.1 + 0.2, 0.3));
+challenge: |
+  Rewrite `nearlyEqual` to compare `a` and `b` within `Number.EPSILON`
+  instead of using exact `===` equality, so it correctly reports
+  `0.1 + 0.2` as equal to `0.3`.
+expected_output: |
+  true
+hints:
+  - "Math.abs(a - b) < Number.EPSILON is the standard idiom here."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "Number\\.EPSILON"
+concept_tags: [floating_point, number_epsilon, precision]

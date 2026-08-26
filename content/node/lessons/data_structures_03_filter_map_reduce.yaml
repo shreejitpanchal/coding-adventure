@@ -1,0 +1,65 @@
+id: data_structures_03
+title: "A Manual Loop to filter/map/reduce"
+language: node
+level: 13
+objective: "Replace a hand-written accumulator loop with a filter -> map -> reduce chain."
+explanation: |
+  A single `for...of` loop that filters, transforms, and accumulates all
+  at once (checking `n % 2 === 0`, squaring it, and adding it to a running
+  total, all inside one loop body) does three distinct jobs in one place.
+  Reading it means mentally separating "which elements matter,"
+  "how each one gets transformed," and "how they combine" back out of a
+  single block of imperative code.
+
+  `.filter()`, `.map()`, and `.reduce()` split those three jobs into
+  three named, composable steps: `filter` keeps only the elements that
+  matter, `map` transforms each one independently, and `reduce` combines
+  the results into a single value. Chained together, `nums.filter(...).
+  map(...).reduce(...)` reads as a pipeline that names each stage of the
+  computation, rather than a loop whose purpose has to be reverse-
+  engineered from its body.
+example_code: |
+  const nums = [1, 2, 3, 4, 5, 6];
+
+  // The trap: filtering, mapping, and reducing all tangled in one loop.
+  let totalManual = 0;
+  for (const n of nums) {
+    if (n % 2 === 0) {
+      totalManual += n * n;
+    }
+  }
+  console.log(totalManual);  // 56 (2*2 + 4*4 + 6*6)
+
+  // The fix: each step of the pipeline is named and separate.
+  const total = nums
+    .filter((n) => n % 2 === 0)
+    .map((n) => n * n)
+    .reduce((sum, n) => sum + n, 0);
+  console.log(total);        // 56
+starter_code: |
+  function sumOfSquaresOfEvens(nums) {
+    let total = 0;
+    for (const n of nums) {
+      if (n % 2 === 0) {
+        total += n * n;
+      }
+    }
+    return total;
+  }
+  console.log(sumOfSquaresOfEvens([1, 2, 3, 4, 5, 6]));
+challenge: |
+  Rewrite `sumOfSquaresOfEvens` as a `.filter().map().reduce()` chain
+  instead of a manual loop, keeping the same result.
+expected_output: |
+  56
+hints:
+  - "nums.filter((n) => n % 2 === 0).map((n) => n * n).reduce((a, b) => a + b, 0)"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "\\.filter\\("
+  - "\\.reduce\\("
+concept_tags: [filter, map, reduce, array_methods]

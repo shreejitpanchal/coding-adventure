@@ -1,0 +1,55 @@
+id: data_structures_05
+title: "Spread's Shallow Copy vs structuredClone"
+language: node
+level: 15
+objective: "Replace a shallow object-spread copy with structuredClone so a nested object is copied too, not shared."
+explanation: |
+  `{ ...original }` copies an object's own top-level properties into a
+  new object -- but if one of those properties is itself an object (or
+  array), the *value* copied is a reference to that same nested object,
+  not a fresh copy of it. Mutating `shallow.address.city` doesn't just
+  affect `shallow` -- it mutates the exact object that `original.address`
+  also points to, since both `original.address` and `shallow.address`
+  are still the same object in memory. "Shallow" copy means exactly that:
+  copying goes one level deep and no further.
+
+  `structuredClone()` (a global function, no import needed since Node
+  17) performs a genuine deep clone -- every nested object, array, `Map`,
+  `Set`, and more is recursively copied, so nothing in the clone shares
+  identity with anything in the original. Mutating a nested property on
+  the clone leaves the original completely untouched. It's the right
+  tool specifically when a "copy" needs to be fully independent, not just
+  a fresh top-level object wrapping the same nested data.
+example_code: |
+  const original = { name: "Ada", address: { city: "Boston" } };
+
+  // The trap: spread only copies one level deep.
+  const shallow = { ...original };
+  shallow.address.city = "Seattle";
+  console.log(original.address.city);  // Seattle -- original got mutated too!
+
+  // The fix: structuredClone copies every level, independently.
+  const original2 = { name: "Ada", address: { city: "Boston" } };
+  const deep = structuredClone(original2);
+  deep.address.city = "Seattle";
+  console.log(original2.address.city);  // Boston -- untouched
+starter_code: |
+  const original = { name: "Ada", address: { city: "Boston" } };
+  const shallow = { ...original };
+  shallow.address.city = "Seattle";
+  console.log(original.address.city);
+challenge: |
+  Fix this so mutating the copy's nested `address.city` does NOT affect
+  `original` -- replace the spread copy with `structuredClone`.
+expected_output: |
+  Boston
+hints:
+  - "const clone = structuredClone(original); replaces the spread copy."
+xp_reward: 10
+achievement: data_structures_master
+category: data_structures
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "structuredClone\\("
+concept_tags: [structured_clone, shallow_copy, deep_copy]

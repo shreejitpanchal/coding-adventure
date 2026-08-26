@@ -1,0 +1,56 @@
+id: stdlib_deep_dive_01
+title: "Redacting a Field with JSON.stringify's Replacer"
+language: node
+level: 16
+objective: "Replace a copy-then-delete pattern with JSON.stringify's replacer function to exclude a field during serialization."
+explanation: |
+  Excluding a sensitive field before serializing by hand means making a
+  shallow copy first (so the original object isn't mutated), then
+  deleting the unwanted key off the copy, then serializing the copy --
+  three separate steps, plus a shallow copy that's easy to forget when
+  the object is more deeply nested than a one-level `{...user}` spread
+  can safely handle.
+
+  `JSON.stringify` accepts a second argument, a replacer, that's either
+  an array of key names to keep or a function called for every key/value
+  pair as the object is walked -- returning `undefined` from that
+  function omits the key from the output entirely. `JSON.stringify(user,
+  (key, value) => (key === "password" ? undefined : value))` filters
+  during serialization itself, with no intermediate copy needed and no
+  risk of forgetting to copy a nested field that should also have been
+  excluded.
+example_code: |
+  const user = { name: "Ada", password: "secret123" };
+
+  // The trap: copy, then delete, then serialize -- three steps for one idea.
+  const copy = { ...user };
+  delete copy.password;
+  console.log(JSON.stringify(copy));  // {"name":"Ada"}
+
+  // The fix: the replacer filters during serialization itself.
+  console.log(
+    JSON.stringify(user, (key, value) => (key === "password" ? undefined : value))
+  );  // {"name":"Ada"}
+starter_code: |
+  function toSafeJson(user) {
+    const copy = { ...user };
+    delete copy.password;
+    return JSON.stringify(copy);
+  }
+  console.log(toSafeJson({ name: "Ada", password: "secret123" }));
+challenge: |
+  Rewrite `toSafeJson` to use `JSON.stringify`'s replacer function to
+  omit the `password` key, instead of copying the object and deleting
+  the field first.
+expected_output: |
+  {"name":"Ada"}
+hints:
+  - "JSON.stringify(user, (key, value) => (key === \"password\" ? undefined : value))"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "key === \"password\""
+concept_tags: [json_stringify, replacer, serialization]

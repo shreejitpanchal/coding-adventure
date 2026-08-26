@@ -82,7 +82,7 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
     if not info.available:
         badge_text, badge_bg, badge_color = "Coming soon", theme.card, theme.text_muted
     elif android_unsupported:
-        badge_text, badge_bg, badge_color = "Desktop only", theme.text_muted, "#FFFFFF"
+        badge_text, badge_bg, badge_color = "Available", theme.success, "#FFFFFF"
     elif not toolchain_ready:
         badge_text, badge_bg, badge_color = "Toolchain needed", theme.warning, "#FFFFFF"
     else:

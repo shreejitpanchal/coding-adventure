@@ -1,0 +1,59 @@
+id: stdlib_deep_dive_02
+title: "typeof Can't Tell an Array from an Object"
+language: node
+level: 17
+objective: "Replace a typeof check with Array.isArray so arrays are correctly distinguished from plain objects."
+explanation: |
+  `typeof` reports `"object"` for arrays, plain objects, `null`, dates,
+  and most other non-primitive values -- it only reliably distinguishes
+  primitives (`"string"`, `"number"`, `"boolean"`, `"undefined"`,
+  `"function"`, etc.) from everything else. There's no `"array"` value
+  `typeof` can ever return, so `typeof value === "object"` can't be used
+  to answer "is this an array" -- it answers "is this some kind of
+  object," which arrays happen to also be.
+
+  `Array.isArray()` is the actual, reliable way to check: it inspects
+  the value's real internal type, not a loose `typeof` category, so it
+  correctly returns `true` only for genuine arrays and `false` for plain
+  objects, `null`, and everything else that `typeof` would lump into
+  `"object"` alongside them.
+example_code: |
+  // The trap: typeof reports "object" for both arrays and plain objects.
+  function describeTypeManual(value) {
+    return typeof value === "object" ? "array" : typeof value;
+  }
+  console.log(describeTypeManual([1, 2, 3]));  // array  -- happens to be right
+  console.log(describeTypeManual({ a: 1 }));   // array  -- WRONG, this is a plain object
+
+  // The fix: Array.isArray actually distinguishes them.
+  function describeType(value) {
+    if (Array.isArray(value)) return "array";
+    return typeof value;
+  }
+  console.log(describeType([1, 2, 3]));  // array
+  console.log(describeType({ a: 1 }));   // object
+starter_code: |
+  function describeType(value) {
+    return typeof value === "object" ? "array" : typeof value;
+  }
+  console.log(describeType([1, 2, 3]));
+  console.log(describeType({ a: 1 }));
+  console.log(describeType("hi"));
+challenge: |
+  Fix `describeType` so it correctly reports `{ a: 1 }` as `"object"`
+  instead of `"array"` -- use `Array.isArray()` to actually distinguish
+  arrays from plain objects.
+expected_output: |
+  array
+  object
+  string
+hints:
+  - "if (Array.isArray(value)) return \"array\"; then fall back to typeof."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "Array\\.isArray\\("
+concept_tags: [array_isarray, typeof, type_checking]

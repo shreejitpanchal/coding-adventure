@@ -1,0 +1,64 @@
+id: idioms_gotchas_01
+title: "Loose Equality's Coercion Trap"
+language: node
+level: 1
+objective: "Replace a loose `==` comparison with strict `===` to stop unrelated values from silently comparing equal."
+explanation: |
+  `==` in JavaScript doesn't compare a value's type at all -- it coerces
+  one or both operands until they're the same type, then compares. That
+  coercion follows rules almost nobody has memorized: `0 == "0"` coerces
+  the string to a number and compares `0 == 0` (true); `0 == ""` coerces
+  the empty string to `0` too (true); `null == undefined` is a special
+  case built into the spec (true), even though `null === undefined` is
+  false and neither one equals anything else loosely. None of these are
+  bugs in the coercion rules -- they're doing exactly what `==` is
+  defined to do. The bug is trusting `==` to mean "are these the same
+  value" when it actually means "are these the same value, after however
+  much type-juggling it takes to make the comparison possible at all."
+
+  `===` (strict equality) skips coercion entirely: if the operands aren't
+  already the same type, it's false, full stop. That's why it's the
+  default recommendation in every modern JS style guide -- `==`'s
+  coercion table has enough special cases (arrays, `NaN`, boxed primitives)
+  that "silently comparing across types" causes far more bugs than it
+  ever prevents. The rare case where coercion is genuinely wanted (e.g.
+  checking a value is either `null` or `undefined`) reads much clearer as
+  an explicit check than as a hoped-for `==` side effect.
+example_code: |
+  // The trap: == silently coerces before comparing.
+  console.log(0 == "0");           // true  -- "0" coerced to 0
+  console.log(0 == "");            // true  -- "" coerced to 0 too
+  console.log(null == undefined);  // true  -- special-cased by the spec
+  console.log(false == "0");       // true  -- both coerced to 0
+
+  // The fix: === compares type AND value, no coercion at all.
+  console.log(0 === "0");          // false -- different types
+  console.log(0 === "");           // false
+  console.log(null === undefined); // false
+  console.log(false === "0");      // false
+starter_code: |
+  function isMatch(a, b) {
+    return a == b;
+  }
+  console.log(isMatch(0, "0"));
+  console.log(isMatch(0, ""));
+  console.log(isMatch(null, undefined));
+  console.log(isMatch(1, 1));
+challenge: |
+  Change `isMatch` to use strict equality (`===`) so it only reports a
+  match when both the type and the value agree.
+expected_output: |
+  false
+  false
+  false
+  true
+hints:
+  - "Just swap == for === inside isMatch -- no other logic needs to change."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "a === b"
+concept_tags: [loose_equality, strict_equality, type_coercion]

@@ -1,0 +1,74 @@
+id: concurrency_async_04
+title: "Accidentally Serial: await Inside a Loop"
+language: node
+level: 24
+objective: "Replace a for-loop that awaits each task one at a time with Promise.all so independent tasks run concurrently."
+explanation: |
+  `await` inside a `for` loop pauses the *entire* function at each
+  iteration until that one task finishes, before even starting the next
+  one. If each task takes 20ms and there are three of them, awaiting them
+  one at a time in a loop takes roughly 60ms total -- even though nothing
+  about the tasks actually depends on each other finishing first. The
+  loop reads as "do these one after another," which is exactly what it
+  does, whether or not that was the intent.
+
+  When the tasks are genuinely independent (this one doesn't need that
+  one's result to start), starting all of them first and then waiting
+  for all of them together is both correct and much faster:
+  `Promise.all(nums.map((n) => double(n)))` starts every `double(n)`
+  call immediately (each one's internal timer begins running
+  concurrently), and only *waits* for the collected results together --
+  roughly 20ms total instead of 60ms, with the exact same final array.
+  The output is identical either way; only the wall-clock time changes,
+  which is precisely why this bug is easy to miss without measuring it.
+example_code: |
+  function double(n) {
+    return new Promise((resolve) => setTimeout(() => resolve(n * 2), 20));
+  }
+
+  // The trap: each await blocks the next iteration from even starting.
+  async function doubleAllSequential(nums) {
+    const results = [];
+    for (const n of nums) {
+      results.push(await double(n));   // ~20ms x nums.length total
+    }
+    return results;
+  }
+
+  // The fix: start every task first, then await them all together.
+  async function doubleAllParallel(nums) {
+    return Promise.all(nums.map((n) => double(n)));  // ~20ms total
+  }
+starter_code: |
+  function double(n) {
+    return new Promise((resolve) => setTimeout(() => resolve(n * 2), 20));
+  }
+  async function doubleAll(nums) {
+    const results = [];
+    for (const n of nums) {
+      results.push(await double(n));
+    }
+    return results;
+  }
+  async function main() {
+    const results = await doubleAll([1, 2, 3]);
+    console.log(results.join(","));
+  }
+  main();
+challenge: |
+  Rewrite `doubleAll` to start every `double(n)` call concurrently and
+  await them together with `Promise.all`, instead of awaiting each one
+  sequentially inside the loop -- keeping the same output, but running
+  roughly 3x faster.
+expected_output: |
+  2,4,6
+hints:
+  - "return Promise.all(nums.map((n) => double(n)));"
+xp_reward: 10
+achievement: null
+category: concurrency_async
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "Promise\\.all\\(nums\\.map\\("
+concept_tags: [promise_all, sequential_await, concurrency]

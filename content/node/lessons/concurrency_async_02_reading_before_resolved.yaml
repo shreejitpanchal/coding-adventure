@@ -1,0 +1,60 @@
+id: concurrency_async_02
+title: "Reading a Promise's Result Before It Resolves"
+language: node
+level: 22
+objective: "Fix code that reads a variable synchronously right after starting a Promise, before its .then() callback has had a chance to run."
+explanation: |
+  `fetchValue().then((value) => { result = value; })` schedules that
+  assignment to happen *later* -- as soon as the Promise settles -- but
+  starting it doesn't pause anything. The very next line,
+  `console.log(result)`, keeps running immediately, before the promise
+  has resolved and before the `.then()` callback has had any chance to
+  execute. `result` is still whatever it was initialized to (here,
+  `undefined`), because the assignment inside `.then()` hasn't happened
+  yet -- it's sitting in the microtask queue, waiting for the current
+  synchronous code to finish first.
+
+  The fix isn't to make the promise resolve faster; it's to actually wait
+  for it. `await fetchValue()` pauses the enclosing `async` function
+  until the promise settles, then hands back the resolved value directly
+  -- so the very next line only runs once the value genuinely exists,
+  instead of racing ahead of it.
+example_code: |
+  function fetchValue() {
+    return new Promise((resolve) => setTimeout(() => resolve(42), 10));
+  }
+
+  // The trap: reads `result` before the .then() callback has run.
+  let resultTrap;
+  fetchValue().then((value) => { resultTrap = value; });
+  console.log(resultTrap);  // undefined -- too early!
+
+  // The fix: await actually pauses until the promise resolves.
+  async function main() {
+    const result = await fetchValue();
+    console.log(result);    // 42
+  }
+  main();
+starter_code: |
+  function fetchValue() {
+    return new Promise((resolve) => setTimeout(() => resolve(42), 10));
+  }
+  let result;
+  fetchValue().then((value) => { result = value; });
+  console.log(result);
+challenge: |
+  Fix this so it actually prints the resolved value (42) instead of
+  `undefined` -- wrap the logic in an `async function main()` that
+  `await`s `fetchValue()` before logging the result.
+expected_output: |
+  42
+hints:
+  - "async function main() { const result = await fetchValue(); console.log(result); } main();"
+xp_reward: 10
+achievement: null
+category: concurrency_async
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "await fetchValue\\(\\)"
+concept_tags: [promises, await, microtask_timing]

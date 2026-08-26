@@ -6,14 +6,16 @@ and how to run it, see the main [README](../README.md).
 
 ## Status
 
-All four tracks are fully built. Python and Java share the same 14 topic
+All five tracks are fully built. Python and Java share the same 14 topic
 categories, real execution against a local `python`/`javac`+`java`
 toolchain. C++ has its own 10 topic categories (a general-purpose
 language subset rather than a framework), executed against a local
 `g++` toolchain. Spring has its own 6 topic categories, executed against
 a local Maven + JDK toolchain via a scaffolded Maven project run through
 `mvn test` — see `app/execution/spring_engine.py` and "Execution
-engines" below for how that differs from the other three. Primarily a
+engines" below for how that differs from the other four. Node.js has its
+own 6 topic categories (the same set as C++), executed directly against
+a local `node` toolchain with no separate compile step. Primarily a
 desktop app; there's also a Python-only Android build (`build_apk.sh`)
 — see "Android build (Python-only)" below.
 
@@ -58,11 +60,12 @@ first visit; that's expected for a local-only preview certificate.
 Running Java exercises additionally needs a local JDK (`javac`/`java` on
 PATH); running C++ exercises needs a local `g++` (e.g. MinGW-w64 on
 Windows) on PATH; running Spring exercises needs a local JDK plus Maven
-(`mvn` on PATH) — the language picker shows "Toolchain needed" instead
-of "Available" if one isn't found, rather than failing confusingly the
-first time someone tries to run code. The Spring track's first `mvn
-test` run needs network access once, to download its dependencies into
-the local `~/.m2` repository — every run after that is fully offline.
+(`mvn` on PATH); running Node.js exercises needs a local `node` on PATH
+— the language picker shows "Toolchain needed" instead of "Available" if
+one isn't found, rather than failing confusingly the first time someone
+tries to run code. The Spring track's first `mvn test` run needs network
+access once, to download its dependencies into the local `~/.m2`
+repository — every run after that is fully offline.
 
 `run_app_window_mode.bat/.sh` and `run_app_web_ui.bat/.sh` all `call`/
 `bash` a shared helper (`scripts/ensure_toolchains.bat` on Windows,
@@ -72,6 +75,12 @@ whichever is actually missing, asks a plain `[y/N]` question before
 installing anything — `winget` on Windows, Homebrew/Xcode Command Line
 Tools on macOS, `apt`/`dnf`/`pacman` (whichever is present) on Linux. It
 never installs without that explicit "y", and it's a no-op once both
+tools are already on PATH. (Node.js isn't part of this auto-install
+helper -- install it manually from https://nodejs.org, or via your OS
+package manager, before running Node.js exercises; the language
+picker's "Toolchain needed" dialog for Node.js shows the same
+OS-specific steps `get_install_guide()` returns for the other
+languages.)
 tools are already on PATH. Clicking a "Toolchain needed" card in the app
 itself shows the same install steps for the detected OS as a dialog (see
 `get_install_guide()` in `toolchain_check.py`), with a "Continue anyway"
@@ -90,9 +99,10 @@ print this explicitly after a successful install.
 .venv\Scripts\python.exe -m pytest tests\ -v
 ```
 
-Java-, C++-, and Spring-execution tests are skipped automatically
-(`pytest.mark.skipif`) on a machine missing the relevant toolchain
-(JDK / `g++` / Maven+JDK) on PATH, rather than failing.
+Java-, C++-, Spring-, and Node.js-execution tests are skipped
+automatically (`pytest.mark.skipif`) on a machine missing the relevant
+toolchain (JDK / `g++` / Maven+JDK / `node`) on PATH, rather than
+failing.
 
 ## Project layout
 
@@ -123,9 +133,12 @@ content/
     lessons/   # own 10 category keys (not the full 14 -- see below)
     quiz/
   spring/
-    lessons/   # own 5 category keys (not the full 14 -- see below)
+    lessons/   # own 6 category keys (not the full 14 -- see below)
     quiz/
     scaffold/pom.xml  # shared Maven project template, copied per run
+  node/
+    lessons/   # own 6 category keys, same set as cpp/lessons/
+    quiz/
 docs/          # this file + ARCHITECTURE.md
 tests/         # pytest suite, one file per module roughly mirroring app/
 data/          # gitignored -- settings.json + progress.sqlite3, created
@@ -248,6 +261,20 @@ Boot-specific) and one scaffold tweak: the compiler plugin needed
 expressions can resolve a listener parameter by name (e.g.
 `#event.amount`) via reflection.
 
+Node.js reuses C++'s exact 6-category shape (`idioms_gotchas`,
+`core_refresher`, `data_structures`, `stdlib_deep_dive`,
+`concurrency_async`, `gotcha_gauntlet`) rather than chasing Python/Java's
+14 -- the same reasoning applies: packaging/deployment/dependency-
+management are ecosystem/tooling concerns (npm, bundlers, deployment
+targets) that don't fit a single `node <file>.js` execution model any
+more than they fit bare C++. `concurrency_async` content is written
+idiomatically for Node's actual concurrency model rather than translated
+from `asyncio`/`CompletableFuture`: the single-threaded event loop's
+microtask (Promise) vs. macrotask (`setTimeout`) ordering, callback- vs.
+Promise- vs. `async`/`await`-style APIs, and `Promise.all` vs.
+`Promise.allSettled` are Node/JS-specific concerns with no direct
+equivalent in the other tracks' concurrency models.
+
 ### Daily Refresher
 
 `ExerciseEngine.daily_refresher(completed_ids, count=5)` computes a
@@ -288,7 +315,7 @@ exercise) -> ExecutionResult` (`success`, `stdout`, `stderr`,
 cancellation (used when navigating away from a lesson while code is
 still running — there's no visible Stop button, since the fixed timeout
 already guarantees a runaway run gets killed). The `exercise` parameter
-is unused by the three single-file engines but required by
+is unused by the four single-file engines but required by
 `SpringEngine`, since a Spring exercise needs more than a code string to
 run (see below) — `lesson_screen.py` passes it on every call regardless
 of language, so only `SpringEngine` needed to change behavior when it
@@ -342,6 +369,19 @@ was added.
   `re.fullmatch()`. `_sanitize_path()` strips the temp dir's absolute
   path (Maven reports it in both a backslash and a `/C:/...`
   forward-slash form) out of compiler errors before they reach the UI.
+- **`node_engine.py`** — the simplest of the five: no separate compile
+  step at all (unlike Java/C++), since Node runs source directly —
+  submitted code is written to a temp `exercise.js` and run with
+  `node <file>` under the same timeout/cancel/stdin contract as the
+  other single-file engines. `check_toolchain("node")` gates this the
+  same way Java's/C++'s does. A syntax error just surfaces as Node's own
+  stderr output when the file is run (no separate compiler pass to catch
+  it earlier), the same way a Python syntax error does. Stdin is always
+  fed (even `""`), though idiomatic Node code reads it asynchronously via
+  `readline` rather than a blocking call the way Python's `input()`/
+  Java's `Scanner` do — a script that never wires up `readline` simply
+  never consumes the piped stdin, which is fine since `communicate()`
+  doesn't require it to be read.
 
 **Framing is crash-containment, not child safety.** Unlike the sibling
 kids' app this one's architecture is based on, there's no AST-based
@@ -429,19 +469,33 @@ Android — there's no separate mobile variant of those — so
 `check_toolchain()` correctly reports their compiler/runtime as missing
 there, same as it would on any desktop machine lacking one. Rather than
 block those tracks outright, `language_select.py` detects `is_android()`
-and still lets the user into the hub, badged **"Desktop only"** instead
-of the normal "Toolchain needed" install-guide dialog (whose desktop
-OS-specific winget/brew/apt steps would be actively wrong advice on a
-phone with nowhere to run them) — browsing an exercise's explanation,
-example, and challenge, and editing code in the editor, never needs a
-real toolchain, only actually *running* code does. `lesson_screen.py`
-checks `check_toolchain(exercise.language)` itself and disables the Run
-button specifically (with an explanatory note underneath) when it's
-unavailable, instead of only surfacing the problem after a click via
-`ExecutionResult.blocked` — this disabling isn't Android-specific either;
-it applies identically on a desktop machine that's simply missing a
-toolchain, so browsing content there works the same way even before the
-toolchain is installed.
+and still lets the user into the hub with the same "Available" badge as
+any other track (its subtitle explains that running code needs a desktop
+computer) instead of the normal "Toolchain needed" install-guide dialog
+(whose desktop OS-specific winget/brew/apt steps would be actively wrong
+advice on a phone with nowhere to run them) — browsing an exercise's
+explanation, example, and challenge, and editing code in the editor,
+never needs a real toolchain, only actually *running* code does.
+`lesson_screen.py` checks `check_toolchain(exercise.language)` itself and
+disables the Run button specifically (with an explanatory note
+underneath) when it's unavailable, instead of only surfacing the problem
+after a click via `ExecutionResult.blocked` — this disabling isn't
+Android-specific either; it applies identically on a desktop machine
+that's simply missing a toolchain, so browsing content there works the
+same way even before the toolchain is installed.
+
+Since Run is permanently unavailable for Java/C++/Spring on Android (no
+javac/g++/mvn can ever exist in the app sandbox), the normal
+completion-gated category progression would leave a mobile user
+permanently stuck on `category_level` 1 of every category in those three
+tracks — there's no legitimate way to "complete" an exercise there to
+unlock the next one. `ExerciseEngine.is_unlocked()`
+(`app/engine/lesson_engine.py`) special-cases this: when `self.language`
+is one of `{"java", "cpp", "spring"}` (`MOBILE_ALWAYS_UNLOCKED_LANGUAGES`)
+and `is_android()` is true, every exercise reports unlocked regardless of
+`completed_ids`, so a phone user can freely browse every level of every
+category. Python is excluded from this bypass since it genuinely runs
+(and can genuinely be completed) on Android via the in-process engine.
 
 ## Data storage
 

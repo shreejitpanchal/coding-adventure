@@ -1,0 +1,72 @@
+id: idioms_gotchas_04
+title: "A Detached Method Loses this"
+language: node
+level: 4
+objective: "Bind a class method to its instance before detaching it, so `this` still refers to the right object when called."
+explanation: |
+  `this` in a regular (non-arrow) function is determined entirely by
+  *how* the function is called, not by where it was defined. `c.increment()`
+  works because calling a function through `c.` sets `this` to `c` for
+  that call. But `const inc = c.increment;` just copies the function
+  itself -- it doesn't carry `c` along with it. Call `inc()` on its own
+  and there's no object to the left of the call, so inside a class method
+  (which is strict-mode by default) `this` is `undefined` rather than
+  falling back to some global object. `this.count++` then throws a
+  `TypeError`, because you can't read a property off `undefined`.
+
+  `Function.prototype.bind()` fixes this by permanently locking a
+  function's `this` to a specific object, returning a new function that
+  ignores whatever `this` its caller would otherwise have set. Once
+  `c.increment.bind(c)` is stored, calling the result as a bare function
+  still runs with `this` pointing at `c` -- this is exactly the situation
+  that comes up constantly when passing a class method as a callback
+  (an event handler, a timer callback, an array method) without a wrapper
+  arrow function or an explicit `bind()`.
+example_code: |
+  class Counter {
+    constructor() { this.count = 0; }
+    increment() { this.count++; }
+  }
+  const c = new Counter();
+
+  // The trap: detaching the method loses its receiver.
+  const incBroken = c.increment;
+  try {
+    incBroken();
+  } catch (e) {
+    console.log("threw:", e.constructor.name);  // threw: TypeError
+  }
+
+  // The fix: bind() locks `this` to c permanently.
+  const incFixed = c.increment.bind(c);
+  incFixed();
+  console.log(c.count);  // 1
+starter_code: |
+  class Counter {
+    constructor() { this.count = 0; }
+    increment() { this.count++; }
+  }
+  const c = new Counter();
+  const inc = c.increment;
+  try {
+    inc();
+    console.log("ok", c.count);
+  } catch (e) {
+    console.log("error:", e.constructor.name);
+  }
+challenge: |
+  Fix the `this`-binding issue so calling `inc()` on its own actually
+  increments `c`'s count instead of throwing -- bind `increment` to `c`
+  when assigning `inc`.
+expected_output: |
+  ok 1
+hints:
+  - "const inc = c.increment.bind(c); keeps the receiver attached."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\.bind\\(c\\)"
+concept_tags: [this_binding, bind, method_detachment]

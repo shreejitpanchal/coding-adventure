@@ -1,0 +1,69 @@
+id: concurrency_async_01
+title: "Callback Style to async/await"
+language: node
+level: 21
+objective: "Replace a callback-based async function with a Promise-returning one, consumed via async/await."
+explanation: |
+  The callback style makes every step of an async operation a nested
+  function: `fetchValue` takes a callback and calls it later, `main`
+  itself has to take a callback too (since it can't return the result
+  synchronously), and calling code has to keep passing callbacks all the
+  way up. Each additional async step nests one level deeper -- the
+  well-known "callback pyramid" -- and error handling has no single,
+  consistent place to live (each callback has to check for its own error
+  argument, or there isn't one at all, as here).
+
+  Wrapping the same operation in a `Promise` lets it be `await`-ed
+  instead: `fetchValue` returns a `Promise` that resolves with the value,
+  and `main` (itself declared `async`) reads that value with `await` as
+  if it were a normal synchronous return -- no callback parameter, no
+  nesting, and the function can use `return`/`try`/`catch` exactly like
+  synchronous code, even though the operation underneath is still
+  asynchronous.
+example_code: |
+  // The trap: callbacks nest, and main() must take one too.
+  function fetchValueCallback(cb) {
+    setTimeout(() => cb(42), 10);
+  }
+  function mainCallback(cb) {
+    fetchValueCallback((value) => cb(value * 2));
+  }
+  mainCallback((result) => console.log(result));  // 84
+
+  // The fix: a Promise + async/await reads like synchronous code.
+  function fetchValue() {
+    return new Promise((resolve) => setTimeout(() => resolve(42), 10));
+  }
+  async function main() {
+    const value = await fetchValue();
+    console.log(value * 2);
+  }
+  main();  // 84
+starter_code: |
+  function fetchValue(cb) {
+    setTimeout(() => cb(42), 10);
+  }
+  function main(cb) {
+    fetchValue((value) => {
+      cb(value * 2);
+    });
+  }
+  main((result) => console.log(result));
+challenge: |
+  Rewrite `fetchValue` to return a `Promise` instead of taking a
+  callback, and rewrite `main` as an `async` function that `await`s it,
+  keeping the same output (84).
+expected_output: |
+  84
+hints:
+  - "function fetchValue() { return new Promise((resolve) => setTimeout(() => resolve(42), 10)); }"
+  - "async function main() { const value = await fetchValue(); console.log(value * 2); }"
+xp_reward: 10
+achievement: null
+category: concurrency_async
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "new Promise\\("
+  - "await fetchValue\\(\\)"
+concept_tags: [callbacks, promises, async_await]

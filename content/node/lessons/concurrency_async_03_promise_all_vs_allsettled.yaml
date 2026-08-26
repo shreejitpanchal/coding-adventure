@@ -1,0 +1,71 @@
+id: concurrency_async_03
+title: "One Rejection Sinks Promise.all"
+language: node
+level: 23
+objective: "Replace Promise.all with Promise.allSettled so one failed task doesn't discard every other task's result."
+explanation: |
+  `Promise.all()` resolves with an array of every result -- but only if
+  *every* promise in the list fulfills. The moment any one of them
+  rejects, `Promise.all()` itself immediately rejects with that single
+  error, discarding whatever the other promises would have resolved
+  with, even the ones that already succeeded. That's the right behavior
+  when every task genuinely has to succeed for the result to mean
+  anything (e.g. loading several required config files) -- but it's the
+  wrong tool when the goal is "run these independently and see how each
+  one turned out," since one failure shouldn't erase the others'
+  successes.
+
+  `Promise.allSettled()` never short-circuits on a rejection -- it always
+  waits for every promise to settle (either fulfilled or rejected) and
+  resolves with an array describing each outcome individually
+  (`{status: "fulfilled", value}` or `{status: "rejected", reason}`).
+  That's the right choice whenever the tasks are independent and partial
+  success is meaningful, which is exactly the case here.
+example_code: |
+  const tasks = [Promise.resolve(1), Promise.reject(new Error("boom")), Promise.resolve(3)];
+
+  // The trap: one rejection discards every other result.
+  try {
+    const results = await Promise.all(tasks);
+    console.log(results);
+  } catch (e) {
+    console.log("all failed because of:", e.message);  // loses the 1 and the 3
+  }
+
+  // The fix: allSettled reports every outcome independently.
+  const settled = await Promise.allSettled(tasks);
+  console.log(
+    settled.map((r) => (r.status === "fulfilled" ? r.value : "failed")).join(",")
+  );  // 1,failed,3
+starter_code: |
+  async function main() {
+    try {
+      const results = await Promise.all([
+        Promise.resolve(1),
+        Promise.reject(new Error("boom")),
+        Promise.resolve(3),
+      ]);
+      console.log("all resolved:", results);
+    } catch (e) {
+      console.log("Promise.all rejected:", e.message);
+    }
+  }
+  main();
+challenge: |
+  Rewrite `main` to use `Promise.allSettled()` instead of `Promise.all()`
+  so it reports every task's outcome individually -- print
+  `"1,failed,3"` by mapping fulfilled results to their value and
+  rejected ones to the string `"failed"`, joined by commas.
+expected_output: |
+  1,failed,3
+hints:
+  - "const settled = await Promise.allSettled([...]);"
+  - "settled.map((r) => (r.status === \"fulfilled\" ? r.value : \"failed\")).join(\",\")"
+xp_reward: 10
+achievement: null
+category: concurrency_async
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "Promise\\.allSettled\\("
+concept_tags: [promise_all, promise_allsettled, error_handling]

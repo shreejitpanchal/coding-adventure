@@ -52,6 +52,17 @@ CPP_FRIENDLY: dict[str, tuple[str, str]] = {
     "std::bad_variant_access": ("Wrong variant alternative accessed.", "Check which alternative is actually active before accessing it."),
 }
 
+NODE_FRIENDLY: dict[str, tuple[str, str]] = {
+    "TypeError": ("Type error.", "Check the value isn't null/undefined, or isn't the type this operation expects, before using it."),
+    "ReferenceError": ("Undefined reference.", "Check the spelling, or that it's declared/imported before use."),
+    "RangeError": ("Value out of range.", "Check the value is within the range this operation expects (e.g. recursion depth, array length)."),
+    "SyntaxError": ("Syntax error.", "Check for a missing brace, parenthesis, comma, or quote."),
+    "AssertionError": ("Assertion failed.", "Check the expected vs. actual value in the output below."),
+    "URIError": ("Invalid URI.", "Check the string passed to encodeURI/decodeURI is actually a valid URI component."),
+    "EvalError": ("Eval error.", "Check the code passed to eval() is valid."),
+    "Error": ("Error thrown.", "Check the message below for what triggered it."),
+}
+
 SPRING_FRIENDLY: dict[str, tuple[str, str]] = {
     "NoSuchBeanDefinitionException": ("No matching bean found.", "Check the bean is actually registered (@Component/@Bean) and its type/qualifier matches what's being injected."),
     "NoUniqueBeanDefinitionException": ("Multiple matching beans found.", "Use @Qualifier, @Primary, or a more specific type to disambiguate which bean should be injected."),
@@ -81,6 +92,17 @@ _SPRING_ASSERTION_RE = re.compile(r"org\.opentest4j\.AssertionFailedError")
 _SPRING_ASSERTION_DETAIL_RE = re.compile(r"expected:\s*(.+?)\s*\n\s*but was:\s*(.+)")
 _SPRING_EXCEPTION_RE = re.compile(r"(?:Caused by:\s*)?(?:[\w.]+\.)?(\w+(?:Exception|Error))(?::|$)", re.MULTILINE)
 
+# Node's default uncaught-exception printer always emits the file:line
+# header on its own line (no column) directly above the source excerpt --
+# distinct from stack-frame lines further down, which are "file:line:col"
+# and prefixed with "at ". node_engine.py sanitizes the temp file's path
+# to the literal string "<exercise>" before this ever sees it.
+_NODE_HEADER_LINE_RE = re.compile(r"^<exercise>:(\d+)$", re.MULTILINE)
+_NODE_STACK_FRAME_RE = re.compile(r"<exercise>:(\d+):\d+")
+# Matches "TypeError: message" as well as "AssertionError [ERR_ASSERTION]: message"
+# (node:assert's own error class appends a bracketed error code after the type).
+_NODE_ERROR_TYPE_RE = re.compile(r"^(\w+)(?:\s*\[\w+\])?: (.+)$", re.MULTILINE)
+
 
 def translate_error(stderr: str, language: str = "python") -> tuple[str, str]:
     if language == "python":
@@ -92,6 +114,8 @@ def translate_error(stderr: str, language: str = "python") -> tuple[str, str]:
         return _translate_cpp_error(stderr)
     if language == "spring":
         return _translate_spring_error(stderr)
+    if language == "node":
+        return _translate_node_error(stderr)
     return (DEFAULT_MESSAGE, DEFAULT_HINT)
 
 
@@ -163,6 +187,12 @@ def _translate_spring_error(stderr: str) -> tuple[str, str]:
     return ("Test failed.", "Check the raw output below for details.")
 
 
+def _translate_node_error(stderr: str) -> tuple[str, str]:
+    match = _NODE_ERROR_TYPE_RE.search(stderr)
+    exc_type = match.group(1) if match else ""
+    return NODE_FRIENDLY.get(exc_type, (DEFAULT_MESSAGE, DEFAULT_HINT))
+
+
 def extract_error_line_number(stderr: str, language: str = "python") -> Optional[int]:
     if language == "spring":
         # JUnit's reflection-based test invocation appends java.base frames
@@ -171,6 +201,12 @@ def extract_error_line_number(stderr: str, language: str = "python") -> Optional
         # the last match (closest to the entry point) is preferred.
         matches = _JAVA_LINE_RE.findall(stderr)
         return int(matches[0]) if matches else None
+    if language == "node":
+        header_match = _NODE_HEADER_LINE_RE.search(stderr)
+        if header_match:
+            return int(header_match.group(1))
+        frame_match = _NODE_STACK_FRAME_RE.search(stderr)
+        return int(frame_match.group(1)) if frame_match else None
     if language == "java":
         pattern = _JAVA_LINE_RE
     elif language == "cpp":

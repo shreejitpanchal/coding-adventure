@@ -42,9 +42,14 @@ LANGUAGES: dict[str, LanguageInfo] = {
         tagline="Dependency injection, bean lifecycle, and configuration -- keep your instincts sharp.",
         available=True,
     ),
+    "node": LanguageInfo(
+        key="node", title="Node.js", icon="\U0001F7E2",
+        tagline="Event loop gotchas, async/await, and idiomatic modern JavaScript -- keep your instincts sharp.",
+        available=True,
+    ),
 }
 
-LANGUAGE_ORDER = ["python", "java", "cpp", "spring"]
+LANGUAGE_ORDER = ["python", "java", "cpp", "spring", "node"]
 
 
 def get_language(key: str) -> LanguageInfo:

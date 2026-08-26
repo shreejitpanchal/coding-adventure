@@ -1,0 +1,61 @@
+id: data_structures_04
+title: "Nested Destructuring with Defaults"
+language: node
+level: 14
+objective: "Replace manual && guards and fallbacks with a nested destructuring pattern that has its own defaults."
+explanation: |
+  Reading two nested config values safely by hand means guarding each
+  one with `config.server && config.server.host` before falling back to
+  a default -- repeating `config.server` for every field read from it,
+  and repeating the same shape of guard-then-fallback for each one.
+
+  Destructuring patterns can nest, and each level -- including the
+  nested object itself -- can carry its own default. `{ server: { host
+  = "localhost", port = 8080 } = {} }` says, in one parameter: "expect a
+  `server` sub-object (default to `{}` if it's missing entirely), and
+  pull `host`/`port` out of it, each with its own fallback if that
+  specific field is missing." The `= {}` on `server` matters specifically
+  for the case where `server` itself is absent -- without it, destructuring
+  `{ host, port }` from `undefined` would throw, since you can't
+  destructure properties out of nothing.
+example_code: |
+  // The trap: repeats config.server for every field, guard-then-fallback each time.
+  function describeManual(config) {
+    const host = config.server && config.server.host ? config.server.host : "localhost";
+    const port = config.server && config.server.port ? config.server.port : 8080;
+    return `${host}:${port}`;
+  }
+  console.log(describeManual({ server: { host: "example.com" } }));  // example.com:8080
+  console.log(describeManual({}));                                   // localhost:8080
+
+  // The fix: one nested destructuring pattern, defaults built in.
+  function describe({ server: { host = "localhost", port = 8080 } = {} }) {
+    return `${host}:${port}`;
+  }
+  console.log(describe({ server: { host: "example.com" } }));  // example.com:8080
+  console.log(describe({}));                                    // localhost:8080
+starter_code: |
+  function describe(config) {
+    const host = config.server && config.server.host ? config.server.host : "localhost";
+    const port = config.server && config.server.port ? config.server.port : 8080;
+    return `${host}:${port}`;
+  }
+  console.log(describe({ server: { host: "example.com" } }));
+  console.log(describe({}));
+challenge: |
+  Rewrite `describe` to take a single destructured parameter --
+  `{ server: { host = "localhost", port = 8080 } = {} }` -- instead of
+  the manual guard-and-fallback logic, keeping the same output.
+expected_output: |
+  example.com:8080
+  localhost:8080
+hints:
+  - "The outer default (= {}) on server is what keeps a missing server from throwing."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "server: \\{ host = \"localhost\", port = 8080 \\} = \\{\\}"
+concept_tags: [destructuring, nested_defaults, object_parameters]

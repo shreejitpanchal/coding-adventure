@@ -1,0 +1,52 @@
+id: idioms_gotchas_05
+title: "Array.sort()'s String-First Default"
+language: node
+level: 5
+objective: "Pass a numeric comparator to Array.prototype.sort so numbers sort by value instead of lexicographically."
+explanation: |
+  `Array.prototype.sort()` with no arguments doesn't compare elements as
+  numbers -- it converts every element to a string and sorts those
+  strings lexicographically (character by character, like a dictionary).
+  For an array like `[10, 1, 21, 2]`, that means comparing `"10"`,
+  `"1"`, `"21"`, `"2"` as text: `"1"` sorts before `"10"` (it's a prefix
+  of it), `"10"` sorts before `"2"` (`'1' < '2'`), and so on -- producing
+  `[1, 10, 2, 21]`, which is correct alphabetically but wrong
+  numerically. This isn't a rare edge case; it's `sort()`'s actual,
+  documented default behavior, and it silently "works" on small arrays
+  of single-digit numbers (where lexicographic and numeric order happen
+  to coincide) right up until a two-digit number sneaks in.
+
+  The fix is to always pass an explicit comparator when sorting numbers:
+  `(a, b) => a - b` for ascending order. The comparator's contract is
+  simple -- return negative if `a` should come first, positive if `b`
+  should, zero if they're equal -- and `a - b` satisfies exactly that for
+  numbers directly, with no string conversion involved at all.
+example_code: |
+  // The trap: sort() with no comparator treats numbers as strings.
+  const lexicographic = [10, 1, 21, 2];
+  lexicographic.sort();
+  console.log(lexicographic.join(","));  // 1,10,2,21 -- alphabetical, not numeric
+
+  // The fix: pass a numeric comparator explicitly.
+  const numeric = [10, 1, 21, 2];
+  numeric.sort((a, b) => a - b);
+  console.log(numeric.join(","));  // 1,2,10,21
+starter_code: |
+  const nums = [10, 1, 21, 2];
+  nums.sort();
+  console.log(nums.join(","));
+challenge: |
+  Fix the sort so it orders the numbers numerically (1,2,10,21) instead
+  of lexicographically -- pass a comparator to `sort()`.
+expected_output: |
+  1,2,10,21
+hints:
+  - "nums.sort((a, b) => a - b) sorts ascending by numeric value."
+xp_reward: 10
+achievement: idioms_gotchas_master
+category: idioms_gotchas
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "a - b"
+concept_tags: [array_sort, comparator, lexicographic_sort]

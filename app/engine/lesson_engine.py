@@ -9,8 +9,17 @@ from typing import Optional
 import yaml
 
 from app.engine.exercise import Exercise
+from app.execution.android_platform import is_android
 
 CONTENT_ROOT = Path(__file__).resolve().parent.parent.parent / "content"
+
+# On Android, Java/C++/Spring/Node can never actually run (no javac/g++/
+# mvn/node on the device), so a user there can never legitimately
+# "complete" an exercise to unlock the next category_level -- normal
+# completion-gated progression would permanently lock almost all of this
+# content. Python is excluded since it genuinely runs there via the
+# in-process engine.
+MOBILE_ALWAYS_UNLOCKED_LANGUAGES = {"java", "cpp", "spring", "node"}
 
 
 class ExerciseEngine:
@@ -61,6 +70,8 @@ class ExerciseEngine:
         )
 
     def is_unlocked(self, exercise: Exercise, completed_ids: set[str]) -> bool:
+        if self.language in MOBILE_ALWAYS_UNLOCKED_LANGUAGES and is_android():
+            return True
         if exercise.category_level <= 1:
             return True
         earlier = [

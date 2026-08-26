@@ -5,6 +5,7 @@ from app.execution.android_platform import is_android
 from app.execution.base import ExecutionEngine
 from app.execution.cpp_engine import CppEngine
 from app.execution.java_engine import JavaEngine
+from app.execution.node_engine import NodeEngine
 from app.execution.python_engine import PythonEngine
 from app.execution.python_inprocess_engine import PythonInProcessEngine
 from app.execution.spring_engine import SpringEngine
@@ -23,6 +24,7 @@ _ENGINES: dict[str, ExecutionEngine] = {
     "java": JavaEngine(),
     "cpp": CppEngine(),
     "spring": SpringEngine(),
+    "node": NodeEngine(),
 }
 
 

@@ -1,0 +1,68 @@
+id: concurrency_async_05
+title: "An Uncaught Rejection Inside async/await"
+language: node
+level: 25
+objective: "Wrap an awaited call in try/catch so a rejected Promise doesn't crash the process."
+explanation: |
+  `throw` inside an `async` function doesn't throw synchronously the way
+  it would in a regular function -- it rejects the Promise that function
+  returns. `await`-ing that Promise re-throws the rejection at the
+  `await` point, as a normal JavaScript exception. If nothing catches it,
+  it propagates out of `main()` the same way an uncaught synchronous
+  throw would: Node prints the stack trace and exits with a non-zero
+  status, since there's no handler left to deal with it.
+
+  Wrapping the `await` in `try`/`catch` handles this exactly like any
+  other exception -- `catch (e)` receives the rejection reason (the
+  `Error` object that was thrown), and the process can continue instead
+  of crashing. This is the entire benefit `async`/`await` has over raw
+  `.then()`/`.catch()` chains for error handling: rejected promises
+  become catchable with the same `try`/`catch` syntax used for
+  synchronous errors, no separate `.catch()` handler required.
+example_code: |
+  async function risky() {
+    throw new Error("oops");
+  }
+
+  // The trap: an unhandled rejection crashes the process.
+  async function mainTrap() {
+    const value = await risky();   // throws here, nothing catches it
+    console.log(value);
+  }
+  // mainTrap();  -- would print a stack trace and exit with code 1
+
+  // The fix: try/catch handles the rejection like any other exception.
+  async function main() {
+    try {
+      const value = await risky();
+      console.log(value);
+    } catch (e) {
+      console.log("caught:", e.message);
+    }
+  }
+  main();  // caught: oops
+starter_code: |
+  async function risky() {
+    throw new Error("oops");
+  }
+  async function main() {
+    const value = await risky();
+    console.log(value);
+  }
+  main();
+challenge: |
+  Wrap the `await risky()` call in `try`/`catch` so the rejection is
+  caught instead of crashing the process -- on catch, print
+  `"caught: oops"` using the caught error's `.message`.
+expected_output: |
+  caught: oops
+hints:
+  - "try { const value = await risky(); console.log(value); } catch (e) { console.log(\"caught:\", e.message); }"
+xp_reward: 10
+achievement: concurrency_async_master
+category: concurrency_async
+category_level: 5
+difficulty: gotcha
+contains_patterns:
+  - "catch \\(e\\)"
+concept_tags: [async_await, try_catch, unhandled_rejection]

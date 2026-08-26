@@ -1,0 +1,363 @@
+questions:
+  - id: q01
+    question: "Why does `0 == \"0\"` evaluate to true in JavaScript?"
+    options:
+      - "== coerces operands to the same type before comparing, so the string is converted to a number"
+      - "It's a bug in the language that was never fixed"
+      - "Strings and numbers are the same type internally"
+      - "It only works because both represent zero-length values"
+    correct: 0
+    explanation: "== performs type coercion before comparing; === skips coercion and compares type and value directly."
+    concept_tags: [loose_equality, strict_equality, type_coercion]
+
+  - id: q02
+    question: "What does `null == undefined` evaluate to?"
+    options:
+      - "false, since they're different types"
+      - "true -- it's a special case defined by the spec, even though null === undefined is false"
+      - "A TypeError is thrown"
+      - "true only in strict mode"
+    correct: 1
+    explanation: "The spec special-cases null and undefined to be loosely equal to each other (and nothing else) even though they're different types."
+    concept_tags: [loose_equality, strict_equality, type_coercion]
+
+  - id: q03
+    question: "Why do closures created inside a `for (var i = ...)` loop all see the same final value of i?"
+    options:
+      - "var is function-scoped, so there's only one i shared across every iteration"
+      - "Closures can't capture loop variables at all"
+      - "JavaScript closures always evaluate lazily to the last value regardless of scoping"
+      - "It's a bug specific to Node.js, not the JS language"
+    correct: 0
+    explanation: "var isn't block-scoped -- every iteration of the loop shares the exact same variable, so a closure over it sees whatever it was left at once the loop finishes."
+    concept_tags: [var_vs_let, closures, scoping]
+
+  - id: q04
+    question: "What does `let` do differently from `var` inside a for-loop's declaration specifically?"
+    options:
+      - "Nothing -- they behave identically in loops"
+      - "let creates a brand new binding of the loop variable for each iteration"
+      - "let makes the loop run asynchronously"
+      - "let disables closures entirely"
+    correct: 1
+    explanation: "The spec gives let special treatment in for-loops: each iteration gets its own fresh binding, initialized from the previous one -- which is why closures over let behave as expected."
+    concept_tags: [var_vs_let, closures, scoping]
+
+  - id: q05
+    question: "Why does 0.1 + 0.2 === 0.3 evaluate to false in JavaScript?"
+    options:
+      - "JavaScript numbers use IEEE-754 doubles, and 0.1/0.2/0.3 have no exact binary representation"
+      - "It's a parsing bug specific to the + operator"
+      - "0.3 is treated as a string by default"
+      - "Addition rounds down by default"
+    correct: 0
+    explanation: "Almost every language using IEEE-754 floats has this behavior -- 0.1 + 0.2 actually produces 0.30000000000000004, a genuinely different number from the literal 0.3."
+    concept_tags: [floating_point, number_epsilon, precision]
+
+  - id: q06
+    question: "What's the standard idiom for comparing two floats that might differ due to rounding error?"
+    options:
+      - "Always use === since floats are always exact"
+      - "Math.abs(a - b) < Number.EPSILON (or a similarly small tolerance)"
+      - "Convert both to strings and compare"
+      - "Round both to the nearest integer first"
+    correct: 1
+    explanation: "Comparing within a small tolerance instead of exact equality is the standard way to work around float representation error."
+    concept_tags: [floating_point, number_epsilon, precision]
+
+  - id: q07
+    question: "Why does calling a detached class method (e.g. `const inc = obj.method; inc();`) often throw or misbehave?"
+    options:
+      - "Class methods can never be assigned to variables"
+      - "this is determined by how a function is called, not where it's defined -- calling it bare loses the receiver"
+      - "JavaScript automatically deletes detached methods"
+      - "It only fails if the class has private fields"
+    correct: 1
+    explanation: "Detaching a method from its object loses the implicit binding that `obj.method()` would have provided -- this becomes undefined (in strict mode) when called bare."
+    concept_tags: [this_binding, bind, method_detachment]
+
+  - id: q08
+    question: "What does Function.prototype.bind(obj) do?"
+    options:
+      - "Deletes the function's original this binding permanently"
+      - "Returns a new function whose this is permanently locked to obj, regardless of how it's later called"
+      - "Copies obj's own properties onto the function"
+      - "Only works on arrow functions"
+    correct: 1
+    explanation: "bind() returns a new function that always runs with this set to the bound object, which is why it's the standard fix for a callback that loses its receiver."
+    concept_tags: [this_binding, bind, method_detachment]
+
+  - id: q09
+    question: "What does Array.prototype.sort() do with no comparator argument?"
+    options:
+      - "Sorts numbers ascending, strings alphabetically"
+      - "Converts every element to a string and sorts those strings lexicographically"
+      - "Leaves the array in its original order"
+      - "Throws a TypeError if the array contains numbers"
+    correct: 1
+    explanation: "sort()'s default behavior treats every element as a string, so numbers like 10 and 2 sort as \"10\" before \"2\" -- a numeric comparator (a, b) => a - b is needed for numeric order."
+    concept_tags: [array_sort, comparator, lexicographic_sort]
+
+  - id: q10
+    question: "What does array destructuring with a rest element, `const [first, ...rest] = arr`, do?"
+    options:
+      - "first gets the whole array, rest is always empty"
+      - "first is the first element, rest is a new array of every element after it"
+      - "It throws if arr has more than 2 elements"
+      - "rest must always be an object, never an array"
+    correct: 1
+    explanation: "The rest element (...rest) collects every remaining element into a real array -- it must be the last item in the destructuring pattern."
+    concept_tags: [destructuring, rest_element, arrays]
+
+  - id: q11
+    question: "What's the difference between object spread ({ ...base, ...override }) and a manual for-in copy loop?"
+    options:
+      - "Spread is slower but safer"
+      - "Spread copies own enumerable keys left-to-right with later sources winning, without walking inherited properties like a raw for-in loop can"
+      - "They're functionally identical in every case"
+      - "Spread only works on arrays, not objects"
+    correct: 1
+    explanation: "Object spread copies own enumerable properties, later sources overwriting earlier ones -- the same semantics as a careful manual loop, just declaratively."
+    concept_tags: [object_spread, merging, for_in]
+
+  - id: q12
+    question: "What can a `${}` placeholder inside a template literal contain?"
+    options:
+      - "Only a single variable name"
+      - "Any JavaScript expression, evaluated and interpolated into the string"
+      - "Only string literals"
+      - "Nothing -- template literals can't interpolate values"
+    correct: 1
+    explanation: "${} can hold any expression -- a variable, a function call, arithmetic -- which is why template literals replaced string concatenation as the default way to build dynamic strings."
+    concept_tags: [template_literals, string_concatenation]
+
+  - id: q13
+    question: "When does a default parameter value, like `function f(x = 5)`, actually get used?"
+    options:
+      - "Whenever x is falsy (0, \"\", false, etc.)"
+      - "Only when x is specifically undefined -- either omitted or explicitly passed as undefined"
+      - "Only when the function is called with zero arguments at all"
+      - "Default parameters are evaluated once at function definition time, like Python"
+    correct: 1
+    explanation: "Default parameters trigger only on undefined, matching what a manual === undefined check would do -- passing null or 0 does not trigger the default."
+    concept_tags: [default_parameters, function_signatures]
+
+  - id: q14
+    question: "What's the key difference between ?? (nullish coalescing) and || (logical OR) as a fallback operator?"
+    options:
+      - "They're interchangeable in every situation"
+      - "?? only falls back on null/undefined, while || also falls back on any falsy value like 0, \"\", or false"
+      - "?? is only usable with numbers"
+      - "|| is newer and ?? is deprecated"
+    correct: 1
+    explanation: "?? is specifically for null/undefined fallbacks -- unlike ||, it won't override a legitimately falsy-but-present value."
+    concept_tags: [optional_chaining, nullish_coalescing]
+
+  - id: q15
+    question: "What does user.address?.city do if user.address is undefined?"
+    options:
+      - "Throws a TypeError"
+      - "Short-circuits to undefined instead of throwing"
+      - "Returns an empty string"
+      - "Automatically creates an empty address object"
+    correct: 1
+    explanation: "Optional chaining (?.) short-circuits to undefined the moment any link in the chain is null/undefined, instead of throwing."
+    concept_tags: [optional_chaining, nullish_coalescing]
+
+  - id: q16
+    question: "Why is a plain object risky as a general-purpose string-keyed map?"
+    options:
+      - "Plain objects can't hold more than 100 keys"
+      - "It inherits properties like toString/constructor from Object.prototype, which can collide with a real key name"
+      - "Plain objects are always slower than arrays"
+      - "Object keys can't be strings at all"
+    correct: 1
+    explanation: "A key like \"toString\" collides with an inherited, truthy property -- a Map has no such inherited surface, since it only stores exactly what's explicitly set on it."
+    concept_tags: [map, plain_object, prototype_pollution]
+
+  - id: q17
+    question: "What does [...new Set(arr)] accomplish?"
+    options:
+      - "Sorts the array"
+      - "Deduplicates the array while preserving insertion order"
+      - "Reverses the array"
+      - "Converts every element to a string"
+    correct: 1
+    explanation: "Set stores only unique values; spreading it back into an array collapses duplicates while keeping the first-occurrence order."
+    concept_tags: [set, deduplication, includes]
+
+  - id: q18
+    question: "In a .filter().map().reduce() chain, what does each stage do?"
+    options:
+      - "filter transforms, map selects, reduce discards"
+      - "filter keeps only matching elements, map transforms each one, reduce combines them into a single value"
+      - "They all do the same thing in a different order"
+      - "reduce must always come first in the chain"
+    correct: 1
+    explanation: "Each array method has a distinct, composable job: filter selects, map transforms, reduce combines -- splitting one imperative loop into three named steps."
+    concept_tags: [filter, map, reduce, array_methods]
+
+  - id: q19
+    question: "In `{ server: { host = \"localhost\" } = {} }`, what is the outer `= {}` for?"
+    options:
+      - "It's a syntax error and does nothing"
+      - "It prevents a crash when server itself is missing, since you can't destructure properties out of undefined"
+      - "It sets host to an empty object"
+      - "It only applies when TypeScript is used"
+    correct: 1
+    explanation: "Without the outer default, destructuring { host } from an entirely missing server (undefined) would throw -- the = {} default covers that case."
+    concept_tags: [destructuring, nested_defaults, object_parameters]
+
+  - id: q20
+    question: "Why does mutating a nested property on a spread-copied object also affect the original?"
+    options:
+      - "Spread ({ ...obj }) is a bug and shouldn't be used"
+      - "Spread only copies one level deep -- nested objects are copied by reference, not value"
+      - "JavaScript objects can never be copied at all"
+      - "It only happens with arrays, never plain objects"
+    correct: 1
+    explanation: "A shallow copy shares any nested object/array with the original by reference; structuredClone() performs a genuine deep clone instead."
+    concept_tags: [structured_clone, shallow_copy, deep_copy]
+
+  - id: q21
+    question: "Why does JSON.stringify's replacer function work well for redacting a field during serialization?"
+    options:
+      - "It requires copying the object first, same as any other approach"
+      - "Returning undefined from the replacer for a given key omits that key from the output, filtering during serialization itself"
+      - "It only works on arrays, not objects"
+      - "The replacer can only rename keys, not remove them"
+    correct: 1
+    explanation: "JSON.stringify(obj, (key, value) => key === \"password\" ? undefined : value) filters as it walks the object, with no separate copy-then-delete step needed."
+    concept_tags: [json_stringify, replacer, serialization]
+
+  - id: q22
+    question: "Why can't typeof reliably distinguish an array from a plain object?"
+    options:
+      - "typeof reports \"object\" for both arrays and plain objects -- there's no \"array\" value it ever returns"
+      - "typeof only works on primitives and always throws on objects"
+      - "Arrays are technically primitives in JavaScript"
+      - "typeof was deprecated in favor of Array.isArray for everything"
+    correct: 0
+    explanation: "typeof lumps arrays, plain objects, null, and dates together as \"object\" -- Array.isArray() is the reliable way to check for an array specifically."
+    concept_tags: [array_isarray, typeof, type_checking]
+
+  - id: q23
+    question: "What does Object.fromEntries(Object.entries(obj).map(...)) accomplish?"
+    options:
+      - "Deletes every key from obj"
+      - "Transforms every value in obj into a new object, treating the object as a pipeline of key/value pairs"
+      - "Converts obj into an array permanently"
+      - "Only works if obj has exactly one key"
+    correct: 1
+    explanation: "Object.entries turns the object into [key, value] pairs, .map transforms them, and Object.fromEntries rebuilds an object -- a declarative alternative to a for-in loop."
+    concept_tags: [object_entries, object_fromentries, for_in]
+
+  - id: q24
+    question: "What does [1, [2, 3], [4], 5].flat() return?"
+    options:
+      - "[1, 2, 3, 4, 5] -- one level of nesting removed"
+      - "The same nested array, unchanged"
+      - "[[1, 2, 3, 4, 5]] -- everything wrapped in one more array"
+      - "A TypeError, since flat() requires an argument"
+    correct: 0
+    explanation: "flat() with no argument flattens exactly one level of nesting -- a depth argument (or Infinity) flattens further when needed."
+    concept_tags: [array_flat, nested_arrays]
+
+  - id: q25
+    question: "What does Array.from({ length: 5 }, (_, i) => i * i) produce?"
+    options:
+      - "An error, since { length: 5 } isn't a real array"
+      - "[0, 1, 4, 9, 16] -- a computed sequence built from the length and mapper"
+      - "[5, 5, 5, 5, 5]"
+      - "An array of 5 undefined values with no transformation applied"
+    correct: 1
+    explanation: "Array.from accepts an array-like object (length counts, even with no elements) plus a mapper applied to each resulting index, building the whole array in one call."
+    concept_tags: [array_from, range_generation]
+
+  - id: q26
+    question: "Why does an async function's `throw` statement not throw synchronously?"
+    options:
+      - "It rejects the Promise the async function returns, re-thrown as an exception wherever that Promise is awaited"
+      - "It's silently swallowed and never surfaces anywhere"
+      - "async functions can't use throw at all"
+      - "It always crashes the process immediately, with no way to catch it"
+    correct: 0
+    explanation: "A throw inside an async function rejects its returned Promise; awaiting that Promise re-throws the rejection as a normal exception, catchable with try/catch."
+    concept_tags: [async_await, try_catch, unhandled_rejection]
+
+  - id: q27
+    question: "In `console.log(\"end\"); setTimeout(() => console.log(\"timeout\"), 0); Promise.resolve().then(() => console.log(\"promise\"));`, what order do these print in?"
+    options:
+      - "end, timeout, promise"
+      - "end, promise, timeout -- microtasks (Promises) always run before the next macrotask (setTimeout), even at 0ms"
+      - "promise, end, timeout"
+      - "The order is random"
+    correct: 1
+    explanation: "Promise callbacks are microtasks, drained completely before the event loop moves on to the next macrotask (like a setTimeout callback), regardless of the timeout delay."
+    concept_tags: [microtask_timing, promises, await]
+
+  - id: q28
+    question: "Why does `Promise.all([...])` reject entirely if just one of several promises rejects?"
+    options:
+      - "Promise.all waits for every promise to fulfill; a single rejection immediately rejects the whole thing, discarding other results"
+      - "Promise.all ignores rejections and treats them as fulfilled"
+      - "It only works with exactly 2 promises"
+      - "Promise.all reruns the rejected promise automatically"
+    correct: 0
+    explanation: "Promise.all short-circuits on the first rejection -- Promise.allSettled is the alternative when partial success across independent tasks should still be visible."
+    concept_tags: [promise_all, promise_allsettled, error_handling]
+
+  - id: q29
+    question: "Why is awaiting each task sequentially inside a for-loop often slower than necessary?"
+    options:
+      - "await inside a loop blocks the next iteration from even starting until the current task finishes, even if the tasks don't depend on each other"
+      - "for loops can't contain await at all"
+      - "Sequential awaiting is always faster than Promise.all"
+      - "It only matters for CPU-bound tasks, never I/O-bound ones"
+    correct: 0
+    explanation: "For independent tasks, starting them all first (e.g. via .map()) and awaiting them together with Promise.all lets them run concurrently instead of one at a time."
+    concept_tags: [promise_all, sequential_await, concurrency]
+
+  - id: q30
+    question: "Why does NaN === NaN evaluate to false?"
+    options:
+      - "It's a bug that was never fixed in the language"
+      - "IEEE-754 defines NaN as not comparable to anything, including itself -- Number.isNaN() is the reliable way to check for it"
+      - "NaN is actually treated as a string internally"
+      - "It only returns false the first time; subsequent comparisons return true"
+    correct: 1
+    explanation: "NaN is the one value that isn't equal to itself under ===, by design -- Number.isNaN() (or Array.prototype.includes, which handles this specially) is needed to detect it correctly."
+    concept_tags: [nan, number_isnan, self_equality]
+
+  - id: q31
+    question: "Why can mutating an array while iterating it with forEach + splice silently skip elements?"
+    options:
+      - "splice() shifts later elements to a lower index, but forEach still advances to the next index, skipping the element that just shifted into the current one"
+      - "forEach automatically restarts from index 0 after any mutation"
+      - "splice() only works on arrays of strings"
+      - "It's impossible to mutate an array during forEach -- it always throws"
+    correct: 0
+    explanation: "Building a new array (e.g. via .filter()) instead of mutating the one being iterated avoids this entire class of skipped/double-visited elements."
+    concept_tags: [foreach, splice, mutation_during_iteration, filter]
+
+  - id: q32
+    question: "Why does Array.prototype.sort() sometimes surprise callers who only expected a return value?"
+    options:
+      - "sort() returns a brand-new array and never touches the original"
+      - "sort() mutates the array in place and returns the same reference, unlike map()/filter() which always return new arrays"
+      - "sort() only works on arrays of numbers"
+      - "sort() is deprecated in modern JavaScript"
+    correct: 1
+    explanation: "Unlike map()/filter(), sort() mutates its input and returns the same reference -- spreading the array first ([...arr].sort(...)) avoids surprising a caller who still holds the original."
+    concept_tags: [array_sort, in_place_mutation, spread]
+
+  - id: q33
+    question: "Why is [1, 2, 3] === [1, 2, 3] false in JavaScript?"
+    options:
+      - "=== compares object/array identity (are they the same object in memory), not structural contents"
+      - "Arrays can never be compared with ==="
+      - "It's true only in strict mode"
+      - "JavaScript arrays are compared element-by-element automatically, and this is a bug"
+    correct: 0
+    explanation: "Two arrays with identical contents are still two distinct objects -- comparing serialized contents (e.g. via JSON.stringify) is a common way to check structural equality instead."
+    concept_tags: [reference_equality, structural_equality, json_stringify]

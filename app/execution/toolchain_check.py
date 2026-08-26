@@ -31,6 +31,10 @@ _REQUIREMENTS: dict[str, tuple[list[str], str]] = {
         ["mvn", "java"],
         "Install a JDK and Maven, and ensure mvn/java are on PATH.",
     ),
+    "node": (
+        ["node"],
+        "Install Node.js LTS from https://nodejs.org and ensure node is on PATH.",
+    ),
 }
 
 
@@ -109,12 +113,31 @@ _INSTALL_GUIDES: dict[str, dict[str, list[str]]] = {
             "Arch: sudo pacman -S jdk-openjdk maven",
         ],
     },
+    "node": {
+        "Windows": [
+            "Open PowerShell or Command Prompt.",
+            "Run: winget install OpenJS.NodeJS.LTS",
+            "Close and reopen your terminal, VS Code, and this app afterward -- "
+            "Windows doesn't push a PATH change into programs that are already running.",
+        ],
+        "Darwin": [
+            "Install Homebrew first if you don't have it yet: https://brew.sh",
+            "Run: brew install node",
+            "Open a new terminal window so the PATH change takes effect.",
+        ],
+        "Linux": [
+            "Debian/Ubuntu: sudo apt update && sudo apt install nodejs npm",
+            "Fedora: sudo dnf install nodejs",
+            "Arch: sudo pacman -S nodejs npm",
+        ],
+    },
 }
 
 _VERIFY_COMMANDS: dict[str, str] = {
     "java": "javac -version",
     "cpp": "g++ --version",
     "spring": "mvn -version",
+    "node": "node --version",
 }
 
 

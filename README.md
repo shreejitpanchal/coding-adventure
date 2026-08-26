@@ -1,8 +1,8 @@
 # Coding Adventure
 
 A focused, offline coding refresher for working professionals — Python,
-Java, C++, and Spring, all four fully built out. One desktop app, no
-accounts, no cloud, nothing to sign up for.
+Java, C++, Spring, and Node.js, all five fully built out. One desktop
+app, no accounts, no cloud, nothing to sign up for.
 
 ## Who it's for
 
@@ -13,10 +13,10 @@ through in a few focused minutes, not tutorials to sit through.
 ## What's inside
 
 - **Language picker** — every session starts by choosing a track. All
-  four tracks (Python, Java, C++, Spring) are fully built out. A track
-  whose local toolchain isn't installed (e.g. no JDK, no g++, no Maven)
-  shows "Toolchain needed" with an install hint instead of pretending
-  it's ready.
+  five tracks (Python, Java, C++, Spring, Node.js) are fully built out. A
+  track whose local toolchain isn't installed (e.g. no JDK, no g++, no
+  Maven, no Node.js) shows "Toolchain needed" with an install hint
+  instead of pretending it's ready.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
   grinding one category at a time.
@@ -36,7 +36,11 @@ through in a few focused minutes, not tutorials to sit through.
   framework C++ doesn't have here), Spring covers 6 (Dependency
   Injection, Bean Lifecycle & Scopes, Configuration & Profiles,
   Application Events, Aspect-Oriented Programming, and Resilience
-  Patterns).
+  Patterns), and Node.js covers the same 6 category keys as C++ (Idioms
+  & Gotchas, Core Language Refresher, Data Structures, Standard Library
+  Deep Dive, Concurrency & Async, and Gotcha Gauntlet), since JavaScript
+  runtime concerns overlap more with a bare language track than with a
+  package-manager-heavy general-purpose one.
   - **Python** — 75 exercises (mutable defaults, race conditions, float
     precision, silent exception swallowing, GIL vs true parallelism, and
     more).
@@ -65,15 +69,25 @@ through in a few focused minutes, not tutorials to sit through.
     resilience4j-all) rather than Spring Boot, so `mvn test` stays fast
     and fully offline after the shared scaffold's dependencies are
     warmed once.
+  - **Node.js** — 30 exercises (loose vs. strict equality, `var`'s
+    function-scoped closures, floating-point precision, detached-method
+    `this` binding, destructuring/spread/optional chaining, `Map`/`Set`
+    vs. plain objects, `filter`/`map`/`reduce` pipelines, the
+    microtask/macrotask event-loop ordering behind `Promise` vs.
+    `setTimeout`, `Promise.all` vs. `allSettled`, sequential `await` in a
+    loop vs. concurrent `Promise.all`, and more), run directly with
+    `node` (no separate compile step, unlike Java/C++).
 - **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
-  questions, 44 Spring questions, reshuffled every session.
+  questions, 44 Spring questions, 33 Node.js questions, reshuffled every
+  session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.
 - **Real execution, not a simulated sandbox** — Python exercises run
   against your actual local `python` interpreter; Java exercises are
   compiled with `javac` and run with `java`; C++ exercises are compiled
   with `g++` and run as a native binary; Spring exercises run against a
-  scaffolded Maven project via `mvn test` — all in an isolated subprocess
+  scaffolded Maven project via `mvn test`; Node.js exercises run directly
+  with `node` (no separate compile step) — all in an isolated subprocess
   with a timeout.
 - **100% offline and private** — everything runs and stays on your
   machine. No accounts, no network access (beyond the one-time Maven
@@ -120,13 +134,17 @@ CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
 **Android (Python execution only):** `./build_apk.sh` builds a real APK
 via `flet build apk` (needs a Flutter + Android SDK/NDK install first —
 see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only)).
-Java, C++, and Spring need a real local compiler/runtime a phone can't
-provide, so those tracks are badged "Desktop only" on Android and their
-Run button is disabled — but every other part of the app, including
-those three tracks' content, still works: browsing categories, reading
-explanations/examples, and editing code in the editor. Only Python
-actually *runs* exercises on Android, via an in-process execution engine
-instead of the desktop app's usual subprocess.
+Java, C++, Spring, and Node.js need a real local compiler/runtime a phone
+can't provide, so on Android their Run button is disabled — but every
+other part of the app, including those four tracks' content, still
+works: browsing categories, reading explanations/examples, and editing
+code in the editor. Since there's no legitimate way to "complete" an
+exercise in those tracks on a phone, every category and level is
+unlocked from the
+start there instead of gating progression behind an unreachable
+prerequisite. Only Python actually *runs* exercises on Android, via an
+in-process execution engine instead of the desktop app's usual
+subprocess.
 
 ## For developers
 
@@ -143,11 +161,11 @@ instead of the desktop app's usual subprocess.
 
 - `app/engine/` — content model (`Exercise`, `QuizQuestion`), YAML
   loaders, category/unlock logic.
-- `app/execution/` — one `ExecutionEngine` per language, all four
+- `app/execution/` — one `ExecutionEngine` per language, all five
   implemented (`python_engine.py`, `java_engine.py`, `cpp_engine.py`,
-  `spring_engine.py`), plus `python_inprocess_engine.py` (used instead of
-  `python_engine.py` specifically on Android, where subprocess spawning
-  isn't available).
+  `spring_engine.py`, `node_engine.py`), plus `python_inprocess_engine.py`
+  (used instead of `python_engine.py` specifically on Android, where
+  subprocess spawning isn't available).
 - `app/progress/` — SQLite-backed XP/streaks/badges/activity log, keyed
   per language track.
 - `app/ui/` — Flet screens.

@@ -1,0 +1,62 @@
+id: stdlib_deep_dive_04
+title: "Flattening a Nested Array with flat()"
+language: node
+level: 19
+objective: "Replace a manual one-level flatten loop with Array.prototype.flat()."
+explanation: |
+  Flattening one level of nesting by hand means checking whether each
+  element is itself an array and, if so, looping over it separately to
+  push its items instead of the array itself -- a small but genuine
+  branch-and-inner-loop just to express "unwrap one level of nesting."
+
+  `Array.prototype.flat()` does exactly that in a single call: with no
+  argument it flattens exactly one level deep (matching the manual
+  `Array.isArray` check), and an explicit depth argument (or `Infinity`)
+  flattens further when that's actually needed. `flatMap()` also exists
+  for the common combination of mapping and then flattening one level in
+  a single pass, when the transformation itself produces the nested
+  arrays being flattened.
+example_code: |
+  const nested = [1, [2, 3], [4], 5];
+
+  // The trap: a manual isArray check plus an inner loop.
+  const flatManual = [];
+  for (const item of nested) {
+    if (Array.isArray(item)) {
+      for (const sub of item) flatManual.push(sub);
+    } else {
+      flatManual.push(item);
+    }
+  }
+  console.log(flatManual.join(","));  // 1,2,3,4,5
+
+  // The fix: flat() does the one-level flatten directly.
+  console.log(nested.flat().join(","));  // 1,2,3,4,5
+starter_code: |
+  function flattenOnce(arr) {
+    const result = [];
+    for (const item of arr) {
+      if (Array.isArray(item)) {
+        for (const sub of item) result.push(sub);
+      } else {
+        result.push(item);
+      }
+    }
+    return result;
+  }
+  console.log(flattenOnce([1, [2, 3], [4], 5]).join(","));
+challenge: |
+  Rewrite `flattenOnce` to use `Array.prototype.flat()` instead of the
+  manual isArray check and inner loop, keeping the same output.
+expected_output: |
+  1,2,3,4,5
+hints:
+  - "return arr.flat();"
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "\\.flat\\("
+concept_tags: [array_flat, nested_arrays]

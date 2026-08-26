@@ -1,0 +1,64 @@
+id: gotcha_gauntlet_03
+title: "A Default Parameter Pointing at a Shared Array"
+language: node
+level: 28
+objective: "Fix a default parameter that references a module-level array, so every call doesn't accumulate into the same shared list."
+explanation: |
+  Unlike Python's mutable-default-argument trap (where the default
+  object itself is created once, at function-definition time, and reused
+  forever), JavaScript's default parameters are re-evaluated fresh on
+  every call that needs them -- `function f(x = someExpr())` calls
+  `someExpr()` again each time `x` is omitted. The bug here isn't stale
+  evaluation; it's that the default expression itself, `DEFAULT_TAGS`,
+  is just a reference to one specific array declared once at module
+  level. Every call that omits the `tags` argument gets *that same
+  array* handed to it -- not a fresh one -- so pushing onto it in one
+  call leaves the pushed value there for the next call to see too.
+
+  The fix is for the default value to actually construct something new
+  each time: `tags = []` is an array *literal*, which allocates a brand
+  new empty array on every call that uses the default, rather than a
+  reference to one array shared across every call.
+example_code: |
+  // The trap: the default parameter refers to one shared array.
+  const DEFAULT_TAGS = [];
+  function addTagTrap(tag, tags = DEFAULT_TAGS) {
+    tags.push(tag);
+    return tags;
+  }
+  console.log(addTagTrap("a").join(","));  // a
+  console.log(addTagTrap("b").join(","));  // a,b -- "a" leaked in from the last call!
+
+  // The fix: [] as the default allocates a fresh array each call.
+  function addTag(tag, tags = []) {
+    tags.push(tag);
+    return tags;
+  }
+  console.log(addTag("a").join(","));  // a
+  console.log(addTag("b").join(","));  // b
+starter_code: |
+  const DEFAULT_TAGS = [];
+  function addTag(tag, tags = DEFAULT_TAGS) {
+    tags.push(tag);
+    return tags;
+  }
+  console.log(addTag("a").join(","));
+  console.log(addTag("b").join(","));
+challenge: |
+  Fix `addTag` so each call that omits `tags` gets its own fresh array
+  (the second call should print just `"b"`, not `"a,b"`) -- default
+  `tags` to a new `[]` directly in the parameter list instead of
+  referencing the shared `DEFAULT_TAGS`.
+expected_output: |
+  a
+  b
+hints:
+  - "function addTag(tag, tags = []) { ... } -- drop DEFAULT_TAGS entirely."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "tags = \\[\\]"
+concept_tags: [default_parameters, shared_mutable_state, arrays]

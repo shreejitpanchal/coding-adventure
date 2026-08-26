@@ -1,0 +1,68 @@
+id: data_structures_01
+title: "A Plain Object's Prototype Key Collision"
+language: node
+level: 11
+objective: "Replace a plain object used as a hash map with a real Map, so keys like \"toString\" don't collide with inherited properties."
+explanation: |
+  A plain `{}` isn't really an empty container -- it's an object that
+  already inherits properties from `Object.prototype`, including
+  `toString`, `constructor`, `hasOwnProperty`, and others. Using a plain
+  object as a general-purpose string-keyed map works fine right up until
+  a key happens to collide with one of those inherited names. Reading
+  `counts["toString"]` on a fresh object doesn't return `undefined` --
+  it returns the inherited `toString` function, which is truthy. An
+  increment pattern like `counts[key] = (counts[key] || 0) + 1` then
+  silently does the wrong thing: `(aFunction || 0)` evaluates to the
+  function itself (since it's truthy), and `functionValue + 1` coerces
+  the function to a string via its own `toString()` and concatenates
+  `"1"` onto it, producing a string where a number was expected -- with
+  no error at any point.
+
+  `Map` has no such inherited surface: it stores exactly the entries
+  explicitly `.set()` on it, and `.get()` on a genuinely absent key
+  returns `undefined`, full stop, regardless of what that key's name
+  happens to be. That's why `Map` (not a plain object) is the right
+  choice whenever keys come from outside the program's control -- user
+  input, external data, dynamic strings -- where a collision with
+  `Object.prototype` can't be ruled out in advance.
+example_code: |
+  // The trap: "toString" silently collides with an inherited property.
+  const countsObj = {};
+  function incrementObj(key) {
+    countsObj[key] = (countsObj[key] || 0) + 1;
+  }
+  incrementObj("toString");
+  console.log(typeof countsObj["toString"]);  // string -- not the number 1!
+
+  // The fix: Map has no inherited keys to collide with.
+  const countsMap = new Map();
+  function incrementMap(key) {
+    countsMap.set(key, (countsMap.get(key) || 0) + 1);
+  }
+  incrementMap("toString");
+  console.log(typeof countsMap.get("toString"));  // number
+starter_code: |
+  const counts = {};
+  function increment(key) {
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  increment("a");
+  increment("a");
+  increment("toString");
+  console.log(counts["a"], typeof counts["toString"]);
+challenge: |
+  Replace the plain object with a `Map` (using `.get()`/`.set()` instead
+  of bracket access) so incrementing the key `"toString"` produces a
+  real number, not a string.
+expected_output: |
+  2 number
+hints:
+  - "const counts = new Map(); then counts.set(key, (counts.get(key) || 0) + 1);"
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "new Map\\(\\)"
+concept_tags: [map, plain_object, prototype_pollution]
