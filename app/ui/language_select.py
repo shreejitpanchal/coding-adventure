@@ -7,6 +7,7 @@ from __future__ import annotations
 import flet as ft
 
 from app.engine.languages import LANGUAGE_ORDER, get_language
+from app.execution.android_platform import is_android
 from app.execution.toolchain_check import check_toolchain, get_install_guide
 from app.ui.app_state import AppState
 from app.ui.theme import scaled
@@ -57,19 +58,31 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
 
     toolchain = check_toolchain(info.key) if info.available else None
     toolchain_ready = toolchain is None or toolchain.available
+    # On Android, a missing Java/C++/Spring toolchain can never be
+    # installed through this app (no javac/g++/mvn can exist there at
+    # all) -- that's a structurally different situation from "not
+    # installed yet on this desktop," so it gets its own messaging rather
+    # than showing get_install_guide()'s desktop OS steps (which would be
+    # actively wrong on a phone -- e.g. apt/winget commands with nowhere
+    # to run them).
+    android_unsupported = is_android() and not toolchain_ready and info.key != "python"
 
     subtitle: str
     if info.available:
         level = state.progress.get_player_level(info.key)
         streak = state.progress.get_streak_days(info.key)
         subtitle = f"Level {level.level} · {level.total_xp} XP · {streak}-day streak"
-        if not toolchain_ready:
+        if android_unsupported:
+            subtitle = "Needs a desktop computer -- not available on Android."
+        elif not toolchain_ready:
             subtitle = f"{toolchain.install_hint}"
     else:
         subtitle = info.tagline
 
     if not info.available:
         badge_text, badge_bg, badge_color = "Coming soon", theme.card, theme.text_muted
+    elif android_unsupported:
+        badge_text, badge_bg, badge_color = "Desktop only", theme.text_muted, "#FFFFFF"
     elif not toolchain_ready:
         badge_text, badge_bg, badge_color = "Toolchain needed", theme.warning, "#FFFFFF"
     else:
@@ -78,6 +91,12 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
     def on_click(_e: ft.ControlEvent) -> None:
         if not info.available:
             page.show_dialog(ft.SnackBar(ft.Text(f"{info.title} is coming soon.")))
+            return
+        if android_unsupported:
+            page.show_dialog(ft.SnackBar(ft.Text(
+                f"{info.title} needs a real compiler/runtime a phone can't provide -- "
+                "try this track on a desktop computer instead."
+            )))
             return
         if not toolchain_ready:
             _show_install_guide_dialog(page, state, info)

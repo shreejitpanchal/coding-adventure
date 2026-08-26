@@ -90,10 +90,12 @@ straight into the native desktop window.
 the same UI in your default browser instead of a native window — handy for
 a quick look at the screens without a desktop window, e.g. from a machine
 without a display server, or just to poke around in Chrome. It's a
-one-off preview only, not a supported way to actually run exercises: the
-app is desktop-only by design (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#why-no-android-build)) since
-running code needs a real local compiler/interpreter subprocess a browser
-sandbox can't provide. It's served over HTTPS with a self-signed
+one-off preview only, not a supported way to actually run exercises,
+since running Java/C++/Spring code needs a real local compiler/
+interpreter subprocess a browser sandbox can't provide (see
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only)
+for how the Android build works around the same restriction, for Python
+only). It's served over HTTPS with a self-signed
 certificate (CN `coding-adventure`, generated automatically on first run
 and cached in `data/certs/`) rather than plain HTTP — your browser will
 show a one-time "connection isn't private" warning the first time you
@@ -115,6 +117,15 @@ run_app_web_ui.bat
 CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
 ```
 
+**Android (Python track only):** `./build_apk.sh` builds a real APK via
+`flet build apk` (needs a Flutter + Android SDK/NDK install first — see
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only)).
+Java, C++, and Spring need a real local compiler/runtime a phone can't
+provide, so those three tracks show as "Desktop only" on Android instead
+of pretending they'll work — only Python actually runs exercises there,
+via an in-process execution engine instead of the desktop app's usual
+subprocess.
+
 ## For developers
 
 ```powershell
@@ -132,7 +143,9 @@ CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
   loaders, category/unlock logic.
 - `app/execution/` — one `ExecutionEngine` per language, all four
   implemented (`python_engine.py`, `java_engine.py`, `cpp_engine.py`,
-  `spring_engine.py`).
+  `spring_engine.py`), plus `python_inprocess_engine.py` (used instead of
+  `python_engine.py` specifically on Android, where subprocess spawning
+  isn't available).
 - `app/progress/` — SQLite-backed XP/streaks/badges/activity log, keyed
   per language track.
 - `app/ui/` — Flet screens.

@@ -13,9 +13,9 @@ language subset rather than a framework), executed against a local
 `g++` toolchain. Spring has its own 6 topic categories, executed against
 a local Maven + JDK toolchain via a scaffolded Maven project run through
 `mvn test` — see `app/execution/spring_engine.py` and "Execution
-engines" below for how that differs from the other three. The app is
-**desktop-only by design**, not by omission — see "Why no Android build"
-below.
+engines" below for how that differs from the other three. Primarily a
+desktop app; there's also a Python-only Android build (`build_apk.sh`)
+— see "Android build (Python-only)" below.
 
 ## Running it
 
@@ -37,8 +37,9 @@ browser tab instead of a native window. It's a one-off way to look at the
 screens (e.g. in Chrome, or on a machine with no display server) — not a
 second supported way to run the app day to day, since exercises need a
 real local subprocess (compiler/interpreter) a browser sandbox can't
-provide; see "Why no Android build" below for the same underlying
-constraint. The port is configurable via the `CODING_ADVENTURE_WEB_PORT`
+provide; see "Android build (Python-only)" below for how the mobile
+build works around that same underlying constraint, for Python only.
+The port is configurable via the `CODING_ADVENTURE_WEB_PORT`
 environment variable (default `8550`); the script echoes whichever port
 it actually started on and opens the browser automatically.
 
@@ -388,21 +389,51 @@ Java sees two entirely independent progress states. XP-to-level curve:
 clearing level *N* costs `N * 100` XP, computed live from one stored
 `total_xp` counter (no separate mutable level field to keep in sync).
 
-### Why no Android build
+### Android build (Python-only)
 
-`build_apk.sh` was briefly added (adapted from the sibling kids' app,
-which does ship an Android build) and then deliberately removed. Both
-`PythonEngine` and `JavaEngine` spawn real subprocess binaries
-(`python -I`; `javac`/`java`) — Android doesn't allow an app to spawn
-arbitrary sibling OS processes at all, and there's no JDK on-device for
-Java regardless. The sibling app worked around this for Python
-specifically by building a second, in-process execution engine (an AST
-transform injects a cooperative watchdog into every loop, standing in
-for the OS-level timeout Android won't allow). There's no equivalent
-workaround for Java — no way to compile or run arbitrary Java without a
-real JDK toolchain, and bundling one into a mobile app sandbox isn't
-realistic. Rather than ship a build where "Run" doesn't work, this app
-targets desktop only.
+`build_apk.sh` builds a real Android APK via `flet build apk` (a real
+Flutter SDK + Android SDK/NDK under the hood — see
+https://flet.dev/docs/publish/android for first-time toolchain setup;
+the script assumes that's already installed). Support is deliberately
+**Python-only**: `PythonEngine`, `JavaEngine`, `CppEngine`, and
+`SpringEngine` all spawn real subprocess binaries (`python -I`;
+`javac`/`java`; `g++`; `mvn`) on desktop/web, but a non-rooted Android
+app can't spawn a sibling OS process at all, and there's no JDK/g++/
+Maven on-device for the other three regardless — bundling a real compiler
+toolchain into a mobile app sandbox isn't realistic (this exact tradeoff
+is why an Android build was skipped entirely for a long time — see git
+history — until the sibling kids' app's approach below was ported over
+for Python specifically).
+
+`PythonInProcessEngine` (`app/execution/python_inprocess_engine.py`),
+ported from the sibling kids' app's `app/sandbox/inprocess_runner.py` +
+`watchdog.py`, works around the subprocess restriction by running
+submitted code with `exec()` in the same process, using an AST transform
+(`app/execution/watchdog.py`) that injects a cooperative watchdog tick
+into every `for`/`while` loop body — standing in for the
+`process.kill()` an OS-level subprocess timeout would normally provide.
+Deliberately does **not** port the sibling app's AST-based builtins/
+import allowlist — that's a kid-safety sandbox this app never needed in
+the first place (see `app/execution/base.py`'s docstring); only the
+loop-cancellation *mechanism* needed porting, since it solves a
+structural "no OS process to kill" problem that has nothing to do with
+the trust model. `app/execution/registry.py` swaps to it automatically
+whenever `android_platform.is_android()` is true (checked via `hasattr
+(sys, "getandroidapilevel")`, an Android-only CPython attribute —
+`platform.system()` can't distinguish Android from a Linux desktop on
+its own, since both report `"Linux"`); every other platform keeps using
+the normal subprocess-based `PythonEngine`.
+
+Java/C++/Spring still register their normal (subprocess) engines on
+Android — there's no separate mobile variant of those — so
+`check_toolchain()` correctly reports their compiler/runtime as missing
+there, same as it would on any desktop machine lacking one. The
+difference is in how that's surfaced: `language_select.py` detects
+`is_android()` and shows those three tracks as **"Desktop only"**
+instead of the normal "Toolchain needed" install-guide dialog, since
+`get_install_guide()`'s desktop OS-specific steps (winget/brew/apt
+commands) would be actively wrong advice on a phone with nowhere to run
+them.
 
 ## Data storage
 
@@ -412,7 +443,12 @@ project-local `data/` folder (gitignored), resolved by
 `resolve_platform_data_dir()` (`app/config/platform_paths.py`) — this
 app runs from a git checkout rather than being installed as a packaged
 product, so progress lives next to the code instead of in an
-OS-appropriate per-user directory. `app/config/settings.py`'s
+OS-appropriate per-user directory. That doesn't hold on Android at all
+(no repo checkout a packaged APK runs from, and the app bundle itself
+may not be reliably writable), so `resolve_platform_data_dir()` checks
+`FLET_APP_STORAGE_DATA` first — a real per-app writable directory
+Flet's own runtime sets on every packaged target, Android included —
+before falling back to `<repo_root>/data`. `app/config/settings.py`'s
 `get_data_dir()` migrates forward, once, from the old
 `%APPDATA%\CodingAdventure\` location if anything's still there from
 before this change, never overwriting a file that already exists at the

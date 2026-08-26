@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.engine.exercise import Exercise
+    from app.execution.watchdog import Watchdog
 
 DEFAULT_TIMEOUT_SECONDS = 8.0
 
@@ -34,10 +35,20 @@ class ExecutionResult:
 
 
 class RunHandle:
-    """Lets the UI cancel a run that's in progress (e.g. an infinite loop)."""
+    """Lets the UI cancel a run that's in progress (e.g. an infinite loop).
+
+    Every engine but PythonInProcessEngine cancels via subprocess.Popen.kill()
+    (attached with `_attach`). PythonInProcessEngine runs in-process instead
+    (needed on Android, which won't let a non-rooted app spawn a sibling OS
+    process) and has no subprocess to kill, so it attaches a Watchdog
+    (`_attach_watchdog`) instead -- cancel() signals whichever one is
+    actually in use. A single RunHandle only ever has one or the other
+    attached, never both, since a given run only ever goes through one
+    engine."""
 
     def __init__(self) -> None:
         self._process: Optional[subprocess.Popen] = None
+        self._watchdog: Optional["Watchdog"] = None
         self._lock = threading.Lock()
         self.cancelled = False
 
@@ -47,11 +58,19 @@ class RunHandle:
             if self.cancelled:
                 process.kill()
 
+    def _attach_watchdog(self, watchdog: "Watchdog") -> None:
+        with self._lock:
+            self._watchdog = watchdog
+            if self.cancelled:
+                watchdog.cancel()
+
     def cancel(self) -> None:
         with self._lock:
             self.cancelled = True
             if self._process is not None:
                 self._process.kill()
+            if self._watchdog is not None:
+                self._watchdog.cancel()
 
 
 class ExecutionEngine(ABC):
