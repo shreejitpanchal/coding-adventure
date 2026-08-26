@@ -34,13 +34,16 @@ def test_locked_until_earlier_levels_complete():
 
 def test_loads_node_content():
     engine = ExerciseEngine("node")
-    assert len(engine) == 30
+    assert len(engine) == 60
     assert engine.has("idioms_gotchas_01")
     categories = engine.categories()
     assert set(categories) == {
         "idioms_gotchas", "core_refresher", "data_structures",
-        "stdlib_deep_dive", "concurrency_async", "gotcha_gauntlet",
+        "stdlib_deep_dive", "concurrency_async", "dependency_management",
+        "sync_vs_async", "functional_programming", "recursion",
+        "observability", "deployment", "gotcha_gauntlet",
     }
+    assert categories[-1] == "gotcha_gauntlet"
 
 
 def test_java_locked_normally_when_not_android(monkeypatch):

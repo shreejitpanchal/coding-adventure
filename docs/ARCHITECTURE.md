@@ -525,10 +525,15 @@ default.
   tracks, and still required zero changes to
   `ExerciseEngine`/`CATEGORY_META`'s lookup logic — only new
   `CATEGORY_META` *entries* for display, same as any other new category.
-  Node.js, added later, reused C++'s exact 6-category set outright (same
-  keys, same `CATEGORY_META` entries already in place) rather than
-  defining new ones, since the same "bare language, no package
-  manager/framework" reasoning applied unchanged.
+  Node.js, added later, started from C++'s exact 6-category set (same
+  keys, same `CATEGORY_META` entries already in place) but then grew to
+  12 categories in a follow-up content pass — Node is a general-purpose,
+  package-manager-heavy ecosystem language like Python/Java, so the
+  "bare language, no package manager/framework" reasoning that fits C++
+  didn't actually hold for it; `dependency_management`, `sync_vs_async`,
+  `functional_programming`, `recursion`, `observability`, and
+  `deployment` all reused `CATEGORY_META` entries already shared with
+  Python/Java, needing no new entries at all.
 - **Crash-containment, not a safety sandbox.** The kids' app this one is
   architecturally based on runs an AST-based builtins/import allowlist
   because it has to defend against accidental-or-adversarial child

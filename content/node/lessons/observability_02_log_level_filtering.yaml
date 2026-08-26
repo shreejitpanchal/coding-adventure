@@ -1,0 +1,73 @@
+id: observability_02
+title: "A Logger With Levels That Never Actually Filters"
+language: node
+level: 47
+objective: "Fix a logging function that records a severity level but never checks it against a minimum threshold, so every call prints regardless of severity."
+explanation: |
+  Giving a log call a `level` argument (`log("debug", "...")`) only
+  labels the message -- it doesn't, by itself, do anything to control
+  *whether* that message actually gets printed. A logging function that
+  accepts a level and unconditionally prints every call is really just
+  `console.log` with an extra decorative label attached; nothing in the
+  code compares that label against anything, so a production
+  configuration that wants "only warnings and above" has no lever to
+  pull -- every `debug` and `info` call floods the output right
+  alongside the warnings and errors that actually matter.
+
+  Real level filtering needs the levels themselves to have a defined
+  *order* (`debug < info < warn < error`, typically as a small lookup
+  object mapping level names to numbers), plus a single configured
+  minimum threshold to compare against: `if (LEVELS[level] <
+  LEVELS[minLevel]) return;` skips the message entirely whenever its
+  level ranks below the configured minimum, and falls through to
+  actually logging otherwise. Configuring "only show warnings and
+  above" then becomes a single line -- `const minLevel = "warn";` --
+  rather than needing to comment out or delete individual log calls by
+  hand every time the desired verbosity changes.
+example_code: |
+  const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+
+  // The trap: level is recorded, but never actually compared to anything.
+  function logTrap(level, msg) {
+    console.log(`${level}: ${msg}`);
+  }
+  const minLevelTrap = "warn";
+  logTrap("debug", "verbose detail");  // prints -- but debug should be filtered out!
+  logTrap("warn", "low disk space");   // prints -- correctly
+
+  // The fix: compare the level's rank against the configured minimum.
+  function log(level, msg, minLevel) {
+    if (LEVELS[level] < LEVELS[minLevel]) return;
+    console.log(`${level}: ${msg}`);
+  }
+  const minLevel = "warn";
+  log("debug", "verbose detail", minLevel);  // filtered out -- nothing prints
+  log("warn", "low disk space", minLevel);   // warn: low disk space
+starter_code: |
+  const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+  function log(level, msg, minLevel) {
+    console.log(`${level}: ${msg}`);
+  }
+  const minLevel = "warn";
+  log("debug", "verbose detail", minLevel);
+  log("info", "status update", minLevel);
+  log("warn", "low disk space", minLevel);
+  log("error", "payment failed", minLevel);
+challenge: |
+  Fix `log` so it only prints messages at or above `minLevel` ("warn"
+  and "error" should print here, "debug" and "info" should be
+  silently filtered out).
+expected_output: |
+  warn: low disk space
+  error: payment failed
+hints:
+  - "if (LEVELS[level] < LEVELS[minLevel]) return; -- add this as the first line inside log, before the console.log."
+  - "LEVELS maps each level name to a number, so comparing LEVELS[level] to LEVELS[minLevel] compares their severity rank."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "LEVELS\\[level\\] < LEVELS\\[minLevel\\]"
+concept_tags: [log_levels, filtering, observability]

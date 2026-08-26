@@ -1,0 +1,76 @@
+id: deployment_03
+title: "Shutting Down Without Closing Anything"
+language: node
+level: 53
+objective: "Fix a process that never closes its database connection on shutdown, by registering a SIGTERM handler instead of relying on the process just exiting."
+explanation: |
+  A running Node process gets a `SIGTERM` signal (the standard,
+  polite "please shut down" signal, sent by process managers, container
+  orchestrators, and `Ctrl+C`'s cousin during deploys and restarts)
+  before it's actually terminated -- but only code that specifically
+  listens for that signal gets any chance to react to it. A process
+  that never calls `process.on("SIGTERM", ...)` doesn't get any
+  opportunity to close database connections, flush buffered writes, or
+  finish in-flight requests before Node's default handling terminates
+  it -- whatever cleanup would have been needed simply never runs,
+  because nothing in the code was ever listening for the signal that
+  should have triggered it.
+
+  Registering a handler with `process.on("SIGTERM", () => { ...
+  cleanup ... })` gives the process a chance to run cleanup logic before
+  it actually exits -- closing connections, finishing outstanding work,
+  and only then either letting the process exit naturally or calling
+  `process.exit()` explicitly once cleanup is confirmed done. This is
+  the difference between "the process eventually stops" and "the
+  process shuts down gracefully" -- the signal was always being sent by
+  whatever's managing the process; whether anything useful happens in
+  response depends entirely on whether a handler was registered to hear
+  it.
+example_code: |
+  let dbConnectedTrap = true;
+  function closeDbTrap() {
+    dbConnectedTrap = false;
+    console.log("db closed");
+  }
+
+  // The trap: no SIGTERM handler registered -- shutdown does nothing.
+  process.emit("SIGTERM");   // simulates the signal a process manager would send
+  console.log("db still connected:", dbConnectedTrap);  // true -- never got a chance to close!
+
+  // The fix: register a handler that actually runs cleanup on shutdown.
+  let dbConnected = true;
+  function closeDb() {
+    dbConnected = false;
+    console.log("db closed");
+  }
+  process.on("SIGTERM", () => {
+    closeDb();
+  });
+  process.emit("SIGTERM");
+  console.log("db still connected:", dbConnected);  // false -- cleanup actually ran
+starter_code: |
+  let dbConnected = true;
+  function closeDb() {
+    dbConnected = false;
+    console.log("db closed");
+  }
+  process.emit("SIGTERM");
+  console.log("db still connected:", dbConnected);
+challenge: |
+  Fix this so the database connection actually closes on shutdown --
+  register a `process.on("SIGTERM", ...)` handler that calls `closeDb()`,
+  before the `process.emit("SIGTERM")` line.
+expected_output: |
+  db closed
+  db still connected: false
+hints:
+  - "process.on(\"SIGTERM\", () => { closeDb(); }); -- add this line before process.emit(\"SIGTERM\")."
+  - "process.emit(\"SIGTERM\") here simulates the real signal a process manager would send -- no actual OS signal needed to test this."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "process\\.on\\(\"SIGTERM\""
+concept_tags: [graceful_shutdown, sigterm, process_signals]

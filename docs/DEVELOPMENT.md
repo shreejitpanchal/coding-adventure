@@ -137,7 +137,7 @@ content/
     quiz/
     scaffold/pom.xml  # shared Maven project template, copied per run
   node/
-    lessons/   # own 6 category keys, same set as cpp/lessons/
+    lessons/   # own 12 category keys -- C++'s 6 plus 6 more, see below
     quiz/
 docs/          # this file + ARCHITECTURE.md
 tests/         # pytest suite, one file per module roughly mirroring app/
@@ -261,19 +261,36 @@ Boot-specific) and one scaffold tweak: the compiler plugin needed
 expressions can resolve a listener parameter by name (e.g.
 `#event.amount`) via reflection.
 
-Node.js reuses C++'s exact 6-category shape (`idioms_gotchas`,
+Node.js started with C++'s exact 6-category shape (`idioms_gotchas`,
 `core_refresher`, `data_structures`, `stdlib_deep_dive`,
-`concurrency_async`, `gotcha_gauntlet`) rather than chasing Python/Java's
-14 -- the same reasoning applies: packaging/deployment/dependency-
-management are ecosystem/tooling concerns (npm, bundlers, deployment
-targets) that don't fit a single `node <file>.js` execution model any
-more than they fit bare C++. `concurrency_async` content is written
-idiomatically for Node's actual concurrency model rather than translated
-from `asyncio`/`CompletableFuture`: the single-threaded event loop's
-microtask (Promise) vs. macrotask (`setTimeout`) ordering, callback- vs.
-Promise- vs. `async`/`await`-style APIs, and `Promise.all` vs.
-`Promise.allSettled` are Node/JS-specific concerns with no direct
-equivalent in the other tracks' concurrency models.
+`concurrency_async`, `gotcha_gauntlet`) when the track first shipped, but
+that reasoning didn't actually hold for JavaScript the way it holds for
+C++: Node is a general-purpose, package-manager-heavy ecosystem language
+like Python/Java, not a bare compiled language with no build tooling of
+its own -- `npm`/`package.json`/`package-lock.json`, structured logging,
+`process.env`-based configuration, and graceful shutdown are all things
+a single `node <file>.js` execution model can exercise perfectly well,
+unlike C++'s genuine lack of an equivalent. A later content pass added
+6 more categories (`dependency_management`, `sync_vs_async`,
+`functional_programming`, `recursion`, `observability`, `deployment`),
+bringing Node to 12 categories total -- closer to Python/Java's 14 than
+to C++/Spring's smaller sets, reflecting that Node is architecturally a
+peer of Python/Java here, not of C++. `concurrency_async` content is
+written idiomatically for Node's actual concurrency model rather than
+translated from `asyncio`/`CompletableFuture`: the single-threaded event
+loop's microtask (Promise) vs. macrotask (`setTimeout`) ordering,
+callback- vs. Promise- vs. `async`/`await`-style APIs, and `Promise.all`
+vs. `Promise.allSettled` are Node/JS-specific concerns with no direct
+equivalent in the other tracks' concurrency models. The newer
+`sync_vs_async` category goes a level deeper into the event loop itself
+-- `process.nextTick`'s queue-jumping priority over Promise microtasks
+(a Node-specific behavior, not part of the ECMAScript spec), a
+synchronous blocking call delaying an already-scheduled timer, and
+`for await...of` over async generators -- while `recursion` includes a
+JS-specific trap the other tracks don't need: V8 never implemented
+proper tail-call optimization despite it being in the ES2015 spec, so
+even a tail-recursive accumulator pattern still overflows the stack on
+deep input, unlike in a language that guarantees the optimization.
 
 ### Daily Refresher
 

@@ -1,0 +1,60 @@
+id: functional_programming_04
+title: "A Frozen Object's Mutation Fails Silently"
+language: node
+level: 39
+objective: "Fix code that assumes assigning to a frozen object's property changed it, by building a new object with spread instead of mutating the frozen one."
+explanation: |
+  `Object.freeze()` makes an object's existing properties read-only --
+  further assignments to them are simply rejected. The surprising part
+  is *how* they're rejected in an ordinary script: outside of strict
+  mode (which a plain `.js` file run directly isn't in, by default),
+  `frozenConfig.retries = 5` doesn't throw anything at all -- it just
+  silently does nothing, and the property keeps its original value.
+  Code that assigns to a frozen property and then trusts the new value
+  took effect is checking a value that never actually changed, with no
+  error anywhere to reveal that the assignment was ignored -- arguably
+  worse than a thrown exception, since nothing about running the code
+  suggests anything went wrong.
+
+  The fix follows directly from what `Object.freeze()` is for in the
+  first place: treat the frozen object as genuinely immutable, and
+  produce an *updated copy* instead of trying to mutate it. The object
+  spread operator does exactly that -- `{ ...config, retries: 5 }`
+  builds a brand-new object with every property `config` had, except
+  `retries`, which is overridden to the new value -- leaving the
+  original frozen object completely untouched (freezing it in the first
+  place was the whole point) while still producing the "updated"
+  configuration the code actually needs.
+example_code: |
+  // The trap: assigning to a frozen property fails SILENTLY, not with an error.
+  const configTrap = Object.freeze({ retries: 3, timeout: 30 });
+  configTrap.retries = 5;
+  console.log(configTrap.retries);  // 3 -- the assignment was silently ignored!
+
+  // The fix: build a new object instead of mutating the frozen one.
+  const config = Object.freeze({ retries: 3, timeout: 30 });
+  const updated = { ...config, retries: 5 };
+  console.log(updated.retries);   // 5 -- a genuinely new object
+  console.log(config.retries);    // 3 -- the original stays frozen and untouched
+starter_code: |
+  const config = Object.freeze({ retries: 3, timeout: 30 });
+  config.retries = 5;
+  console.log(config.retries);
+challenge: |
+  Fix this so the effective retries value is actually 5 -- build a new
+  object with the spread operator (`{ ...config, retries: 5 }`) instead
+  of assigning directly to the frozen `config.retries`, and print the
+  new object's `retries` value.
+expected_output: |
+  5
+hints:
+  - "const updated = { ...config, retries: 5 }; then console.log(updated.retries);"
+  - "The original config object should stay frozen and unused after that -- only the new object is printed."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\{ \\.\\.\\.config, retries: 5 \\}"
+concept_tags: [object_freeze, immutability, spread_update]

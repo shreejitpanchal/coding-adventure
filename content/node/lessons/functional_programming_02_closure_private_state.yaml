@@ -1,0 +1,90 @@
+id: functional_programming_02
+title: "A Counter Factory Sharing One Module-Level Variable"
+language: node
+level: 37
+objective: "Fix a counter factory whose 'independent' instances all secretly share one module-level variable, by moving the counter into the factory's own closure."
+explanation: |
+  `makeCounter()` looks like it should hand back a brand-new, independent
+  counter every time it's called -- that's the whole point of a
+  "factory" function. But if the `increment`/`get` functions it returns
+  close over a variable declared *outside* `makeCounter` (at module
+  level), every counter ever created from that factory closes over the
+  exact same variable, not a fresh one each time. Calling `a.increment()`
+  doesn't just affect `a` -- it affects the one shared variable every
+  other counter reads from too, so `a` and `b` end up reporting the
+  combined total of everything anyone did to either of them, rather than
+  each tracking its own count.
+
+  The fix is to declare the counter variable *inside* `makeCounter`
+  itself, so each call to `makeCounter()` creates a fresh function scope
+  -- and therefore a fresh `count` variable -- for that specific call.
+  The `increment`/`get` closures returned from that call capture *that*
+  particular `count`, not a variable shared with any other call to
+  `makeCounter`. This is the essence of using closures for private
+  state: a variable declared inside a function is invisible and
+  inaccessible from outside it, so it can only ever be read or changed
+  through the specific closures that were handed back from that same
+  call -- true per-instance privacy, with no class or explicit "private
+  field" syntax required at all.
+example_code: |
+  // The trap: sharedCount lives OUTSIDE makeCounter, so every counter
+  // returned from it closes over the exact same variable.
+  let sharedCount = 0;
+  function makeCounterTrap() {
+    return {
+      increment: () => ++sharedCount,
+      get: () => sharedCount,
+    };
+  }
+  const aTrap = makeCounterTrap();
+  const bTrap = makeCounterTrap();
+  aTrap.increment();
+  aTrap.increment();
+  bTrap.increment();
+  console.log(aTrap.get(), bTrap.get());  // 3 3 -- they're the same counter!
+
+  // The fix: count lives INSIDE makeCounter -- a fresh one per call.
+  function makeCounter() {
+    let count = 0;
+    return {
+      increment: () => ++count,
+      get: () => count,
+    };
+  }
+  const a = makeCounter();
+  const b = makeCounter();
+  a.increment();
+  a.increment();
+  b.increment();
+  console.log(a.get(), b.get());  // 2 1 -- genuinely independent
+starter_code: |
+  let sharedCount = 0;
+  function makeCounter() {
+    return {
+      increment: () => ++sharedCount,
+      get: () => sharedCount,
+    };
+  }
+  const a = makeCounter();
+  const b = makeCounter();
+  a.increment();
+  a.increment();
+  b.increment();
+  console.log(a.get(), b.get());
+challenge: |
+  Fix `makeCounter` so `a` and `b` track independent counts (a should
+  end at 2, b at 1) -- move the counter variable inside `makeCounter`
+  itself instead of declaring it at module level.
+expected_output: |
+  2 1
+hints:
+  - "Add `let count = 0;` as the first line INSIDE makeCounter, and reference count instead of sharedCount in both closures."
+  - "The sharedCount declaration outside makeCounter can be deleted entirely once count lives inside it."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "function makeCounter\\(\\) \\{\\s*let count"
+concept_tags: [closures, private_state, factory_function]

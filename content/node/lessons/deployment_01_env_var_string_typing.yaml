@@ -1,0 +1,58 @@
+id: deployment_01
+title: "process.env Values Are Always Strings"
+language: node
+level: 51
+objective: "Fix a timeout calculation that concatenates instead of adding, because every process.env value is a string, never a number."
+explanation: |
+  Every single value in `process.env` is a string, always, no matter
+  what it semantically represents -- there's no such thing as an
+  integer or boolean environment variable at the OS or Node level, only
+  text. `process.env.TIMEOUT_SECONDS` being set to `"45"` in the shell
+  means reading it back gives the *string* `"45"`, not the number `45`,
+  even though it obviously represents a number conceptually. Using `+`
+  on that string and a number doesn't add them numerically -- `+`
+  between a string and anything else concatenates, coercing the other
+  side to a string too, so `"45" + 1` produces the string `"451"`, not
+  the number `46`.
+
+  The fix is to explicitly convert with `Number(...)` (or the unary `+`
+  operator, or `parseInt`) before doing any arithmetic: `Number(process.
+  env.TIMEOUT_SECONDS) + 1` converts the string to an actual number
+  first, so `+` then performs numeric addition instead of string
+  concatenation. This conversion has to happen every time a
+  `process.env` value is used numerically -- there's no way to make an
+  environment variable "be" a number instead of a string at the source,
+  since the OS itself only ever stores environment variables as text.
+example_code: |
+  process.env.TIMEOUT_SECONDS = "45";
+
+  // The trap: + between a string and a number concatenates, not adds.
+  const bufferedTrap = process.env.TIMEOUT_SECONDS + 1;
+  console.log(bufferedTrap);          // "451" -- string concatenation!
+  console.log(typeof bufferedTrap);   // string
+
+  // The fix: convert to a number FIRST, then add.
+  const buffered = Number(process.env.TIMEOUT_SECONDS) + 1;
+  console.log(buffered);              // 46 -- genuine numeric addition
+  console.log(typeof buffered);       // number
+starter_code: |
+  process.env.TIMEOUT_SECONDS = "45";
+  const buffered = process.env.TIMEOUT_SECONDS + 1;
+  console.log(buffered);
+challenge: |
+  Fix this so `buffered` is the number 46 (the timeout plus one second
+  of buffer), not the string "451" -- convert `process.env.
+  TIMEOUT_SECONDS` to a number with `Number(...)` before adding 1.
+expected_output: |
+  46
+hints:
+  - "const buffered = Number(process.env.TIMEOUT_SECONDS) + 1;"
+  - "process.env values are always strings, even when they look numeric -- convert before doing math, not after."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "Number\\(process\\.env\\.TIMEOUT_SECONDS\\)"
+concept_tags: [process_env, string_typing, type_conversion]

@@ -1,0 +1,71 @@
+id: recursion_05
+title: "Recomputing the Same Fibonacci Call Millions of Times"
+language: node
+level: 45
+objective: "Fix a naive recursive Fibonacci function's exponential blowup by memoizing already-computed results in a Map."
+explanation: |
+  The naive recursive definition `fib(n) = fib(n-1) + fib(n-2)` is a
+  direct, correct translation of the mathematical definition -- and it's
+  also exponentially wasteful, because the *same* smaller sub-problems
+  get recomputed over and over. `fib(5)` calls `fib(4)` and `fib(3)`,
+  but `fib(4)` *also* calls `fib(3)` internally -- the entire subtree for
+  `fib(3)` gets computed twice, and each of those calls `fib(2)` twice
+  more, and so on. The number of redundant calls roughly doubles with
+  each additional step of `n`, so `fib(20)` is fast, `fib(35)` is
+  noticeably slow, and `fib(45)` can take minutes -- purely from
+  recomputing identical sub-problems an exponentially growing number of
+  times, not because the *answer* is expensive to represent.
+
+  Memoization fixes this by caching each sub-problem's result the first
+  time it's computed, and returning the cached value immediately on
+  every subsequent call with the same input -- `fib(3)` gets computed
+  exactly once, ever, no matter how many different call paths would
+  otherwise have needed it. A `Map` passed through the recursive calls
+  (defaulting to a fresh one on the outermost call) works well as the
+  cache: `memo.has(n)` checks whether this exact sub-problem was already
+  solved, and `memo.set(n, result)` records it before returning. This
+  turns the exponential-time naive recursion into linear time -- each
+  distinct value of `n` from `0` up to the original input gets computed
+  exactly once.
+example_code: |
+  // The trap: exponential blowup -- fib(3) gets recomputed independently,
+  // over and over, once for every call path that happens to need it.
+  function fibTrap(n) {
+    if (n <= 1) return n;
+    return fibTrap(n - 1) + fibTrap(n - 2);
+  }
+  console.log(fibTrap(20));  // 6765 -- correct, but does exponentially more work than needed
+
+  // The fix: cache each sub-problem's result the first time it's solved.
+  function fib(n, memo = new Map()) {
+    if (n <= 1) return n;
+    if (memo.has(n)) return memo.get(n);
+    const result = fib(n - 1, memo) + fib(n - 2, memo);
+    memo.set(n, result);
+    return result;
+  }
+  console.log(fib(20));  // 6765 -- same answer, linear number of calls instead of exponential
+starter_code: |
+  function fib(n) {
+    if (n <= 1) return n;
+    return fib(n - 1) + fib(n - 2);
+  }
+  console.log(fib(20));
+challenge: |
+  Rewrite `fib` to memoize its results in a Map (passed as a second
+  parameter, defaulting to a fresh Map), so each value of n is only
+  ever actually computed once, keeping the same output (6765).
+expected_output: |
+  6765
+hints:
+  - "function fib(n, memo = new Map()) { ... } -- add the memo parameter with a default so the outermost call gets a fresh cache."
+  - "Check memo.has(n) first and return memo.get(n) if present; otherwise compute, memo.set(n, result), then return it."
+xp_reward: 15
+achievement: recursion_master
+category: recursion
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "memo\\.has\\("
+  - "memo\\.set\\("
+concept_tags: [memoization, fibonacci, exponential_time]

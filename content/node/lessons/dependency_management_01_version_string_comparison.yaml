@@ -1,0 +1,65 @@
+id: dependency_management_01
+title: "Comparing Version Strings Lexicographically"
+language: node
+level: 26
+objective: "Fix a version comparison that treats version strings as text instead of comparing their numeric parts."
+explanation: |
+  Version strings look numeric, but `<`/`>` on two strings in JavaScript
+  compares them character by character, like a dictionary -- not as
+  numbers. `"1.9.0" < "1.10.0"` compares the characters `"1.9.0"` and
+  `"1.10.0"` directly: the first characters both `"1"` are equal, the
+  second characters are `"."` vs `"."` (equal), then `"9"` vs `"1"` --
+  and `"9"` sorts *after* `"1"` lexicographically, so `"1.9.0" <
+  "1.10.0"` is `false`, even though version 1.9.0 genuinely came before
+  1.10.0. This is the exact same trap as sorting numbers with `Array.
+  prototype.sort()`'s string-based default -- comparing text that looks
+  like numbers is never the same as comparing the numbers themselves.
+
+  The fix is to split each version into its numeric components and
+  compare them one segment at a time: split on `"."`, convert each piece
+  with `Number(...)`, then compare segment-by-segment left to right,
+  returning as soon as one segment differs. `(pa[i] || 0) - (pb[i] || 0)`
+  also handles versions with a different number of segments gracefully
+  (`"1.2"` vs `"1.2.0"`) by treating a missing trailing segment as `0`,
+  matching how semantic versioning treats those two strings as
+  equivalent.
+example_code: |
+  // The trap: comparing version strings directly compares them as text.
+  console.log("1.9.0" < "1.10.0");   // false -- WRONG, 1.9.0 is the earlier version
+
+  // The fix: split into numeric segments and compare each in turn.
+  function compareVersions(a, b) {
+    const partsA = a.split(".").map(Number);
+    const partsB = b.split(".").map(Number);
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const diff = (partsA[i] || 0) - (partsB[i] || 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+  console.log(compareVersions("1.9.0", "1.10.0"));  // negative -- 1.9.0 is earlier
+  console.log(compareVersions("1.10.0", "1.9.0"));  // positive -- 1.10.0 is later
+  console.log(compareVersions("1.2", "1.2.0"));      // 0 -- treated as equal
+starter_code: |
+  function isOlder(a, b) {
+    return a < b;
+  }
+  console.log(isOlder("1.9.0", "1.10.0"));
+challenge: |
+  Rewrite `isOlder` to compare the two version strings by their numeric
+  segments instead of as plain text, so it correctly reports that
+  "1.9.0" is older than "1.10.0" (should print true).
+expected_output: |
+  true
+hints:
+  - "Split each version on \".\" and map(Number) to get an array of numeric segments."
+  - "Compare segment-by-segment left to right; the first segment that differs decides the result."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "\\.split\\(\"\\.\"\\)"
+  - "Number"
+concept_tags: [version_comparison, semver, string_vs_numeric_comparison]

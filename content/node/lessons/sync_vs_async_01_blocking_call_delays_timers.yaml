@@ -1,0 +1,80 @@
+id: sync_vs_async_01
+title: "A Blocking Call Delays Already-Scheduled Timers"
+language: node
+level: 31
+objective: "Fix a scheduled setTimeout callback that fires later than expected because synchronous blocking work runs before it, by deferring the blocking work into its own timer."
+explanation: |
+  Node is single-threaded: exactly one piece of JavaScript runs at a
+  time, and nothing else -- including a `setTimeout` callback that was
+  registered moments ago -- can run until the currently executing
+  synchronous code finishes completely. `setTimeout(fn, 0)` doesn't mean
+  "run this immediately, interrupting whatever's running now" -- it
+  means "run this as soon as the event loop is free to get to it," which
+  is *after* every synchronous statement still queued to run finishes,
+  no matter how long that takes. A synchronous, CPU-bound operation
+  (the kind `fs.readFileSync` or a heavy computation represents) that
+  runs immediately after scheduling a timer blocks the entire event loop
+  for its whole duration -- the already-scheduled timer simply has to
+  wait its turn, arriving noticeably later than "0ms" would suggest.
+
+  The fix isn't to make the blocking work faster -- it's to stop it from
+  running synchronously in the critical path at all. Wrapping the
+  blocking work in its own `setTimeout(fn, 0)` defers it to the same
+  *phase* of the event loop as the already-scheduled timer, and
+  same-phase timers with equal delays run in the order they were
+  registered -- so a timer registered first still gets to run first,
+  before the deferred blocking work even starts. This is the same
+  underlying idea as replacing `fs.readFileSync` with `fs.readFile` in
+  real code: moving work off the synchronous critical path so it can't
+  starve everything else waiting for a turn.
+example_code: |
+  function blockingWork(ms) {
+    const start = Date.now();
+    while (Date.now() - start < ms) {}   // busy-wait -- stands in for any blocking call
+  }
+
+  // The trap: blockingWork runs synchronously, delaying the timer that
+  // was already scheduled to run "immediately".
+  console.log("start");
+  setTimeout(() => console.log("timer fired"), 0);
+  blockingWork(30);
+  console.log("end (trap)");
+  // Prints: start, end (trap), timer fired -- the timer had to wait the WHOLE 30ms.
+
+  // The fix: defer the blocking work into its own timer instead of
+  // running it synchronously -- the earlier-registered timer now wins.
+  console.log("start");
+  setTimeout(() => console.log("timer fired"), 0);
+  setTimeout(() => {
+    blockingWork(30);
+    console.log("end (fixed)");
+  }, 0);
+  // Prints: start, timer fired, end (fixed) -- the timer ran on schedule.
+starter_code: |
+  function blockingWork(ms) {
+    const start = Date.now();
+    while (Date.now() - start < ms) {}
+  }
+  console.log("start");
+  setTimeout(() => console.log("timer fired"), 0);
+  blockingWork(30);
+  console.log("end");
+challenge: |
+  Fix this so "timer fired" prints before "end" -- defer the
+  blockingWork(30) call (and the "end" log after it) into its own
+  setTimeout(fn, 0) instead of running it synchronously.
+expected_output: |
+  start
+  timer fired
+  end
+hints:
+  - "Wrap both the blockingWork(30) call and the final console.log in a single setTimeout(() => { ... }, 0)."
+  - "The setTimeout for \"timer fired\" must stay registered BEFORE the one wrapping the blocking work."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "setTimeout\\(\\(\\) => \\{"
+concept_tags: [event_loop, blocking_call, settimeout_ordering]

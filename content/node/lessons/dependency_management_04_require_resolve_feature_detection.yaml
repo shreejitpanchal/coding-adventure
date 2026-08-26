@@ -1,0 +1,74 @@
+id: dependency_management_04
+title: "Detecting an Optional Dependency Without Crashing"
+language: node
+level: 29
+objective: "Fix code that crashes when an optional dependency isn't installed, by checking for it with require.resolve inside a try/catch."
+explanation: |
+  `require("some-package")` does two things at once: it locates the
+  module on disk (resolving it through `node_modules`), and it actually
+  loads and executes it. If a package genuinely isn't installed --
+  common for an *optional* dependency a project can run perfectly well
+  without -- `require()` throws a `MODULE_NOT_FOUND` error the instant
+  it's called, crashing any code that assumed the package would simply
+  be there. That's the right behavior for a hard, required dependency
+  (fail loudly and immediately), but it's the wrong tool for "check
+  whether this optional package happens to be available, and fall back
+  gracefully if not."
+
+  `require.resolve(name)` performs only the *first* half of what
+  `require()` does -- it resolves the module's location without loading
+  or executing it -- and throws the exact same kind of error if the
+  module can't be found. Wrapping that resolution step alone in
+  `try`/`catch` gives a clean feature-detection check: `try {
+  require.resolve(name); return true; } catch { return false; }`
+  answers "is this installed?" without ever actually loading the
+  module, and without crashing the caller when the answer is "no."
+example_code: |
+  // The trap: require() itself throws the instant the module is missing.
+  function loadOptionalTrap(name) {
+    const mod = require(name);   // throws MODULE_NOT_FOUND if not installed
+    return mod;
+  }
+  try {
+    loadOptionalTrap("definitely-not-installed-xyz");
+  } catch (e) {
+    console.log("crashed:", e.code);  // crashed: MODULE_NOT_FOUND
+  }
+
+  // The fix: require.resolve() only checks availability, doesn't load anything.
+  function isInstalled(name) {
+    try {
+      require.resolve(name);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  console.log(isInstalled("fs"));                          // true -- a real, built-in module
+  console.log(isInstalled("definitely-not-installed-xyz")); // false -- caught, no crash
+starter_code: |
+  function isInstalled(name) {
+    require(name);
+    return true;
+  }
+  console.log(isInstalled("fs"));
+  console.log(isInstalled("definitely-not-installed-xyz"));
+challenge: |
+  Fix `isInstalled` so checking for a missing package returns `false`
+  instead of crashing the whole script -- use `require.resolve(name)`
+  inside a try/catch instead of `require(name)` directly.
+expected_output: |
+  true
+  false
+hints:
+  - "Wrap require.resolve(name) in a try/catch, returning true from the try and false from the catch."
+  - "require.resolve only locates the module -- it never executes it, unlike require() itself."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "require\\.resolve\\("
+  - "catch"
+concept_tags: [require_resolve, feature_detection, optional_dependency]

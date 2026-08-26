@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_01
 title: "forEach + splice: The Silent Skip"
 language: node
-level: 26
+level: 56
 objective: "Replace an in-place forEach/splice removal with .filter() so no element gets silently skipped."
 explanation: |
   `forEach` walks an array by index, and `splice` inside the callback

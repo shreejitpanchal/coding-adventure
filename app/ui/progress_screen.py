@@ -1,11 +1,49 @@
 """Per-track dashboard: streak, XP, mastery by topic, achievements."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import flet as ft
 
 from app.engine.categories import get_category_meta
 from app.ui.app_state import AppState
 from app.ui.theme import scaled
+
+_FAILURE_EVENT_TYPES = {"attempt_error", "attempt_wrong_output", "attempt_timeout", "attempt_blocked"}
+_ACTIVITY_LOOKBACK_DAYS = 14
+_ACTIVITY_DISPLAY_LIMIT = 15
+
+
+def _relative_time(iso_timestamp: str) -> str:
+    dt = datetime.fromisoformat(iso_timestamp)
+    seconds = (datetime.now(timezone.utc) - dt).total_seconds()
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m ago"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h ago"
+    return f"{int(seconds // 86400)}d ago"
+
+
+def _describe_activity(row, engine) -> str:
+    event_type = row["event_type"]
+    lesson_id = row["lesson_id"]
+    detail = row["detail"] or ""
+    exercise = engine.get(lesson_id) if lesson_id else None
+    title = exercise.title if exercise else (lesson_id or "")
+
+    if event_type == "lesson_completed":
+        return f'✓ Completed "{title}"'
+    if event_type == "badge_earned":
+        return f"🏆 Earned achievement: {detail.replace('_', ' ').title()}"
+    if event_type == "quiz_completed":
+        return f"❓ Quiz finished -- {detail}"
+    if event_type == "hint_used":
+        return f'💡 Used a hint on "{title}"'
+    if event_type in _FAILURE_EVENT_TYPES:
+        return f'✗ Attempt didn\'t pass on "{title}"'
+    return f"{event_type}: {detail}" if detail else event_type
 
 
 def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
@@ -56,13 +94,20 @@ def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
         meta = get_category_meta(category)
         items = engine.lessons_in_category(category)
         done = sum(1 for ex in items if ex.id in completed_ids)
-        pct = round(100 * done / len(items)) if items else 0
+        fraction = (done / len(items)) if items else 0
+        pct = round(100 * fraction)
         mastery_rows.append(
-            ft.Row(
+            ft.Column(
                 [
-                    ft.Text(f"{meta.icon} {meta.title}", size=fs(14), color=theme.text, expand=True),
-                    ft.Text(f"{done}/{len(items)} ({pct}%)", size=fs(13), color=theme.text_muted),
+                    ft.Row(
+                        [
+                            ft.Text(f"{meta.icon} {meta.title}", size=fs(14), color=theme.text, expand=True),
+                            ft.Text(f"{done}/{len(items)} ({pct}%)", size=fs(13), color=theme.text_muted),
+                        ],
+                    ),
+                    ft.ProgressBar(value=fraction, bgcolor=theme.bg, color=meta.color, height=8, border_radius=4),
                 ],
+                spacing=4,
             )
         )
     mastery_card = ft.Container(
@@ -93,10 +138,37 @@ def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
         bgcolor=theme.card, border_radius=16, padding=20,
     )
 
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=_ACTIVITY_LOOKBACK_DAYS)).isoformat()
+    recent_activity = progress.get_activity_since(state.language, cutoff)[:_ACTIVITY_DISPLAY_LIMIT]
+    activity_rows = [
+        ft.Row(
+            [
+                ft.Text(_describe_activity(row, engine), size=fs(13), color=theme.text, expand=True),
+                ft.Text(_relative_time(row["timestamp"]), size=fs(11), color=theme.text_muted),
+            ],
+            spacing=8,
+        )
+        for row in recent_activity
+    ]
+    activity_card = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Recent activity", size=fs(16), weight=ft.FontWeight.BOLD, color=theme.text),
+                *(activity_rows if activity_rows
+                  else [ft.Text("Nothing yet -- come back after your first exercise or quiz.", size=fs(13), color=theme.text_muted)]),
+            ],
+            spacing=8,
+        ),
+        bgcolor=theme.card, border_radius=16, padding=20,
+    )
+
     return ft.View(
         route="/progress",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
         padding=ft.padding.Padding.only(left=24, top=24, right=24, bottom=40),
-        controls=[header, ft.Container(height=12), xp_card, ft.Container(height=12), mastery_card, ft.Container(height=12), achievements_card],
+        controls=[
+            header, ft.Container(height=12), xp_card, ft.Container(height=12), mastery_card,
+            ft.Container(height=12), achievements_card, ft.Container(height=12), activity_card,
+        ],
     )

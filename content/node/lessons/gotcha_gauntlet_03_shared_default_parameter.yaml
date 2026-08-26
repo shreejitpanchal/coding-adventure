@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_03
 title: "A Default Parameter Pointing at a Shared Array"
 language: node
-level: 28
+level: 58
 objective: "Fix a default parameter that references a module-level array, so every call doesn't accumulate into the same shared list."
 explanation: |
   Unlike Python's mutable-default-argument trap (where the default

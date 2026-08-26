@@ -1,0 +1,63 @@
+id: deployment_04
+title: "A Health Check That Passes If ANY Component Is Healthy"
+language: node
+level: 54
+objective: "Fix a health check aggregator that reports healthy as long as one component passes, by requiring every component to pass instead."
+explanation: |
+  `.some()` and `.every()` both take a predicate and run it across every
+  element, but they answer opposite questions: `.some()` returns `true`
+  the moment *any* element satisfies the predicate, while `.every()`
+  returns `true` only if *all* of them do. For a health check aggregator
+  -- combining the results of several independent sub-checks (database
+  reachable, cache reachable, disk space available) into one overall
+  "is the system healthy" answer -- `.some()` is exactly the wrong
+  combinator: it reports healthy as soon as a single check passes,
+  completely ignoring the fact that every other check might be failing
+  at the same time. A system with a working cache but a completely
+  unreachable database would be reported healthy, since `.some()` only
+  needed one check to succeed.
+
+  The correct aggregation for "the system is healthy" is that *every*
+  component must be healthy -- `.every()` is the combinator that
+  actually expresses that requirement: it short-circuits to `false` the
+  moment any single check fails, and only returns `true` once every
+  check in the list has passed. The one-word difference between `.some()`
+  and `.every()` is the entire difference between "at least one thing is
+  working" and "nothing is broken" -- two very different claims for a
+  health check to be making.
+example_code: |
+  // The trap: .some() reports healthy if even ONE check passes.
+  function isHealthyTrap(checks) {
+    return checks.some((check) => check());
+  }
+  const checksTrap = [() => true, () => false, () => true];  // one check is failing!
+  console.log(isHealthyTrap(checksTrap));  // true -- WRONG, a check is failing
+
+  // The fix: .every() requires ALL checks to pass.
+  function isHealthy(checks) {
+    return checks.every((check) => check());
+  }
+  const checks = [() => true, () => false, () => true];
+  console.log(isHealthy(checks));  // false -- correctly reports the failure
+starter_code: |
+  function isHealthy(checks) {
+    return checks.some((check) => check());
+  }
+  const checks = [() => true, () => false, () => true];
+  console.log(isHealthy(checks));
+challenge: |
+  Fix `isHealthy` so it only reports true when EVERY check passes --
+  replace `.some()` with `.every()`.
+expected_output: |
+  false
+hints:
+  - "return checks.every((check) => check()); -- just swap .some for .every."
+  - "The rest of the function and the checks array don't need to change at all."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\.every\\("
+concept_tags: [health_check, some_vs_every, aggregation]

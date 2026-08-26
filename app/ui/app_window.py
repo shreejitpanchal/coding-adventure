@@ -43,6 +43,14 @@ def main(page: ft.Page) -> None:
             history.append(page.views[-1].route)
         navigating_back["value"] = False
 
+        # Remember where a lesson was entered FROM (but not lesson-to-lesson,
+        # e.g. clicking "Next exercise" -- that keeps the original origin so
+        # a whole Daily Refresher chain still returns to /daily at the end).
+        if route.startswith("/lesson/") and page.views:
+            previous_route = page.views[-1].route
+            if not previous_route.startswith("/lesson/"):
+                state.lesson_return_route = previous_route
+
         page.views.clear()
 
         if route == "/languages":

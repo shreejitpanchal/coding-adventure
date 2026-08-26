@@ -1,0 +1,72 @@
+id: functional_programming_05
+title: "A Wrapper Function vs Partial Application with bind"
+language: node
+level: 40
+objective: "Replace a hand-written wrapper function that fixes one argument with Function.prototype.bind, which does the same thing generically."
+explanation: |
+  Writing `function double(n) { return multiply(2, n); }` to "fix" one
+  argument of `multiply` and leave the other open works, but it's a
+  brand-new function definition every time a different argument needs
+  fixing -- `triple`, `quadruple`, or "multiply by whatever this
+  particular caller needs" would each require their own hand-written
+  wrapper, each repeating the same shape: call the original function,
+  hard-code one argument, forward the rest.
+
+  `Function.prototype.bind(thisArg, ...boundArgs)` does exactly this
+  generically, for any function: `multiply.bind(null, 2)` returns a
+  *new* function that, when called, invokes `multiply` with `2` already
+  supplied as the first argument, forwarding whatever arguments the new
+  function receives as the remaining ones. This is "partial
+  application" -- fixing some of a function's arguments ahead of time
+  and getting back a function that only needs the rest -- and `bind()`
+  gives it to any existing function for free, without writing a new
+  named wrapper function for every specific case. The first argument to
+  `bind()` (`null` here) sets what `this` should be inside the bound
+  function when it's called -- irrelevant for a plain function like
+  `multiply` that never uses `this`, but the same mechanism `bind()`
+  uses elsewhere to permanently attach a method to a specific object
+  (`c.increment.bind(c)`), covered in this track's `this`-binding
+  exercise.
+example_code: |
+  function multiply(a, b) {
+    return a * b;
+  }
+
+  // The trap: a hand-written wrapper for every "fix one argument" case.
+  function double(n) {
+    return multiply(2, n);
+  }
+  console.log(double(5), double(10));  // 10 20
+
+  // The fix: bind() does this generically, for any function.
+  const triple = multiply.bind(null, 3);
+  console.log(triple(5), triple(10));  // 15 30
+
+  // Applies to double too, with no hand-written wrapper at all.
+  const doubleBound = multiply.bind(null, 2);
+  console.log(doubleBound(5), doubleBound(10));  // 10 20
+starter_code: |
+  function multiply(a, b) {
+    return a * b;
+  }
+  function double(n) {
+    return multiply(2, n);
+  }
+  console.log(double(5), double(10), double(15));
+challenge: |
+  Replace the hand-written `double` wrapper function with a partially
+  applied function built via `multiply.bind(null, 2)`, keeping the same
+  output (10 20 30).
+expected_output: |
+  10 20 30
+hints:
+  - "const double = multiply.bind(null, 2); replaces the whole function double(n) { ... } declaration."
+  - "The first argument to bind (null here) sets `this` -- irrelevant for multiply, which never uses it."
+xp_reward: 10
+achievement: functional_programming_master
+category: functional_programming
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "multiply\\.bind\\(null, 2\\)"
+concept_tags: [partial_application, function_bind, currying]

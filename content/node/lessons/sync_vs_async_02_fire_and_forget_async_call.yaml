@@ -1,0 +1,86 @@
+id: sync_vs_async_02
+title: "Calling an async Function Without Awaiting It"
+language: node
+level: 32
+objective: "Fix code that logs 'done' before an async operation actually finishes, by awaiting the call instead of firing it and moving on."
+explanation: |
+  Calling an `async` function without `await`ing it doesn't wait for
+  anything -- it starts the function running, immediately gets back a
+  `Promise` representing its eventual result, and then keeps going with
+  the very next line, whether or not the async function has finished (or
+  even truly started its own internal async work yet). `saveRecord()`
+  called bare, with no `await`, behaves exactly like calling any
+  function that happens to return a value nobody looked at: the calling
+  code has no idea when -- or whether -- the work inside actually
+  completes, because it never asked to be told.
+
+  This is called "fire-and-forget," and it's sometimes genuinely the
+  right choice (a background analytics ping nobody needs to wait for),
+  but it's a bug whenever the calling code's own correctness depends on
+  the async work actually finishing first -- logging "done" before a
+  record has actually finished saving is misleading at best, and a real
+  correctness bug if anything downstream assumes the save has completed
+  once "done" appears. `await saveRecord()` is the fix: it pauses the
+  enclosing `async` function at that exact point until `saveRecord`'s
+  promise settles, so "done" only prints once the save genuinely
+  finished -- the one-word difference between `saveRecord()` and `await
+  saveRecord()` is the entire difference between "started" and
+  "finished."
+example_code: |
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  async function saveRecord() {
+    await sleep(10);
+    console.log("record saved");
+  }
+
+  // The trap: fire-and-forget -- "done" logs before the save finishes.
+  async function fireAndForget() {
+    console.log("starting");
+    saveRecord();               // not awaited -- moves on immediately
+    console.log("done");
+  }
+  fireAndForget();
+  // Prints: starting, done, record saved -- "done" lied about the save being finished.
+
+  // The fix: await pauses until saveRecord's own work genuinely completes.
+  async function main() {
+    console.log("starting");
+    await saveRecord();
+    console.log("done");
+  }
+  main();
+  // Prints: starting, record saved, done -- in the order that's actually true.
+starter_code: |
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  async function saveRecord() {
+    await sleep(10);
+    console.log("record saved");
+  }
+  async function main() {
+    console.log("starting");
+    saveRecord();
+    console.log("done");
+  }
+  main();
+challenge: |
+  Fix `main` so "record saved" prints before "done" -- await the call
+  to `saveRecord()` instead of firing it without waiting.
+expected_output: |
+  starting
+  record saved
+  done
+hints:
+  - "await saveRecord(); -- just add the await keyword in front of the existing call."
+  - "main is already declared async, so await is valid to use inside it."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "await saveRecord\\(\\)"
+concept_tags: [fire_and_forget, await, async_ordering]

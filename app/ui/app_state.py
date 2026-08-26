@@ -41,6 +41,13 @@ class AppState:
         self.language: str = self.settings.last_selected_language or "python"
         self._exercise_engines: dict[str, ExerciseEngine] = {}
         self._quiz_engines: dict[str, QuizEngine] = {}
+        # Where the lesson screen's Back button (and a completed exercise's
+        # "Next exercise" logic) should return to -- set by app_window.py's
+        # route_change() to whatever route was active just before entering
+        # a /lesson/* route, so leaving a lesson lands back on the Daily
+        # Refresher / category list / hub the user actually came from,
+        # instead of always jumping to the hub.
+        self.lesson_return_route: str = "/hub"
 
     @property
     def theme(self) -> ThemePreset:

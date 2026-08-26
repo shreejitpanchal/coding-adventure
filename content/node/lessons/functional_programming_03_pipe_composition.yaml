@@ -1,0 +1,70 @@
+id: functional_programming_03
+title: "Nested Calls vs a pipe() Helper"
+language: node
+level: 38
+objective: "Replace deeply nested manual function calls with a reusable pipe() helper that applies functions left-to-right."
+explanation: |
+  Chaining several transformations by nesting function calls --
+  `exclaim(lower(trim(text)))` -- runs correctly, but reads
+  *backwards* from the order the transformations actually happen in:
+  the function applied *last* to the data (`trim`) is written
+  *innermost*, and the one applied *first* to see the final shape
+  (`exclaim`) is written *outermost*. A reader has to parse from the
+  center outward to reconstruct the real sequence of operations, and
+  adding a fourth transformation means editing deep inside an
+  increasingly nested expression rather than appending to a list.
+
+  A `pipe(...fns)` helper flips this: it takes any number of
+  single-argument functions and returns a *new* function that runs them
+  in the order they were listed, each one's output feeding the next
+  one's input -- built with `.reduce()`, starting from the initial value
+  and threading it through every function in `fns` in turn. `pipe(trim,
+  lower, exclaim)` reads left-to-right in exactly the order the
+  transformations happen, and adding a new step is just adding another
+  argument to the list, not restructuring nested parentheses. This
+  "small functions combined by a generic combinator" style is the core
+  idea functional programming brings to everyday code, independent of
+  any specific library.
+example_code: |
+  const trim = (s) => s.trim();
+  const lower = (s) => s.toLowerCase();
+  const exclaim = (s) => s + "!";
+
+  // The trap: nested calls read in reverse order of execution.
+  console.log(exclaim(lower(trim("  HELLO  "))));  // hello!
+
+  // The fix: pipe() reads left-to-right, in the actual order of operations.
+  const pipe = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x);
+  const shout = pipe(trim, lower, exclaim);
+  console.log(shout("  HELLO  "));  // hello!
+
+  // Adding a step is just appending to the list, no nesting to restructure.
+  const shoutTwice = pipe(trim, lower, exclaim, exclaim);
+  console.log(shoutTwice("  HELLO  "));  // hello!!
+starter_code: |
+  const trim = (s) => s.trim();
+  const lower = (s) => s.toLowerCase();
+  const exclaim = (s) => s + "!";
+
+  function shout(text) {
+    return exclaim(lower(trim(text)));
+  }
+  console.log(shout("  HELLO  "));
+challenge: |
+  Rewrite `shout` using a `pipe(...fns)` helper (built with `.reduce()`)
+  instead of manually nesting the three function calls, keeping the
+  same output.
+expected_output: |
+  hello!
+hints:
+  - "const pipe = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x);"
+  - "const shout = pipe(trim, lower, exclaim); -- the order in the argument list is the order of execution."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "\\.reduce\\("
+  - "pipe\\("
+concept_tags: [function_composition, pipe, reduce]

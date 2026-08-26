@@ -36,11 +36,13 @@ through in a few focused minutes, not tutorials to sit through.
   framework C++ doesn't have here), Spring covers 6 (Dependency
   Injection, Bean Lifecycle & Scopes, Configuration & Profiles,
   Application Events, Aspect-Oriented Programming, and Resilience
-  Patterns), and Node.js covers the same 6 category keys as C++ (Idioms
-  & Gotchas, Core Language Refresher, Data Structures, Standard Library
-  Deep Dive, Concurrency & Async, and Gotcha Gauntlet), since JavaScript
-  runtime concerns overlap more with a bare language track than with a
-  package-manager-heavy general-purpose one.
+  Patterns), and Node.js covers 12 (the same 6 as C++ — Idioms & Gotchas,
+  Core Language Refresher, Data Structures, Standard Library Deep Dive,
+  Concurrency & Async, Gotcha Gauntlet — plus Dependency Management,
+  Sync vs Async, Functional Programming, Recursion, Observability, and
+  Deployment, since JavaScript is a general-purpose, package-manager-
+  heavy ecosystem language like Python/Java, not a bare compiled
+  language the way C++ is here).
   - **Python** — 75 exercises (mutable defaults, race conditions, float
     precision, silent exception swallowing, GIL vs true parallelism, and
     more).
@@ -69,16 +71,24 @@ through in a few focused minutes, not tutorials to sit through.
     resilience4j-all) rather than Spring Boot, so `mvn test` stays fast
     and fully offline after the shared scaffold's dependencies are
     warmed once.
-  - **Node.js** — 30 exercises (loose vs. strict equality, `var`'s
+  - **Node.js** — 60 exercises (loose vs. strict equality, `var`'s
     function-scoped closures, floating-point precision, detached-method
     `this` binding, destructuring/spread/optional chaining, `Map`/`Set`
     vs. plain objects, `filter`/`map`/`reduce` pipelines, the
     microtask/macrotask event-loop ordering behind `Promise` vs.
-    `setTimeout`, `Promise.all` vs. `allSettled`, sequential `await` in a
-    loop vs. concurrent `Promise.all`, and more), run directly with
-    `node` (no separate compile step, unlike Java/C++).
+    `setTimeout`, `process.nextTick`'s queue-jumping priority,
+    `Promise.all` vs. `allSettled`, sequential `await` in a loop vs.
+    concurrent `Promise.all`, `for await...of` over async generators,
+    semver/`package.json`/`package-lock.json` version resolution,
+    closures for private state, `pipe()` composition, `Object.freeze`'s
+    silent-failure mutation, partial application via `bind()`, recursion
+    without tail-call optimization (V8 never implemented it), memoized
+    Fibonacci, `AsyncLocalStorage` for correlation IDs, structured JSON
+    logging, `process.env`'s string-only typing, graceful `SIGTERM`
+    shutdown, and more), run directly with `node` (no separate compile
+    step, unlike Java/C++).
 - **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
-  questions, 44 Spring questions, 33 Node.js questions, reshuffled every
+  questions, 44 Spring questions, 63 Node.js questions, reshuffled every
   session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.

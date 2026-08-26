@@ -1,0 +1,67 @@
+id: recursion_04
+title: "Measuring Depth Without Actually Recursing Into It"
+language: node
+level: 44
+objective: "Fix a nesting-depth counter that only looks one level down, by actually recursing into each value and combining the results."
+explanation: |
+  Checking `Object.keys(obj).length > 0 ? 1 : 0` answers "does this
+  object have any keys at all" -- it's a purely one-level check, blind
+  to whatever those keys' *values* actually contain. `{ a: { b: { c: 1
+  } } }` has exactly one top-level key (`a`), so this check reports
+  depth `1` regardless of the fact that `a`'s value is itself a
+  three-level-deep chain of nested objects. The bug isn't a wrong base
+  case or a missing base case -- it's that the function never actually
+  *recurses* into anything; it just inspects the immediate shape of
+  whatever it was handed and stops there.
+
+  A correct depth measurement has to recurse into every value, ask each
+  one "how deep are *you*," and combine those answers: for each key,
+  recursively compute `maxDepth(obj[key])`, keep the largest result seen
+  across all of them, and add `1` for the current level wrapping around
+  them. The base case (a non-object value, or `null`) returns `0` --
+  the recursion bottoms out there, and each enclosing level adds exactly
+  one to whatever the deepest child reported back. This is the general
+  shape of any "measure something about a nested structure" recursion:
+  the answer for a container is defined in terms of the answers for
+  whatever it contains, not computed by inspecting the container alone.
+example_code: |
+  // The trap: a one-level check, never actually recurses into anything.
+  function maxDepthTrap(obj) {
+    if (typeof obj !== "object" || obj === null) return 0;
+    return Object.keys(obj).length > 0 ? 1 : 0;
+  }
+  console.log(maxDepthTrap({ a: { b: { c: 1 } } }));  // 1 -- WRONG, this is 3 levels deep
+
+  // The fix: recurse into every value, take the deepest, add 1 for this level.
+  function maxDepth(obj) {
+    if (typeof obj !== "object" || obj === null) return 0;
+    let max = 0;
+    for (const key in obj) {
+      max = Math.max(max, maxDepth(obj[key]));
+    }
+    return max + 1;
+  }
+  console.log(maxDepth({ a: { b: { c: 1 } } }));  // 3
+starter_code: |
+  function maxDepth(obj) {
+    if (typeof obj !== "object" || obj === null) return 0;
+    return Object.keys(obj).length > 0 ? 1 : 0;
+  }
+  console.log(maxDepth({ a: { b: { c: 1 } } }));
+challenge: |
+  Fix `maxDepth` so it correctly reports 3 for `{ a: { b: { c: 1 } } }`
+  -- recurse into each key's value and combine the results, instead of
+  only checking whether the top level has any keys.
+expected_output: |
+  3
+hints:
+  - "let max = 0; for (const key in obj) { max = Math.max(max, maxDepth(obj[key])); } return max + 1;"
+  - "The base case (typeof obj !== \"object\" || obj === null) already correctly returns 0 -- only the object branch needs to change."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 4
+difficulty: core
+contains_patterns:
+  - "maxDepth\\(obj\\[key\\]\\)"
+concept_tags: [recursion, nested_objects, tree_depth]

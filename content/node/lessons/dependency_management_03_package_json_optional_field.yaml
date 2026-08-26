@@ -1,0 +1,70 @@
+id: dependency_management_03
+title: "Reading an Optional package.json Field Safely"
+language: node
+level: 28
+objective: "Fix a crash when reading a package.json-shaped object's optional engines.node field, using optional chaining and a default."
+explanation: |
+  A real `package.json` almost never has every possible field -- `engines`
+  is entirely optional, and even when present, `engines.node` specifically
+  might be omitted while other `engines` entries (like `npm`) are set.
+  Reading `pkg.engines.node` directly assumes `engines` itself exists as
+  an object; the moment a package's `package.json` doesn't declare any
+  `engines` block at all, `pkg.engines` is `undefined`, and reading
+  `.node` off of `undefined` throws a `TypeError` -- a crash caused
+  entirely by a missing, optional field, not by anything actually wrong
+  with the package.
+
+  This is exactly the shape optional chaining was built for:
+  `pkg.engines?.node` reads `node` only if `engines` genuinely exists,
+  and evaluates to `undefined` instead of throwing if it doesn't --
+  paired with nullish coalescing (`?? "unspecified"`) to give a sensible
+  fallback string when no minimum Node version was declared at all. The
+  combination reads as one direct expression, the same lesson as reading
+  a possibly-missing nested field anywhere else, just applied here to
+  the specific, very common case of optional `package.json` metadata.
+example_code: |
+  const withEngines = { name: "left-pad", engines: { node: ">=18.0.0" } };
+  const withoutEngines = { name: "tiny-util" };
+
+  // The trap: assumes `engines` itself always exists as an object.
+  function getMinNodeTrap(pkg) {
+    return pkg.engines.node;
+  }
+  console.log(getMinNodeTrap(withEngines));  // >=18.0.0
+  try {
+    getMinNodeTrap(withoutEngines);
+  } catch (e) {
+    console.log("threw:", e.constructor.name);  // threw: TypeError
+  }
+
+  // The fix: optional chaining plus a fallback for the missing case.
+  function getMinNode(pkg) {
+    return pkg.engines?.node ?? "unspecified";
+  }
+  console.log(getMinNode(withEngines));     // >=18.0.0
+  console.log(getMinNode(withoutEngines));  // unspecified
+starter_code: |
+  function getMinNode(pkg) {
+    return pkg.engines.node;
+  }
+  console.log(getMinNode({ name: "left-pad", engines: { node: ">=18.0.0" } }));
+  console.log(getMinNode({ name: "tiny-util" }));
+challenge: |
+  Fix `getMinNode` so a package with no `engines` field returns the
+  string "unspecified" instead of throwing -- use optional chaining and
+  nullish coalescing instead of direct property access.
+expected_output: |
+  >=18.0.0
+  unspecified
+hints:
+  - "return pkg.engines?.node ?? \"unspecified\";"
+  - "?. alone would return undefined for the missing case -- ?? is what turns that into the fallback string."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "engines\\?\\.node"
+  - "\\?\\?"
+concept_tags: [optional_chaining, nullish_coalescing, package_json]

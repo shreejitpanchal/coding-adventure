@@ -1,0 +1,70 @@
+id: functional_programming_01
+title: "A Function That Mutates What It Was Given"
+language: node
+level: 36
+objective: "Fix a discount calculation that mutates the caller's cart object in place, by returning a new value instead of writing back into the argument."
+explanation: |
+  A *pure* function's output depends only on its inputs, and calling it
+  changes nothing else in the world -- no mutated arguments, no touched
+  outer variables, no side effects the caller didn't ask for.
+  `applyDiscount(cart, pct)` breaks that contract in a way that's easy
+  to miss from its signature alone: it looks like a calculation, but it
+  actually reaches into the `cart` object it was handed and overwrites
+  `cart.total` directly, as a side effect nobody asked for just by
+  calling a function that appears to compute and return a number.
+  Anything else holding a reference to that same `cart` object --
+  another part of the program, a test, a caller who expected to compare
+  "before" and "after" -- sees the mutation too, whether or not that was
+  ever the intent.
+
+  The pure alternative computes and returns the discounted total without
+  writing anywhere -- `return cart.total - cart.total * (pct / 100);`
+  reads `cart.total` but never assigns back into it, leaving the
+  original object completely untouched. The caller decides what to do
+  with the result: store it, compare it, or explicitly build a new
+  object with `{ ...cart, total: discounted }` if an "updated" cart is
+  actually what's needed -- but that decision belongs to the caller,
+  not buried inside a function whose name gives no hint that it mutates
+  anything.
+example_code: |
+  // The trap: looks like a pure calculation, secretly mutates its argument.
+  function applyDiscountTrap(cart, pct) {
+    cart.total = cart.total - cart.total * (pct / 100);
+    return cart.total;
+  }
+  const cartTrap = { total: 100 };
+  const discountedTrap = applyDiscountTrap(cartTrap, 10);
+  console.log(discountedTrap, cartTrap.total);  // 90 90 -- the original cart got mutated!
+
+  // The fix: a pure function only computes and returns -- no writes at all.
+  function applyDiscount(cart, pct) {
+    return cart.total - cart.total * (pct / 100);
+  }
+  const cart = { total: 100 };
+  const discounted = applyDiscount(cart, 10);
+  console.log(discounted, cart.total);  // 90 100 -- cart is untouched
+starter_code: |
+  function applyDiscount(cart, pct) {
+    cart.total = cart.total - cart.total * (pct / 100);
+    return cart.total;
+  }
+  const cart = { total: 100 };
+  const discounted = applyDiscount(cart, 10);
+  console.log(discounted, cart.total);
+challenge: |
+  Fix `applyDiscount` so it returns the discounted total WITHOUT
+  mutating `cart.total` -- the original cart's total should still read
+  100 after calling it.
+expected_output: |
+  90 100
+hints:
+  - "return cart.total - cart.total * (pct / 100); -- just return the expression, don't assign it back to cart.total."
+  - "The console.log line doesn't need to change -- only applyDiscount's body does."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "return cart\\.total - cart\\.total \\* \\(pct / 100\\)"
+concept_tags: [pure_functions, side_effects, immutability]

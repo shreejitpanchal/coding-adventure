@@ -1,0 +1,79 @@
+id: recursion_02
+title: "An Accumulator Doesn't Save You From Stack Overflow in Node"
+language: node
+level: 42
+objective: "Fix a deep recursive sum that still overflows the stack despite using the tail-call accumulator pattern, by converting it to a plain iterative loop."
+explanation: |
+  The "accumulator pattern" -- passing a running total as an extra
+  parameter, so the recursive call is the very last thing the function
+  does (`return sumTail(n - 1, acc + n);`, with nothing left to compute
+  afterward) -- is the standard technique for writing recursion in
+  *tail position*. In languages that guarantee proper tail-call
+  optimization, a tail call like this reuses the current stack frame
+  instead of pushing a new one, so a tail-recursive function can recurse
+  arbitrarily deep without ever growing the call stack. ECMAScript 2015
+  actually specifies this optimization as part of the language.
+
+  V8 (the JavaScript engine Node runs on) never implemented it, and no
+  major engine besides Safari's JavaScriptCore ever has, despite it
+  being in the spec for a decade. A tail-recursive function in Node
+  still pushes a genuine new stack frame on every call, exactly like any
+  other recursive function -- `sumTail(1000000)` overflows the stack
+  with `RangeError: Maximum call stack size exceeded` regardless of how
+  carefully it's written in tail-call form, because the optimization
+  that would make tail position special simply doesn't exist at
+  runtime. This is a JavaScript-specific trap: code written by someone
+  used to a language that *does* guarantee tail-call elimination will
+  reasonably expect this pattern to handle arbitrary depth, and be
+  surprised when Node crashes anyway.
+
+  The actual fix for deep recursion in Node is to stop recursing --
+  convert the logic to a genuine iterative loop, which uses one stack
+  frame total no matter how many times it iterates, since a loop
+  iteration never pushes a new frame at all.
+example_code: |
+  // The trap: tail-recursive accumulator pattern -- still overflows in V8.
+  function sumTailTrap(n, acc = 0) {
+    if (n <= 0) return acc;
+    return sumTailTrap(n - 1, acc + n);  // tail position, but NOT optimized by V8
+  }
+  try {
+    console.log(sumTailTrap(1000000));
+  } catch (e) {
+    console.log("threw:", e.constructor.name);  // threw: RangeError
+  }
+
+  // The fix: a genuine loop uses ONE stack frame, no matter how many iterations.
+  function sumIterative(n) {
+    let acc = 0;
+    while (n > 0) {
+      acc += n;
+      n--;
+    }
+    return acc;
+  }
+  console.log(sumIterative(1000000));  // 500000500000
+starter_code: |
+  function sumTail(n, acc = 0) {
+    if (n <= 0) return acc;
+    return sumTail(n - 1, acc + n);
+  }
+  console.log(sumTail(1000000));
+challenge: |
+  Fix this so summing 1 through 1,000,000 doesn't overflow the call
+  stack -- rewrite the logic as a plain iterative `while` loop instead
+  of tail recursion (V8 doesn't optimize tail calls, so the accumulator
+  pattern alone doesn't help here).
+expected_output: |
+  500000500000
+hints:
+  - "let acc = 0; while (n > 0) { acc += n; n--; } return acc; -- a direct loop replacement for the recursive version."
+  - "Node/V8 never implemented tail-call optimization, so this specific overflow can't be fixed by restructuring the recursion -- only by not recursing at all."
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 2
+difficulty: deep_dive
+contains_patterns:
+  - "while \\("
+concept_tags: [tail_call_optimization, stack_overflow, iteration]

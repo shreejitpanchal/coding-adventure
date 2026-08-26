@@ -1,0 +1,85 @@
+id: sync_vs_async_03
+title: "for...of Can't Iterate an Async Generator"
+language: node
+level: 33
+objective: "Replace a plain for...of loop over an async generator with for await...of, since async generators only implement the async iterator protocol."
+explanation: |
+  A regular `for...of` loop only works on values implementing the
+  *synchronous* iterator protocol (`Symbol.iterator`) -- arrays,
+  strings, `Map`s, `Set`s, and anything else with a plain `.next()` that
+  returns `{ value, done }` directly. An `async function*` generator
+  implements a *different* protocol entirely (`Symbol.asyncIterator`),
+  whose `.next()` returns a `Promise` of `{ value, done }` instead of
+  the values immediately -- because each `yield` inside it can itself be
+  preceded by an `await`. Calling `genValues()` and handing the result to
+  a plain `for...of` doesn't get "the wrong values" or "the values in
+  the wrong order" -- it throws immediately, `TypeError: ... is not
+  iterable`, because a plain `for...of` doesn't know how to ask for
+  values the async way at all.
+
+  `for await...of` is the loop built specifically for async iterables:
+  it calls the async iterator's `.next()`, `await`s the promise it
+  returns, unwraps the actual value, and only then runs the loop body --
+  repeating for every yielded value until the generator signals it's
+  done. It works transparently on a *synchronous* iterable too (arrays
+  included), automatically wrapping each value in a resolved promise if
+  needed, which is why reaching for `for await...of` by default whenever
+  the iterable's nature isn't certain at a glance is a safe, common
+  practice -- but a plain `for...of` can never go the other direction and
+  handle an async iterable, only `for await...of` bridges both.
+example_code: |
+  async function* genValues() {
+    yield 1;
+    yield 2;
+    yield 3;
+  }
+
+  // The trap: a plain for...of can't consume an async generator at all.
+  try {
+    for (const v of genValues()) {
+      console.log(v);
+    }
+  } catch (e) {
+    console.log("threw:", e.constructor.name);  // threw: TypeError
+  }
+
+  // The fix: for await...of understands the async iterator protocol.
+  async function main() {
+    const results = [];
+    for await (const v of genValues()) {
+      results.push(v);
+    }
+    console.log(results.join(","));  // 1,2,3
+  }
+  main();
+starter_code: |
+  async function* genValues() {
+    yield 1;
+    yield 2;
+    yield 3;
+  }
+  async function main() {
+    const results = [];
+    for (const v of genValues()) {
+      results.push(v);
+    }
+    console.log(results.join(","));
+  }
+  main();
+challenge: |
+  Fix `main` so it correctly collects all three yielded values
+  (printing "1,2,3") instead of throwing -- replace the plain
+  `for...of` with `for await...of`.
+expected_output: |
+  1,2,3
+hints:
+  - "for await (const v of genValues()) { ... } -- just add \"await\" between for and the opening parenthesis."
+  - "main is already async, so for await is valid to use inside it."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "for await"
+concept_tags: [async_generator, for_await_of, async_iterator_protocol]

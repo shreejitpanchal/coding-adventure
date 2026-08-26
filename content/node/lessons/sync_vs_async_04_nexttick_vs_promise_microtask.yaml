@@ -1,0 +1,70 @@
+id: sync_vs_async_04
+title: "process.nextTick Jumps the Promise Queue"
+language: node
+level: 34
+objective: "Fix a check that reads a value before a Promise callback has set it, because process.nextTick always runs before ANY queued Promise callback in Node, regardless of registration order."
+explanation: |
+  It's tempting to assume that two things scheduled to "run soon" -- a
+  `Promise.resolve().then(...)` and a `process.nextTick(...)` -- run in
+  the order they were registered, the same way two `setTimeout(fn, 0)`
+  calls would. They don't. Node maintains `process.nextTick`'s callbacks
+  in a completely separate queue from Promise microtasks, and it always
+  fully drains the *entire* `nextTick` queue before processing a single
+  Promise microtask -- a Node-specific behavior that predates Promises
+  being part of the language at all, not something defined by the
+  ECMAScript spec itself. That means a `process.nextTick` callback
+  registered *after* a `.then()` callback still runs *before* it, every
+  time -- registration order across the two queues doesn't matter, only
+  which queue a callback is in.
+
+  Code that reads a value a `.then()` callback was supposed to have
+  already set, from inside a `process.nextTick` callback, checks too
+  early -- `process.nextTick` fires before that `.then()` has had any
+  chance to run, no matter which one appears first in the source. The
+  fix is to check from the *same kind* of queue as the value-setting
+  callback: replacing `process.nextTick` with another
+  `Promise.resolve().then(...)` puts the check in the Promise microtask
+  queue too, where same-queue callbacks genuinely do run in registration
+  order -- so as long as the value-setting `.then()` was registered
+  first, the check now correctly sees the updated value.
+example_code: |
+  const config = { ready: false };
+
+  // The trap: nextTick always runs before ANY Promise callback,
+  // even one registered earlier in the source.
+  Promise.resolve().then(() => { config.ready = true; });
+  process.nextTick(() => {
+    console.log("nextTick sees ready:", config.ready);  // false -- checked too early!
+  });
+
+  // The fix: use another Promise microtask, which respects registration
+  // order relative to the one that sets config.ready.
+  const config2 = { ready: false };
+  Promise.resolve().then(() => { config2.ready = true; });
+  Promise.resolve().then(() => {
+    console.log("promise sees ready:", config2.ready);  // true -- same queue, correct order
+  });
+starter_code: |
+  const config = { ready: false };
+  Promise.resolve().then(() => { config.ready = true; });
+  process.nextTick(() => {
+    console.log("ready:", config.ready);
+  });
+challenge: |
+  Fix this so the check correctly reports "ready: true" -- replace
+  `process.nextTick` with another `Promise.resolve().then(...)` so the
+  check runs in the same queue as (and after) the callback that sets
+  `config.ready`.
+expected_output: |
+  ready: true
+hints:
+  - "Promise.resolve().then(() => { console.log(\"ready:\", config.ready); }); replaces the process.nextTick call."
+  - "Both callbacks need to be Promise .then() callbacks -- mixing nextTick with .then() is exactly what caused the ordering bug."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "Promise\\.resolve\\(\\)\\.then\\(\\(\\) => \\{\\s*console\\.log"
+concept_tags: [process_nexttick, microtask_queue, event_loop_priority]

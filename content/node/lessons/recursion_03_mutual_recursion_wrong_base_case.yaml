@@ -1,0 +1,77 @@
+id: recursion_03
+title: "Mutual Recursion With the Wrong Base Case Value"
+language: node
+level: 43
+objective: "Fix isEven/isOdd's mutual recursion by correcting isEven's base case, since 0 is even, not odd."
+explanation: |
+  `isEven` and `isOdd` are *mutually* recursive: each one delegates to
+  the other on a smaller input, alternating back and forth until one of
+  them hits its own base case directly. `isOdd(4)` calls `isEven(3)`,
+  which calls `isOdd(2)`, which calls `isEven(1)`, which calls
+  `isOdd(0)` -- and whichever function's base case actually fires is
+  the one that determines the final answer for the entire chain, since
+  every earlier call in the chain just returns whatever that innermost
+  call returned, unchanged.
+
+  Both functions here recurse correctly and terminate correctly -- the
+  structure of the mutual recursion isn't the bug at all. The bug is
+  that `isEven`'s base case returns the wrong boolean: `isEven(0)`
+  returns `false`, when 0 is, in fact, even, and should return `true`.
+  That single wrong value doesn't just make `isEven(0)` wrong in
+  isolation -- it's the value every chain of alternating calls
+  eventually bottoms out to whenever it lands on `isEven(0)`, so the
+  incorrect answer silently propagates back up through however many
+  levels of mutual recursion happened to lead there. This is a useful
+  reminder that mutual recursion's correctness rests entirely on getting
+  every base case right -- a structurally perfect recursive design still
+  produces wrong answers everywhere if even one base case returns the
+  wrong value.
+example_code: |
+  // The trap: isEven's base case has the wrong value -- 0 IS even.
+  function isEvenTrap(n) {
+    if (n === 0) return false;      // WRONG -- should be true
+    return isOddTrap(n - 1);
+  }
+  function isOddTrap(n) {
+    if (n === 0) return false;
+    return isEvenTrap(n - 1);
+  }
+  console.log(isEvenTrap(4), isOddTrap(4));  // false false -- isEven(4) should be true!
+
+  // The fix: correct the one wrong base case value.
+  function isEven(n) {
+    if (n === 0) return true;       // fixed -- 0 is even
+    return isOdd(n - 1);
+  }
+  function isOdd(n) {
+    if (n === 0) return false;
+    return isEven(n - 1);
+  }
+  console.log(isEven(4), isOdd(4));  // true false
+starter_code: |
+  function isEven(n) {
+    if (n === 0) return false;
+    return isOdd(n - 1);
+  }
+  function isOdd(n) {
+    if (n === 0) return false;
+    return isEven(n - 1);
+  }
+  console.log(isEven(4), isOdd(4));
+challenge: |
+  Fix `isEven`'s base case so `isEven(4)` correctly reports `true` (0 is
+  even, not odd) -- `isOdd`'s base case is already correct and doesn't
+  need to change.
+expected_output: |
+  true false
+hints:
+  - "Change isEven's `if (n === 0) return false;` to `return true;` -- that's the only line that needs to change."
+  - "isOdd's base case is already correct -- 0 genuinely isn't odd, so leave it as false."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "function isEven\\(n\\) \\{\\s*if \\(n === 0\\) return true;"
+concept_tags: [mutual_recursion, base_case, boolean_logic]

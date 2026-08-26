@@ -1,0 +1,79 @@
+id: deployment_05
+title: "A Deploy Step That Isn't Safe to Run Twice"
+language: node
+level: 55
+objective: "Fix a resource-creation step that creates a duplicate every time it's called, by checking whether the resource already exists first."
+explanation: |
+  A deploy step is *idempotent* when running it multiple times produces
+  the same end result as running it once -- a genuinely important
+  property for deployment automation, since retries, redeploys, and
+  partially-failed-then-rerun deploys are all completely normal parts
+  of running infrastructure, not edge cases. `createResource(name)` here
+  has no such guarantee: every single call unconditionally pushes onto a
+  log and reports "created," with no check for whether that resource was
+  already created by an earlier call. Running the exact same deploy step
+  twice -- because a deploy was retried after a transient failure, or a
+  script got re-run by mistake -- silently creates the resource a second
+  time, which for a real resource (a cloud bucket, a database migration,
+  a DNS record) can mean a duplicate, a conflict error, or worse,
+  depending on what's actually being created.
+
+  The fix is to check first: track which resources have already been
+  created (a `Set` of names works well here), and short-circuit to
+  "already exists" instead of creating anything if the check finds a
+  match. `if (created.has(name)) return ...;` turns the function from
+  "always creates, no matter what" into "creates exactly once, no
+  matter how many times it's called" -- calling it three times in a row
+  for the same resource has the same end state as calling it once,
+  which is precisely what idempotency means.
+example_code: |
+  // The trap: every call creates again, with no check for an existing resource.
+  const logTrap = [];
+  function createResourceTrap(name) {
+    logTrap.push(name);
+    return `created ${name}`;
+  }
+  createResourceTrap("bucket-1");
+  createResourceTrap("bucket-1");   // deploy retried -- created AGAIN!
+  console.log(logTrap.length);       // 2 -- not idempotent
+
+  // The fix: check first, only create if it doesn't already exist.
+  const created = new Set();
+  const log = [];
+  function createResource(name) {
+    if (created.has(name)) return `already exists: ${name}`;
+    created.add(name);
+    log.push(name);
+    return `created ${name}`;
+  }
+  createResource("bucket-1");
+  createResource("bucket-1");         // safe to retry -- no-op the second time
+  console.log(log.length);            // 1 -- genuinely idempotent
+starter_code: |
+  const log = [];
+  function createResource(name) {
+    log.push(name);
+    return `created ${name}`;
+  }
+  createResource("bucket-1");
+  createResource("bucket-1");
+  console.log(log.length);
+challenge: |
+  Fix `createResource` so calling it twice with the same name only
+  actually creates the resource once (log.length should be 1, not 2) --
+  track already-created names in a Set and skip creating if the name is
+  already present.
+expected_output: |
+  1
+hints:
+  - "const created = new Set(); then, inside createResource, check `if (created.has(name)) return ...;` before pushing to log."
+  - "Don't forget to add the name to the Set (created.add(name)) right before pushing to log, so the SECOND call actually sees it as already existing."
+xp_reward: 15
+achievement: deployment_master
+category: deployment
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "created\\.has\\(name\\)"
+  - "created\\.add\\(name\\)"
+concept_tags: [idempotency, deploy_step, set]

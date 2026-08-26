@@ -1,0 +1,66 @@
+id: recursion_01
+title: "A Recursive Sum With No Base Case"
+language: node
+level: 41
+objective: "Fix a recursive sum function that never stops recursing, by adding a base case that actually terminates it."
+explanation: |
+  Every recursive function needs a *base case* -- a condition, checked
+  before the recursive call, that returns a value directly instead of
+  recursing further. `sum(n)` here has no such check at all: it always
+  computes `n + sum(n - 1)`, no matter what `n` is, which means calling
+  it never stops calling itself. `n` counts down through 0 and keeps
+  going negative forever, since nothing ever intercepts it and returns
+  early -- there's no point where the function says "this is small
+  enough now, stop recursing and just answer directly."
+
+  Each recursive call that hasn't returned yet holds its own stack
+  frame, and the JavaScript engine (like virtually every language
+  runtime) has a finite call stack size. A recursive function with no
+  base case eventually exhausts that stack and throws `RangeError:
+  Maximum call stack size exceeded` -- not because anything is wrong
+  with the *values* being computed, but purely because the recursion
+  itself never had a way to stop. The fix is a base case that actually
+  matches how the recursive case shrinks its input: since each call
+  passes `n - 1`, `n` will eventually reach `0` (for a non-negative
+  starting value) -- `if (n <= 0) return 0;`, checked *before* the
+  recursive call, stops the descent right there instead of continuing
+  past it into negative numbers forever.
+example_code: |
+  // The trap: no base case at all -- always recurses, never stops.
+  function sumTrap(n) {
+    return n + sumTrap(n - 1);
+  }
+  try {
+    console.log(sumTrap(5));
+  } catch (e) {
+    console.log("threw:", e.constructor.name);  // threw: RangeError
+  }
+
+  // The fix: a base case that actually intercepts the shrinking input.
+  function sum(n) {
+    if (n <= 0) return 0;
+    return n + sum(n - 1);
+  }
+  console.log(sum(5));  // 15 (5+4+3+2+1+0)
+starter_code: |
+  function sum(n) {
+    return n + sum(n - 1);
+  }
+  console.log(sum(5));
+challenge: |
+  Fix `sum` so it correctly computes 5+4+3+2+1+0 (15) instead of
+  overflowing the call stack -- add a base case that returns 0 once `n`
+  is 0 or less.
+expected_output: |
+  15
+hints:
+  - "if (n <= 0) return 0; -- add this as the very first line inside sum, before the recursive call."
+  - "The base case must be checked BEFORE the recursive call, or it never gets a chance to stop anything."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "if \\(n <= 0\\) return 0;"
+concept_tags: [recursion, base_case, stack_overflow]

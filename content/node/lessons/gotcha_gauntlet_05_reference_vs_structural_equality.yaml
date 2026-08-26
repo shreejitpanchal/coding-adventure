@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_05
 title: "Reference Equality on Two Identical-Looking Arrays"
 language: node
-level: 30
+level: 60
 objective: "Fix a === comparison between two arrays so it checks their contents instead of their identity."
 explanation: |
   `===` between two objects or arrays checks whether both sides are the

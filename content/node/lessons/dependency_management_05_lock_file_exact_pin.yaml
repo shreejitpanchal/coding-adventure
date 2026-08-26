@@ -1,0 +1,69 @@
+id: dependency_management_05
+title: "Why a Lock File Pins an Exact Version"
+language: node
+level: 30
+objective: "Fix code that reads a dependency's version straight from package.json's range instead of the exact version package-lock.json actually resolved to."
+explanation: |
+  `package.json` never records an exact installed version for a
+  dependency -- it records a *range* (`"^4.17.21"`, `"~1.2.0"`, `"*"`)
+  that describes which versions are acceptable, not which one is
+  actually sitting in `node_modules` right now. Reading
+  `pkg.dependencies["lodash"]` to answer "what version of lodash am I
+  running" is answering a completely different question than intended:
+  it returns the *range* string (`"^4.17.21"`), not the specific
+  version npm actually resolved and installed, which could be `4.17.21`,
+  `4.17.99`, or any other version compatible with that range depending
+  on exactly when `npm install` was run and what was published at the
+  time.
+
+  `package-lock.json` exists precisely to answer the "what's actually
+  installed" question -- it records the single, exact, fully-resolved
+  version for every dependency (and every one of *their* dependencies,
+  transitively), generated once and then committed alongside the code so
+  every machine that runs `npm ci` gets byte-for-byte the same dependency
+  tree, not just "something compatible with the ranges." Reading the
+  resolved version means looking in the lock file's `packages` (or
+  older `dependencies`) section, keyed by package name, and reading its
+  own `version` field -- a different object entirely from
+  `package.json`'s `dependencies`, which only ever holds ranges.
+example_code: |
+  const packageJson = { dependencies: { lodash: "^4.17.21" } };
+  const packageLock = { packages: { "node_modules/lodash": { version: "4.17.21" } } };
+
+  // The trap: package.json only ever holds a RANGE, not the resolved version.
+  function getInstalledVersionTrap(name) {
+    return packageJson.dependencies[name];
+  }
+  console.log(getInstalledVersionTrap("lodash"));  // ^4.17.21 -- that's a range, not a version!
+
+  // The fix: the lock file records the one exact version actually installed.
+  function getInstalledVersion(name) {
+    return packageLock.packages[`node_modules/${name}`]?.version;
+  }
+  console.log(getInstalledVersion("lodash"));  // 4.17.21 -- the real, exact, pinned version
+starter_code: |
+  const packageJson = { dependencies: { lodash: "^4.17.21" } };
+  const packageLock = { packages: { "node_modules/lodash": { version: "4.17.21" } } };
+
+  function getInstalledVersion(name) {
+    return packageJson.dependencies[name];
+  }
+  console.log(getInstalledVersion("lodash"));
+challenge: |
+  Fix `getInstalledVersion` so it returns the exact resolved version
+  from `packageLock` (4.17.21) instead of the range string from
+  `packageJson` (^4.17.21).
+expected_output: |
+  4.17.21
+hints:
+  - "Read from packageLock.packages[`node_modules/${name}`].version instead of packageJson.dependencies."
+  - "A template literal builds the lookup key: `node_modules/${name}`."
+xp_reward: 10
+achievement: dependency_management_master
+category: dependency_management
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "packageLock"
+  - "\\.version"
+concept_tags: [package_lock, exact_version_pinning, semver_range]

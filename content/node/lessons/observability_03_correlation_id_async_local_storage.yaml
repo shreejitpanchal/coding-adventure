@@ -1,0 +1,98 @@
+id: observability_03
+title: "Threading a Correlation ID Through Every Function Call"
+language: node
+level: 48
+objective: "Fix a correlation ID that gets lost because a helper function forgot to forward it, by using AsyncLocalStorage instead of an explicit parameter."
+explanation: |
+  Manually threading a correlation ID through every function involved in
+  handling a request -- passing it as an explicit parameter into
+  `handleRequest`, then into whatever it calls, then into whatever
+  *that* calls -- works, but only as long as every single function in
+  the chain remembers to accept it and pass it along. One helper
+  function that forgets to forward the ID it received (or that gets
+  called from a place that never had it in scope in the first place)
+  silently breaks the chain: any logging done from inside it either
+  crashes reaching for an undefined variable, or -- often worse --
+  quietly logs `undefined` where the correlation ID should have been,
+  making that log line useless for tracing the request it actually
+  belongs to.
+
+  `AsyncLocalStorage` (Node's built-in mechanism for *implicit*,
+  request-scoped context) solves this structurally rather than by
+  discipline: `als.run(value, callback)` makes `value` available to
+  `callback` and to *everything* it calls -- synchronously or
+  asynchronously, no matter how many layers deep -- via `als.getStore()`,
+  with no parameter to remember to forward at every level. A deeply
+  nested helper function can call `als.getStore()` directly and get the
+  correct correlation ID for whichever request is currently in flight,
+  even though that helper's own function signature never mentions a
+  correlation ID at all. This is conceptually the same tool Python's
+  `contextvars.ContextVar` provides -- ambient, call-stack-scoped
+  context that survives through `async`/`await` boundaries without
+  being explicitly passed as a parameter anywhere.
+example_code: |
+  // The trap: an explicit parameter that's easy to forget to forward.
+  function logStepTrap(id, msg) { console.log(`[${id}] ${msg}`); }
+  function innerStepTrap(id) { logStepTrap(id, "inner"); }
+  function middleStepTrap() { innerStepTrap(undefined); }  // forgot to receive/forward id!
+  function handleRequestTrap(id) {
+    logStepTrap(id, "start");
+    middleStepTrap();
+  }
+  handleRequestTrap("abc123");
+  // [abc123] start
+  // [undefined] inner -- the ID got lost one level down
+
+  // The fix: AsyncLocalStorage makes the ID ambient -- nothing to forward.
+  const { AsyncLocalStorage } = require("node:async_hooks");
+  const als = new AsyncLocalStorage();
+  function logStep(msg) {
+    const id = als.getStore();
+    console.log(`[${id}] ${msg}`);
+  }
+  function innerStep() { logStep("inner"); }
+  function middleStep() { innerStep(); }  // never needed to know about id at all
+  function handleRequest(id) {
+    als.run(id, () => {
+      logStep("start");
+      middleStep();
+    });
+  }
+  handleRequest("abc123");
+  // [abc123] start
+  // [abc123] inner -- correct, with no parameter threading required
+starter_code: |
+  function logStep(id, msg) {
+    console.log(`[${id}] ${msg}`);
+  }
+  function innerStep(id) {
+    logStep(id, "inner");
+  }
+  function middleStep() {
+    innerStep(undefined);
+  }
+  function handleRequest(id) {
+    logStep(id, "start");
+    middleStep();
+  }
+  handleRequest("abc123");
+challenge: |
+  Fix this using `AsyncLocalStorage` so both log lines correctly show
+  "abc123" -- `handleRequest` should call `als.run(id, () => { ... })`,
+  and `logStep`/`innerStep`/`middleStep` should read the ID via
+  `als.getStore()` instead of receiving it as a parameter.
+expected_output: |
+  [abc123] start
+  [abc123] inner
+hints:
+  - "const { AsyncLocalStorage } = require(\"node:async_hooks\"); const als = new AsyncLocalStorage();"
+  - "logStep no longer takes an id parameter -- it reads als.getStore() itself, and handleRequest wraps its body in als.run(id, () => { ... })."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 3
+difficulty: deep_dive
+contains_patterns:
+  - "AsyncLocalStorage"
+  - "als\\.getStore\\(\\)"
+concept_tags: [async_local_storage, correlation_id, context_propagation]

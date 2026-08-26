@@ -1,0 +1,76 @@
+id: sync_vs_async_05
+title: "A Deferred throw Inside a Promise Executor Isn't Caught"
+language: node
+level: 35
+objective: "Fix a Promise executor that throws inside a setTimeout callback -- which crashes the process uncaught -- by calling reject() explicitly instead."
+explanation: |
+  A `Promise` executor (`(resolve, reject) => { ... }`) automatically
+  catches any exception thrown *synchronously*, directly inside it, and
+  converts that throw into a rejection -- `new Promise(() => { throw new
+  Error("x"); })` behaves exactly like `Promise.reject(new Error("x"))`,
+  with no explicit `reject()` call needed. This automatic conversion is
+  genuinely useful, but it's easy to over-generalize into believing
+  "anything thrown anywhere inside the executor becomes a rejection" --
+  it doesn't. The protection only covers the executor's own synchronous
+  call stack. A `throw` inside a callback that runs *later*, on its own
+  turn of the event loop (a `setTimeout` callback nested inside the
+  executor, an event handler, an I/O callback) is not part of that
+  synchronous call stack anymore by the time it runs -- there's no
+  executor code left "on the stack" to catch it, so it becomes a
+  completely ordinary uncaught exception, crashing the process, with the
+  Promise itself left forever pending, never even rejected.
+
+  The fix is to never rely on the executor's synchronous-throw
+  protection for anything that happens asynchronously inside it --
+  explicitly call `reject(error)` from within the deferred callback
+  instead of throwing. `reject()` is just a plain function reference the
+  executor receives; calling it from inside a `setTimeout` callback
+  works exactly the same as calling it synchronously, because rejecting
+  a promise doesn't require being "inside" any particular call stack --
+  it just needs the right function called with the right error.
+example_code: |
+  // Fine: a SYNCHRONOUS throw inside the executor is auto-caught.
+  const p1 = new Promise((resolve, reject) => {
+    throw new Error("sync boom");
+  });
+  p1.catch((e) => console.log("p1 caught:", e.message));  // p1 caught: sync boom
+
+  // The trap: a throw inside a DEFERRED callback is NOT protected --
+  // it's a genuine uncaught exception, and p2 never settles at all.
+  // const p2 = new Promise((resolve, reject) => {
+  //   setTimeout(() => { throw new Error("async boom"); }, 10);
+  // });
+  // p2.catch((e) => console.log("p2 caught:", e.message));  // never runs -- crashes instead
+
+  // The fix: call reject() explicitly from inside the deferred callback.
+  const p3 = new Promise((resolve, reject) => {
+    setTimeout(() => { reject(new Error("async boom, handled")); }, 10);
+  });
+  p3.catch((e) => console.log("p3 caught:", e.message));  // p3 caught: async boom, handled
+starter_code: |
+  function delayedFail(ms) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        throw new Error("delayed failure");
+      }, ms);
+    });
+  }
+  delayedFail(10).catch((e) => console.log("caught:", e.message));
+challenge: |
+  Fix `delayedFail` so the delayed failure actually rejects the promise
+  (letting the .catch() print "caught: delayed failure") instead of
+  crashing the process with an uncaught exception -- call `reject(...)`
+  inside the setTimeout callback instead of throwing.
+expected_output: |
+  caught: delayed failure
+hints:
+  - "reject(new Error(\"delayed failure\")); replaces the throw statement -- same message, different mechanism."
+  - "reject is already available as the executor's second parameter -- no new imports or setup needed."
+xp_reward: 10
+achievement: sync_vs_async_master
+category: sync_vs_async
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "reject\\(new Error"
+concept_tags: [promise_executor, reject, uncaught_exception]

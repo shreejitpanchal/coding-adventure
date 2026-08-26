@@ -1,0 +1,87 @@
+id: observability_05
+title: "A Timer That Never Actually Records the Duration"
+language: node
+level: 50
+objective: "Fix a Timer class whose stop() method never computes or stores the elapsed duration, using the built-in performance.now() clock."
+explanation: |
+  A timing helper is a standard observability building block for
+  answering "how long did this take" -- `start()` records a starting
+  timestamp, and `stop()` is supposed to compute the elapsed time and
+  store it somewhere the caller can read afterward. A `stop()` that does
+  nothing at all *looks* complete (the class has a `start`/`stop` pair,
+  matching the shape anyone would expect from a timer), but calling it
+  never actually computes anything -- `t.duration` stays `undefined`
+  forever, since nothing ever assigns to it. This is a bug that's easy
+  to miss precisely because the class's structure looks right; only
+  actually reading `t.duration` afterward reveals it was never recorded.
+
+  `performance.now()` (from Node's built-in `perf_hooks`, available
+  globally with no import needed) is the right clock for this: it
+  returns a high-resolution timestamp in milliseconds that's guaranteed
+  monotonic -- unlike `Date.now()`, which reflects wall-clock time and
+  can jump if the system clock is adjusted mid-measurement, `performance.
+  now()` has no defined relationship to wall-clock time at all and is
+  only meaningful as *differences* between two calls, which is exactly
+  the property a duration measurement needs. The fix for `stop()` is
+  simply to compute that difference and store it: `this.duration =
+  performance.now() - this._start;`.
+example_code: |
+  // The trap: stop() looks complete but never computes or stores anything.
+  class TimerBroken {
+    start() { this._start = performance.now(); return this; }
+    stop() { /* forgot to compute duration! */ }
+  }
+  const tBroken = new TimerBroken();
+  tBroken.start();
+  let sumBroken = 0;
+  for (let i = 0; i < 1000; i++) sumBroken += i;
+  tBroken.stop();
+  console.log(typeof tBroken.duration);  // undefined -- never recorded
+
+  // The fix: stop() computes and stores the elapsed time.
+  class Timer {
+    start() { this._start = performance.now(); return this; }
+    stop() {
+      this.duration = performance.now() - this._start;
+      return this;
+    }
+  }
+  const t = new Timer();
+  t.start();
+  let sum = 0;
+  for (let i = 0; i < 1000; i++) sum += i;
+  t.stop();
+  console.log(typeof t.duration === "number" && t.duration >= 0);  // true
+starter_code: |
+  class Timer {
+    start() {
+      this._start = performance.now();
+      return this;
+    }
+    stop() {
+      return this;
+    }
+  }
+  const t = new Timer();
+  t.start();
+  let sum = 0;
+  for (let i = 0; i < 1000; i++) sum += i;
+  t.stop();
+  console.log(typeof t.duration === "number" && t.duration >= 0);
+challenge: |
+  Fix `stop()` so it actually computes and stores the elapsed duration
+  (`this.duration = performance.now() - this._start;`) so the final
+  check reports true instead of false.
+expected_output: |
+  true
+hints:
+  - "this.duration = performance.now() - this._start; -- add this as the first line inside stop(), before the return."
+  - "The check doesn't test a specific timing value -- it only checks that duration is a real, non-negative number, so this passes regardless of how fast the loop runs."
+xp_reward: 15
+achievement: observability_master
+category: observability
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "this\\.duration = performance\\.now\\(\\) - this\\._start"
+concept_tags: [performance_now, timing_instrumentation, monotonic_clock]

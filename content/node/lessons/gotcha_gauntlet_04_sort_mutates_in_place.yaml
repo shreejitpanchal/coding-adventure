@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_04
 title: "sort() Mutates the Original Array"
 language: node
-level: 29
+level: 59
 objective: "Fix a function that unexpectedly reorders the caller's original array, by sorting a copy instead of the array itself."
 explanation: |
   `Array.prototype.sort()` doesn't return a new, sorted array -- it sorts

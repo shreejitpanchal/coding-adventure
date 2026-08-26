@@ -361,3 +361,333 @@ questions:
     correct: 0
     explanation: "Two arrays with identical contents are still two distinct objects -- comparing serialized contents (e.g. via JSON.stringify) is a common way to check structural equality instead."
     concept_tags: [reference_equality, structural_equality, json_stringify]
+
+  - id: q34
+    question: "Why does comparing version strings like \"1.9.0\" < \"1.10.0\" give the wrong answer?"
+    options:
+      - "< compares strings character by character (lexicographically), not as numeric version segments"
+      - "Version strings can never contain more than one dot"
+      - "JavaScript doesn't support comparing strings with < at all"
+      - "1.10.0 isn't a valid version string"
+    correct: 0
+    explanation: "Splitting each version on \".\" and comparing the numeric segments one at a time (instead of comparing the raw strings) gives the numerically correct result."
+    concept_tags: [version_comparison, semver, string_vs_numeric_comparison]
+
+  - id: q35
+    question: "Does \"2.0.0\" satisfy a package.json range of \"^1.2.3\"?"
+    options:
+      - "No -- a caret range requires the same major version, and 2.0.0 is a major version bump"
+      - "Yes -- 2.0.0 is numerically greater than 1.2.3"
+      - "Only if the package has no other dependencies"
+      - "Caret ranges ignore the major version entirely"
+    correct: 0
+    explanation: "A caret range (^1.2.3) means \"the same major version, at or above 1.2.3\" -- a major version bump signals potential breaking changes and is excluded."
+    concept_tags: [semver, caret_range, major_version]
+
+  - id: q36
+    question: "What's the safest way to read an optional nested field like pkg.engines.node, which might not exist?"
+    options:
+      - "pkg.engines?.node ?? \"unspecified\" -- optional chaining plus a fallback"
+      - "pkg.engines.node directly, since engines is always present"
+      - "JSON.parse(pkg).engines.node"
+      - "pkg.engines[node]"
+    correct: 0
+    explanation: "pkg.engines.node throws a TypeError if engines itself is undefined -- optional chaining (?.) short-circuits to undefined instead, and ?? supplies the fallback."
+    concept_tags: [optional_chaining, nullish_coalescing, package_json]
+
+  - id: q37
+    question: "What's the difference between require(name) and require.resolve(name) for feature-detecting an optional dependency?"
+    options:
+      - "require.resolve only locates the module without loading/executing it, so it's safe to wrap in try/catch purely to check availability"
+      - "They're identical -- both load and execute the module"
+      - "require.resolve always returns true regardless of whether the module exists"
+      - "require.resolve only works for built-in Node modules"
+    correct: 0
+    explanation: "require(name) throws MODULE_NOT_FOUND and also runs the module's code; require.resolve(name) only resolves the module's location, making it the right tool for a pure availability check."
+    concept_tags: [require_resolve, feature_detection, optional_dependency]
+
+  - id: q38
+    question: "Why doesn't package.json's dependencies field tell you which exact version of a package is installed?"
+    options:
+      - "package.json only records a version RANGE (e.g. \"^4.17.21\"); package-lock.json records the exact resolved version"
+      - "package.json is regenerated on every npm install with the exact version"
+      - "npm always installs the newest version regardless of what package.json says"
+      - "There's no difference -- they always show the same value"
+    correct: 0
+    explanation: "package-lock.json exists specifically to pin the exact, fully-resolved version of every dependency, so every machine running npm ci gets an identical dependency tree."
+    concept_tags: [package_lock, exact_version_pinning, semver_range]
+
+  - id: q39
+    question: "Why does a synchronous, CPU-bound operation delay a setTimeout(fn, 0) callback that was already scheduled?"
+    options:
+      - "Node is single-threaded -- a scheduled callback can't run until all currently executing synchronous code finishes, no matter how long that takes"
+      - "setTimeout callbacks always run before any synchronous code"
+      - "Node automatically pauses synchronous code to run pending timers"
+      - "setTimeout(fn, 0) is disabled while other code is running"
+    correct: 0
+    explanation: "setTimeout(fn, 0) means \"run as soon as the event loop is free,\" not \"interrupt what's running now\" -- a long synchronous operation blocks everything, including already-scheduled timers."
+    concept_tags: [event_loop, blocking_call, settimeout_ordering]
+
+  - id: q40
+    question: "What actually happens when you call an async function without awaiting it?"
+    options:
+      - "It starts running immediately and returns a Promise right away -- the calling code moves on without waiting for it to finish"
+      - "The function call is silently ignored and never runs at all"
+      - "JavaScript throws a SyntaxError -- async functions must always be awaited"
+      - "It blocks the calling code until the async function completes, exactly like await would"
+    correct: 0
+    explanation: "This is called \"fire-and-forget\" -- sometimes intentional, but a bug whenever the calling code's correctness depends on the async work actually finishing before moving on."
+    concept_tags: [fire_and_forget, await, async_ordering]
+
+  - id: q41
+    question: "Why does a plain `for...of` loop throw when given an async generator?"
+    options:
+      - "Async generators implement Symbol.asyncIterator, not the synchronous Symbol.iterator protocol a plain for...of expects"
+      - "Async generators can't be looped over at all, in any way"
+      - "for...of only works on arrays"
+      - "Async generators must be converted to arrays first with Array.from"
+    correct: 0
+    explanation: "for await...of is the loop built for the async iterator protocol -- it awaits each .next() call, unlike a plain for...of, which expects synchronous values."
+    concept_tags: [async_generator, for_await_of, async_iterator_protocol]
+
+  - id: q42
+    question: "If a process.nextTick callback and a Promise.then() callback are both pending, which runs first in Node?"
+    options:
+      - "process.nextTick always runs first -- Node fully drains the nextTick queue before processing any Promise microtask, regardless of registration order"
+      - "Whichever was registered first in the source code"
+      - "Promise.then() always runs first, since Promises are part of the ECMAScript spec"
+      - "They always run in the same single queue, interleaved"
+    correct: 0
+    explanation: "This is a Node-specific behavior (not part of the ECMAScript spec) that predates Promises being added to the language -- nextTick has strictly higher priority than any Promise microtask."
+    concept_tags: [process_nexttick, microtask_queue, event_loop_priority]
+
+  - id: q43
+    question: "If code inside a Promise executor throws asynchronously (e.g. inside a nested setTimeout callback), what happens?"
+    options:
+      - "It's an ordinary uncaught exception that crashes the process -- the Promise is never rejected and stays pending forever"
+      - "The Promise automatically rejects with that error, just like a synchronous throw would"
+      - "The setTimeout callback is silently skipped"
+      - "It's caught and logged as a warning, but execution continues normally"
+    correct: 0
+    explanation: "Only a SYNCHRONOUS throw directly inside the executor is auto-converted to a rejection -- a throw inside a deferred callback needs an explicit reject(error) call instead."
+    concept_tags: [promise_executor, reject, uncaught_exception]
+
+  - id: q44
+    question: "Why might mutating a cart object directly inside a function like applyDiscount(cart, pct) be considered a bug, even if the math is correct?"
+    options:
+      - "It's an impure function with a hidden side effect -- callers who still hold a reference to cart see the mutation too, which they may not expect"
+      - "JavaScript doesn't allow modifying object properties inside a function"
+      - "It always throws a TypeError in strict mode"
+      - "Functions can only return values, never accept objects as parameters"
+    correct: 0
+    explanation: "A pure function computes and returns a value without writing to anything else -- returning the discounted total instead of assigning it back to cart.total avoids the hidden side effect."
+    concept_tags: [pure_functions, side_effects, immutability]
+
+  - id: q45
+    question: "In a counter factory function, where must the counter variable be declared for each created counter to be independent?"
+    options:
+      - "Inside the factory function itself, so each call creates a fresh variable in its own function scope"
+      - "Outside the factory function, so every counter shares one canonical value"
+      - "It doesn't matter -- closures always create independent copies automatically"
+      - "As a global variable on the window/global object"
+    correct: 0
+    explanation: "A variable declared outside the factory is shared by every closure returned from every call to it -- declaring it inside the factory gives each call its own private, independent variable."
+    concept_tags: [closures, private_state, factory_function]
+
+  - id: q46
+    question: "What's the main advantage of a pipe(...fns) helper over deeply nested function calls like c(b(a(x)))?"
+    options:
+      - "It reads left-to-right in the actual order the transformations execute, and adding a step is just appending to a list instead of restructuring nested parentheses"
+      - "It runs measurably faster at runtime in every case"
+      - "It's the only way to call more than two functions in sequence in JavaScript"
+      - "It automatically handles errors thrown by any of the functions"
+    correct: 0
+    explanation: "pipe(...fns) is typically implemented with fns.reduce((acc, fn) => fn(acc), x), threading the initial value through each function in the listed order."
+    concept_tags: [function_composition, pipe, reduce]
+
+  - id: q47
+    question: "What happens when you assign to a property of an object created with Object.freeze(), outside of strict mode?"
+    options:
+      - "The assignment silently fails -- no error is thrown, and the property keeps its original value"
+      - "A TypeError is always thrown immediately"
+      - "The object is automatically unfrozen"
+      - "Only numeric properties can be frozen; string properties ignore freeze entirely"
+    correct: 0
+    explanation: "Outside strict mode, assigning to a frozen property is a silent no-op -- building a new object with the spread operator ({ ...config, retries: 5 }) is the correct way to get an \"updated\" value."
+    concept_tags: [object_freeze, immutability, spread_update]
+
+  - id: q48
+    question: "What does Function.prototype.bind(null, 2) do when called on a two-argument function like multiply(a, b)?"
+    options:
+      - "It returns a new function with the first argument permanently fixed to 2, so the returned function only needs the second argument"
+      - "It calls multiply immediately with a=2 and returns the result"
+      - "It sets multiply's `this` to the number 2"
+      - "It has no effect unless multiply is a class method"
+    correct: 0
+    explanation: "This is partial application -- bind(thisArg, ...boundArgs) fixes some arguments ahead of time and returns a function that forwards whatever arguments it's later called with as the rest."
+    concept_tags: [partial_application, function_bind, currying]
+
+  - id: q49
+    question: "What's wrong with a recursive function that has no base case at all?"
+    options:
+      - "It recurses forever (until the call stack overflows with a RangeError), since nothing ever returns a value directly instead of recursing further"
+      - "JavaScript automatically adds a default base case that returns undefined"
+      - "It's fine as long as the input is a positive number"
+      - "It only fails for negative starting values"
+    correct: 0
+    explanation: "Every recursive function needs a condition, checked BEFORE the recursive call, that returns a value directly -- without one, the recursion has no way to stop."
+    concept_tags: [recursion, base_case, stack_overflow]
+
+  - id: q50
+    question: "Does writing a recursive function in tail-call form (the recursive call is the very last thing it does) protect it from stack overflow in Node?"
+    options:
+      - "No -- V8 has never implemented tail-call optimization, so a tail-recursive function still pushes a new stack frame on every call"
+      - "Yes -- Node guarantees proper tail-call optimization per the ECMAScript spec"
+      - "Only if the function uses `let` instead of `const` for its parameters"
+      - "Only for functions with exactly one parameter"
+    correct: 0
+    explanation: "ECMAScript 2015 specifies proper tail calls, but V8 (and every major engine except Safari's JavaScriptCore) never implemented it -- deep recursion in Node needs a genuine iterative loop instead."
+    concept_tags: [tail_call_optimization, stack_overflow, iteration]
+
+  - id: q51
+    question: "In mutually recursive functions like isEven/isOdd, what determines the final answer for a call like isOdd(4)?"
+    options:
+      - "Whichever function's base case is actually reached at the bottom of the alternating chain of calls"
+      - "Only isOdd's own base case matters -- isEven's base case is irrelevant"
+      - "The function that was called first in the source code always wins"
+      - "Mutual recursion always returns undefined unless explicitly cached"
+    correct: 0
+    explanation: "Every earlier call in the alternating chain just returns whatever the innermost call returned -- so a wrong base case value in EITHER function propagates back up through the whole chain."
+    concept_tags: [mutual_recursion, base_case, boolean_logic]
+
+  - id: q52
+    question: "Why does checking `Object.keys(obj).length > 0 ? 1 : 0` fail to measure how deeply an object is nested?"
+    options:
+      - "It only inspects the immediate, top-level shape of obj -- it never recurses into the actual values to see how deep THEY go"
+      - "Object.keys() only works on arrays, not plain objects"
+      - "It always returns 0 for any object"
+      - "JavaScript objects can't be nested more than one level deep"
+    correct: 0
+    explanation: "A correct depth measurement recurses into every value, asks each one how deep it is, and combines the results -- the base case (a non-object value) returns 0, and each level adds 1 to the deepest child."
+    concept_tags: [recursion, nested_objects, tree_depth]
+
+  - id: q53
+    question: "Why is naive recursive Fibonacci (fib(n) = fib(n-1) + fib(n-2), with no caching) exponentially slow?"
+    options:
+      - "The same sub-problems (like fib(3)) get computed independently, over and over, once for every call path that happens to need them"
+      - "JavaScript function calls are inherently slow compared to loops, regardless of algorithm"
+      - "It's actually linear time, not exponential -- this is a common misconception"
+      - "Only true for values of n above 100"
+    correct: 0
+    explanation: "Memoizing each sub-problem's result in a Map the first time it's computed turns the exponential-time naive recursion into linear time, since each distinct value of n is only ever computed once."
+    concept_tags: [memoization, fibonacci, exponential_time]
+
+  - id: q54
+    question: "What's the idiomatic way to do structured logging in Node, given there's no built-in logging module like Python's?"
+    options:
+      - "Log a single JSON object per line (e.g. console.log(JSON.stringify({ level, msg, ...context })))"
+      - "Node has a built-in `logging` module identical to Python's"
+      - "Structured logging isn't possible without a third-party library"
+      - "Use console.table() for every log line"
+    correct: 0
+    explanation: "This is exactly the pattern real Node logging libraries (pino, winston, bunyan) are built around internally -- one structured JSON object per log line, parseable uniformly by any log aggregation tool."
+    concept_tags: [structured_logging, json_stringify, observability]
+
+  - id: q55
+    question: "Why doesn't giving a log call a `level` argument automatically filter out low-severity messages?"
+    options:
+      - "The level is just a label unless something actually compares it against a configured minimum threshold before deciding whether to print"
+      - "Node automatically filters log calls below \"warn\" by default"
+      - "Levels are purely cosmetic and can never be used for filtering"
+      - "Filtering only works if the level is passed as the first argument"
+    correct: 0
+    explanation: "Real filtering needs the levels to have a defined order (e.g. a lookup object mapping names to numbers) plus a comparison against a configured minLevel before deciding whether to log."
+    concept_tags: [log_levels, filtering, observability]
+
+  - id: q56
+    question: "What problem does Node's AsyncLocalStorage solve that manually passing a correlation ID as a parameter doesn't?"
+    options:
+      - "It makes context ambient and implicit -- available via getStore() to any nested function, with nothing to forget to forward at any level"
+      - "It makes function calls run faster"
+      - "It automatically retries failed async operations"
+      - "It's only useful for logging errors, not for tracing successful requests"
+    correct: 0
+    explanation: "A manually threaded parameter breaks the moment any single helper function forgets to accept and forward it -- AsyncLocalStorage propagates context through the entire async call chain automatically."
+    concept_tags: [async_local_storage, correlation_id, context_propagation]
+
+  - id: q57
+    question: "What does `metrics[name]++` evaluate to the very first time `name` has never been set on `metrics` before?"
+    options:
+      - "NaN -- undefined++ coerces to NaN, and once a counter becomes NaN, every further increment of it stays NaN"
+      - "0, since JavaScript initializes unset object properties to 0 automatically"
+      - "1, the same as if it had started at 0"
+      - "It throws a ReferenceError"
+    correct: 0
+    explanation: "metrics[name] = (metrics[name] || 0) + 1 defaults the missing case to 0 before incrementing, avoiding the NaN trap entirely."
+    concept_tags: [metrics, nan, default_initialization]
+
+  - id: q58
+    question: "Why is performance.now() generally preferred over Date.now() for measuring elapsed time?"
+    options:
+      - "performance.now() is guaranteed monotonic and has no relationship to wall-clock time, so it can't jump backward if the system clock is adjusted mid-measurement"
+      - "performance.now() is deprecated and Date.now() is the modern replacement"
+      - "Date.now() requires an explicit import; performance.now() doesn't exist in Node"
+      - "There's no meaningful difference between the two for timing purposes"
+    correct: 0
+    explanation: "Date.now() reflects wall-clock time, which can jump if NTP sync or a manual clock change occurs -- performance.now() is only meaningful as differences between calls, which is exactly what a duration needs."
+    concept_tags: [performance_now, timing_instrumentation, monotonic_clock]
+
+  - id: q59
+    question: "Why does `process.env.TIMEOUT_SECONDS + 1` produce \"451\" instead of 46, if TIMEOUT_SECONDS is set to \"45\"?"
+    options:
+      - "Every process.env value is always a string, so + concatenates it with 1 instead of adding numerically"
+      - "process.env values are automatically parsed as numbers when they look numeric"
+      - "This is a bug in Node that only affects TIMEOUT_SECONDS specifically"
+      - "+ 1 is invalid syntax when used on a process.env value"
+    correct: 0
+    explanation: "Number(process.env.TIMEOUT_SECONDS) + 1 converts the string to a real number first, so + performs numeric addition instead of string concatenation."
+    concept_tags: [process_env, string_typing, type_conversion]
+
+  - id: q60
+    question: "If FEATURE_FLAG is set to the literal string \"false\", what does `if (process.env.FEATURE_FLAG)` evaluate to?"
+    options:
+      - "Truthy -- any non-empty string, including the word \"false\", is truthy in JavaScript"
+      - "Falsy -- JavaScript recognizes the string \"false\" as boolean false"
+      - "It throws a TypeError since process.env values can't be used in conditionals"
+      - "It depends on whether strict mode is enabled"
+    correct: 0
+    explanation: "Comparing explicitly against the exact string that should mean enabled (process.env.FEATURE_FLAG === \"true\") avoids relying on JavaScript's general truthiness rules, which don't special-case the text \"false\"."
+    concept_tags: [boolean_env_var, truthy_string, deployment]
+
+  - id: q61
+    question: "What has to happen for a Node process to run cleanup logic (closing connections, flushing writes) before it shuts down?"
+    options:
+      - "Code must explicitly register a handler with process.on(\"SIGTERM\", ...) -- otherwise the signal is sent but nothing reacts to it"
+      - "Node automatically closes all open connections on any shutdown"
+      - "SIGTERM can only be handled by editing Node's own source code"
+      - "Cleanup only runs if the process was started with a special --graceful flag"
+    correct: 0
+    explanation: "SIGTERM is sent by process managers/orchestrators before termination, but only code that's actually listening for it gets a chance to run cleanup before the process exits."
+    concept_tags: [graceful_shutdown, sigterm, process_signals]
+
+  - id: q62
+    question: "For a health check aggregating several independent sub-checks, why is .some() the wrong combinator to use?"
+    options:
+      - ".some() reports healthy as soon as ANY single check passes, ignoring every other check that might be failing at the same time"
+      - ".some() and .every() behave identically for boolean arrays"
+      - ".some() is deprecated in favor of .every() in all contexts"
+      - ".some() can only be used with numeric arrays"
+    correct: 0
+    explanation: ".every() is the correct aggregation for \"the system is healthy\" -- it only returns true once every single check has passed, short-circuiting to false the moment any one fails."
+    concept_tags: [health_check, some_vs_every, aggregation]
+
+  - id: q63
+    question: "What makes a deploy step \"idempotent,\" and why does it matter?"
+    options:
+      - "Running it multiple times produces the same end result as running it once -- important because retries and re-runs of deploy steps are normal, not edge cases"
+      - "It means the step can only ever be run exactly one time, ever"
+      - "It means the step has no side effects at all"
+      - "It refers to steps that run in parallel instead of sequentially"
+    correct: 0
+    explanation: "Checking whether a resource already exists before creating it (e.g. via a Set of already-created names) turns \"always creates, no matter what\" into \"creates exactly once, no matter how many times it's called.\""
+    concept_tags: [idempotency, deploy_step, set]

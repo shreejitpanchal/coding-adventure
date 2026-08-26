@@ -1,0 +1,85 @@
+id: dependency_management_02
+title: "Implementing a Caret Range Check"
+language: node
+level: 27
+objective: "Fix a caret-range (^1.2.3) satisfaction check that only compares versions numerically, without also enforcing the same major version."
+explanation: |
+  A `package.json` dependency like `"^1.2.3"` doesn't mean "any version
+  greater than or equal to 1.2.3" -- it means "any version compatible
+  with 1.2.3 under semantic versioning," which specifically means "the
+  same major version, at or above 1.2.3." `2.0.0` is numerically greater
+  than `1.2.3`, but it does *not* satisfy `^1.2.3`, because semver treats
+  a major version bump as a signal that breaking changes may have been
+  introduced -- exactly the kind of upgrade a caret range is designed to
+  exclude automatically. A check that only compares version numbers
+  (using the same segment-by-segment comparison from the sibling
+  exercise on lexicographic version comparison) gets this wrong: it
+  would happily accept `2.0.0`, `5.0.0`, or anything else numerically
+  larger, none of which `^1.2.3` was ever meant to allow.
+
+  The actual rule needs two conditions, both true: the candidate version
+  must be greater than or equal to the range's base version (using
+  numeric, not lexicographic, comparison), *and* its major version
+  segment must exactly match the base version's major segment. Only
+  checking the first condition is the classic mistake -- it silently
+  drops the "same major version" constraint that's the entire point of
+  using a caret range instead of a bare `>=`.
+example_code: |
+  function compareVersions(a, b) {
+    const partsA = a.split(".").map(Number);
+    const partsB = b.split(".").map(Number);
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const diff = (partsA[i] || 0) - (partsB[i] || 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+
+  // The trap: only checks >=, ignores the major-version constraint entirely.
+  function satisfiesCaretTrap(version, base) {
+    return compareVersions(version, base) >= 0;
+  }
+  console.log(satisfiesCaretTrap("2.0.0", "1.2.3"));  // true -- WRONG, that's a major bump
+
+  // The fix: >= the base version AND the same major version.
+  function satisfiesCaret(version, base) {
+    const majorOfVersion = Number(version.split(".")[0]);
+    const majorOfBase = Number(base.split(".")[0]);
+    return compareVersions(version, base) >= 0 && majorOfVersion === majorOfBase;
+  }
+  console.log(satisfiesCaret("1.5.0", "1.2.3"));  // true -- same major, newer patch/minor
+  console.log(satisfiesCaret("2.0.0", "1.2.3"));  // false -- major version bump, excluded
+starter_code: |
+  function compareVersions(a, b) {
+    const partsA = a.split(".").map(Number);
+    const partsB = b.split(".").map(Number);
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const diff = (partsA[i] || 0) - (partsB[i] || 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+  function satisfiesCaret(version, base) {
+    return compareVersions(version, base) >= 0;
+  }
+  console.log(satisfiesCaret("1.5.0", "1.2.3"));
+  console.log(satisfiesCaret("2.0.0", "1.2.3"));
+challenge: |
+  Fix `satisfiesCaret` so it also requires the same major version as
+  `base`, not just a numerically higher-or-equal version -- "2.0.0"
+  should NOT satisfy a "^1.2.3" range, since that's a major version
+  bump.
+expected_output: |
+  true
+  false
+hints:
+  - "Extract the major segment of each version with Number(version.split(\".\")[0])."
+  - "The final condition needs both: compareVersions(...) >= 0 AND the majors matching."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 2
+difficulty: core
+contains_patterns:
+  - "majorOf|split\\(\"\\.\"\\)\\[0\\]"
+concept_tags: [semver, caret_range, major_version]

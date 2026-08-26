@@ -1,7 +1,7 @@
 id: gotcha_gauntlet_02
 title: "NaN Never Equals Itself"
 language: node
-level: 27
+level: 57
 objective: "Replace a === comparison against NaN with Number.isNaN, since NaN === NaN is always false."
 explanation: |
   `NaN` is the one value in JavaScript that isn't equal to itself under

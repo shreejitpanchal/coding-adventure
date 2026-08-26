@@ -1,0 +1,67 @@
+id: deployment_02
+title: "Every Non-Empty Env Var String Is Truthy"
+language: node
+level: 52
+objective: "Fix a feature flag check that treats FEATURE_FLAG=\"false\" as enabled, because any non-empty string -- including the literal text \"false\" -- is truthy in JavaScript."
+explanation: |
+  `if (process.env.FEATURE_FLAG)` checks whether the value is *truthy*,
+  not whether it equals `true` in any meaningful sense. Since every
+  `process.env` value is a string, and every non-empty string is
+  truthy in JavaScript regardless of what it says, setting
+  `FEATURE_FLAG=false` in the environment doesn't disable the feature
+  at all -- the string `"false"` is non-empty, so `if
+  (process.env.FEATURE_FLAG)` evaluates to `true` just the same as
+  `"true"`, `"yes"`, `"0"`, or literally any other non-empty text would.
+  The only value of this environment variable that would actually be
+  falsy is leaving it completely unset (`undefined`) or setting it to
+  the empty string -- setting it to the *word* "false" doesn't help at
+  all, which is exactly the opposite of what anyone configuring it
+  would expect.
+
+  The fix is to compare the string explicitly against the specific text
+  that should mean "enabled" -- `process.env.FEATURE_FLAG === "true"`
+  -- rather than relying on JavaScript's general truthiness rules, which
+  were never designed with "the literal string false should be falsy"
+  in mind. This is the same category of trap as JavaScript's loose `==`
+  coercion: trusting a general-purpose language rule to encode a very
+  specific piece of domain meaning ("this text represents a boolean")
+  that the rule was never actually built to express.
+example_code: |
+  process.env.FEATURE_FLAG = "false";
+
+  // The trap: any non-empty string is truthy, including the word "false".
+  if (process.env.FEATURE_FLAG) {
+    console.log("feature ON (trap)");   // prints -- even though the flag says "false"!
+  } else {
+    console.log("feature OFF (trap)");
+  }
+
+  // The fix: compare against the exact string that should mean enabled.
+  if (process.env.FEATURE_FLAG === "true") {
+    console.log("feature ON (fixed)");
+  } else {
+    console.log("feature OFF (fixed)");  // correctly OFF
+  }
+starter_code: |
+  process.env.FEATURE_FLAG = "false";
+  function isEnabled() {
+    return Boolean(process.env.FEATURE_FLAG);
+  }
+  console.log(isEnabled() ? "feature ON" : "feature OFF");
+challenge: |
+  Fix `isEnabled` so setting FEATURE_FLAG to the string "false"
+  correctly reports the feature as OFF -- compare the value against the
+  exact string "true" instead of using Boolean(...) truthiness.
+expected_output: |
+  feature OFF
+hints:
+  - "return process.env.FEATURE_FLAG === \"true\"; replaces Boolean(process.env.FEATURE_FLAG)."
+  - "Only the literal string \"true\" should count as enabled -- everything else, including \"false\", \"0\", and \"no\", should be OFF."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "=== \"true\""
+concept_tags: [boolean_env_var, truthy_string, deployment]

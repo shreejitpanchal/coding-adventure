@@ -1,0 +1,57 @@
+id: observability_01
+title: "Replacing Plain console.log with Structured Logging"
+language: node
+level: 46
+objective: "Replace an ad-hoc console.log message with a structured JSON log line, since Node has no built-in logging module the way some other languages do."
+explanation: |
+  `console.log("Processing order", orderId)` is fine for quick local
+  debugging, but it doesn't scale to a real running service: the output
+  is free-form text with no consistent shape, so anything downstream
+  that wants to search, filter, or aggregate logs (a log viewer, a
+  monitoring dashboard, a teammate grepping through output) has to
+  parse an ad-hoc sentence instead of reading structured fields. Node
+  has no stdlib equivalent to Python's `logging` module or Java's
+  logging frameworks -- there's no built-in concept of log levels,
+  handlers, or structured formatting baked into the language itself.
+
+  The idiomatic real-world Node pattern for structured logging, with
+  zero dependencies, is to log a single JSON object per line:
+  `console.log(JSON.stringify({ level: "info", msg: "...", orderId }))`.
+  Every log line becomes a JSON object with the same consistent field
+  names (`level`, `msg`, plus whatever contextual data is relevant),
+  which any log aggregation tool can parse uniformly -- this is exactly
+  the pattern actual Node logging libraries (pino, winston, bunyan) are
+  built around internally; reaching for one of them mainly buys richer
+  features (log levels with filtering, file transports, async batching)
+  on top of the same core idea: one structured JSON object per log line,
+  not a hand-formatted sentence.
+example_code: |
+  const orderId = 42;
+
+  // The trap: free-form text -- no consistent shape to parse or filter on.
+  console.log("Processing order", orderId, "status: started");
+
+  // The fix: one JSON object per line, with consistent field names.
+  console.log(JSON.stringify({ level: "info", msg: "Processing order", orderId, status: "started" }));
+starter_code: |
+  function processOrder(orderId) {
+    console.log("Processing order", orderId, "status: started");
+  }
+  processOrder(42);
+challenge: |
+  Rewrite the log line as a single JSON object (via
+  `JSON.stringify({ level: "info", msg: "Processing order", orderId,
+  status: "started" })`) instead of a free-form console.log sentence.
+expected_output: |
+  {"level":"info","msg":"Processing order","orderId":42,"status":"started"}
+hints:
+  - "console.log(JSON.stringify({ level: \"info\", msg: \"Processing order\", orderId, status: \"started\" }));"
+  - "Object property shorthand (orderId instead of orderId: orderId) works fine inside the object literal here."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "JSON\\.stringify\\(\\{"
+concept_tags: [structured_logging, json_stringify, observability]

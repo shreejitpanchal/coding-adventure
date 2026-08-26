@@ -1,0 +1,70 @@
+id: observability_04
+title: "Incrementing a Metric That Was Never Initialized"
+language: node
+level: 49
+objective: "Fix a metrics counter that produces NaN because it increments a key before that key has ever been given a starting value."
+explanation: |
+  `metrics[name]++` reads `metrics[name]`, adds one, and writes the
+  result back -- but reading a key that's never been set on a plain
+  object returns `undefined`, not `0`. `undefined++` doesn't throw or
+  quietly treat the missing value as zero; it evaluates to `NaN` (`
+  undefined` coerced to a number is `NaN`, and `NaN + 1` is still
+  `NaN`), and once a counter becomes `NaN`, every subsequent increment
+  of that same counter stays `NaN` forever -- `NaN + 1` is `NaN` too,
+  so there's no way to "recover" a counter that started out uninitialized
+  by simply incrementing it more.
+
+  The fix is the same "default the missing case explicitly" idiom used
+  anywhere else a map-like lookup might return nothing: `metrics[name] =
+  (metrics[name] || 0) + 1;` reads the current count (or `0` if this is
+  the first time `name` has ever been seen, since `undefined || 0`
+  evaluates to `0`), adds one, and writes the result back in a single
+  expression. The very first call for any given metric name now
+  correctly starts that counter at `1` instead of corrupting it into
+  `NaN` from the start.
+example_code: |
+  // The trap: incrementing a key that's never been initialized first.
+  const metricsTrap = {};
+  function incrementTrap(name) {
+    metricsTrap[name]++;   // undefined++ is NaN, and stays NaN forever after
+  }
+  incrementTrap("requests");
+  incrementTrap("requests");
+  console.log(metricsTrap.requests);  // NaN
+
+  // The fix: default the missing case to 0 before incrementing.
+  const metrics = {};
+  function increment(name) {
+    metrics[name] = (metrics[name] || 0) + 1;
+  }
+  increment("requests");
+  increment("requests");
+  increment("errors");
+  console.log(metrics.requests, metrics.errors);  // 2 1
+starter_code: |
+  const metrics = {};
+  function increment(name) {
+    metrics[name]++;
+  }
+  increment("requests");
+  increment("requests");
+  increment("errors");
+  console.log(metrics.requests, metrics.errors);
+challenge: |
+  Fix `increment` so a metric's very first increment correctly starts
+  it at 1 instead of producing NaN -- default the missing case to 0
+  before adding 1, instead of incrementing an uninitialized key
+  directly.
+expected_output: |
+  2 1
+hints:
+  - "metrics[name] = (metrics[name] || 0) + 1; replaces metrics[name]++;"
+  - "undefined++ evaluates to NaN, not 0 -- there's no way to fix a NaN counter after the fact, only before the first increment."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\(metrics\\[name\\] \\|\\| 0\\) \\+ 1"
+concept_tags: [metrics, nan, default_initialization]
