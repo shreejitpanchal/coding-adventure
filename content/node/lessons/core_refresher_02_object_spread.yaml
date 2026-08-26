@@ -9,14 +9,22 @@ explanation: |
   -- correct, but it's five lines of bookkeeping to express "combine
   these, letting override win." The `for...in` loop also technically
   walks inherited enumerable properties, not just the object's own keys,
-  which is rarely what's intended.
+  which is rarely what's intended -- a manual loop that isn't careful
+  about this can copy across properties a reader never expected to be
+  part of `base` or `override` at all.
 
   The object spread operator (`{ ...base, ...override }`) does the same
   "own enumerable keys, later wins" merge in one expression, with no
-  loop, no key iteration, and no inherited-property surprise. Properties
-  are copied left to right, so anything in `override` that shares a key
-  with `base` simply overwrites it -- exactly mirroring what the manual
-  loop was doing, just spelled out declaratively instead of imperatively.
+  loop, no key iteration, and no inherited-property surprise (spread only
+  ever copies own enumerable properties, by spec). Properties are copied
+  left to right, so anything in `override` that shares a key with `base`
+  simply overwrites it -- exactly mirroring what the manual loop was
+  doing, just spelled out declaratively instead of imperatively. It's
+  worth remembering that, like the manual loop, spread is still a
+  *shallow* merge: if a key's value is itself an object shared between
+  `base` and `override`, the merged result holds a reference to that
+  same nested object, not an independent copy of it -- merging nested
+  structures correctly needs a recursive ("deep") merge instead.
 example_code: |
   const base = { a: 1, b: 2 };
   const override = { b: 3, c: 4 };
@@ -30,6 +38,11 @@ example_code: |
   // The fix: spread expresses the same merge directly.
   const merged = { ...base, ...override };
   console.log(merged);                 // { a: 1, b: 3, c: 4 }
+
+  // Still shallow, just like the manual loop: nested objects are shared,
+  // not copied, by both approaches.
+  const withNested = { ...{ meta: { count: 1 } }, extra: true };
+  withNested.meta.count = 99;          // would mutate the original's meta too
 starter_code: |
   function mergeConfigs(base, override) {
     const merged = {};
@@ -46,6 +59,7 @@ expected_output: |
   {"a":1,"b":3,"c":4}
 hints:
   - "return { ...base, ...override }; replaces the whole loop body."
+  - "Order matters: override needs to come second so its keys win on collision, matching the manual loop's overwrite order."
 xp_reward: 10
 achievement: null
 category: core_refresher

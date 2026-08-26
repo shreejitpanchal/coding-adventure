@@ -20,7 +20,16 @@ explanation: |
   `(a, b) => a - b` for ascending order. The comparator's contract is
   simple -- return negative if `a` should come first, positive if `b`
   should, zero if they're equal -- and `a - b` satisfies exactly that for
-  numbers directly, with no string conversion involved at all.
+  numbers directly, with no string conversion involved at all. Descending
+  order is just the mirrored comparator, `(a, b) => b - a` -- there's no
+  separate "descending" flag or method, only a different subtraction
+  order, since the comparator's sign is the entire interface `sort()`
+  relies on. Watch for one subtlety when subtracting: `a - b` on two
+  huge numbers near `Number.MAX_SAFE_INTEGER` can itself lose precision
+  or overflow in unexpected ways, so `(a, b) => a - b` is the standard
+  idiom for ordinary numbers, but `(a, b) => (a > b ? 1 : a < b ? -1 :
+  0)` is the safer, subtraction-free comparator when the values might be
+  extreme.
 example_code: |
   // The trap: sort() with no comparator treats numbers as strings.
   const lexicographic = [10, 1, 21, 2];
@@ -31,6 +40,11 @@ example_code: |
   const numeric = [10, 1, 21, 2];
   numeric.sort((a, b) => a - b);
   console.log(numeric.join(","));  // 1,2,10,21
+
+  // Descending is just the mirrored comparator -- no separate API.
+  const descending = [10, 1, 21, 2];
+  descending.sort((a, b) => b - a);
+  console.log(descending.join(","));  // 21,10,2,1
 starter_code: |
   const nums = [10, 1, 21, 2];
   nums.sort();
@@ -42,6 +56,7 @@ expected_output: |
   1,2,10,21
 hints:
   - "nums.sort((a, b) => a - b) sorts ascending by numeric value."
+  - "sort() still mutates nums in place here -- you don't need to reassign the result to a new variable."
 xp_reward: 10
 achievement: idioms_gotchas_master
 category: idioms_gotchas

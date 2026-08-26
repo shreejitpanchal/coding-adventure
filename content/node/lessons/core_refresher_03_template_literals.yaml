@@ -10,16 +10,25 @@ explanation: |
   Every quote-to-plus-to-quote transition is a place to lose track of
   spacing, forget a `+`, or introduce an extra/missing space, and the
   overall shape of the final sentence is hard to read directly from the
-  code.
+  code. Mixing types makes it worse: `+` between a string and a number
+  coerces the number to a string via implicit `toString()`, which works
+  fine for a plain number but silently produces `"count: [object
+  Object]"` if a variable that was supposed to be a number turns out to
+  hold an object instead -- a bug `+` concatenation hides rather than
+  surfaces.
 
   Template literals (backtick strings) let a variable be embedded
   directly in place with `${expr}`, so the string reads the same way the
   output will look, with no interruption to splice in a plus sign:
   `` `Hi ${name}, you are ${age} years old.` ``. `${}` can hold any
-  expression, not just a bare variable, and the whole literal can span
-  multiple lines without `\n` escapes -- both are reasons template
-  literals became the default way to build any string with dynamic
-  content once ES2015 introduced them.
+  expression, not just a bare variable -- `${age + 1}` or
+  `${isAdmin ? "admin" : "user"}` work exactly as written -- and the
+  whole literal can span multiple lines without `\n` escapes, since a
+  literal newline inside the backticks becomes part of the string. Both
+  are reasons template literals became the default way to build any
+  string with dynamic content once ES2015 introduced them, though the
+  coercion behavior for a non-string `${expr}` is identical to `+`'s --
+  templates fix the *readability* problem, not the type-coercion one.
 example_code: |
   const name = "Ada";
   const age = 30;
@@ -28,9 +37,11 @@ example_code: |
   const greetingConcat = "Hi " + name + ", you are " + age + " years old.";
   console.log(greetingConcat);
 
-  // The fix: a template literal reads like the final sentence.
+  // The fix: a template literal reads like the final sentence,
+  // and can embed any expression, not just a bare variable.
   const greeting = `Hi ${name}, you are ${age} years old.`;
   console.log(greeting);
+  console.log(`Next year you'll be ${age + 1}.`);
 starter_code: |
   function greet(name, age) {
     return "Hi " + name + ", you are " + age + " years old.";
@@ -43,6 +54,7 @@ expected_output: |
   Hi Ada, you are 30 years old.
 hints:
   - "Use backticks: `Hi ${name}, you are ${age} years old.`"
+  - "The whole return statement becomes one backtick-delimited string, no + anywhere."
 xp_reward: 10
 achievement: null
 category: core_refresher

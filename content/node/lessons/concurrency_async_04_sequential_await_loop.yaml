@@ -10,7 +10,11 @@ explanation: |
   one at a time in a loop takes roughly 60ms total -- even though nothing
   about the tasks actually depends on each other finishing first. The
   loop reads as "do these one after another," which is exactly what it
-  does, whether or not that was the intent.
+  does, whether or not that was the intent. This is a purely structural
+  bug, not a logic one: the code computes the right answer either way,
+  so nothing about correctness or the test output ever flags it -- only
+  a latency measurement (or a timeout budget under real load) reveals
+  that the loop is quietly leaving concurrency on the table.
 
   When the tasks are genuinely independent (this one doesn't need that
   one's result to start), starting all of them first and then waiting
@@ -21,6 +25,12 @@ explanation: |
   roughly 20ms total instead of 60ms, with the exact same final array.
   The output is identical either way; only the wall-clock time changes,
   which is precisely why this bug is easy to miss without measuring it.
+  The general rule this generalizes to: `await` inside a loop is correct
+  and necessary when each iteration genuinely depends on the previous
+  one's result (a paginated API walk, say), but a silent performance bug
+  the moment the iterations are actually independent of each other --
+  the loop body itself can't tell you which case you're in, only the
+  data flow between iterations can.
 example_code: |
   function double(n) {
     return new Promise((resolve) => setTimeout(() => resolve(n * 2), 20));
@@ -38,6 +48,16 @@ example_code: |
   // The fix: start every task first, then await them all together.
   async function doubleAllParallel(nums) {
     return Promise.all(nums.map((n) => double(n)));  // ~20ms total
+  }
+
+  // Contrast: a loop where each step genuinely needs the last one's
+  // result -- here, sequential await is the correct choice, not a bug.
+  async function runningTotal(nums) {
+    let total = 0;
+    for (const n of nums) {
+      total = await double(total + n);  // depends on the previous total
+    }
+    return total;
   }
 starter_code: |
   function double(n) {
@@ -64,11 +84,12 @@ expected_output: |
   2,4,6
 hints:
   - "return Promise.all(nums.map((n) => double(n)));"
+  - "nums.map((n) => double(n)) starts every timer immediately -- Promise.all then just waits for the collected results."
 xp_reward: 10
 achievement: null
 category: concurrency_async
 category_level: 4
-difficulty: gotcha
+difficulty: deep_dive
 contains_patterns:
   - "Promise\\.all\\(nums\\.map\\("
 concept_tags: [promise_all, sequential_await, concurrency]

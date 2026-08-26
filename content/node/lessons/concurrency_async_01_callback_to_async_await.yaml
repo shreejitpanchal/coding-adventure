@@ -11,7 +11,10 @@ explanation: |
   way up. Each additional async step nests one level deeper -- the
   well-known "callback pyramid" -- and error handling has no single,
   consistent place to live (each callback has to check for its own error
-  argument, or there isn't one at all, as here).
+  argument, or there isn't one at all, as here). Composing two
+  independent callback-based operations is awkward too: there's no
+  built-in way to say "run both of these and wait for whichever finishes
+  last" without hand-rolling a counter that both callbacks decrement.
 
   Wrapping the same operation in a `Promise` lets it be `await`-ed
   instead: `fetchValue` returns a `Promise` that resolves with the value,
@@ -19,7 +22,13 @@ explanation: |
   if it were a normal synchronous return -- no callback parameter, no
   nesting, and the function can use `return`/`try`/`catch` exactly like
   synchronous code, even though the operation underneath is still
-  asynchronous.
+  asynchronous. This isn't just a syntax preference: a function that
+  returns a `Promise` can be composed with `Promise.all`,
+  `Promise.race`, and every other combinator built on top of the
+  `Promise` interface, none of which have a callback-based equivalent --
+  `async`/`await` is really just ergonomic sugar over `Promise`, not a
+  separate mechanism, which is why `fetchValue` still has to return one
+  even though `main` never calls `.then()` on it directly.
 example_code: |
   // The trap: callbacks nest, and main() must take one too.
   function fetchValueCallback(cb) {
@@ -30,15 +39,27 @@ example_code: |
   }
   mainCallback((result) => console.log(result));  // 84
 
-  // The fix: a Promise + async/await reads like synchronous code.
+  // Composing two callback-based calls means hand-rolling a counter --
+  // there's no Promise.all() equivalent for raw callbacks.
+  function fetchTwoCallback(cb) {
+    let done = 0, sum = 0;
+    const onOne = (v) => { sum += v; if (++done === 2) cb(sum); };
+    fetchValueCallback(onOne);
+    fetchValueCallback(onOne);
+  }
+
+  // The fix: a Promise + async/await reads like synchronous code,
+  // and composes with Promise.all for free.
   function fetchValue() {
     return new Promise((resolve) => setTimeout(() => resolve(42), 10));
   }
   async function main() {
     const value = await fetchValue();
-    console.log(value * 2);
+    console.log(value * 2);                          // 84
+    const [a, b] = await Promise.all([fetchValue(), fetchValue()]);
+    console.log(a + b);                               // 84
   }
-  main();  // 84
+  main();
 starter_code: |
   function fetchValue(cb) {
     setTimeout(() => cb(42), 10);
@@ -58,6 +79,7 @@ expected_output: |
 hints:
   - "function fetchValue() { return new Promise((resolve) => setTimeout(() => resolve(42), 10)); }"
   - "async function main() { const value = await fetchValue(); console.log(value * 2); }"
+  - "The resolve function you pass to `new Promise((resolve) => ...)` is what setTimeout's callback should call with the value."
 xp_reward: 10
 achievement: null
 category: concurrency_async

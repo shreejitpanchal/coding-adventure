@@ -8,7 +8,9 @@ explanation: |
   `undefined` inside the function body before the parameter is used for
   anything else -- correct, but it separates "what the parameter
   defaults to" from the parameter list itself, so a reader has to scan
-  the whole function body just to learn a default even exists.
+  the whole function body just to learn a default even exists. It also
+  means the check has to be written and gotten right on every parameter
+  that needs one, with no shared, built-in mechanism enforcing it.
 
   Default parameters (`function power(base, exp = 2)`) put that fallback
   directly in the signature, evaluated only when the argument is actually
@@ -17,8 +19,13 @@ explanation: |
   since only `undefined` does, matching exactly what the manual
   `=== undefined` check was already doing. The default expression is
   also re-evaluated on every call that needs it (it can even reference
-  earlier parameters), not computed once and cached -- but for a simple
-  constant like `2` that distinction rarely matters in practice.
+  earlier parameters, e.g. `function greet(name, greeting = \`Hi
+  ${name}\`)`), not computed once and cached -- but for a simple constant
+  like `2` that distinction rarely matters in practice. This
+  re-evaluation is also why a default of `tags = []` is safe (a fresh
+  array every call), unlike a default that pointed at one array declared
+  outside the function, which every omitted-argument call would then
+  share.
 example_code: |
   // The trap: the default lives inside the body, not the signature.
   function powerManual(base, exp) {
@@ -28,12 +35,20 @@ example_code: |
   console.log(powerManual(3));       // 9
   console.log(powerManual(2, 5));    // 32
 
-  // The fix: the default is visible right in the parameter list.
+  // The fix: the default is visible right in the parameter list,
+  // and null explicitly passed still bypasses it -- only undefined doesn't.
   function power(base, exp = 2) {
     return Math.pow(base, exp);
   }
   console.log(power(3));             // 9
   console.log(power(2, 5));          // 32
+  console.log(power(2, null));       // 1 -- null is not undefined, so the default is skipped; null coerces to 0, and 2**0 is 1
+
+  // A default can even reference an earlier parameter.
+  function greet(name, greeting = `Hi ${name}`) {
+    return greeting;
+  }
+  console.log(greet("Ada"));         // Hi Ada
 starter_code: |
   function power(base, exp) {
     if (exp === undefined) exp = 2;
@@ -49,6 +64,7 @@ expected_output: |
   32
 hints:
   - "function power(base, exp = 2) { return Math.pow(base, exp); }"
+  - "The if-check inside the body can be deleted entirely once the default lives in the signature."
 xp_reward: 10
 achievement: null
 category: core_refresher

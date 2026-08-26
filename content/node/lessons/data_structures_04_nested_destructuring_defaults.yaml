@@ -7,7 +7,9 @@ explanation: |
   Reading two nested config values safely by hand means guarding each
   one with `config.server && config.server.host` before falling back to
   a default -- repeating `config.server` for every field read from it,
-  and repeating the same shape of guard-then-fallback for each one.
+  and repeating the same shape of guard-then-fallback for each one. Each
+  additional nested field means one more repeated guard, so the
+  boilerplate grows with the number of fields, not just the depth.
 
   Destructuring patterns can nest, and each level -- including the
   nested object itself -- can carry its own default. `{ server: { host
@@ -17,7 +19,12 @@ explanation: |
   specific field is missing." The `= {}` on `server` matters specifically
   for the case where `server` itself is absent -- without it, destructuring
   `{ host, port }` from `undefined` would throw, since you can't
-  destructure properties out of nothing.
+  destructure properties out of nothing. It's worth being precise about
+  when each default actually fires: like any default parameter, a
+  destructuring default only kicks in when the corresponding value is
+  exactly `undefined` -- `{ server: null }` would still throw, since
+  `null` isn't `undefined` and destructuring `{ host, port }` out of
+  `null` fails the same way it would out of any non-object value.
 example_code: |
   // The trap: repeats config.server for every field, guard-then-fallback each time.
   function describeManual(config) {
@@ -34,6 +41,13 @@ example_code: |
   }
   console.log(describe({ server: { host: "example.com" } }));  // example.com:8080
   console.log(describe({}));                                    // localhost:8080
+
+  // The outer default only covers undefined, not null:
+  try {
+    describe({ server: null });
+  } catch (e) {
+    console.log("still throws:", e.constructor.name);  // still throws: TypeError
+  }
 starter_code: |
   function describe(config) {
     const host = config.server && config.server.host ? config.server.host : "localhost";
@@ -51,6 +65,7 @@ expected_output: |
   localhost:8080
 hints:
   - "The outer default (= {}) on server is what keeps a missing server from throwing."
+  - "The whole parameter list becomes one destructuring pattern: function describe({ server: { host = ..., port = ... } = {} })."
 xp_reward: 10
 achievement: null
 category: data_structures

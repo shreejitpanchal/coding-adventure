@@ -8,16 +8,28 @@ explanation: |
   looping a fixed number of times, and pushing each computed value in
   turn -- three separate moving parts (the accumulator, the loop bound,
   the push) to express what's really just "the sequence of `i*i` for `i`
-  from 0 to n-1."
+  from 0 to n-1." A tempting shortcut, `new Array(n).fill(0).map((_, i)
+  => i * i)`, actually works, but only because `.fill()` happens to give
+  every slot a real value first -- `new Array(n)` on its own creates
+  `n` *empty* slots (not `undefined` values), and `.map()` skips empty
+  slots entirely, silently returning another all-empty array if the
+  `.fill()` step is left out.
 
   `Array.from()` accepts an array-like object -- `{ length: n }` counts,
   even though it has no actual elements -- plus an optional mapper
   function applied to each resulting index, and builds the whole array
-  in one call: `Array.from({ length: n }, (_, i) => i * i)`. There's no
-  accumulator to initialize and no loop to write; the length and the
-  per-index computation are the only two things that actually vary
-  between one use of this pattern and another, and that's exactly what
-  `Array.from`'s two arguments capture.
+  in one call: `Array.from({ length: n }, (_, i) => i * i)`. Unlike `new
+  Array(n)`, `Array.from` never creates empty slots at all -- every index
+  from `0` to `n-1` is visited and given a real value by the mapper, with
+  no `.fill()` step needed first. There's no accumulator to initialize
+  and no loop to write; the length and the per-index computation are the
+  only two things that actually vary between one use of this pattern and
+  another, and that's exactly what `Array.from`'s two arguments capture.
+  `Array.from()` also accepts any genuine iterable (a `Set`, a `Map`'s
+  `.keys()`, a generator) as its first argument, not just an array-like
+  `{ length }` object -- the range-building use here is one specific,
+  common case of a more general "build an array from any iterable,
+  optionally transforming each item" tool.
 example_code: |
   // The trap: an accumulator, a loop, and a push -- for a pure computed sequence.
   function rangeManual(n) {
@@ -29,7 +41,12 @@ example_code: |
   }
   console.log(rangeManual(5).join(","));  // 0,1,4,9,16
 
-  // The fix: Array.from builds the whole sequence from length + mapper.
+  // A tempting shortcut that's secretly broken without .fill() first:
+  // new Array(n) creates EMPTY slots, and .map() skips empty slots.
+  console.log(new Array(5).map((_, i) => i * i).join(","));  // ,,,,  -- all empty!
+
+  // The fix: Array.from builds the whole sequence from length + mapper,
+  // visiting every index directly -- no empty-slot trap possible.
   function range(n) {
     return Array.from({ length: n }, (_, i) => i * i);
   }
@@ -50,11 +67,12 @@ expected_output: |
   0,1,4,9,16
 hints:
   - "return Array.from({ length: n }, (_, i) => i * i);"
+  - "The mapper's second parameter is the index -- the first (unused here) is the value at that index, which is always undefined for a bare { length: n }."
 xp_reward: 10
 achievement: stdlib_deep_dive_master
 category: stdlib_deep_dive
 category_level: 5
-difficulty: core
+difficulty: deep_dive
 contains_patterns:
   - "Array\\.from\\("
 concept_tags: [array_from, range_generation]

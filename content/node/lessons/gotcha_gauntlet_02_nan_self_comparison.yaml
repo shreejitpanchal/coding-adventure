@@ -11,10 +11,19 @@ explanation: |
   NaN)` can never return `true` for *any* array, no matter how many
   `NaN`s it contains -- the comparison inside the callback silently fails
   every single time, with no error to signal that anything went wrong.
+  The global `isNaN()` function (note: not `Number.isNaN`) looks like an
+  obvious fix but has its own trap -- it coerces its argument to a number
+  first, so `isNaN("hello")` is also `true`, since `"hello"` coerces to
+  `NaN` before the check even runs, making it useless for "is this value
+  literally `NaN`" without first confirming the value was already a
+  number.
 
-  `Number.isNaN()` exists specifically to check for `NaN` correctly: it
-  returns `true` if and only if the value is actually `NaN`, sidestepping
-  the self-inequality entirely by not using `===` at all internally.
+  `Number.isNaN()` exists specifically to check for `NaN` correctly, with
+  no coercion at all: it returns `true` if and only if the value is
+  already, literally `NaN` -- `Number.isNaN("hello")` is `false`, since a
+  string is never `NaN` itself, only coercible to it. This is exactly the
+  same "coercion vs. no coercion" distinction as `==` vs `===`, just
+  showing up in a global function instead of an operator.
   (`Array.prototype.includes()` also handles this correctly on its own,
   using a comparison algorithm that treats `NaN` as equal to `NaN`
   specifically for this reason -- but a hand-written `===` check, as here,
@@ -25,8 +34,12 @@ example_code: |
   // The trap: NaN === NaN is always false, so this never matches.
   console.log(nums.some((n) => n === NaN));       // false -- always, even though NaN is right there!
 
-  // The fix: Number.isNaN checks correctly.
+  // A second trap: global isNaN() coerces first, so it's not a safe substitute.
+  console.log(isNaN("hello"));                     // true -- "hello" coerces to NaN, not what we want
+
+  // The fix: Number.isNaN checks correctly, no coercion.
   console.log(nums.some((n) => Number.isNaN(n))); // true
+  console.log(Number.isNaN("hello"));              // false -- correctly not NaN itself
 starter_code: |
   function containsInvalid(nums) {
     return nums.some((n) => n === NaN);
@@ -40,6 +53,7 @@ expected_output: |
   true
 hints:
   - "nums.some((n) => Number.isNaN(n))"
+  - "Don't use the global isNaN() here -- it coerces non-numbers to NaN first, which isn't what this check needs."
 xp_reward: 15
 achievement: null
 category: gotcha_gauntlet

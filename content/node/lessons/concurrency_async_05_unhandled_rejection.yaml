@@ -10,7 +10,12 @@ explanation: |
   `await` point, as a normal JavaScript exception. If nothing catches it,
   it propagates out of `main()` the same way an uncaught synchronous
   throw would: Node prints the stack trace and exits with a non-zero
-  status, since there's no handler left to deal with it.
+  status, since there's no handler left to deal with it. Node treats
+  this as fatal on purpose -- as of Node 15+, an unhandled promise
+  rejection terminates the process by default, the same severity as an
+  uncaught synchronous exception, precisely because a rejected promise
+  nobody is listening to usually means a bug went unnoticed, not that
+  the error was intentionally ignorable.
 
   Wrapping the `await` in `try`/`catch` handles this exactly like any
   other exception -- `catch (e)` receives the rejection reason (the
@@ -18,7 +23,13 @@ explanation: |
   of crashing. This is the entire benefit `async`/`await` has over raw
   `.then()`/`.catch()` chains for error handling: rejected promises
   become catchable with the same `try`/`catch` syntax used for
-  synchronous errors, no separate `.catch()` handler required.
+  synchronous errors, no separate `.catch()` handler required. One
+  detail worth internalizing: the `catch` block only guards the code
+  *inside* the `try` -- if `risky()` were called without being awaited
+  inside the try (e.g. stored in a variable, then awaited later outside
+  it), the rejection would surface at that later, unguarded `await`
+  instead, since a `Promise`'s rejection isn't "thrown" until something
+  actually awaits (or `.then()`s) it.
 example_code: |
   async function risky() {
     throw new Error("oops");
@@ -41,6 +52,17 @@ example_code: |
     }
   }
   main();  // caught: oops
+
+  // A subtler trap: the try/catch only guards the await *inside* it.
+  async function mainAlsoTrap() {
+    const pending = risky();          // starts running, not yet awaited
+    try {
+      console.log("doing other work first");
+    } catch (e) {
+      console.log("this never runs");
+    }
+    const value = await pending;      // rejection surfaces HERE, unguarded
+  }
 starter_code: |
   async function risky() {
     throw new Error("oops");
@@ -58,6 +80,7 @@ expected_output: |
   caught: oops
 hints:
   - "try { const value = await risky(); console.log(value); } catch (e) { console.log(\"caught:\", e.message); }"
+  - "Both the await and the console.log need to move inside the try block -- only wrapping the await isn't enough here since the value is used right after it."
 xp_reward: 10
 achievement: concurrency_async_master
 category: concurrency_async

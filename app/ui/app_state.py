@@ -4,13 +4,34 @@ main.py and threaded through every view-builder function as an explicit
 parameter (no global state)."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from app.config.settings import Settings, get_db_path, load_settings, save_settings
+from app.engine.exercise import Exercise
 from app.engine.lesson_engine import ExerciseEngine
 from app.engine.quiz_engine import QuizEngine
 from app.progress.store import ProgressStore
 from app.ui.theme import ThemePreset, get_preset, resolve_font_scale
+
+
+def resolve_daily_refresher(
+    engine: ExerciseEngine, progress: ProgressStore, language: str, today: str,
+) -> list[Exercise]:
+    """Pure lookup/generate step behind AppState.daily_refresher_exercises(),
+    split out so it's testable without a full AppState (which reads real
+    on-disk settings/progress)."""
+    saved_ids = progress.get_daily_refresher_picks(language, today)
+    if saved_ids:
+        exercises = [ex for eid in saved_ids if (ex := engine.get(eid)) is not None]
+        if exercises:
+            return exercises
+
+    completed_ids = set(progress.get_completed_lesson_ids(language))
+    exercises = engine.daily_refresher(completed_ids, count=5)
+    if exercises:
+        progress.save_daily_refresher_picks(language, today, [ex.id for ex in exercises])
+    return exercises
 
 
 class AppState:
@@ -40,6 +61,15 @@ class AppState:
         if lang not in self._quiz_engines:
             self._quiz_engines[lang] = QuizEngine(lang)
         return self._quiz_engines[lang]
+
+    def daily_refresher_exercises(self, language: Optional[str] = None) -> list[Exercise]:
+        """Today's fixed Daily Refresher set -- generated once per calendar
+        day and persisted, so it stays a stable, finishable checklist
+        instead of silently reshuffling in the incomplete exercises as
+        items get completed during the day."""
+        lang = language or self.language
+        today = datetime.now(timezone.utc).date().isoformat()
+        return resolve_daily_refresher(self.exercise_engine(lang), self.progress, lang, today)
 
     def select_language(self, language: str) -> None:
         self.language = language

@@ -8,21 +8,27 @@ explanation: |
   guarding every step with `&&` before finally falling back with a
   ternary: `user.address && user.address.city ? user.address.city : "Unknown"`
   repeats `user.address.city` three times just to say "read this safely,
-  and if it's not there, use a default."
+  and if it's not there, use a default." One extra level of nesting
+  means one more `&&` clause to add correctly, and it's easy to forget
+  one of them and let a `TypeError` slip through instead.
 
   Optional chaining (`?.`) short-circuits to `undefined` the moment any
   link in the chain is `null`/`undefined`, instead of throwing --
   `user.address?.city` reads exactly like the direct property access it
-  replaces, just tolerant of a missing `address`. Nullish coalescing
-  (`??`) then supplies a fallback only when the left side is specifically
-  `null` or `undefined` -- unlike `||`, which would also override a
-  legitimately falsy value like `0` or `""`. Chained together,
-  `user.address?.city ?? "Unknown"` says the whole thing in one line with
-  no repeated property path and no accidental match on a genuinely falsy
-  (but present) value.
+  replaces, just tolerant of a missing `address`. It also works on method
+  calls (`user.getName?.()` -- calls `getName` only if it exists) and on
+  bracket access (`user?.["address"]`), not just plain property reads.
+  Nullish coalescing (`??`) then supplies a fallback only when the left
+  side is specifically `null` or `undefined` -- unlike `||`, which would
+  also override a legitimately falsy value like `0` or `""`, silently
+  replacing a genuinely valid "city not set yet, empty string" with the
+  fallback text instead. Chained together, `user.address?.city ??
+  "Unknown"` says the whole thing in one line with no repeated property
+  path and no accidental match on a genuinely falsy (but present) value.
 example_code: |
   const withCity = { address: { city: "Boston" } };
   const withoutAddress = {};
+  const withEmptyCity = { address: { city: "" } };
 
   // The trap: repeats the property path three times.
   function getCityManual(user) {
@@ -30,13 +36,16 @@ example_code: |
   }
   console.log(getCityManual(withCity));        // Boston
   console.log(getCityManual(withoutAddress));  // Unknown
+  console.log(getCityManual(withEmptyCity));   // Unknown -- WRONG, "" is a real (if empty) value
 
-  // The fix: ?. and ?? say the same thing without repetition.
+  // The fix: ?. and ?? say the same thing without repetition,
+  // and ?? (unlike the ternary above) doesn't override a real "" value.
   function getCity(user) {
     return user.address?.city ?? "Unknown";
   }
   console.log(getCity(withCity));              // Boston
   console.log(getCity(withoutAddress));        // Unknown
+  console.log(getCity(withEmptyCity));         // "" -- correctly preserved
 starter_code: |
   function getCity(user) {
     return user.address && user.address.city ? user.address.city : "Unknown";
@@ -53,6 +62,7 @@ expected_output: |
   Unknown
 hints:
   - "return user.address?.city ?? \"Unknown\";"
+  - "Don't use || here instead of ?? -- || would also replace a legitimately empty string city."
 xp_reward: 10
 achievement: core_refresher_master
 category: core_refresher

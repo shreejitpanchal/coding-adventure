@@ -15,6 +15,11 @@ explanation: |
   defined to do. The bug is trusting `==` to mean "are these the same
   value" when it actually means "are these the same value, after however
   much type-juggling it takes to make the comparison possible at all."
+  The rules also aren't even transitive: `"" == 0` is `true` and
+  `0 == "0"` is `true`, so it would be reasonable to expect `"" == "0"`
+  too -- but it's `false`, since two strings are compared directly
+  (character by character) with no numeric coercion at all once both
+  sides are already the same type.
 
   `===` (strict equality) skips coercion entirely: if the operands aren't
   already the same type, it's false, full stop. That's why it's the
@@ -23,13 +28,19 @@ explanation: |
   that "silently comparing across types" causes far more bugs than it
   ever prevents. The rare case where coercion is genuinely wanted (e.g.
   checking a value is either `null` or `undefined`) reads much clearer as
-  an explicit check than as a hoped-for `==` side effect.
+  an explicit check than as a hoped-for `==` side effect -- `value ==
+  null` is the one `==` usage most style guides still permit, precisely
+  because it's a deliberate, well-known idiom rather than an accidental
+  reliance on coercion.
 example_code: |
   // The trap: == silently coerces before comparing.
   console.log(0 == "0");           // true  -- "0" coerced to 0
   console.log(0 == "");            // true  -- "" coerced to 0 too
   console.log(null == undefined);  // true  -- special-cased by the spec
   console.log(false == "0");       // true  -- both coerced to 0
+
+  // == isn't even transitive: "" == 0 and 0 == "0", but "" != "0".
+  console.log("" == "0");          // false -- both already strings, compared directly
 
   // The fix: === compares type AND value, no coercion at all.
   console.log(0 === "0");          // false -- different types
@@ -54,6 +65,7 @@ expected_output: |
   true
 hints:
   - "Just swap == for === inside isMatch -- no other logic needs to change."
+  - "isMatch(null, undefined) should now be false, since === never treats them as equal the way == specially does."
 xp_reward: 10
 achievement: null
 category: idioms_gotchas

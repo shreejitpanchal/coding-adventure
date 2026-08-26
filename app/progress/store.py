@@ -53,6 +53,13 @@ CREATE TABLE IF NOT EXISTS player_xp (
     language TEXT PRIMARY KEY,
     total_xp INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS daily_refresher_picks (
+    language TEXT NOT NULL,
+    pick_date TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    PRIMARY KEY (language, pick_date, lesson_id)
+);
 """
 
 # XP cost to clear level N is N * 100 (level 1->2 costs 100, 2->3 costs 200, ...).
@@ -185,6 +192,26 @@ class ProgressStore:
         with closing(self._conn.cursor()) as cur:
             cur.execute("SELECT lesson_id FROM lesson_completions WHERE language = ?", (language,))
             return [row[0] for row in cur.fetchall()]
+
+    # -- Daily Refresher -----------------------------------------------
+    def get_daily_refresher_picks(self, language: str, pick_date: str) -> list[str]:
+        """The exercise ids fixed for this language on this date, or an
+        empty list if today's set hasn't been generated/saved yet -- the
+        set is saved once per day so it stays a stable, finishable
+        checklist instead of silently reshuffling as items complete."""
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT lesson_id FROM daily_refresher_picks WHERE language = ? AND pick_date = ? ORDER BY rowid",
+                (language, pick_date),
+            )
+            return [row[0] for row in cur.fetchall()]
+
+    def save_daily_refresher_picks(self, language: str, pick_date: str, lesson_ids: list[str]) -> None:
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO daily_refresher_picks (language, pick_date, lesson_id) VALUES (?, ?, ?)",
+                [(language, pick_date, lesson_id) for lesson_id in lesson_ids],
+            )
 
     # -- Badges/achievements ----------------------------------------------
     def award_badge(self, language: str, badge_id: str) -> bool:
@@ -320,6 +347,7 @@ class ProgressStore:
             self._conn.execute("DELETE FROM badges WHERE language = ?", (language,))
             self._conn.execute("DELETE FROM activity_log WHERE language = ?", (language,))
             self._conn.execute("DELETE FROM quiz_attempts WHERE language = ?", (language,))
+            self._conn.execute("DELETE FROM daily_refresher_picks WHERE language = ?", (language,))
             self._conn.execute(
                 "UPDATE profile SET current_exercise_id = NULL, streak_days = 0, last_played_date = NULL "
                 "WHERE language = ?",

@@ -12,7 +12,10 @@ explanation: |
   onto that original `scores` reference -- including the caller who
   passed it in -- sees the reordering too, even though nothing about
   calling `topThree(scores)` looked like it should touch the caller's
-  own array.
+  own array. `.reverse()` and `.splice()` share this same in-place
+  behavior for the same reason -- all three predate the array methods
+  that established "return a new array, don't touch the original" as the
+  expected convention.
 
   This is easy to miss because `.map()` and `.filter()` (the two array
   methods most often chained alongside `.sort()`) both return brand-new
@@ -20,7 +23,11 @@ explanation: |
   The fix is to sort a *copy*: spreading the array first (`[...scores]`)
   creates a new array to sort, leaving the original completely
   untouched, exactly matching the behavior a reader would expect from
-  seeing `.map()`/`.filter()` used right next to it.
+  seeing `.map()`/`.filter()` used right next to it. Newer engines also
+  ship `Array.prototype.toSorted()` (ES2023), a non-mutating sibling that
+  does the copy internally -- `scores.toSorted((a, b) => b - a)` says the
+  same thing as `[...scores].sort((a, b) => b - a)` more directly, once a
+  project's minimum supported Node version guarantees it's available.
 example_code: |
   const scoresTrap = [5, 3, 9, 1, 7];
 
@@ -38,6 +45,11 @@ example_code: |
   }
   console.log(topThree(scores).join(","));  // 9,7,5
   console.log(scores.join(","));             // 5,3,9,1,7 -- untouched
+
+  // Newer alternative: toSorted() never mutates, no spread needed.
+  const scores2 = [5, 3, 9, 1, 7];
+  console.log(scores2.toSorted((a, b) => b - a).slice(0, 3).join(","));  // 9,7,5
+  console.log(scores2.join(","));  // 5,3,9,1,7 -- untouched
 starter_code: |
   function topThree(scores) {
     const sorted = scores.sort((a, b) => b - a);
@@ -57,6 +69,7 @@ expected_output: |
   5,3,9,1,7
 hints:
   - "const sorted = [...scores].sort((a, b) => b - a);"
+  - "Only the sort line needs to change -- topThree's parameter is already named scores, so keep using that name."
 xp_reward: 15
 achievement: null
 category: gotcha_gauntlet

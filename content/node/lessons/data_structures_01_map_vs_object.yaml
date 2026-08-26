@@ -16,15 +16,24 @@ explanation: |
   function itself (since it's truthy), and `functionValue + 1` coerces
   the function to a string via its own `toString()` and concatenates
   `"1"` onto it, producing a string where a number was expected -- with
-  no error at any point.
+  no error at any point. `Object.create(null)` sidesteps this one
+  specific problem (a null-prototype object has no inherited properties
+  at all), but it's a narrower fix than switching to `Map` -- it doesn't
+  give back key ordering guarantees, a `.size` property, or an iteration
+  protocol that yields `[key, value]` pairs directly the way `Map` does.
 
   `Map` has no such inherited surface: it stores exactly the entries
   explicitly `.set()` on it, and `.get()` on a genuinely absent key
   returns `undefined`, full stop, regardless of what that key's name
-  happens to be. That's why `Map` (not a plain object) is the right
-  choice whenever keys come from outside the program's control -- user
-  input, external data, dynamic strings -- where a collision with
-  `Object.prototype` can't be ruled out in advance.
+  happens to be. `Map` also accepts keys of *any* type -- an object, a
+  function, even `NaN` -- not just strings and symbols the way plain
+  object keys are implicitly coerced to, which matters whenever the
+  natural key for a lookup isn't text at all (e.g. mapping DOM nodes or
+  class instances to metadata about them). That's why `Map` (not a plain
+  object) is the right choice whenever keys come from outside the
+  program's control -- user input, external data, dynamic strings --
+  where a collision with `Object.prototype` can't be ruled out in
+  advance.
 example_code: |
   // The trap: "toString" silently collides with an inherited property.
   const countsObj = {};
@@ -41,6 +50,13 @@ example_code: |
   }
   incrementMap("toString");
   console.log(typeof countsMap.get("toString"));  // number
+
+  // Bonus: Map keys aren't limited to strings -- an object works too.
+  const userA = { name: "Ada" };
+  const visits = new Map();
+  visits.set(userA, 3);
+  console.log(visits.get(userA));    // 3
+  console.log(visits.get({ name: "Ada" }));  // undefined -- a *different* object, even with equal contents
 starter_code: |
   const counts = {};
   function increment(key) {
@@ -58,6 +74,7 @@ expected_output: |
   2 number
 hints:
   - "const counts = new Map(); then counts.set(key, (counts.get(key) || 0) + 1);"
+  - "The final console.log needs counts.get(\"a\") and typeof counts.get(\"toString\") instead of bracket access."
 xp_reward: 10
 achievement: null
 category: data_structures

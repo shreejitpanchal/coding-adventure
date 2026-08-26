@@ -10,9 +10,7 @@ from app.ui.category_levels import build_exercise_list_view
 
 
 def build_daily_refresher_view(page: ft.Page, state: AppState) -> ft.View:
-    engine = state.exercise_engine()
-    completed_ids = set(state.progress.get_completed_lesson_ids(state.language))
-    exercises = engine.daily_refresher(completed_ids, count=5)
+    exercises = state.daily_refresher_exercises()
     return build_exercise_list_view(
         page, state, title="🎯 Daily Refresher", route="/daily", exercises=exercises, back_route="/hub",
     )

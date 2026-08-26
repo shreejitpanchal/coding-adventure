@@ -13,19 +13,32 @@ explanation: |
   values. This trips people up specifically because it's the opposite of
   how `===` behaves for primitives (`1 === 1` is `true` because numbers
   are compared by value) -- objects and arrays are compared by identity
-  instead, full stop.
+  instead, full stop. Reassigning one variable to point at the other
+  (`const cartB = cartA`) makes `cartA === cartB` `true`, not because
+  their contents match, but because there's now only one array with two
+  names for it -- a useful way to build intuition for what `===` is
+  actually checking.
 
   When the actual goal is "do these contain the same data" rather than
   "are these literally the same array," a quick and common fix for plain
   JSON-safe data is comparing their serialized form:
   `JSON.stringify(a) === JSON.stringify(b)`. It's not bulletproof for
-  every possible value (key order matters, and it can't handle functions
-  or circular references), but for arrays/objects of plain data -- like
-  a shopping cart of item IDs -- it's a simple, genuinely correct way to
-  compare contents instead of identity.
+  every possible value: key *order* matters (`{a:1,b:2}` and `{b:2,a:1}`
+  serialize to different strings despite being the "same" object by any
+  reasonable definition), and it can't handle functions, `undefined`
+  values, or circular references at all. For arrays/objects of plain,
+  order-insensitive data -- like a shopping cart of item IDs -- it's a
+  simple, genuinely correct way to compare contents instead of identity;
+  for anything more structurally sensitive, a dedicated deep-equality
+  check (as most testing libraries ship) is the more robust tool.
 example_code: |
   // The trap: === compares identity, not contents.
   console.log([1, 2, 3] === [1, 2, 3]);  // false -- two different arrays
+
+  // Reassignment, by contrast, really is identity -- same array, two names.
+  const cartA = [1, 2, 3];
+  const cartB = cartA;
+  console.log(cartA === cartB);  // true -- there's only one array here
 
   // The fix: compare their serialized contents instead.
   function sameContents(a, b) {
@@ -33,6 +46,10 @@ example_code: |
   }
   console.log(sameContents([1, 2, 3], [1, 2, 3]));     // true
   console.log(sameContents([1, 2, 3], [1, 2, 3, 4]));  // false
+
+  // JSON.stringify's blind spot: key order changes the string, even
+  // though these two objects are arguably "the same" data.
+  console.log(JSON.stringify({ a: 1, b: 2 }) === JSON.stringify({ b: 2, a: 1 }));  // false
 starter_code: |
   function isSameCart(cartA, cartB) {
     return cartA === cartB;
@@ -49,6 +66,7 @@ expected_output: |
   false
 hints:
   - "return JSON.stringify(cartA) === JSON.stringify(cartB);"
+  - "Only the return line inside isSameCart changes -- the two console.log calls stay exactly the same."
 xp_reward: 15
 achievement: gotcha_gauntlet_master
 category: gotcha_gauntlet

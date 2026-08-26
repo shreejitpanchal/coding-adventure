@@ -13,14 +13,22 @@ explanation: |
   anything (e.g. loading several required config files) -- but it's the
   wrong tool when the goal is "run these independently and see how each
   one turned out," since one failure shouldn't erase the others'
-  successes.
+  successes. Worse, the promises that *didn't* cause the rejection don't
+  stop running just because `Promise.all()` gave up on them -- if they
+  reject too, later, with nothing still listening for the result,
+  Node can even report an "unhandled rejection" for a promise the code
+  already effectively abandoned.
 
   `Promise.allSettled()` never short-circuits on a rejection -- it always
   waits for every promise to settle (either fulfilled or rejected) and
   resolves with an array describing each outcome individually
   (`{status: "fulfilled", value}` or `{status: "rejected", reason}`).
   That's the right choice whenever the tasks are independent and partial
-  success is meaningful, which is exactly the case here.
+  success is meaningful, which is exactly the case here. The tradeoff is
+  that `allSettled()` itself never rejects -- checking whether *anything*
+  failed becomes the caller's job (typically `results.some(r => r.status
+  === "rejected")`), rather than something a `catch` block gets for
+  free the way it does with `Promise.all()`.
 example_code: |
   const tasks = [Promise.resolve(1), Promise.reject(new Error("boom")), Promise.resolve(3)];
 
@@ -61,6 +69,7 @@ expected_output: |
 hints:
   - "const settled = await Promise.allSettled([...]);"
   - "settled.map((r) => (r.status === \"fulfilled\" ? r.value : \"failed\")).join(\",\")"
+  - "You can drop the try/catch entirely -- allSettled() never rejects."
 xp_reward: 10
 achievement: null
 category: concurrency_async

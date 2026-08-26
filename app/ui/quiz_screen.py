@@ -191,6 +191,7 @@ class _QuizController:
 
     def _show_results(self) -> None:
         self.state.progress.record_quiz_attempt(self.state.language, self.score, self.total)
+        self.state.progress.record_play_today(self.state.language)
         percent = round(100 * self.score / self.total)
         self.results_text.value = f"You scored {self.score} / {self.total} ({percent}%)"
 

@@ -13,12 +13,21 @@ explanation: |
   is just a reference to one specific array declared once at module
   level. Every call that omits the `tags` argument gets *that same
   array* handed to it -- not a fresh one -- so pushing onto it in one
-  call leaves the pushed value there for the next call to see too.
+  call leaves the pushed value there for the next call to see too. Note
+  the distinction: re-evaluating `tags = DEFAULT_TAGS` on every call
+  really does happen (it's not stale), but re-evaluating a reference to
+  the *same* array just hands out that same reference again each time --
+  re-evaluation alone doesn't help when the expression being re-evaluated
+  always points at one shared object.
 
   The fix is for the default value to actually construct something new
   each time: `tags = []` is an array *literal*, which allocates a brand
   new empty array on every call that uses the default, rather than a
-  reference to one array shared across every call.
+  reference to one array shared across every call. This is the general
+  rule default parameters (and mutable default *arguments* in other
+  languages) both point at: a default should be an expression that
+  builds a fresh value, not a name that resolves to one value shared
+  across every invocation.
 example_code: |
   // The trap: the default parameter refers to one shared array.
   const DEFAULT_TAGS = [];
@@ -28,6 +37,7 @@ example_code: |
   }
   console.log(addTagTrap("a").join(","));  // a
   console.log(addTagTrap("b").join(","));  // a,b -- "a" leaked in from the last call!
+  console.log(DEFAULT_TAGS.join(","));      // a,b -- the "constant" itself got mutated too
 
   // The fix: [] as the default allocates a fresh array each call.
   function addTag(tag, tags = []) {
@@ -54,6 +64,7 @@ expected_output: |
   b
 hints:
   - "function addTag(tag, tags = []) { ... } -- drop DEFAULT_TAGS entirely."
+  - "The DEFAULT_TAGS declaration itself can be deleted too -- nothing needs it once the default is a literal."
 xp_reward: 15
 achievement: null
 category: gotcha_gauntlet

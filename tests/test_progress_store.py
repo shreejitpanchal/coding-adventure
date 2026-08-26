@@ -42,3 +42,17 @@ def test_streak_increments_on_consecutive_days(store):
     assert store.get_streak_days("python") == 1
     store.record_play_today("python")  # same day, no-op
     assert store.get_streak_days("python") == 1
+
+
+def test_daily_refresher_picks_persist_for_the_day(store):
+    assert store.get_daily_refresher_picks("python", "2026-01-01") == []
+    store.save_daily_refresher_picks("python", "2026-01-01", ["ex1", "ex2", "ex3"])
+    assert store.get_daily_refresher_picks("python", "2026-01-01") == ["ex1", "ex2", "ex3"]
+    # A different day gets its own independent set.
+    assert store.get_daily_refresher_picks("python", "2026-01-02") == []
+
+
+def test_daily_refresher_picks_cleared_on_reset(store):
+    store.save_daily_refresher_picks("python", "2026-01-01", ["ex1"])
+    store.reset_progress("python")
+    assert store.get_daily_refresher_picks("python", "2026-01-01") == []

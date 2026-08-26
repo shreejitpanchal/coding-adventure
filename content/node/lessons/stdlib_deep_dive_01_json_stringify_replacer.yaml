@@ -9,16 +9,23 @@ explanation: |
   deleting the unwanted key off the copy, then serializing the copy --
   three separate steps, plus a shallow copy that's easy to forget when
   the object is more deeply nested than a one-level `{...user}` spread
-  can safely handle.
+  can safely handle. If `password` were nested one level down instead of
+  at the top, the shallow copy wouldn't protect it at all -- the copy's
+  nested object is still the *same* nested object as the original's,
+  so `delete copy.credentials.password` would delete it from the
+  original too.
 
   `JSON.stringify` accepts a second argument, a replacer, that's either
   an array of key names to keep or a function called for every key/value
-  pair as the object is walked -- returning `undefined` from that
-  function omits the key from the output entirely. `JSON.stringify(user,
-  (key, value) => (key === "password" ? undefined : value))` filters
-  during serialization itself, with no intermediate copy needed and no
-  risk of forgetting to copy a nested field that should also have been
-  excluded.
+  pair *as the object is walked, at every level of nesting* -- returning
+  `undefined` from that function omits the key from the output entirely.
+  `JSON.stringify(user, (key, value) => (key === "password" ? undefined
+  : value))` filters during serialization itself, with no intermediate
+  copy needed and, crucially, no risk of missing a nested occurrence of
+  the same field name -- the replacer function is invoked once per
+  key/value pair encountered at *any* depth, not just the top level,
+  which is exactly the property the manual copy-and-delete approach
+  can't offer without writing its own recursive walk.
 example_code: |
   const user = { name: "Ada", password: "secret123" };
 
@@ -27,10 +34,18 @@ example_code: |
   delete copy.password;
   console.log(JSON.stringify(copy));  // {"name":"Ada"}
 
-  // The fix: the replacer filters during serialization itself.
+  // The trap's real weakness: it doesn't protect a NESTED password at all.
+  const nestedUser = { name: "Ada", credentials: { password: "secret123" } };
+  const shallowCopy = { ...nestedUser };
+  delete shallowCopy.credentials.password;  // mutates the shared nested object!
+  console.log(nestedUser.credentials.password);  // undefined -- leaked into the original too
+
+  // The fix: the replacer filters during serialization itself, at every depth.
+  const nestedUser2 = { name: "Ada", credentials: { password: "secret123" } };
   console.log(
-    JSON.stringify(user, (key, value) => (key === "password" ? undefined : value))
-  );  // {"name":"Ada"}
+    JSON.stringify(nestedUser2, (key, value) => (key === "password" ? undefined : value))
+  );  // {"name":"Ada","credentials":{}}
+  console.log(nestedUser2.credentials.password);  // secret123 -- original untouched
 starter_code: |
   function toSafeJson(user) {
     const copy = { ...user };
@@ -46,11 +61,12 @@ expected_output: |
   {"name":"Ada"}
 hints:
   - "JSON.stringify(user, (key, value) => (key === \"password\" ? undefined : value))"
+  - "The replacer function is the second argument to JSON.stringify -- no third argument needed here."
 xp_reward: 10
 achievement: null
 category: stdlib_deep_dive
 category_level: 1
-difficulty: core
+difficulty: deep_dive
 contains_patterns:
   - "key === \"password\""
 concept_tags: [json_stringify, replacer, serialization]

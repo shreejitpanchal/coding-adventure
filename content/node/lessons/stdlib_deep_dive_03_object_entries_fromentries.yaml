@@ -8,15 +8,23 @@ explanation: |
   its keys with `for...in` and assigning into a fresh result object one
   key at a time -- correct, but it's imperative bookkeeping (create an
   empty object, loop, assign) around what's conceptually a single
-  transformation: "double every value, keep the same keys."
+  transformation: "double every value, keep the same keys." It also
+  walks inherited enumerable properties unless guarded with a
+  `hasOwnProperty` check, the same `for...in` footgun that shows up
+  anywhere a plain object is looped over this way.
 
   `Object.entries()` turns an object into an array of `[key, value]`
-  pairs, which can then be transformed with the same `.map()` used on any
-  array, and `Object.fromEntries()` turns the transformed pairs back into
-  an object. `Object.fromEntries(Object.entries(prices).map(([key,
-  val]) => [key, val * 2]))` treats "transform every value" as a data
-  pipeline -- object to pairs, pairs to new pairs, new pairs back to an
-  object -- rather than a loop with a mutable accumulator.
+  pairs, which can then be transformed with the same `.map()`/`.filter()`
+  used on any array, and `Object.fromEntries()` turns the transformed
+  pairs back into an object. `Object.fromEntries(Object.entries(prices).
+  map(([key, val]) => [key, val * 2]))` treats "transform every value" as
+  a data pipeline -- object to pairs, pairs to new pairs, new pairs back
+  to an object -- rather than a loop with a mutable accumulator. Because
+  the intermediate value is a genuine array of pairs, the same pipeline
+  can just as easily *filter* keys (`.filter(([key]) => key !== "temp")`
+  before mapping) or *rename* them (returning a different key in the
+  mapped pair) -- the object-in, object-out shape stays the same no
+  matter which array method does the actual transforming in the middle.
 example_code: |
   const prices = { apple: 1, pear: 2 };
 
@@ -32,6 +40,12 @@ example_code: |
     Object.entries(prices).map(([key, val]) => [key, val * 2])
   );
   console.log(JSON.stringify(doubled));  // {"apple":2,"pear":4}
+
+  // The same pipeline shape can filter keys too, not just transform values.
+  const cheap = Object.fromEntries(
+    Object.entries(prices).filter(([, val]) => val < 2)
+  );
+  console.log(JSON.stringify(cheap));  // {"apple":1}
 starter_code: |
   function doublePrices(prices) {
     const result = {};
@@ -49,11 +63,12 @@ expected_output: |
   {"apple":2,"pear":4}
 hints:
   - "Object.fromEntries(Object.entries(prices).map(([key, val]) => [key, val * 2]))"
+  - "The mapper must return a [key, value] pair, not just the transformed value -- fromEntries needs both."
 xp_reward: 10
 achievement: null
 category: stdlib_deep_dive
 category_level: 3
-difficulty: core
+difficulty: deep_dive
 contains_patterns:
   - "Object\\.entries\\("
   - "Object\\.fromEntries\\("

@@ -13,7 +13,9 @@ explanation: |
   isolated removal surrounded by kept elements can look fine), but two
   matching elements sitting next to each other reliably loses one of
   them, because the second one shifts into the slot the loop just
-  finished with.
+  finished with. The bug is also invisible to `forEach` itself --
+  `forEach` has no idea the array it's iterating just got shorter mid-
+  loop, and keeps advancing its index counter as if nothing changed.
 
   `.filter()` sidesteps the whole problem by never mutating the array
   being iterated at all -- it builds a brand-new array containing only
@@ -22,7 +24,13 @@ explanation: |
   This is the general lesson, not specific to `splice`: mutating a
   collection while iterating over it is a common source of skipped or
   double-visited elements in *any* language, and building a new
-  collection instead is almost always the safer default.
+  collection instead is almost always the safer default. The same
+  category of bug shows up with `push`/`unshift` during a `for...of` over
+  the same array (the loop can run longer than intended, or even
+  forever, since the array it's iterating keeps growing), and with
+  deleting `Map`/`Set` entries mid-iteration in some engines -- "don't
+  mutate what you're currently iterating" is the safe general rule, not
+  a `splice`-specific one.
 example_code: |
   // The trap: splice shifts elements left, so the loop skips one.
   const numsTrap = [1, 2, 2, 3, 4, 5];
@@ -35,6 +43,17 @@ example_code: |
   const nums = [1, 2, 2, 3, 4, 5];
   const odds = nums.filter((n) => n % 2 !== 0);
   console.log(odds.join(","));       // 1,3,5
+
+  // The same family of bug, different mutation: growing an array
+  // while for...of is still walking it.
+  const queue = [1, 2, 3];
+  let visits = 0;
+  for (const n of queue) {
+    visits++;
+    if (n === 1) queue.push(4);   // extends the very array being iterated
+    if (visits > 10) break;        // safety net -- this would otherwise run away
+  }
+  console.log(visits);  // more than the original 3 elements would suggest
 starter_code: |
   const nums = [1, 2, 2, 3, 4, 5];
   nums.forEach((n, idx) => {
@@ -51,6 +70,7 @@ expected_output: |
   1,3,5
 hints:
   - "const odds = nums.filter((n) => n % 2 !== 0); console.log(odds.join(\",\"));"
+  - "Replace the whole forEach block -- filter builds the result directly, no separate mutation step needed."
 xp_reward: 15
 achievement: null
 category: gotcha_gauntlet

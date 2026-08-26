@@ -12,14 +12,23 @@ explanation: |
   those closures actually run, the loop has already finished and `i`
   holds whatever it was left at after the final iteration -- so every
   closure reports the same, final value, regardless of which iteration
-  supposedly created it.
+  supposedly created it. This is precisely why the bug shows up almost
+  exclusively with *asynchronous* callbacks (a `setTimeout`, a
+  `.then()`, an event handler) -- a *synchronous* callback invoked
+  immediately inside the loop body would run before `i` changes again,
+  and would never reveal the shared-variable problem at all.
 
   `let` fixes this by being block-scoped *and* by getting special
   treatment in `for` loops specifically: the spec creates a brand new
   binding of the loop variable for each iteration, initialized from the
   previous iteration's value. That's why simply swapping `var` for `let`
   is enough -- each closure now captures its own iteration's binding
-  instead of one shared variable, with no other code change needed.
+  instead of one shared variable, with no other code change needed. This
+  same fresh-binding-per-iteration behavior is also why `let` (unlike
+  `var`) is safe to capture directly in a loop that spawns concurrent
+  async work -- each iteration's async callback closes over its own
+  independent copy of the loop variable, not one shared mutable slot
+  that later iterations could still be changing underneath it.
 example_code: |
   // The trap: var is shared across every iteration.
   function makeAddersVar() {
@@ -42,6 +51,12 @@ example_code: |
   }
   const addersLet = makeAddersLet();
   console.log(addersLet.map((f) => f(10)).join(","));  // 10,11,12
+
+  // The bug needs an ASYNC callback to actually surface -- a synchronous
+  // one runs immediately, before i changes, and hides the problem.
+  for (var j = 0; j < 3; j++) {
+    ((n) => console.log(n))(j);       // sync -- prints 0,1,2, looks fine even with var
+  }
 starter_code: |
   function makeFns() {
     const fns = [];
@@ -60,6 +75,7 @@ expected_output: |
   0,1,2
 hints:
   - "Only the loop declaration needs to change: for (let i = 0; ...)."
+  - "The function pushed into fns doesn't need to change at all -- only how i is declared matters here."
 xp_reward: 10
 achievement: null
 category: idioms_gotchas

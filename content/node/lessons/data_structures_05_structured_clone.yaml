@@ -11,7 +11,9 @@ explanation: |
   affect `shallow` -- it mutates the exact object that `original.address`
   also points to, since both `original.address` and `shallow.address`
   are still the same object in memory. "Shallow" copy means exactly that:
-  copying goes one level deep and no further.
+  copying goes one level deep and no further -- the same limitation
+  applies to `Object.assign({}, original)` and `Array.prototype.slice()`,
+  since both are shallow copies too, not a spread-specific quirk.
 
   `structuredClone()` (a global function, no import needed since Node
   17) performs a genuine deep clone -- every nested object, array, `Map`,
@@ -19,7 +21,14 @@ explanation: |
   identity with anything in the original. Mutating a nested property on
   the clone leaves the original completely untouched. It's the right
   tool specifically when a "copy" needs to be fully independent, not just
-  a fresh top-level object wrapping the same nested data.
+  a fresh top-level object wrapping the same nested data. It isn't a
+  universal replacement for every copying need, though: it uses the
+  structured clone algorithm, which can't clone functions, DOM nodes,
+  class instances with prototype methods (it clones the plain data, but
+  the result is a plain object, not an instance of the original class),
+  or values containing them -- for those cases a manual recursive copy,
+  or a library built for the specific shape of data involved, is still
+  the right tool.
 example_code: |
   const original = { name: "Ada", address: { city: "Boston" } };
 
@@ -33,6 +42,19 @@ example_code: |
   const deep = structuredClone(original2);
   deep.address.city = "Seattle";
   console.log(original2.address.city);  // Boston -- untouched
+
+  // structuredClone handles Map/Set/nested arrays too, not just plain objects.
+  const withMap = { tags: new Set(["a", "b"]), history: [{ v: 1 }] };
+  const clonedMap = structuredClone(withMap);
+  clonedMap.tags.add("c");
+  console.log(withMap.tags.size);  // 2 -- the clone's Set is independent
+
+  // But it can't clone functions -- this throws a DataCloneError.
+  try {
+    structuredClone({ fn: () => 1 });
+  } catch (e) {
+    console.log("can't clone:", e.constructor.name);  // can't clone: DOMException
+  }
 starter_code: |
   const original = { name: "Ada", address: { city: "Boston" } };
   const shallow = { ...original };
@@ -45,11 +67,12 @@ expected_output: |
   Boston
 hints:
   - "const clone = structuredClone(original); replaces the spread copy."
+  - "Only the copy step changes -- the mutation and the final console.log stay exactly the same."
 xp_reward: 10
 achievement: data_structures_master
 category: data_structures
 category_level: 5
-difficulty: gotcha
+difficulty: deep_dive
 contains_patterns:
   - "structuredClone\\("
 concept_tags: [structured_clone, shallow_copy, deep_copy]

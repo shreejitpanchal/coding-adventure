@@ -12,13 +12,21 @@ explanation: |
   execute. `result` is still whatever it was initialized to (here,
   `undefined`), because the assignment inside `.then()` hasn't happened
   yet -- it's sitting in the microtask queue, waiting for the current
-  synchronous code to finish first.
+  synchronous code to finish first. This holds even when the underlying
+  work is already done: `Promise.resolve(42).then(cb)` still defers `cb`
+  to a microtask, never runs it synchronously right there -- a `.then()`
+  callback is *always* scheduled, never immediate, no matter how fast
+  the value became available.
 
   The fix isn't to make the promise resolve faster; it's to actually wait
   for it. `await fetchValue()` pauses the enclosing `async` function
   until the promise settles, then hands back the resolved value directly
   -- so the very next line only runs once the value genuinely exists,
-  instead of racing ahead of it.
+  instead of racing ahead of it. Under the hood, `await expr` is
+  effectively syntax for "attach a `.then()` to `expr` and suspend this
+  function until it fires" -- so the fix doesn't remove the microtask
+  hop at all, it just makes the *rest of the function* wait on the other
+  side of it instead of running ahead of it.
 example_code: |
   function fetchValue() {
     return new Promise((resolve) => setTimeout(() => resolve(42), 10));
@@ -28,6 +36,11 @@ example_code: |
   let resultTrap;
   fetchValue().then((value) => { resultTrap = value; });
   console.log(resultTrap);  // undefined -- too early!
+
+  // Even an already-resolved promise defers its .then() -- this also
+  // logs "sync" before "resolved", never the other way around.
+  console.log("sync");
+  Promise.resolve("resolved").then((v) => console.log(v));
 
   // The fix: await actually pauses until the promise resolves.
   async function main() {
@@ -50,6 +63,7 @@ expected_output: |
   42
 hints:
   - "async function main() { const result = await fetchValue(); console.log(result); } main();"
+  - "Everything that reads `result` after the fetch needs to move inside that async function, after the await."
 xp_reward: 10
 achievement: null
 category: concurrency_async

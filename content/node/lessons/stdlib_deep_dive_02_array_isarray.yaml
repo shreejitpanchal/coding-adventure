@@ -10,20 +10,31 @@ explanation: |
   `"function"`, etc.) from everything else. There's no `"array"` value
   `typeof` can ever return, so `typeof value === "object"` can't be used
   to answer "is this an array" -- it answers "is this some kind of
-  object," which arrays happen to also be.
+  object," which arrays happen to also be. `typeof null === "object"`
+  too, a famous, decades-old JavaScript quirk kept for backward
+  compatibility -- one more reason `typeof` alone is a poor way to
+  distinguish specific object-like categories from each other.
 
   `Array.isArray()` is the actual, reliable way to check: it inspects
   the value's real internal type, not a loose `typeof` category, so it
   correctly returns `true` only for genuine arrays and `false` for plain
   objects, `null`, and everything else that `typeof` would lump into
-  `"object"` alongside them.
+  `"object"` alongside them. Unlike the older `instanceof Array` check,
+  `Array.isArray()` also gives the right answer for an array created in
+  a different realm (a different `vm` context, a different browsing
+  context/iframe) -- `instanceof` compares against *that specific
+  realm's* `Array` constructor, so an array from another realm can fail
+  an `instanceof Array` check despite genuinely being an array, a subtle
+  cross-realm gap `Array.isArray()` was specifically designed to close.
 example_code: |
-  // The trap: typeof reports "object" for both arrays and plain objects.
+  // The trap: typeof reports "object" for both arrays and plain objects,
+  // and even for null.
   function describeTypeManual(value) {
     return typeof value === "object" ? "array" : typeof value;
   }
   console.log(describeTypeManual([1, 2, 3]));  // array  -- happens to be right
   console.log(describeTypeManual({ a: 1 }));   // array  -- WRONG, this is a plain object
+  console.log(typeof null);                     // object -- a famous long-standing quirk
 
   // The fix: Array.isArray actually distinguishes them.
   function describeType(value) {
@@ -49,11 +60,12 @@ expected_output: |
   string
 hints:
   - "if (Array.isArray(value)) return \"array\"; then fall back to typeof."
+  - "Check Array.isArray() first, before falling back to the typeof check, since arrays would otherwise match \"object\" first."
 xp_reward: 10
 achievement: null
 category: stdlib_deep_dive
 category_level: 2
-difficulty: gotcha
+difficulty: deep_dive
 contains_patterns:
   - "Array\\.isArray\\("
 concept_tags: [array_isarray, typeof, type_checking]

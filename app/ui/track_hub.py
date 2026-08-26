@@ -47,8 +47,14 @@ def build_track_hub_view(page: ft.Page, state: AppState) -> ft.View:
         spacing=8,
     )
 
-    daily = engine.daily_refresher(completed_ids, count=5)
+    daily = state.daily_refresher_exercises()
     daily_done = sum(1 for ex in daily if ex.id in completed_ids)
+    if not daily:
+        daily_status = "All caught up"
+    elif daily_done == len(daily):
+        daily_status = "All done today!"
+    else:
+        daily_status = f"{daily_done}/{len(daily)} done today"
     gotcha_items = engine.lessons_in_category(GOTCHA_CATEGORY)
     gotcha_done = sum(1 for ex in gotcha_items if ex.id in completed_ids)
     quiz_engine = state.quiz_engine()
@@ -59,7 +65,7 @@ def build_track_hub_view(page: ft.Page, state: AppState) -> ft.View:
         _card(
             page, theme, fs, "🎯 Daily Refresher",
             "A short round-robin across every topic -- five exercises to keep everything warm.",
-            f"{daily_done}/{len(daily)} ready today" if daily else "All caught up",
+            daily_status,
             "/daily",
         ),
         _card(

@@ -9,13 +9,22 @@ explanation: |
   but `.includes()` is an O(n) scan of everything collected so far, so
   the whole loop is O(n^2) in the worst case (every element unique).
   It also takes several lines to express something conceptually simple:
-  "keep only the first occurrence of each value."
+  "keep only the first occurrence of each value." At a few thousand
+  elements the O(n^2) scan is still fast enough not to notice; at
+  hundreds of thousands, the same code can visibly stall, purely because
+  of the algorithmic shape, with no other change to the input.
 
   `Set` stores only unique values by construction -- `new Set(arr)`
-  collapses duplicates in one pass, and spreading it back into an array
-  (`[...new Set(arr)]`) preserves insertion order, matching exactly what
-  the manual "first occurrence wins" loop was already doing, just without
-  the repeated linear scan or the explicit accumulator.
+  collapses duplicates in one pass (O(n) overall, since each `.has()`
+  check backing the internal dedup is O(1) rather than a linear scan),
+  and spreading it back into an array (`[...new Set(arr)]`) preserves
+  insertion order, matching exactly what the manual "first occurrence
+  wins" loop was already doing, just without the repeated linear scan or
+  the explicit accumulator. `Set` uses the same equality semantics as
+  `Map`'s keys (`SameValueZero` -- like `===`, but treating `NaN` as
+  equal to itself) rather than `.includes()`'s own slightly different
+  comparison, which matters only in the `NaN` edge case but is worth
+  knowing is a real, if narrow, behavioral difference.
 example_code: |
   const nums = [1, 2, 2, 3, 1, 4];
 
@@ -29,6 +38,9 @@ example_code: |
   // The fix: Set dedups in one pass, spread preserves order.
   const uniqueSet = [...new Set(nums)];
   console.log(uniqueSet.join(","));       // 1,2,3,4
+
+  // Set also correctly treats NaN as equal to itself (unlike ===).
+  console.log([...new Set([NaN, NaN, 1])].length);  // 2
 starter_code: |
   function unique(arr) {
     const result = [];
@@ -45,6 +57,7 @@ expected_output: |
   1,2,3,4
 hints:
   - "return [...new Set(arr)];"
+  - "The spread operator turns the Set's iterator back into a plain array -- new Set(arr) alone isn't an array."
 xp_reward: 10
 achievement: null
 category: data_structures

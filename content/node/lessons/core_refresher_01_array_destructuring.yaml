@@ -8,7 +8,10 @@ explanation: |
   about *why* those two pieces belong together -- they're two unrelated
   statements that happen to both read from `arr`, and a reader has to
   mentally connect "index 0" and "everything after index 0" into the
-  concept of "first element and the rest" themselves.
+  concept of "first element and the rest" themselves. `.slice(1)` also
+  allocates a brand-new array every time it's called, purely to express
+  "everything but the first item" -- a cost that's easy to forget is
+  even happening, since nothing about the syntax hints at an allocation.
 
   Destructuring assignment lets a pattern on the left name that structure
   directly: `const [first, ...rest] = arr` says exactly what's happening
@@ -16,7 +19,13 @@ explanation: |
   after it, collected into a real array via the rest element (`...rest`,
   which must be the last item in a destructuring pattern). This is the
   same underlying rest/spread syntax used in function parameters and
-  object literals -- one concept, three places it shows up.
+  object literals -- one concept, three places it shows up. Destructuring
+  can also skip elements with a bare comma (`const [, second] = arr`
+  ignores index 0 entirely) and works just as naturally on the left side
+  of a `for...of` loop, on function parameters, and recursively nested
+  one level inside another pattern -- it's a general pattern-matching
+  mechanism against any iterable, not a special case just for "first and
+  rest."
 example_code: |
   const nums = [1, 2, 3, 4];
 
@@ -28,6 +37,10 @@ example_code: |
   // The fix: one destructuring pattern says it directly.
   const [head, ...tail] = nums;
   console.log(head, tail);               // 1 [ 2, 3, 4 ]
+
+  // The same pattern generalizes: skip an element, or grab the middle.
+  const [, second, ...restFromTwo] = nums;
+  console.log(second, restFromTwo);      // 2 [ 3, 4 ]
 starter_code: |
   function firstAndRest(arr) {
     const first = arr[0];
@@ -43,6 +56,7 @@ expected_output: |
   1 | 2,3,4
 hints:
   - "const [first, ...rest] = arr; replaces both lines."
+  - "rest is already a real array here, so rest.join(\",\") works directly -- no .slice() needed at all."
 xp_reward: 10
 achievement: null
 category: core_refresher

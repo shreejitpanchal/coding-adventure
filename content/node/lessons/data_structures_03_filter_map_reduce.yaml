@@ -17,7 +17,13 @@ explanation: |
   the results into a single value. Chained together, `nums.filter(...).
   map(...).reduce(...)` reads as a pipeline that names each stage of the
   computation, rather than a loop whose purpose has to be reverse-
-  engineered from its body.
+  engineered from its body. The tradeoff worth knowing about: the chain
+  builds one intermediate array per step (`.filter()` allocates an array,
+  then `.map()` allocates another from it), where the single loop touches
+  each element once with no intermediate allocation at all -- for a
+  handful of elements this cost is irrelevant, but on a genuinely large
+  array a hot loop can be a deliberate, measured choice over the chain,
+  not just an unrefactored leftover.
 example_code: |
   const nums = [1, 2, 3, 4, 5, 6];
 
@@ -36,6 +42,14 @@ example_code: |
     .map((n) => n * n)
     .reduce((sum, n) => sum + n, 0);
   console.log(total);        // 56
+
+  // reduce() alone can also filter+map in a single pass, trading the
+  // pipeline's readability for the loop's one-allocation efficiency.
+  const totalSinglePass = nums.reduce(
+    (sum, n) => (n % 2 === 0 ? sum + n * n : sum),
+    0
+  );
+  console.log(totalSinglePass);  // 56
 starter_code: |
   function sumOfSquaresOfEvens(nums) {
     let total = 0;
@@ -54,6 +68,7 @@ expected_output: |
   56
 hints:
   - "nums.filter((n) => n % 2 === 0).map((n) => n * n).reduce((a, b) => a + b, 0)"
+  - "reduce's second argument (0) is the starting value for the running total -- don't forget it."
 xp_reward: 10
 achievement: null
 category: data_structures

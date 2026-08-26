@@ -8,18 +8,26 @@ explanation: |
   element is itself an array and, if so, looping over it separately to
   push its items instead of the array itself -- a small but genuine
   branch-and-inner-loop just to express "unwrap one level of nesting."
+  Handling arbitrarily deep nesting by hand is worse still: the manual
+  version would need to recurse whenever it finds a nested array, rather
+  than just looping over it once.
 
   `Array.prototype.flat()` does exactly that in a single call: with no
   argument it flattens exactly one level deep (matching the manual
-  `Array.isArray` check), and an explicit depth argument (or `Infinity`)
-  flattens further when that's actually needed. `flatMap()` also exists
-  for the common combination of mapping and then flattening one level in
-  a single pass, when the transformation itself produces the nested
-  arrays being flattened.
+  `Array.isArray` check), and an explicit depth argument (or `Infinity`,
+  for arbitrarily deep nesting regardless of how many levels down it
+  goes) flattens further when that's actually needed. `flatMap()` also
+  exists for the common combination of mapping and then flattening one
+  level in a single pass -- specifically useful when the mapper itself
+  produces zero or multiple results per input element (e.g. splitting
+  each sentence into words), which is more efficient than calling
+  `.map()` followed by a separate `.flat()`, since it never allocates the
+  intermediate nested array in the first place.
 example_code: |
   const nested = [1, [2, 3], [4], 5];
 
-  // The trap: a manual isArray check plus an inner loop.
+  // The trap: a manual isArray check plus an inner loop -- and it would
+  // need to recurse to handle deeper nesting than one level.
   const flatManual = [];
   for (const item of nested) {
     if (Array.isArray(item)) {
@@ -30,8 +38,14 @@ example_code: |
   }
   console.log(flatManual.join(","));  // 1,2,3,4,5
 
-  // The fix: flat() does the one-level flatten directly.
+  // The fix: flat() does the one-level flatten directly,
+  // and Infinity handles arbitrarily deep nesting in one call.
   console.log(nested.flat().join(","));  // 1,2,3,4,5
+  console.log([1, [2, [3, [4, 5]]]].flat(Infinity).join(","));  // 1,2,3,4,5
+
+  // flatMap: map + flatten(1) in a single pass, no intermediate array.
+  const sentences = ["hello world", "foo bar"];
+  console.log(sentences.flatMap((s) => s.split(" ")).join(","));  // hello,world,foo,bar
 starter_code: |
   function flattenOnce(arr) {
     const result = [];
@@ -52,11 +66,12 @@ expected_output: |
   1,2,3,4,5
 hints:
   - "return arr.flat();"
+  - "flat() with no argument defaults to depth 1, exactly matching what the manual loop was doing."
 xp_reward: 10
 achievement: null
 category: stdlib_deep_dive
 category_level: 4
-difficulty: core
+difficulty: deep_dive
 contains_patterns:
   - "\\.flat\\("
 concept_tags: [array_flat, nested_arrays]

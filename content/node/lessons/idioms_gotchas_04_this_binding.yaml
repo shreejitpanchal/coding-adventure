@@ -21,7 +21,15 @@ explanation: |
   still runs with `this` pointing at `c` -- this is exactly the situation
   that comes up constantly when passing a class method as a callback
   (an event handler, a timer callback, an array method) without a wrapper
-  arrow function or an explicit `bind()`.
+  arrow function or an explicit `bind()`. Arrow functions offer a second,
+  often more convenient escape from this whole problem: an arrow
+  function has no `this` of its own at all -- it captures `this` from
+  its enclosing lexical scope at definition time, permanently, the same
+  way a closure captures a variable. Defining `increment = () => {
+  this.count++; }` as a class *field* (an arrow function bound to the
+  instance once, at construction) means the method never loses its
+  receiver even when detached, with no explicit `.bind()` call needed at
+  the call site.
 example_code: |
   class Counter {
     constructor() { this.count = 0; }
@@ -37,10 +45,21 @@ example_code: |
     console.log("threw:", e.constructor.name);  // threw: TypeError
   }
 
-  // The fix: bind() locks `this` to c permanently.
+  // Fix #1: bind() locks `this` to c permanently.
   const incFixed = c.increment.bind(c);
   incFixed();
   console.log(c.count);  // 1
+
+  // Fix #2: an arrow-function class field captures `this` at construction,
+  // so it never needs binding even when detached.
+  class CounterArrow {
+    count = 0;
+    increment = () => { this.count++; };
+  }
+  const c2 = new CounterArrow();
+  const inc2 = c2.increment;  // detached, but still works
+  inc2();
+  console.log(c2.count);  // 1
 starter_code: |
   class Counter {
     constructor() { this.count = 0; }
@@ -62,6 +81,7 @@ expected_output: |
   ok 1
 hints:
   - "const inc = c.increment.bind(c); keeps the receiver attached."
+  - "The Counter class itself doesn't need to change -- only how `inc` is assigned from c.increment."
 xp_reward: 10
 achievement: null
 category: idioms_gotchas
