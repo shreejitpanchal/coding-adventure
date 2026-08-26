@@ -117,14 +117,16 @@ run_app_web_ui.bat
 CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
 ```
 
-**Android (Python track only):** `./build_apk.sh` builds a real APK via
-`flet build apk` (needs a Flutter + Android SDK/NDK install first — see
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only)).
+**Android (Python execution only):** `./build_apk.sh` builds a real APK
+via `flet build apk` (needs a Flutter + Android SDK/NDK install first —
+see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only)).
 Java, C++, and Spring need a real local compiler/runtime a phone can't
-provide, so those three tracks show as "Desktop only" on Android instead
-of pretending they'll work — only Python actually runs exercises there,
-via an in-process execution engine instead of the desktop app's usual
-subprocess.
+provide, so those tracks are badged "Desktop only" on Android and their
+Run button is disabled — but every other part of the app, including
+those three tracks' content, still works: browsing categories, reading
+explanations/examples, and editing code in the editor. Only Python
+actually *runs* exercises on Android, via an in-process execution engine
+instead of the desktop app's usual subprocess.
 
 ## For developers
 

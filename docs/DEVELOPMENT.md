@@ -427,13 +427,21 @@ the normal subprocess-based `PythonEngine`.
 Java/C++/Spring still register their normal (subprocess) engines on
 Android — there's no separate mobile variant of those — so
 `check_toolchain()` correctly reports their compiler/runtime as missing
-there, same as it would on any desktop machine lacking one. The
-difference is in how that's surfaced: `language_select.py` detects
-`is_android()` and shows those three tracks as **"Desktop only"**
-instead of the normal "Toolchain needed" install-guide dialog, since
-`get_install_guide()`'s desktop OS-specific steps (winget/brew/apt
-commands) would be actively wrong advice on a phone with nowhere to run
-them.
+there, same as it would on any desktop machine lacking one. Rather than
+block those tracks outright, `language_select.py` detects `is_android()`
+and still lets the user into the hub, badged **"Desktop only"** instead
+of the normal "Toolchain needed" install-guide dialog (whose desktop
+OS-specific winget/brew/apt steps would be actively wrong advice on a
+phone with nowhere to run them) — browsing an exercise's explanation,
+example, and challenge, and editing code in the editor, never needs a
+real toolchain, only actually *running* code does. `lesson_screen.py`
+checks `check_toolchain(exercise.language)` itself and disables the Run
+button specifically (with an explanatory note underneath) when it's
+unavailable, instead of only surfacing the problem after a click via
+`ExecutionResult.blocked` — this disabling isn't Android-specific either;
+it applies identically on a desktop machine that's simply missing a
+toolchain, so browsing content there works the same way even before the
+toolchain is installed.
 
 ## Data storage
 

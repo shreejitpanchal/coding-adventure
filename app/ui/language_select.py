@@ -73,7 +73,7 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
         streak = state.progress.get_streak_days(info.key)
         subtitle = f"Level {level.level} · {level.total_xp} XP · {streak}-day streak"
         if android_unsupported:
-            subtitle = "Needs a desktop computer -- not available on Android."
+            subtitle = "Browse freely -- running code needs a desktop computer."
         elif not toolchain_ready:
             subtitle = f"{toolchain.install_hint}"
     else:
@@ -92,13 +92,15 @@ def _build_language_card(page: ft.Page, state: AppState, info) -> ft.Control:
         if not info.available:
             page.show_dialog(ft.SnackBar(ft.Text(f"{info.title} is coming soon.")))
             return
-        if android_unsupported:
-            page.show_dialog(ft.SnackBar(ft.Text(
-                f"{info.title} needs a real compiler/runtime a phone can't provide -- "
-                "try this track on a desktop computer instead."
-            )))
-            return
-        if not toolchain_ready:
+        # Browsing content (explanations, examples, editing code) never
+        # needs a real toolchain -- only actually running code does, and
+        # that's disabled directly on the Run button instead
+        # (lesson_screen.py checks check_toolchain() itself), not blocked
+        # here at the earlier "which language" step. On a desktop machine
+        # genuinely missing the toolchain, show the install guide first
+        # (it's fixable there); on Android, where it's never fixable, skip
+        # straight to the hub instead of a dialog with nothing useful to say.
+        if not toolchain_ready and not android_unsupported:
             _show_install_guide_dialog(page, state, info)
             return
         state.select_language(info.key)

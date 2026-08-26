@@ -12,6 +12,7 @@ from app.engine.validator import validate_contains, validate_output
 from app.execution.base import ExecutionResult, RunHandle
 from app.execution.errors import extract_error_line_number, translate_error
 from app.execution.registry import get_engine
+from app.execution.toolchain_check import check_toolchain
 from app.ui.app_state import AppState
 from app.ui.code_editor import make_code_editor, make_read_only_code_block
 from app.ui.theme import scaled
@@ -122,8 +123,18 @@ class _ExerciseController:
                 )
             )
 
+        # Browsing an exercise (reading the explanation/example, looking at
+        # the challenge, editing code) never needs the language's real
+        # toolchain -- only actually running code does. Checked here,
+        # proactively, so the Run button is disabled up front on a machine
+        # (or platform, e.g. Android) that can't run this language,
+        # instead of only failing after the click via ExecutionResult.blocked.
+        toolchain_ready = check_toolchain(exercise.language).available
+
         self.run_button = ft.Button(
-            "▶ Run", on_click=self._on_run, height=48,
+            "▶ Run" if toolchain_ready else "▶ Run (unavailable here)",
+            on_click=self._on_run, height=48, disabled=not toolchain_ready,
+            tooltip=None if toolchain_ready else "This language's compiler/runtime isn't available on this device.",
             style=ft.ButtonStyle(bgcolor=theme.success, color="#FFFFFF"),
         )
         reset_button = ft.Button(
@@ -135,6 +146,13 @@ class _ExerciseController:
             style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
         )
         children.append(ft.Row([self.run_button, reset_button, self.hint_button], spacing=10, wrap=True))
+
+        if not toolchain_ready:
+            children.append(ft.Text(
+                "Running is unavailable here -- this language's compiler/runtime isn't installed "
+                "(or isn't supported on this device). You can still read through and edit the exercise.",
+                size=self._fs(12), color=theme.warning,
+            ))
 
         self.hint_text = ft.Text("", size=self._fs(13), color=theme.warning)
         children.append(self.hint_text)
