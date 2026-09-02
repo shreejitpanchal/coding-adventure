@@ -955,3 +955,223 @@ questions:
     correct: 1
     explanation: "A wall-clock adjustment (NTP sync, manual change) can make time.time() jump backward mid-measurement; monotonic() is immune to that."
     concept_tags: [observability, instrumentation]
+
+  - id: q88
+    question: "Why does calling random.shuffle() from inside a function make that function's output depend on unrelated code elsewhere in the program?"
+    options:
+      - "random.shuffle() reads and mutates Python's one global random number generator, shared by every caller in the process"
+      - "random.shuffle() always produces the same result regardless of any seeding"
+      - "It doesn't -- random.shuffle() is fully isolated per function call"
+      - "random.shuffle() can only be called once per program"
+    correct: 0
+    explanation: "random.Random(seed) creates an independent generator, so a function's randomness no longer depends on whatever else has touched the global random module."
+    concept_tags: [reproducibility, random_seed, train_test_split]
+
+  - id: q89
+    question: "What's wrong with computing a normalization range (min/max) from train and test data combined?"
+    options:
+      - "It's data leakage -- information from the held-out test set influences how the training data gets scaled"
+      - "It makes the computation slower"
+      - "Combined min/max is always mathematically incorrect"
+      - "Nothing -- this is the standard, correct approach"
+    correct: 0
+    explanation: "Fitting the scaling range on train only, then applying that same range to test, keeps the test set genuinely unseen during preparation, not just during model fitting."
+    concept_tags: [data_leakage, normalization, train_test_split]
+
+  - id: q90
+    question: "Why does comparing raw prediction probabilities directly to integer labels (p == l) always report near-zero accuracy?"
+    options:
+      - "A float probability like 0.9 is essentially never exactly equal to the int 1, even when the prediction is substantively correct"
+      - "Python can't compare floats to ints at all"
+      - "This comparison is actually correct and shouldn't be changed"
+      - "Labels must always be floats, never ints"
+    correct: 0
+    explanation: "round(p) == l thresholds the probability into the same discrete class space the labels live in before comparing, which is what the comparison actually needs to mean."
+    concept_tags: [accuracy_metric, classification_threshold, evaluation]
+
+  - id: q91
+    question: "In gradient descent, why does theta -= lr * grad move toward the minimum while theta += lr * grad moves away from it?"
+    options:
+      - "The gradient points in the direction of steepest INCREASE, so subtracting it moves toward lower loss; adding it moves toward higher loss"
+      - "Addition and subtraction are mathematically equivalent here"
+      - "The sign only matters when the learning rate is negative"
+      - "theta += lr * grad is actually the more standard, correct form"
+    correct: 0
+    explanation: "This one-character sign difference is the entire distinction between gradient descent (minimizing loss) and its useless mirror image."
+    concept_tags: [gradient_descent, optimization, linear_regression]
+
+  - id: q92
+    question: "Why is training accuracy a poor measure of how well a model will actually perform in the real world?"
+    options:
+      - "A model that memorized its training data can score perfectly on that same data without having learned any general pattern at all"
+      - "Training accuracy is always exactly equal to test accuracy"
+      - "Training accuracy can never be computed correctly"
+      - "It's actually the best possible measure, better than test accuracy"
+    correct: 0
+    explanation: "Evaluating on genuinely held-out test data (never seen during training) is what actually estimates real-world generalization performance."
+    concept_tags: [generalization, overfitting, train_test_evaluation]
+
+  - id: q93
+    question: "Why is raw dot product a poor similarity score for comparing embedding vectors?"
+    options:
+      - "Dot product grows with vector magnitude, not just directional alignment, so a longer but less-relevant vector can outscore a shorter, more relevant one"
+      - "Dot product can only be computed on 2-dimensional vectors"
+      - "Dot product and cosine similarity always give identical rankings"
+      - "Dot product is always negative for real embeddings"
+    correct: 0
+    explanation: "Cosine similarity divides out the magnitude (dot / (|a| * |b|)), leaving a score that depends only on the angle between the two vectors."
+    concept_tags: [cosine_similarity, embeddings, vector_similarity]
+
+  - id: q94
+    question: "What does sorted(scores.items(), key=lambda kv: kv[1])[:k] return, for a dict of similarity scores?"
+    options:
+      - "The k documents with the LOWEST scores -- sorted() is ascending by default"
+      - "The k documents with the highest scores"
+      - "A random sample of k documents"
+      - "It raises an error, since dicts can't be sorted"
+    correct: 0
+    explanation: "reverse=True is needed to sort descending and actually retrieve the most relevant (highest-scoring) documents for top-k retrieval."
+    concept_tags: [retrieval, top_k, sort_order]
+
+  - id: q95
+    question: "Why do RAG pipelines deliberately chunk documents with OVERLAP instead of clean, non-overlapping boundaries?"
+    options:
+      - "So a phrase or fact that happens to fall near a chunk boundary still survives intact in at least one chunk"
+      - "Overlap makes chunking run faster"
+      - "Overlapping chunks are required by the RAG specification"
+      - "It reduces the total number of chunks needed"
+    correct: 0
+    explanation: "Advancing by (size - overlap) instead of size means consecutive chunks share some content, so boundary-straddling information isn't split across two incomplete chunks."
+    concept_tags: [text_chunking, chunk_overlap, rag_pipeline]
+
+  - id: q96
+    question: "Why shouldn't retrieved context and the user's question just be concatenated directly into one prompt string?"
+    options:
+      - "There's no structural boundary distinguishing retrieved reference material from instructions, which can also blur the two in unintended ways"
+      - "Python string concatenation doesn't work with an f-string"
+      - "Concatenation always produces a syntax error"
+      - "It's actually the recommended, standard approach"
+    correct: 0
+    explanation: "A clearly delimited template (labeled sections plus a separator) gives the model an explicit structural cue for what each piece of text represents."
+    concept_tags: [prompt_template, rag_pipeline, prompt_injection]
+
+  - id: q97
+    question: "What happens if a context-assembly function concatenates every retrieved chunk with no check against a size budget?"
+    options:
+      - "It can build a context of unbounded length that exceeds the model's context window, with the failure surfacing somewhere else entirely"
+      - "Python automatically truncates strings once they exceed a certain length"
+      - "This is always safe as long as fewer than 10 chunks are retrieved"
+      - "The function will raise an error immediately"
+    correct: 0
+    explanation: "Checking `if len(result) + len(chunk) > budget: break` before adding each chunk keeps the assembled context within budget, prioritizing already-most-relevant chunks."
+    concept_tags: [context_window, token_budget, rag_pipeline]
+
+  - id: q98
+    question: "What's the risk of an agent's tool dispatcher having no else/default case for an unrecognized tool name?"
+    options:
+      - "The function silently returns None, indistinguishable from a tool that legitimately returned no result -- no error signals anything went wrong"
+      - "Python raises a SyntaxError at import time"
+      - "It's always safe, since unrecognized tool names can never occur in practice"
+      - "The dispatcher automatically falls back to the first registered tool"
+    correct: 0
+    explanation: "Raising a specific exception (e.g. ValueError(f'unknown tool: {tool_name}')) turns a silent, hard-to-trace None into an immediate, clear signal."
+    concept_tags: [tool_dispatch, agentic_framework, error_handling]
+
+  - id: q99
+    question: "Why does an agentic loop need an explicit max_steps guard, even if the model is usually reliable?"
+    options:
+      - "Without an independent bound, a while True loop can run indefinitely if the model never produces its stop signal, for any reason"
+      - "max_steps is required by Python syntax for any while loop"
+      - "It has no real benefit and is purely a style preference"
+      - "It makes the loop run faster"
+    correct: 0
+    explanation: "Bounding the loop and raising a clear error once the limit is hit turns an unbounded runaway into a known, bounded failure with an explanatory message."
+    concept_tags: [agentic_framework, max_iterations, infinite_loop]
+
+  - id: q100
+    question: "Why is it better for a tool-calling function to validate required arguments BEFORE calling the tool, rather than letting the call fail?"
+    options:
+      - "A raw TypeError from a missing argument propagates as an uncontrolled exception, instead of a structured result the calling agent loop can inspect and react to"
+      - "Python doesn't allow calling functions with missing arguments at all"
+      - "Validating first is always slower and provides no benefit"
+      - "TypeErrors can never be caught in Python"
+    correct: 0
+    explanation: "Returning {'error': '...'} for a missing required parameter lets the agent loop feed the error back to the model to retry, instead of crashing the whole session."
+    concept_tags: [tool_schema_validation, agentic_framework, structured_errors]
+
+  - id: q101
+    question: "Why does trimming conversation history to just history[-max_messages:] cause a problem for an agent?"
+    options:
+      - "Once history grows past the limit, the system message (the agent's own instructions, usually at index 0) gets silently dropped along with old chat turns"
+      - "Negative slicing is not valid Python syntax"
+      - "It has no downside and is the standard, correct approach"
+      - "It always keeps too many messages, never too few"
+    correct: 0
+    explanation: "Keeping history[0] unconditionally and sliding the window over the rest ([history[0]] + history[-(max_messages-1):]) preserves the agent's core instructions."
+    concept_tags: [conversation_memory, context_window, agentic_framework]
+
+  - id: q102
+    question: "An agent's stop-check reads tool_result.get('final') == True, but tools actually set 'is_final'. What happens?"
+    options:
+      - "dict.get() on the missing key returns None, None == True is always False, so the agent never recognizes the stop signal"
+      - "Python raises a KeyError immediately"
+      - "get() automatically falls back to checking similarly-named keys"
+      - "The check works correctly regardless of the key name mismatch"
+    correct: 0
+    explanation: "A mismatched key name between two halves of a shared contract (the agent loop and the tools) fails silently, since dict.get() never raises on a missing key."
+    concept_tags: [agentic_framework, stop_condition, contract_mismatch]
+
+  - id: q103
+    question: "What required field does every JSON-RPC 2.0 message (and therefore every MCP message) need, that's easy to forget?"
+    options:
+      - "\"jsonrpc\": \"2.0\" -- declaring which protocol version the message follows"
+      - "A \"timestamp\" field with the current time"
+      - "An \"auth_token\" field for authentication"
+      - "A \"version\" field containing the software's version number"
+    correct: 0
+    explanation: "Unlike method/params/id, which sound self-evidently necessary, the fixed, always-the-same version string is easy to omit since it never varies from message to message."
+    concept_tags: [mcp, json_rpc, protocol_versioning]
+
+  - id: q104
+    question: "Why shouldn't a JSON-RPC response include both \"result\" and \"error\" fields, with one set to null?"
+    options:
+      - "The spec treats result and error as mutually exclusive -- a conforming response includes exactly one, never both, even with the other nulled out"
+      - "JSON doesn't support null values"
+      - "It's fine and actually the recommended approach"
+      - "Only requests can have a result field, never responses"
+    correct: 0
+    explanation: "Building the response conditionally (only adding whichever field actually applies) matches the spec, since a field being unused isn't the same as it being absent."
+    concept_tags: [mcp, json_rpc, response_schema]
+
+  - id: q105
+    question: "What's the risk of building a tool registry with {t['name']: t for t in tool_defs}, if two tools happen to share a name?"
+    options:
+      - "The dict comprehension silently keeps only the LAST one, discarding the earlier definition with no warning or error at all"
+      - "Python raises a KeyError for the duplicate"
+      - "Dict comprehensions automatically merge duplicate entries into a list"
+      - "It's impossible for two tool definitions to share a name"
+    correct: 0
+    explanation: "Checking for an existing entry before adding each one, and raising ValueError on a collision, catches the naming mistake immediately at registration time."
+    concept_tags: [mcp, tool_registry, duplicate_detection]
+
+  - id: q106
+    question: "Why should an MCP client check the server's advertised capabilities before calling a method?"
+    options:
+      - "Not every MCP server supports every method -- calling an unsupported one without checking fails in a way that's hard to trace back to the real cause"
+      - "Capability checks are only needed for security, not functionality"
+      - "All MCP servers are guaranteed to support the exact same set of methods"
+      - "Capabilities only matter for the very first request in a session"
+    correct: 0
+    explanation: "Checking `if method not in server_capabilities` before calling turns a confusing downstream failure into an immediate, specific error naming the missing capability."
+    concept_tags: [mcp, capability_negotiation, protocol_handshake]
+
+  - id: q107
+    question: "Why does JSON-RPC (and MCP) include an \"id\" field on every request and response?"
+    options:
+      - "So a client with multiple requests in flight can match each response to its original request regardless of the order responses actually arrive in"
+      - "The id field is purely decorative and has no functional purpose"
+      - "To enforce a maximum number of requests per session"
+      - "Ids are only used for logging, never for correlation"
+    correct: 0
+    explanation: "Matching by the response's own id field (results[resp['id']] = resp['result']) is robust to out-of-order arrival, unlike matching by position/arrival order."
+    concept_tags: [mcp, json_rpc, request_response_correlation]

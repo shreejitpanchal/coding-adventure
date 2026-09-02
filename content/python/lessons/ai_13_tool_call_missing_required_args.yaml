@@ -1,0 +1,74 @@
+id: ai_13
+title: "Calling a Tool Without Checking Its Required Arguments First"
+language: python
+level: 88
+objective: "Fix a tool-calling function that crashes with a TypeError when required arguments are missing, by validating them first and returning a structured error instead."
+explanation: |
+  Calling `tool_fn(**args)` directly assumes `args` already contains
+  everything the tool function needs -- if a required parameter is
+  missing (the model's tool call omitted it, or produced a malformed
+  arguments object), Python raises a `TypeError: get_weather() missing
+  1 required positional argument: 'city'` the moment the call happens.
+  That's a perfectly accurate error, but it's the *wrong shape* of
+  error for an agent system to receive: a raw Python exception,
+  propagating up through however many layers of agent-loop code called
+  it, rather than a structured result the calling code can inspect and
+  react to (e.g. by telling the model "that tool call was invalid, try
+  again with a city specified").
+
+  The fix is to validate the arguments *before* attempting the call:
+  checking which of the tool's `required_params` are missing from
+  `args`, and if any are, returning a structured `{"error": "..."}`
+  result instead of ever calling the function at all. This turns a
+  crash that could take down the whole agent loop into a normal,
+  recoverable result the loop can examine and act on -- feeding the
+  error back to the model so it can retry with corrected arguments,
+  rather than the entire agent session failing because one tool call
+  happened to be missing a field.
+example_code: |
+  def get_weather(city):
+      return f"sunny in {city}"
+
+  # The trap: calls the tool directly -- crashes if a required arg is missing.
+  def call_tool_trap(tool_fn, args, required_params):
+      return tool_fn(**args)
+
+  try:
+      call_tool_trap(get_weather, {}, ["city"])
+  except TypeError as e:
+      print(f"crashed: {type(e).__name__}")   # crashed: TypeError -- an uncontrolled exception
+
+  # The fix: validate required params first, return a structured error instead.
+  def call_tool(tool_fn, args, required_params):
+      missing = [p for p in required_params if p not in args]
+      if missing:
+          return {"error": f"missing required params: {missing}"}
+      return {"result": tool_fn(**args)}
+
+  print(call_tool(get_weather, {"city": "Boston"}, ["city"]))  # {'result': 'sunny in Boston'}
+  print(call_tool(get_weather, {}, ["city"]))                   # {'error': "missing required params: ['city']"}
+starter_code: |
+  def get_weather(city):
+      return f"sunny in {city}"
+
+  def call_tool(tool_fn, args, required_params):
+      return tool_fn(**args)
+
+  print(call_tool(get_weather, {}, ["city"]))
+challenge: |
+  Fix `call_tool` so calling it with a missing required argument
+  returns {'error': "missing required params: ['city']"} instead of
+  crashing with a TypeError.
+expected_output: |
+  {'error': "missing required params: ['city']"}
+hints:
+  - "missing = [p for p in required_params if p not in args]; if missing: return {\"error\": f\"missing required params: {missing}\"}"
+  - "Only call tool_fn(**args) after confirming nothing is missing -- wrap it in an else path or return early on the missing case."
+xp_reward: 10
+achievement: null
+category: ai
+category_level: 13
+difficulty: gotcha
+contains_patterns:
+  - "missing required params"
+concept_tags: [tool_schema_validation, agentic_framework, structured_errors]

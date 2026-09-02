@@ -4,7 +4,7 @@ from app.engine import lesson_engine as lesson_engine_module
 
 def test_loads_python_content():
     engine = ExerciseEngine("python")
-    assert len(engine) == 75
+    assert len(engine) == 95
     assert engine.has("idioms_gotchas_01")
     assert not engine.has("does_not_exist")
 
@@ -16,7 +16,8 @@ def test_categories_derived_from_content():
     assert "gotcha_gauntlet" in categories
     assert "thread_scheduling" in categories
     assert "observability" in categories
-    assert len(categories) == 14
+    assert "ai" in categories
+    assert len(categories) == 15
 
 
 def test_category_level_1_always_unlocked():

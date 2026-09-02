@@ -1,0 +1,85 @@
+id: ai_20
+title: "Matching Responses to Requests by Arrival Order Instead of ID"
+language: python
+level: 95
+objective: "Fix a response-correlation function that assumes responses arrive in the same order requests were sent, by matching each response to its request via the shared id field instead."
+explanation: |
+  JSON-RPC's `id` field exists for exactly one reason: so a client that
+  has multiple requests in flight at once can match each response back
+  to the specific request it answers, *regardless of what order the
+  responses actually arrive in*. A correlation function that instead
+  assumes "the first response corresponds to the first request sent"
+  -- zipping responses to request ids purely by position -- happens to
+  work as long as responses genuinely come back in the exact order
+  requests went out, but that ordering is never guaranteed: a server
+  might handle a fast request before a slow one that was sent earlier,
+  responses might arrive over a connection where ordering isn't
+  preserved, or requests might simply be dispatched to different
+  workers that finish at different times. The moment two responses
+  arrive out of order, arrival-order matching silently pairs each
+  response with the *wrong* request -- with no error anywhere, since
+  every response gets matched to *some* request, just not the one it
+  actually answers.
+
+  The fix is to always correlate by the shared `id` field explicitly:
+  `results[resp["id"]] = resp["result"]` reads the id directly off each
+  response and uses it to look up which request it belongs to, with no
+  assumption about arrival order at all -- a response that arrives
+  first, last, or anywhere in between is matched correctly either way,
+  because the correlation depends on the id value itself, not on the
+  position it happened to arrive in. This is the entire reason JSON-RPC
+  (and MCP, built on it) includes an id on every request/response pair
+  in the first place: it makes correlation robust to whatever order
+  things actually happen in, which position-based matching can never
+  guarantee.
+example_code: |
+  # The trap: matches by ARRIVAL ORDER, not by the actual id field.
+  def correlate_trap(pending_request_ids, responses):
+      results = {}
+      for i, resp in enumerate(responses):
+          results[pending_request_ids[i]] = resp["result"]
+      return results
+
+  pending_ids = [1, 2]                    # request 1 sent first, then request 2
+  # But request 2's response comes back FIRST (it happened to finish faster):
+  out_of_order = [{"id": 2, "result": "3pm"}, {"id": 1, "result": "sunny"}]
+  print(correlate_trap(pending_ids, out_of_order))
+  # {1: '3pm', 2: 'sunny'} -- WRONG! matched by position, not by the actual id
+
+  # The fix: always correlate using the response's own id field.
+  def correlate(pending_request_ids, responses):
+      results = {}
+      for resp in responses:
+          results[resp["id"]] = resp["result"]
+      return results
+
+  print(correlate(pending_ids, out_of_order))
+  # {2: '3pm', 1: 'sunny'} -- correctly matched regardless of arrival order
+starter_code: |
+  def correlate(pending_request_ids, responses):
+      results = {}
+      for i, resp in enumerate(responses):
+          results[pending_request_ids[i]] = resp["result"]
+      return results
+
+  pending_ids = [1, 2]
+  out_of_order = [{"id": 2, "result": "3pm"}, {"id": 1, "result": "sunny"}]
+  print(correlate(pending_ids, out_of_order)[1])
+challenge: |
+  Fix `correlate` so it matches each response to its request using the
+  response's own "id" field, not its arrival position -- results[1]
+  should correctly be "sunny" (request 1's actual answer), regardless
+  of which order the responses arrived in.
+expected_output: |
+  sunny
+hints:
+  - "results[resp[\"id\"]] = resp[\"result\"] -- drop enumerate() and pending_request_ids[i] entirely."
+  - "The pending_request_ids parameter becomes unused once correlation is done purely by the response's own id field."
+xp_reward: 15
+achievement: ai_master
+category: ai
+category_level: 20
+difficulty: deep_dive
+contains_patterns:
+  - "results\\[resp\\[\"id\"\\]\\]"
+concept_tags: [mcp, json_rpc, request_response_correlation]

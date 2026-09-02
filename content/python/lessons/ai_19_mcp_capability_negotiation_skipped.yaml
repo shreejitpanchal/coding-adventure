@@ -1,0 +1,71 @@
+id: ai_19
+title: "Calling an MCP Method Without Checking Server Capabilities"
+language: python
+level: 94
+objective: "Fix an MCP client call that assumes a method is supported, by checking the server's advertised capabilities before calling it."
+explanation: |
+  MCP servers don't all support the same set of methods -- capability
+  negotiation exists specifically so a client can discover, up front,
+  which methods (`tools/list`, `resources/list`, `prompts/list`, and
+  others) a given server actually implements before trying to call
+  them. A client function that just goes ahead and calls whatever
+  method it's given, with no check against the server's advertised
+  capabilities, works fine against a server that happens to support
+  everything -- and fails in a confusing, hard-to-diagnose way against
+  one that doesn't, since the actual failure (an unsupported method
+  call) happens far from where the real mistake was made (never
+  checking capabilities before assuming a specific server would support
+  something).
+
+  The fix is to check the server's capabilities *before* attempting the
+  call: `if method not in server_capabilities: raise ValueError(...)`
+  turns "silently attempts something that was never going to work" into
+  "immediately and clearly reports which specific capability is
+  missing." This is the entire point of a capability-negotiation step
+  in a protocol like MCP -- it lets a client and server with genuinely
+  different feature sets interoperate safely, as long as the client
+  actually consults what was negotiated instead of assuming every
+  server supports the same things.
+example_code: |
+  # The trap: calls a method with no check against what the server actually supports.
+  def call_method_trap(server_capabilities, method):
+      return f"calling {method}"
+
+  server_caps = {"tools/list", "tools/call"}
+  print(call_method_trap(server_caps, "resources/list"))
+  # "calling resources/list" -- looks fine, but this server never advertised support for it!
+
+  # The fix: check capabilities first, fail clearly if unsupported.
+  def call_method(server_capabilities, method):
+      if method not in server_capabilities:
+          raise ValueError(f"server does not support: {method}")
+      return f"calling {method}"
+
+  try:
+      call_method(server_caps, "resources/list")
+  except ValueError as e:
+      print(f"caught: {e}")   # caught: server does not support: resources/list
+starter_code: |
+  def call_method(server_capabilities, method):
+      return f"calling {method}"
+
+  server_caps = {"tools/list", "tools/call"}
+  print(call_method(server_caps, "resources/list"))
+challenge: |
+  Fix `call_method` so calling an unsupported method raises a
+  ValueError ("server does not support: resources/list") instead of
+  proceeding as if it were fine -- catch it and print "caught: server
+  does not support: resources/list".
+expected_output: |
+  caught: server does not support: resources/list
+hints:
+  - "if method not in server_capabilities: raise ValueError(f\"server does not support: {method}\")"
+  - "Wrap the call_method(server_caps, \"resources/list\") call in try/except ValueError as e, printing f\"caught: {e}\"."
+xp_reward: 10
+achievement: null
+category: ai
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "not in server_capabilities"
+concept_tags: [mcp, capability_negotiation, protocol_handshake]

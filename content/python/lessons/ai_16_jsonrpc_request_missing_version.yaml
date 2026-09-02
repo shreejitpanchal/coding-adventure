@@ -1,0 +1,68 @@
+id: ai_16
+title: "An MCP Request Missing the JSON-RPC Version Field"
+language: python
+level: 91
+objective: "Fix a JSON-RPC request builder that omits the required \"jsonrpc\": \"2.0\" field, which MCP (and JSON-RPC 2.0 generally) requires on every message."
+explanation: |
+  The Model Context Protocol's wire format is JSON-RPC 2.0 -- every
+  request, response, and notification exchanged between an MCP client
+  and server follows that specification's exact message shape. A
+  request object built as `{"method": ..., "params": ..., "id": ...}`
+  looks complete at a glance (it has a method to call, arguments, and
+  an id to correlate the eventual response), but it's missing the one
+  field JSON-RPC 2.0 requires on literally every message: `"jsonrpc":
+  "2.0"`. This isn't a cosmetic omission -- a spec-compliant server is
+  entitled to reject a request that doesn't declare which protocol
+  version it's speaking, since without that field there's no way for
+  the receiving side to confirm the message is following the contract
+  it expects at all.
+
+  The fix is simply to always include the version field on every
+  constructed request: `{"jsonrpc": "2.0", "method": ..., "params":
+  ..., "id": ...}`. This is easy to get right once you know it's
+  required, and easy to silently omit if you're building the request
+  shape from an intuitive sense of "what fields does this need" rather
+  than the actual specification -- `method`/`params`/`id` all sound
+  self-evidently necessary, while a fixed, always-the-same-value
+  version string is the kind of field that's simple to forget precisely
+  because it never varies.
+example_code: |
+  import json
+
+  # The trap: missing the required "jsonrpc" version field entirely.
+  def make_request_trap(method, params, request_id):
+      return {"method": method, "params": params, "id": request_id}
+
+  print(json.dumps(make_request_trap("tools/list", {}, 1)))
+  # {"method": "tools/list", "params": {}, "id": 1} -- not valid JSON-RPC 2.0
+
+  # The fix: always include "jsonrpc": "2.0".
+  def make_request(method, params, request_id):
+      return {"jsonrpc": "2.0", "method": method, "params": params, "id": request_id}
+
+  print(json.dumps(make_request("tools/list", {}, 1)))
+  # {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1}
+starter_code: |
+  import json
+
+  def make_request(method, params, request_id):
+      return {"method": method, "params": params, "id": request_id}
+
+  print(json.dumps(make_request("tools/list", {}, 1)))
+challenge: |
+  Fix `make_request` so it includes the required "jsonrpc": "2.0" field
+  as the FIRST key, producing:
+  {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1}
+expected_output: |
+  {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1}
+hints:
+  - "return {\"jsonrpc\": \"2.0\", \"method\": method, \"params\": params, \"id\": request_id}"
+  - "Dict key order matters for matching this exact JSON output -- put \"jsonrpc\" first, before \"method\"."
+xp_reward: 10
+achievement: null
+category: ai
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "\"jsonrpc\": \"2\\.0\""
+concept_tags: [mcp, json_rpc, protocol_versioning]

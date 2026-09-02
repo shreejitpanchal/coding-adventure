@@ -20,13 +20,23 @@ through in a few focused minutes, not tutorials to sit through.
 - **Daily Refresher** — a short, five-exercise round-robin across every
   topic, so a quick daily session naturally touches everything instead of
   grinding one category at a time.
-- **Practice by Topic** — Python and Java both cover the same 14
-  categories, so switching tracks doesn't change the shape of the app:
+- **Practice by Topic** — Java covers the original 14 categories:
   Idioms & Gotchas, Core Language Refresher, Data Structures &
   Algorithms, Standard Library Deep Dive, Concurrency & Async, Thread
   Scheduling, Sync vs Async, Functional Programming, Recursion,
   Dependency Management, Packaging, Deployment, Observability, and the
-  flagship **Gotcha Gauntlet**. C++ and Spring each define their own
+  flagship **Gotcha Gauntlet**. Python covers those same 14 plus a 15th,
+  **AI: ML, RAG, Agents & MCP** — hand-rolled, dependency-free exercises
+  covering ML fundamentals (reproducible train/test splits, data leakage,
+  gradient descent, generalization vs. memorization), Retrieval-Augmented
+  Generation (cosine similarity, top-k retrieval, chunk overlap, prompt
+  templating, context-window budgets), agentic frameworks (tool
+  dispatch, max-iteration guards, tool-schema validation, conversation
+  memory windows, stop conditions), and the Model Context Protocol
+  (JSON-RPC message shape, capability negotiation, tool registries,
+  request/response correlation) — kept fully offline and deterministic
+  like every other exercise in the app, with no network calls, API keys,
+  or ML libraries required. C++ and Spring each define their own
   smaller category sets instead, since chasing full 14-category parity
   doesn't fit a bare language or a DI framework the same way it fits two
   general-purpose languages: C++ covers 10 (the same 6 as before plus
@@ -43,9 +53,10 @@ through in a few focused minutes, not tutorials to sit through.
   Deployment, since JavaScript is a general-purpose, package-manager-
   heavy ecosystem language like Python/Java, not a bare compiled
   language the way C++ is here).
-  - **Python** — 75 exercises (mutable defaults, race conditions, float
-    precision, silent exception swallowing, GIL vs true parallelism, and
-    more).
+  - **Python** — 95 exercises (mutable defaults, race conditions, float
+    precision, silent exception swallowing, GIL vs true parallelism,
+    reproducible ML pipelines, RAG retrieval, agentic tool-calling loops,
+    MCP's JSON-RPC wire format, and more).
   - **Java** — 70 exercises, each idiomatically Java rather than a
     literal port (streams/lambdas/records, the Collections Framework,
     virtual threads and CompletableFuture for concurrency,
@@ -87,7 +98,7 @@ through in a few focused minutes, not tutorials to sit through.
     logging, `process.env`'s string-only typing, graceful `SIGTERM`
     shutdown, and more), run directly with `node` (no separate compile
     step, unlike Java/C++).
-- **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
+- **Quiz Bank** — 107 Python questions, 70 Java questions, 55 C++
   questions, 44 Spring questions, 63 Node.js questions, reshuffled every
   session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and

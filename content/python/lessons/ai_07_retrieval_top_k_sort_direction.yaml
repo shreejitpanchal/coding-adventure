@@ -1,0 +1,63 @@
+id: ai_07
+title: "Retrieving the LEAST Relevant Documents by Mistake"
+language: python
+level: 82
+objective: "Fix a top-k retrieval function that sorts similarity scores ascending, returning the least relevant documents instead of the most relevant."
+explanation: |
+  `sorted(scores.items(), key=lambda kv: kv[1])` sorts ascending by
+  default -- from lowest score to highest. For a similarity score,
+  where a *higher* number means *more* relevant, sorting ascending and
+  then slicing `[:k]` grabs the `k` items with the *lowest* scores: the
+  documents least related to the query, exactly backwards from what a
+  retrieval step is supposed to return. This is a bug that's easy to
+  miss because the code runs without error and returns a
+  correctly-shaped result -- a list of `k` (document, score) pairs --
+  it's just quietly returning the wrong `k` items, which only becomes
+  obvious by actually inspecting which documents came back and checking
+  whether they make sense for the query.
+
+  The fix is either `reverse=True` on the same `sorted()` call, or
+  negating the sort key -- both flip the ordering to descending, so the
+  slice `[:k]` grabs the `k` highest-scoring, most-relevant items
+  instead. This is a one-argument fix, but it's exactly the kind of bug
+  that silently corrupts an entire RAG pipeline's output quality without
+  ever raising an error: the retrieval step "works" in the sense that it
+  runs and returns plausible-looking results, it's just feeding the
+  language model context that's systematically the *opposite* of what
+  was actually relevant to the question being asked.
+example_code: |
+  # The trap: default sort is ascending -- grabs the LEAST similar documents.
+  def top_k_trap(scores, k):
+      return sorted(scores.items(), key=lambda kv: kv[1])[:k]
+
+  scores = {"doc_a": 0.2, "doc_b": 0.9, "doc_c": 0.5, "doc_d": 0.1}
+  print(top_k_trap(scores, 2))   # [('doc_d', 0.1), ('doc_a', 0.2)] -- the WORST matches!
+
+  # The fix: sort descending, so the highest-scoring docs come first.
+  def top_k(scores, k):
+      return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:k]
+
+  print(top_k(scores, 2))        # [('doc_b', 0.9), ('doc_c', 0.5)] -- the actual best matches
+starter_code: |
+  def top_k(scores, k):
+      return sorted(scores.items(), key=lambda kv: kv[1])[:k]
+
+  scores = {"doc_a": 0.2, "doc_b": 0.9, "doc_c": 0.5, "doc_d": 0.1}
+  print(top_k(scores, 2))
+challenge: |
+  Fix `top_k` so it returns the k HIGHEST-scoring documents (doc_b and
+  doc_c) instead of the lowest-scoring ones -- sort in descending order
+  instead of the default ascending order.
+expected_output: |
+  [('doc_b', 0.9), ('doc_c', 0.5)]
+hints:
+  - "Add reverse=True to the sorted() call."
+  - "The key function (lambda kv: kv[1]) and the [:k] slice both stay exactly the same -- only the sort direction changes."
+xp_reward: 10
+achievement: null
+category: ai
+category_level: 7
+difficulty: gotcha
+contains_patterns:
+  - "reverse=True"
+concept_tags: [retrieval, top_k, sort_order]

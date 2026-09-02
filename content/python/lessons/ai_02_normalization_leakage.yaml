@@ -1,0 +1,79 @@
+id: ai_02
+title: "Fitting a Scaler on Test Data Leaks Information"
+language: python
+level: 77
+objective: "Fix a normalization function that computes its min/max from train and test data combined, since the test set must never influence how the training data is scaled."
+explanation: |
+  Min-max normalization rescales values into `[0, 1]` using the range
+  `(min, max)` of *some* dataset -- but which dataset that range comes
+  from matters enormously. Computing `min`/`max` over `train + test`
+  combined means the scaling applied to every training example is
+  influenced by values that only exist in the test set -- test data the
+  model is never supposed to have seen anything about until evaluation
+  time. This is called *data leakage*: information from the held-out
+  set leaks backward into how the training data gets prepared, which
+  can make a model look like it generalizes well during development
+  while actually having quietly benefited from peeking at the answers
+  it's later "tested" against.
+
+  The fix is to compute the scaling range from the *training* data
+  only, then apply that exact same range to transform the test data
+  too -- never recomputing it from the test set. `lo, hi =
+  min(train), max(train)` fits the transform once, using only
+  information genuinely available at training time; the test set is
+  then normalized using that fixed range, the same way a real deployed
+  model would have to scale a brand-new, never-before-seen input using
+  only the range it learned during training. If a test value falls
+  outside that range, its normalized value can legitimately be below 0
+  or above 1 -- that's expected and correct, not a bug, since it
+  reflects test data was genuinely different from anything the model
+  was fit on.
+example_code: |
+  # The trap: min/max computed over train AND test combined -- leakage.
+  def normalize_trap(train, test):
+      combined = train + test
+      lo, hi = min(combined), max(combined)
+      scale = lambda v: (v - lo) / (hi - lo)
+      return [scale(v) for v in train], [scale(v) for v in test]
+
+  train = [10, 20, 30]
+  test = [100]                       # an outlier only present in test
+  train_norm, test_norm = normalize_trap(train, test)
+  print([round(v, 2) for v in train_norm])   # compressed toward 0 -- distorted by test's outlier!
+
+  # The fix: fit the range on TRAIN only, apply it to both.
+  def normalize(train, test):
+      lo, hi = min(train), max(train)
+      scale = lambda v: (v - lo) / (hi - lo)
+      return [scale(v) for v in train], [scale(v) for v in test]
+
+  train_norm, test_norm = normalize(train, test)
+  print([round(v, 2) for v in train_norm])   # 0.0, 0.5, 1.0 -- unaffected by test data
+starter_code: |
+  def normalize(train, test):
+      combined = train + test
+      lo, hi = min(combined), max(combined)
+      scale = lambda v: (v - lo) / (hi - lo)
+      return [scale(v) for v in train], [scale(v) for v in test]
+
+  train = [10, 20, 30]
+  test = [100]
+  train_norm, test_norm = normalize(train, test)
+  print([round(v, 2) for v in train_norm])
+challenge: |
+  Fix `normalize` so the min/max range is computed from `train` only
+  (not `train + test`), so train_norm correctly comes out as
+  [0.0, 0.5, 1.0] regardless of what values appear in test.
+expected_output: |
+  [0.0, 0.5, 1.0]
+hints:
+  - "lo, hi = min(train), max(train) -- drop the `combined = train + test` line entirely."
+  - "The scale lambda and the final return statement don't need to change -- only where lo/hi come from."
+xp_reward: 10
+achievement: null
+category: ai
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "min\\(train\\), max\\(train\\)"
+concept_tags: [data_leakage, normalization, train_test_split]

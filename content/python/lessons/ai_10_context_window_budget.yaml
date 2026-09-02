@@ -1,0 +1,78 @@
+id: ai_10
+title: "Ignoring the Context Window Budget Entirely"
+language: python
+level: 85
+objective: "Fix a context-assembly function that concatenates every retrieved chunk regardless of size, by stopping once a character budget is reached."
+explanation: |
+  A language model's context window is finite -- there's a hard limit
+  on how much retrieved text (plus the question, plus the model's own
+  reply) can fit into a single request. A function that concatenates
+  every retrieved chunk unconditionally, with no running size check at
+  all, will happily build a context string of any length, regardless
+  of whether it actually fits the model's budget. This doesn't fail
+  loudly during context assembly -- the function returns a perfectly
+  valid string either way -- but the failure shows up downstream, when
+  the assembled context (plus everything else) gets sent somewhere with
+  a hard size limit and either gets rejected outright or silently
+  truncated in some arbitrary, uncontrolled way that has nothing to do
+  with which chunks were actually most relevant.
+
+  The fix is to track the running size as chunks are added and stop
+  *before* exceeding the budget: `if len(result) + len(chunk) > budget:
+  break` checks each candidate chunk against the remaining room before
+  committing to include it. Combined with chunks already ordered by
+  relevance (most relevant first, as in this track's top-k retrieval
+  exercise), this guarantees the assembled context always fits the
+  budget *and* prioritizes keeping the most relevant chunks over the
+  least relevant ones when something has to be left out -- a
+  deliberate, controlled truncation instead of an accidental one caused
+  by ignoring the limit entirely.
+example_code: |
+  # The trap: concatenates every chunk with no size check at all.
+  def build_context_trap(chunks_by_relevance, budget):
+      result = ""
+      for chunk in chunks_by_relevance:
+          result += chunk
+      return result
+
+  chunks = ["most relevant. ", "somewhat relevant. ", "least relevant. "]
+  print(len(build_context_trap(chunks, budget=20)))   # 50 -- completely ignores the 20-char budget!
+
+  # The fix: stop once adding the next chunk would exceed the budget.
+  def build_context(chunks_by_relevance, budget):
+      result = ""
+      for chunk in chunks_by_relevance:
+          if len(result) + len(chunk) > budget:
+              break
+          result += chunk
+      return result
+
+  print(build_context(chunks, budget=20))    # "most relevant. " -- stays within budget
+  print(len(build_context(chunks, budget=20)) <= 20)   # True
+starter_code: |
+  def build_context(chunks_by_relevance, budget):
+      result = ""
+      for chunk in chunks_by_relevance:
+          result += chunk
+      return result
+
+  chunks = ["most relevant. ", "somewhat relevant. ", "least relevant. "]
+  print(len(build_context(chunks, budget=20)) <= 20)
+challenge: |
+  Fix `build_context` so it actually respects the `budget` parameter --
+  stop adding chunks once the next one would push the total length past
+  `budget`, so the final result's length never exceeds it (should print
+  True).
+expected_output: |
+  True
+hints:
+  - "if len(result) + len(chunk) > budget: break -- add this check as the first line inside the loop, before appending."
+  - "Chunks are already ordered most-to-least relevant, so stopping early naturally keeps the most relevant ones."
+xp_reward: 10
+achievement: null
+category: ai
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "len\\(result\\) \\+ len\\(chunk\\) > budget"
+concept_tags: [context_window, token_budget, rag_pipeline]

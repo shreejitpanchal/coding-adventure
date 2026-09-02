@@ -180,7 +180,7 @@ toolchain_check.py`), or "Coming soon" (no content/engine yet).
 
 ### Practice by Topic — kept in parity across languages on purpose
 
-Both Python and Java define the exact same 14 category keys
+Python and Java both define the same original 14 category keys
 (`idioms_gotchas`, `core_refresher`, `data_structures`,
 `stdlib_deep_dive`, `concurrency_async`, `thread_scheduling`,
 `sync_vs_async`, `functional_programming`, `recursion`,
@@ -195,7 +195,39 @@ directory — nothing hardcodes which categories a language "should"
 have, so adding an exercise in a new category is enough to make that
 category show up in the topic browser. When Java's category list fell
 behind Python's after a round of Python-only content additions, the fix
-was adding matching Java content, not touching any app code.
+was adding matching Java content, not touching any app code. Python has
+since grown a 15th category, `ai` (see below), that Java doesn't mirror
+-- parity across the two tracks was never enforced by the engine, only
+maintained by convention where it made sense to.
+
+Python's `ai` category (title "AI: ML, RAG, Agents & MCP", 20 exercises
+across `category_level` 1-20) is a deliberate departure from every other
+category in this app: where every other category teaches a language's
+own mechanics/idioms/stdlib, `ai` teaches the underlying mechanics of
+machine learning, Retrieval-Augmented Generation, agentic frameworks,
+and the Model Context Protocol -- all as hand-rolled, dependency-free
+Python (no numpy, no network access, no LLM API calls), since this app's
+"real execution, exact deterministic output" model has no way to verify
+a live model call or network response, and the app is explicitly 100%
+offline. `ai_01`-`ai_05` cover ML fundamentals (a train/test split that
+owns its own seeded `random.Random` instead of depending on global
+state, data leakage from fitting a scaler on combined train+test data,
+thresholding probabilities before computing accuracy, gradient descent's
+sign convention, evaluating on held-out data instead of training data);
+`ai_06`-`ai_10` cover RAG (cosine similarity vs. raw dot product, top-k
+retrieval's sort direction, chunk overlap so a boundary-straddling
+phrase survives intact, a delimited prompt template instead of plain
+concatenation, respecting a context-window character budget);
+`ai_11`-`ai_15` cover agentic frameworks (a tool dispatcher that fails
+loudly instead of silently returning `None`, a `max_steps` guard against
+an unbounded loop, validating a tool call's required arguments before
+invoking it, preserving the system message when trimming conversation
+history, checking the correct stop-condition key); `ai_16`-`ai_20` cover
+MCP (JSON-RPC's required `"jsonrpc": "2.0"` field, `result`/`error`
+mutual exclusivity, detecting a duplicate tool registration, checking a
+server's advertised capabilities before calling a method, correlating
+responses to requests by `id` rather than arrival order -- the last one,
+`ai_master`, is this category's single achievement).
 
 Each language's content for a shared category is written idiomatically
 for that language, not translated line-for-line — e.g. `sync_vs_async`

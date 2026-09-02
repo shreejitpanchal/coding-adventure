@@ -1,0 +1,68 @@
+id: ai_15
+title: "Checking the Wrong Key for an Agent's Stop Signal"
+language: python
+level: 90
+objective: "Fix an agent's stop-condition check that looks for the wrong dictionary key, so it never detects a tool result that actually signals completion."
+explanation: |
+  An agent loop typically decides whether to keep going by inspecting
+  the structured result of its last action -- checking for a specific
+  key that signals "this is the final answer, stop here." A stop-check
+  written as `tool_result.get("final") == True` looks entirely
+  reasonable in isolation, but if the actual contract the tools follow
+  uses a *different* key name -- `is_final` rather than `final` -- the
+  check silently, permanently fails: `dict.get()` on a missing key
+  returns `None` by default, `None == True` is always `False`, and the
+  agent never recognizes that it's actually done, even when a tool has
+  already handed back the exact signal it was supposed to be watching
+  for. The loop keeps running past the point where it should have
+  stopped, for no reason visible anywhere in the tool's own output --
+  the information needed to stop correctly was right there, just under
+  a key name the check wasn't actually looking at.
+
+  This class of bug -- a typo or mismatched naming convention between
+  two halves of a system that are supposed to agree on a shared
+  contract -- is common wherever a key name has to be spelled
+  identically in two separate places with nothing enforcing that they
+  match. The fix here is simply correcting the check to look at the
+  actual key the tools use, `is_final`, matching the real contract
+  rather than an assumed one. In a larger system, this is exactly the
+  kind of mismatch a shared schema or a typed contract between the
+  agent loop and its tools would catch immediately -- a plain
+  dictionary key has no such enforcement, which is precisely why it's
+  easy for the two sides to quietly drift out of agreement.
+example_code: |
+  # The trap: checks a key ("final") that doesn't match what tools actually set ("is_final").
+  def is_final_trap(tool_result):
+      return tool_result.get("final") == True
+
+  result = {"is_final": True, "answer": "42"}
+  print(is_final_trap(result))   # False -- WRONG, this result genuinely signals completion!
+
+  # The fix: check the actual key the tool contract uses.
+  def is_final(tool_result):
+      return tool_result.get("is_final") == True
+
+  print(is_final(result))        # True -- correctly recognizes the stop signal
+starter_code: |
+  def is_final(tool_result):
+      return tool_result.get("final") == True
+
+  result = {"is_final": True, "answer": "42"}
+  print(is_final(result))
+challenge: |
+  Fix `is_final` so it checks the correct key ("is_final", not
+  "final") that the tool result actually uses, so it correctly
+  recognizes this result as a stop signal (should print True).
+expected_output: |
+  True
+hints:
+  - "tool_result.get(\"is_final\") == True -- change the key name from \"final\" to \"is_final\"."
+  - "Nothing else about the function needs to change -- the bug is purely the mismatched key name."
+xp_reward: 15
+achievement: null
+category: ai
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "get\\(\"is_final\"\\)"
+concept_tags: [agentic_framework, stop_condition, contract_mismatch]
