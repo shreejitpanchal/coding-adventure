@@ -29,6 +29,10 @@ def main(page: ft.Page) -> None:
     page.window.min_width = 1024
     page.window.min_height = 700
     page.window.maximized = True
+    # Windows-only (per Flet's own docs on this property); a no-op elsewhere.
+    # Android/iOS/web/macOS app icons come from assets/icon.jpg instead, via
+    # `flet build`'s own icon pipeline (flutter_launcher_icons).
+    page.window.icon = "icon.ico"
     page.padding = 0
 
     state = AppState()
