@@ -334,7 +334,7 @@ flowchart TB
     result --> validator["app/engine/validator.py\nvalidate_output() +\nvalidate_contains()"]
     validator --> outcome{"Correct AND uses\nthe taught construct?"}
     outcome -->|yes| reward["ProgressStore.complete_lesson()\n+ award_badge() + reward card"]
-    outcome -->|output right, pattern missing| refactor["\"try using what this\nexercise is teaching\" message"]
+    outcome -->|output right, pattern missing| refactor["'try using what this\nexercise is teaching' message"]
     outcome -->|no| friendly["app/execution/errors.py\ntranslate_error() + line number,\nlanguage-specific friendly table"]
 ```
 
