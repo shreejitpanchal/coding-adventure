@@ -1,0 +1,87 @@
+id: strangler_fig_04
+title: "Branch by Abstraction"
+language: architecture
+level: 24
+objective: "Understand Branch by Abstraction as the Strangler Fig pattern's equivalent technique for migrating code within a single codebase, using a runtime-switchable interface instead of a routing facade."
+explanation: |
+  This category's opening lesson describes the Strangler Fig pattern at
+  the level of services and routes -- a facade redirects specific HTTP
+  paths from a legacy system to a new one. The same underlying idea
+  applies one level down, *inside* a single codebase, when the thing
+  being replaced is an internal component rather than an entire
+  service -- a payment-calculation module, a search implementation --
+  and creating a whole separate service and routing facade for it would
+  be far more machinery than the problem needs. **Branch by
+  abstraction** is that same incremental-replacement idea applied at
+  the code level: instead of a long-lived git branch that eventually
+  needs one risky big-bang merge (the exact failure mode this category
+  opened with, just relocated from "systems" to "branches"), an
+  abstraction (an interface) is introduced in front of the old
+  implementation, callers are updated to go through the abstraction
+  instead of calling the old code directly, and only then does the new
+  implementation get built behind that same abstraction -- switchable
+  at runtime via a feature flag, not a merge event.
+
+  This means the new implementation can be developed and merged to the
+  main branch incrementally, in small pieces, disabled behind the flag
+  the whole time it's incomplete -- there's no long-lived branch
+  silently drifting out of sync with everyone else's ongoing changes to
+  main, and no single terrifying "merge day." Once the new
+  implementation is complete, the flag flips it on for real traffic
+  (initially perhaps for a small percentage, mirroring the
+  gradual-rollout spirit of the outer Strangler Fig pattern), and only
+  once it's fully validated does the old implementation and the now
+  needless abstraction layer get deleted -- the abstraction was a
+  temporary migration scaffold, not a permanent design fixture to keep
+  around indefinitely.
+example_code: |
+  # Before: callers depend directly on the old implementation --
+  # a future rewrite would need a risky big-bang swap.
+  class CheckoutService:
+      def calculate_shipping(self, order):
+          return legacy_shipping_calculator.compute(order)
+
+  # Branch by abstraction: introduce an interface, route through a flag.
+  class ShippingCalculator(ABC):
+      def compute(self, order): ...
+
+  class LegacyShippingCalculator(ShippingCalculator):
+      def compute(self, order):
+          return legacy_shipping_calculator.compute(order)
+
+  class NewShippingCalculator(ShippingCalculator):
+      def compute(self, order):
+          return new_rules_engine.calculate(order)   # built incrementally, behind the flag
+
+  def get_shipping_calculator() -> ShippingCalculator:
+      if feature_flags.is_enabled("new_shipping_calculator"):
+          return NewShippingCalculator()             # flip the flag once fully validated
+      return LegacyShippingCalculator()
+
+  class CheckoutService:
+      def calculate_shipping(self, order):
+          return get_shipping_calculator().compute(order)  # callers never changed again after this
+category: strangler_fig
+category_level: 4
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [strangler_fig, branch_by_abstraction, feature_flags, incremental_rewrite]
+comprehension_check:
+  - question: "What problem does Branch by Abstraction avoid, compared to a long-lived feature branch?"
+    options:
+      - "A single risky big-bang merge event, since the new implementation is built and merged incrementally behind a runtime flag instead"
+      - "It avoids the need to ever write any new code at all"
+      - "It eliminates the need for any interface or abstraction layer"
+      - "It requires the old implementation to be deleted before any new code is written"
+    correct: 0
+    explanation: "A long-lived branch eventually needs one risky big-bang merge -- Branch by Abstraction lets the new implementation be merged in small pieces the whole time, disabled behind a flag until it's ready."
+  - question: "What happens to the abstraction layer introduced by Branch by Abstraction once the migration is complete?"
+    options:
+      - "It gets deleted along with the old implementation -- it was a temporary migration scaffold, not a permanent design fixture"
+      - "It must be kept in the codebase forever, unchanged"
+      - "It automatically becomes the new implementation itself"
+      - "It's converted into a completely separate microservice"
+    correct: 0
+    explanation: "Once the new implementation is fully validated, both the old implementation and the now-unneeded abstraction are removed -- the abstraction only existed to make the incremental switch possible."

@@ -21,6 +21,14 @@ CONTENT_ROOT = Path(__file__).resolve().parent.parent.parent / "content"
 # in-process engine.
 MOBILE_ALWAYS_UNLOCKED_LANGUAGES = {"java", "cpp", "spring", "node"}
 
+# These two tracks are unconditionally unlocked, on every platform, by
+# product decision -- unlike every other track, where completion-gated
+# progression is the point. `architecture` is a reference-style library of
+# independent conceptual topics with no code to run at all (requires_code
+# is False on every exercise), so there's no reason to force a specific
+# reading order; `ai` was made unlocked the same way at the user's request.
+ALWAYS_UNLOCKED_LANGUAGES = {"architecture", "ai"}
+
 
 class ExerciseEngine:
     def __init__(self, language: str, content_dir: Optional[Path] = None):
@@ -70,6 +78,8 @@ class ExerciseEngine:
         )
 
     def is_unlocked(self, exercise: Exercise, completed_ids: set[str]) -> bool:
+        if self.language in ALWAYS_UNLOCKED_LANGUAGES:
+            return True
         if self.language in MOBILE_ALWAYS_UNLOCKED_LANGUAGES and is_android():
             return True
         if exercise.category_level <= 1:

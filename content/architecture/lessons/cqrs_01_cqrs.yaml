@@ -1,0 +1,107 @@
+id: cqrs_01
+title: "CQRS: Command Query Responsibility Segregation"
+language: architecture
+level: 11
+objective: "Understand why CQRS splits the write model from the read model, and when that split is actually worth its added complexity."
+explanation: |
+  Most applications default to one model serving both jobs: the same
+  `Order` class (and the same database table) is used both to *write* a
+  new order (validating business rules, enforcing invariants) and to
+  *read* orders back out (for a dashboard, a report, a search page). For
+  a huge number of applications, this single shared model is completely
+  fine -- it's simpler to build and reason about, and the two
+  responsibilities genuinely don't conflict enough to justify splitting
+  them. The friction shows up specifically when writes and reads have
+  fundamentally different shapes and different scaling needs: a write
+  path needs to enforce strict invariants ("can't ship an order with no
+  line items," "can't apply a discount code twice"), while a read path
+  for, say, an admin dashboard might need a heavily denormalized view
+  joining data from five different aggregates, optimized purely for
+  fast querying, with no write invariants to enforce at all.
+
+  CQRS (Command Query Responsibility Segregation) makes that split
+  explicit: *commands* (`PlaceOrder`, `CancelOrder`) go through a write
+  model that enforces business rules and invariants, while *queries*
+  (`GetOrderSummary`, `GetOrdersForDashboard`) read from a separate read
+  model -- often a denormalized, purpose-built view, sometimes even a
+  different database technology entirely (a relational database for
+  writes, a search index or a wide denormalized table for reads) --
+  optimized purely for how the data will actually be queried, with none
+  of the write side's validation logic anywhere near it. The two models
+  are kept in sync, typically by the write side publishing events (see
+  this category's Event-Driven Architecture exercise) that update the
+  read model asynchronously after each command succeeds.
+
+  The tradeoff CQRS makes explicit is the same one distributed systems
+  keep making: the read model is only *eventually* consistent with the
+  write model, not instantly -- there's a real, if usually small, window
+  where a just-placed order hasn't shown up in the dashboard's read
+  model yet. This is a genuine cost, not a minor detail, and it's
+  exactly why CQRS is a pattern to reach for deliberately, when the
+  read and write shapes/scaling needs have actually diverged enough to
+  justify maintaining two models and the synchronization between them
+  -- not a default to apply to every application from day one. Applying
+  full CQRS (with entirely separate read/write databases) to a small
+  CRUD app where the same simple model comfortably serves both jobs
+  adds real operational and cognitive overhead for no corresponding
+  benefit -- this is a widely recognized case of a legitimate,
+  well-proven pattern being reached for prematurely.
+example_code: |
+  # Without CQRS: one model serves both writing and reading.
+  class OrderService:
+      def place_order(self, command):                 # write path
+          order = Order(command.items)
+          order.validate_invariants()                  # business rules enforced here
+          db.save(order)
+
+      def get_order_summary(self, order_id):           # read path
+          order = db.get(order_id)                      # same model, same table
+          return order.to_summary_view()                # awkward if the read shape diverges a lot
+
+  # With CQRS: commands and queries use separate models entirely.
+  class OrderCommandHandler:                            # write side -- enforces invariants
+      def handle_place_order(self, command):
+          order = Order(command.items)
+          order.validate_invariants()
+          write_db.save(order)
+          event_bus.publish("OrderPlaced", order)       # keeps the read model in sync
+
+  class OrderQueryHandler:                              # read side -- purpose-built, denormalized
+      def get_order_summary(self, order_id):
+          return read_db.query_denormalized_summary(order_id)  # optimized purely for reading
+
+  @event_bus.subscribe("OrderPlaced")
+  def update_read_model(order):
+      read_db.upsert_denormalized_view(order)           # read model updated asynchronously
+category: cqrs
+category_level: 1
+difficulty: gotcha
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [cqrs, read_model, write_model, eventual_consistency]
+comprehension_check:
+  - question: "What does CQRS split apart that a typical single-model application keeps combined?"
+    options:
+      - "The write path (commands, enforcing business invariants) from the read path (queries, often against a separately optimized, denormalized model)"
+      - "It splits the frontend from the backend entirely"
+      - "It splits every class into exactly two files"
+      - "It has nothing to do with reads or writes at all"
+    correct: 0
+    explanation: "Commands go through a write model enforcing invariants; queries read from a separate model purpose-built for how the data is actually queried."
+  - question: "What's the real cost CQRS introduces, and why does it matter?"
+    options:
+      - "The read model is only eventually consistent with the write model -- there's a real window where a just-written change hasn't appeared in reads yet"
+      - "CQRS has no real cost at all and should always be used"
+      - "CQRS makes writes and reads use the exact same model, so there's no consistency concern"
+      - "CQRS eliminates the need for a database entirely"
+    correct: 0
+    explanation: "Keeping the read model in sync (often via published events) is asynchronous, so there's a genuine, if usually small, delay before a write shows up in queries."
+  - question: "When is CQRS actually the right choice, according to the reasoning here?"
+    options:
+      - "When the read and write shapes/scaling needs have genuinely diverged enough to justify maintaining two models and their synchronization -- not as a default for every application"
+      - "For every single application, starting on day one, regardless of complexity"
+      - "Only for applications with no read operations at all"
+      - "CQRS should never be used under any circumstances"
+    correct: 0
+    explanation: "Applying full CQRS to a small CRUD app where one simple model already serves both jobs well adds real overhead with no corresponding benefit -- a widely recognized case of over-engineering."

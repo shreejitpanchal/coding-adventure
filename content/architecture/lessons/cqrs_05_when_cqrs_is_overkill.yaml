@@ -1,0 +1,79 @@
+id: cqrs_05
+title: "When CQRS Is Overkill"
+language: architecture
+level: 15
+objective: "Recognize the specific signals that indicate CQRS is being reached for prematurely, rather than in response to a genuine need."
+explanation: |
+  Every pattern in this track solves a real problem, and CQRS is no
+  exception -- but "solves a real problem" doesn't mean "should be
+  applied everywhere," and CQRS is one of the more commonly
+  over-applied ones, precisely because it sounds sophisticated and
+  shows up often in architecture discussions. The signal that CQRS is
+  overkill for a given application is straightforward once named: the
+  read and write shapes haven't actually diverged. If the same simple
+  model that enforces write-side invariants would *also* serve every
+  read the application needs, without contorting itself, splitting it
+  into two models anyway adds real cost (two schemas to maintain, a
+  synchronization mechanism, eventual-consistency bugs to reason about)
+  for a benefit that was never actually needed.
+
+  A small internal admin tool with a handful of screens, straightforward
+  CRUD operations, and no meaningful difference between what gets
+  written and what gets displayed is the canonical example of "CQRS
+  would be overkill here" -- one model, one database table, ordinary
+  reads and writes against it, is simpler to build, simpler to reason
+  about, and has no consistency lag to worry about. The pattern earns
+  its cost specifically once a *concrete* pressure shows up: read
+  volume that swamps the write model's ability to serve it well,
+  reporting/dashboard views that would require increasingly convoluted
+  joins against the write schema, or genuinely different read and write
+  access patterns that keep fighting each other in one shared model.
+  Reaching for CQRS before that pressure exists is optimizing for a
+  problem the application doesn't have yet, at the cost of real
+  complexity it does have right now.
+example_code: |
+  # A small admin tool: writes and reads use the exact same simple shape --
+  # CQRS here would add two schemas and a sync mechanism for NO real benefit.
+  class Task:
+      def __init__(self, title, done=False):
+          self.title = title
+          self.done = done
+
+  def create_task(title):
+      db.save(Task(title))                    # write
+
+  def list_tasks():
+      return db.query(Task)                    # read -- SAME simple model, no divergence at all
+
+  # CQRS earns its cost only once a CONCRETE pressure shows up --
+  # e.g. a dashboard needing heavy joins the write model was never shaped for:
+  def get_admin_dashboard_naive():
+      tasks = db.query(Task)
+      users = db.query(User)
+      projects = db.query(Project)
+      return join_and_aggregate(tasks, users, projects)  # increasingly convoluted over time
+  # -- THIS is the point where a dedicated, denormalized read model starts paying off.
+category: cqrs
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: cqrs_master
+requires_code: false
+concept_tags: [cqrs, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "What's the key signal that CQRS is being applied prematurely to an application?"
+    options:
+      - "The read and write shapes haven't actually diverged -- the same simple model would serve both jobs well without contorting itself"
+      - "The application has more than one screen"
+      - "CQRS is always the correct default choice for every application"
+      - "The application has never had a single bug reported"
+    correct: 0
+    explanation: "Splitting into two models when one would already serve both jobs well adds real cost (two schemas, synchronization, eventual-consistency bugs) with no corresponding benefit."
+  - question: "What kind of concrete pressure makes CQRS actually earn its cost?"
+    options:
+      - "Read volume that swamps the write model, or reporting/dashboard views that would require increasingly convoluted joins against the write schema"
+      - "CQRS should be adopted before any pressure exists, purely as a precaution"
+      - "It earns its cost only for applications with zero read operations"
+      - "There is no scenario where CQRS is ever justified"
+    correct: 0
+    explanation: "Reaching for CQRS before that pressure exists means optimizing for a problem the application doesn't have yet, at the cost of real complexity it does have right now."

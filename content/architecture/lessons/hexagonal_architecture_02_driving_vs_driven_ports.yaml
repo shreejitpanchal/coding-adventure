@@ -1,0 +1,92 @@
+id: hexagonal_architecture_02
+title: "Driving Ports vs. Driven Ports"
+language: architecture
+level: 32
+objective: "Distinguish the two directions a port can face in Hexagonal Architecture -- driving (primary) ports that let the outside world call into the core, and driven (secondary) ports that let the core call out -- and why the distinction matters."
+explanation: |
+  This category's opening lesson showed `PaymentGateway` and
+  `OrderRepository` as ports the application core defines so it can
+  call *out* to infrastructure -- charge a card, save a row. That's
+  only half of the picture. A port also exists in the *other*
+  direction: something has to call *into* the application core in the
+  first place -- an HTTP controller, a CLI command handler, a
+  message-queue consumer -- and Hexagonal Architecture treats that
+  entry point as a port too, just facing the opposite way.
+
+  A **driving port** (also called a primary port) is what the core
+  exposes for the outside world to call *into* it -- typically an
+  interface like `PlaceOrderUseCase` that an HTTP controller or a CLI
+  handler depends on, without knowing or caring whether the request
+  originated from a REST call, a queue message, or a test harness
+  invoking it directly. A **driven port** (secondary port) is what this
+  category's opening lesson already covered -- `PaymentGateway`,
+  `OrderRepository` -- interfaces the core calls *out* through, that
+  something else (an adapter) implements. The core sits in the middle
+  either way; the direction just describes which side initiates the
+  call relative to the core.
+
+  The reason this distinction earns its own name, rather than treating
+  every port identically, is that it clarifies where an adapter
+  actually plugs in relative to the flow of control: a driving adapter
+  (an HTTP controller) calls *into* a driving port and drives the core
+  into action; a driven adapter (`StripePaymentAdapter`) is called *by*
+  the core through a driven port, in response. The same application
+  core can be "driven" by multiple different driving adapters
+  simultaneously -- a REST controller and a CLI tool both calling the
+  exact same `PlaceOrderUseCase` interface, with the core completely
+  unaware which one triggered any given call -- which is the same
+  benefit driven-side substitutability provides, just facing the
+  opposite direction.
+example_code: |
+  # DRIVING port: the core exposes this for the OUTSIDE WORLD to call INTO it.
+  from typing import Protocol
+
+  class PlaceOrderUseCase(Protocol):
+      def execute(self, order_request): ...
+
+  class OrderService(PlaceOrderUseCase):        # the core IMPLEMENTS its own driving port
+      def __init__(self, payments: PaymentGateway, orders: OrderRepository):
+          self.payments = payments               # DRIVEN port -- the core calls OUT through this
+          self.orders = orders
+
+      def execute(self, order_request):
+          self.payments.charge(order_request.total, order_request.card_token)
+          self.orders.save(order_request)
+
+  # DRIVING adapters: different entry points, all calling INTO the same driving port.
+  class HttpOrderController:
+      def __init__(self, use_case: PlaceOrderUseCase):
+          self.use_case = use_case
+      def post_order(self, request):
+          self.use_case.execute(parse_order_request(request))
+
+  class CliOrderCommand:
+      def __init__(self, use_case: PlaceOrderUseCase):
+          self.use_case = use_case
+      def run(self, args):
+          self.use_case.execute(parse_order_from_args(args))
+  # Both drive the SAME core logic -- the core has no idea which one called it.
+category: hexagonal_architecture
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [hexagonal_architecture, ports_and_adapters, driving_port, driven_port]
+comprehension_check:
+  - question: "What is a driving (primary) port in Hexagonal Architecture?"
+    options:
+      - "An interface the application core exposes for the outside world to call INTO it, such as a use-case interface an HTTP controller or CLI handler depends on"
+      - "The exact same thing as a driven port, just a different name"
+      - "An interface the core uses to call out to a database or external API"
+      - "A port that only exists in web applications, never in CLI tools"
+    correct: 0
+    explanation: "A driving port like PlaceOrderUseCase is called into by driving adapters (an HTTP controller, a CLI command) -- the core doesn't know or care which one triggered any given call."
+  - question: "Why does the driving/driven distinction matter, beyond just naming?"
+    options:
+      - "It clarifies which side initiates the call relative to the core, and shows that the same core logic can be driven by multiple different entry-point adapters simultaneously with no awareness of which one is calling"
+      - "It has no practical effect and is purely cosmetic terminology"
+      - "Driven ports can only ever have one adapter, while driving ports can have unlimited adapters"
+      - "It determines which programming language the core must be written in"
+    correct: 0
+    explanation: "A REST controller and a CLI tool can both call the exact same driving port/use-case interface -- the substitutability this provides mirrors the benefit driven ports provide on the outbound side."

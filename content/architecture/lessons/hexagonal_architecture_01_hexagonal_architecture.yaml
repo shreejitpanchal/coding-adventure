@@ -1,0 +1,119 @@
+id: hexagonal_architecture_01
+title: "Hexagonal Architecture (Ports & Adapters)"
+language: architecture
+level: 31
+objective: "Understand how Hexagonal Architecture isolates business logic from infrastructure by depending on abstractions (ports), not concrete frameworks or databases."
+explanation: |
+  Business logic that calls a specific ORM's query methods directly, or
+  imports a specific payment provider's SDK inline, has quietly made
+  that infrastructure choice part of its own definition -- testing the
+  logic now means either standing up a real database/payment sandbox,
+  or writing elaborate mocks that fight the framework's own APIs.
+  Swapping payment providers later means hunting down every place the
+  old SDK was called directly and rewriting it, scattered wherever the
+  business logic happened to need it. The underlying problem is a
+  dependency pointing the wrong way: business logic, which should be
+  the most stable, most important part of the system, ends up depending
+  on infrastructure details, which are usually the most likely to
+  change.
+
+  Hexagonal Architecture (also called Ports & Adapters) inverts that
+  dependency deliberately: the application core defines *ports* --
+  interfaces expressing what it needs, in its own vocabulary
+  (`PaymentGateway.charge(amount)`, `OrderRepository.save(order)`) --
+  with zero knowledge of which concrete technology will ever implement
+  them. *Adapters* are the concrete implementations that plug into
+  those ports from the outside: a `StripePaymentAdapter` implements
+  `PaymentGateway` using Stripe's actual SDK; a
+  `PostgresOrderRepository` implements `OrderRepository` using real SQL
+  queries. The business logic only ever depends on the port interface,
+  never on any adapter directly -- which is exactly what makes it
+  trivial to substitute a `FakePaymentGateway` in tests (no real Stripe
+  sandbox needed to test the *business rules* around what happens after
+  a successful charge) and, later, to swap `StripePaymentAdapter` for a
+  different provider's adapter without touching the business logic at
+  all, since it never knew Stripe existed in the first place.
+
+  The "hexagon" shape itself isn't meaningful geometry -- it's just a
+  visual convention (usually drawn with six sides purely so there's
+  visibly room for multiple ports on different sides) for "the
+  application core in the middle, ports around its edge, adapters
+  plugging into those ports from outside." The genuinely important
+  idea is the *dependency direction*: adapters depend on the core's
+  port interfaces, never the reverse -- the core never imports a
+  specific database driver, web framework, or payment SDK. This is the
+  same underlying idea as the Dependency Inversion Principle (the "D"
+  in SOLID) and is exactly why Spring's constructor-injection
+  discipline (see the Spring track's own dependency-injection content
+  in this app) exists in the first place: injecting an interface rather
+  than a concrete class is what makes swapping the concrete
+  implementation -- for a test, or for a real migration -- possible
+  without editing the code that depends on it.
+example_code: |
+  # The trap: business logic depends directly on a concrete SDK/database.
+  import stripe
+
+  class OrderService:
+      def place_order(self, order):
+          stripe.Charge.create(amount=order.total, source=order.card_token)  # tightly coupled to Stripe
+          postgres_conn.execute("INSERT INTO orders ...", order.to_row())    # tightly coupled to Postgres
+          # Testing this means a real Stripe sandbox AND a real Postgres instance.
+
+  # The fix: the core depends only on PORTS (interfaces) it defines itself.
+  from typing import Protocol
+
+  class PaymentGateway(Protocol):           # a port -- the core's own vocabulary
+      def charge(self, amount, token): ...
+
+  class OrderRepository(Protocol):          # another port
+      def save(self, order): ...
+
+  class OrderService:                       # core business logic -- knows nothing about Stripe/Postgres
+      def __init__(self, payments: PaymentGateway, orders: OrderRepository):
+          self.payments = payments
+          self.orders = orders
+
+      def place_order(self, order):
+          self.payments.charge(order.total, order.card_token)
+          self.orders.save(order)
+
+  # ADAPTERS plug concrete technology into the ports, from OUTSIDE the core.
+  class StripePaymentAdapter:               # implements PaymentGateway using real Stripe
+      def charge(self, amount, token):
+          stripe.Charge.create(amount=amount, source=token)
+
+  class FakePaymentGateway:                 # implements PaymentGateway for TESTS -- no real Stripe needed
+      def charge(self, amount, token):
+          self.charged = (amount, token)
+category: hexagonal_architecture
+category_level: 1
+difficulty: gotcha
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [hexagonal_architecture, ports_and_adapters, dependency_inversion]
+comprehension_check:
+  - question: "What problem occurs when business logic calls a specific database or SDK directly?"
+    options:
+      - "The dependency points the wrong way -- stable business logic ends up depending on infrastructure details, which are usually the most likely to change, making testing and swapping providers much harder"
+      - "There is no problem -- this is always the correct approach"
+      - "It makes the code run measurably faster in every case"
+      - "It only affects compiled languages, never interpreted ones"
+    correct: 0
+    explanation: "Testing business logic that calls Stripe's SDK directly means needing a real Stripe sandbox (or elaborate mocks fighting the SDK's own API) instead of a simple substitute."
+  - question: "What's the difference between a 'port' and an 'adapter' in Hexagonal Architecture?"
+    options:
+      - "A port is an interface the application core defines in its own vocabulary; an adapter is a concrete implementation of that port using a specific technology, plugged in from outside"
+      - "They are the same thing, just different names for it"
+      - "A port is always a network port number; an adapter is a type of cable"
+      - "Ports are only used in Java, adapters only in Python"
+    correct: 0
+    explanation: "PaymentGateway is a port defined by the core; StripePaymentAdapter (real) and FakePaymentGateway (test) are two different adapters implementing that same port."
+  - question: "Why does substituting a FakePaymentGateway in tests work so easily under this architecture?"
+    options:
+      - "Because the business logic only ever depends on the PaymentGateway port interface, never on a concrete adapter like Stripe's SDK directly"
+      - "Because Hexagonal Architecture requires disabling all tests"
+      - "Because FakePaymentGateway happens to be faster at making real network calls"
+      - "It doesn't actually work easily -- this is a common misconception"
+    correct: 0
+    explanation: "Since OrderService depends on the PaymentGateway interface (not on Stripe directly), any class implementing that interface -- real or fake -- can be substituted with zero changes to OrderService itself."

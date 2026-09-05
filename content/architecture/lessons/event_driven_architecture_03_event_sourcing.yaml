@@ -1,0 +1,77 @@
+id: event_driven_architecture_03
+title: "Event Sourcing: State as a Log of Events"
+language: architecture
+level: 3
+objective: "Understand how event sourcing stores every change as an immutable event instead of overwriting current state, and what that buys you."
+explanation: |
+  A conventional data model stores *current state* -- `orders` table,
+  `status` column, overwritten in place every time it changes. The
+  history of how it got there is gone the moment the next update runs,
+  unless something else (a separate audit log) was deliberately built
+  to preserve it. Event sourcing inverts this: instead of storing
+  current state directly, it stores the complete, ordered sequence of
+  events that led to it -- `OrderPlaced`, `PaymentReceived`,
+  `OrderShipped` -- and the current state is *derived* by replaying
+  those events from the beginning (or from a periodic snapshot, for
+  performance) whenever it's needed.
+
+  This makes the full history a first-class, permanent part of the
+  system rather than an afterthought: "what was this order's status at
+  2pm last Tuesday" is answerable by replaying events up to that point,
+  something a current-state-only model simply cannot answer once the
+  value has been overwritten. It also means past events are genuinely
+  immutable -- a mistake isn't corrected by editing history, it's
+  corrected by appending a new compensating event, preserving an honest
+  record of what actually happened, including the mistake. The real
+  cost is complexity: replaying a long event stream on every read is
+  slow without snapshotting, querying "current state" now requires
+  either a snapshot or a separately maintained read model (this is
+  exactly where CQRS's read-model idea and event sourcing usually pair
+  up), and the event schema itself becomes something that has to be
+  versioned carefully forever, since old events already committed to
+  the log can never be rewritten.
+example_code: |
+  # Conventional: current state overwritten, history is gone.
+  order.status = "shipped"   # the fact that it was ever "paid" first is now lost
+
+  # Event sourcing: the full history IS the source of truth.
+  events = [
+      {"type": "OrderPlaced", "order_id": 4521},
+      {"type": "PaymentReceived", "order_id": 4521, "amount": 49.99},
+      {"type": "OrderShipped", "order_id": 4521},
+  ]
+
+  def current_state(events):
+      state = {}
+      for e in events:               # replay every event, in order
+          if e["type"] == "OrderPlaced":
+              state["status"] = "placed"
+          elif e["type"] == "PaymentReceived":
+              state["status"] = "paid"
+          elif e["type"] == "OrderShipped":
+              state["status"] = "shipped"
+      return state   # {"status": "shipped"} -- but the FULL history is still in `events`
+category: event_driven_architecture
+category_level: 3
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [event_sourcing, event_driven_architecture, audit_log]
+comprehension_check:
+  - question: "What does event sourcing store as the source of truth, instead of current state directly?"
+    options:
+      - "The complete, ordered sequence of events that led to the current state -- current state is derived by replaying them"
+      - "Only the very latest value, exactly like a conventional database"
+      - "Nothing is stored at all -- state exists only in memory"
+      - "A single snapshot taken once, never updated again"
+    correct: 0
+    explanation: "This makes questions like 'what was the status at 2pm last Tuesday' answerable by replaying events up to that point -- impossible once a conventional model has overwritten the old value."
+  - question: "How does event sourcing handle correcting a mistake, given that past events are immutable?"
+    options:
+      - "By appending a new compensating event, rather than editing or deleting the original event"
+      - "By deleting the incorrect event from the log entirely"
+      - "By rewriting history so the mistake never appears to have happened"
+      - "Mistakes cannot be corrected at all in an event-sourced system"
+    correct: 0
+    explanation: "This preserves an honest, permanent record of what actually happened -- including the mistake and its correction -- rather than silently erasing it."

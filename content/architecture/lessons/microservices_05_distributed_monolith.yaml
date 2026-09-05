@@ -1,0 +1,76 @@
+id: microservices_05
+title: "The Distributed Monolith Anti-Pattern"
+language: architecture
+level: 10
+objective: "Recognize a 'distributed monolith' -- a system split into multiple services that still has to be deployed together -- and understand why it combines the worst of both worlds."
+explanation: |
+  Splitting a system into separate services is supposed to buy
+  independent deployability -- the entire point of the exercise, per
+  this category's opening lesson. A "distributed monolith" is what
+  happens when the split occurs at the process level but not at the
+  *coupling* level: services are physically separate deployments, but a
+  change to one still forces coordinated changes and a coordinated
+  redeploy of several others, because the boundaries were drawn wrong
+  (see this category's Service Boundaries lesson) or because services
+  share a database (see Database-per-Service) or communicate via
+  overly specific, tightly-coupled contracts. The result has every one
+  of microservices' costs -- network calls, distributed debugging,
+  operational overhead of running many deployments -- with none of the
+  benefit that was supposed to justify paying them: teams still can't
+  actually ship independently.
+
+  Recognizing this pattern matters because it's exactly the failure
+  mode that makes "microservices" get blamed for problems that are
+  really about *coupling*, not about the number of processes involved.
+  A well-factored modular monolith (one deployment, clean internal
+  module boundaries) is strictly better than a distributed monolith
+  (many deployments, coupled boundaries) -- it has the same coupling
+  problem, minus the network overhead and operational cost of running
+  it as separate services for no real benefit. The lesson generalizes:
+  splitting into separate deployments is only worth its cost once the
+  boundaries between them are genuinely independent -- correct bounded
+  contexts, no shared database, stable contracts -- not merely once the
+  code has been split into separate repositories or processes.
+example_code: |
+  # A distributed monolith LOOKS like microservices (separate deploys,
+  # separate repos) but still requires coordinated changes across services --
+  # exactly the coupling microservices were supposed to eliminate.
+
+  # Symptom 1: shared database -- see Database-per-Service.
+  # Both services query the same "orders" table directly.
+
+  # Symptom 2: a contract so specific it can't change independently.
+  class OrderService:
+      def get_order(self, order_id):
+          # Returns EVERY field ShippingService, BillingService, and
+          # AnalyticsService each individually depend on internally --
+          # changing this shape breaks all three at once, on every deploy.
+          return {"id": ..., "shipping_internal_field": ..., "billing_internal_field": ...}
+
+  # Symptom 3: a deploy runbook that says "deploy OrderService, THEN
+  # ShippingService, THEN BillingService, in that exact order" --
+  # if deploy order matters, they aren't independently deployable at all.
+category: microservices
+category_level: 5
+difficulty: deep_dive
+xp_reward: 15
+achievement: microservices_master
+requires_code: false
+concept_tags: [distributed_monolith, microservices, coupling]
+comprehension_check:
+  - question: "What defines a 'distributed monolith'?"
+    options:
+      - "A system split into separate processes/deployments that still requires coordinated changes and redeploys across several services, because the underlying coupling was never actually removed"
+      - "A monolith that has been perfectly split into fully independent microservices"
+      - "Any system that uses more than one server"
+      - "A system with no services at all, running as a single process"
+    correct: 0
+    explanation: "It has every cost of microservices (network calls, distributed debugging, operational overhead) with none of the independent-deployability benefit that was supposed to justify them."
+  - question: "According to this lesson, how does a well-factored modular monolith compare to a distributed monolith?"
+    options:
+      - "The modular monolith is strictly better -- it has the same underlying coupling problem, minus the network overhead and operational cost of running it as needlessly separate services"
+      - "A distributed monolith is always better, regardless of coupling"
+      - "They are identical in every measurable way"
+      - "Modular monoliths cannot have any internal organization at all"
+    correct: 0
+    explanation: "Splitting into separate deployments is only worth its cost once the boundaries are genuinely independent -- not merely once the code has been split into separate repositories or processes."

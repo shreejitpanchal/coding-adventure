@@ -1,0 +1,86 @@
+id: circuit_breaker_02
+title: "Fallback Strategies When the Circuit Is Open"
+language: architecture
+level: 42
+objective: "Understand the range of responses available when a circuit breaker is open -- beyond simply failing -- and how to choose one appropriate to what the call was actually for."
+explanation: |
+  This category's opening lesson showed a circuit breaker raising a
+  `CircuitOpenError` immediately once open -- failing fast instead of
+  waiting out a doomed timeout. Failing fast is strictly better than
+  failing slow, but "fail" is still often not the best available
+  response; what a caller should actually do when the circuit is open
+  depends entirely on what that call was for, and treating every open
+  circuit identically wastes an opportunity to degrade far more
+  gracefully than an outright error.
+
+  A **cached fallback** returns the last known-good response instead of
+  a fresh one -- a product recommendation service that's currently
+  unreachable can fall back to yesterday's cached recommendations
+  rather than showing nothing at all; slightly stale recommendations
+  are a far better user experience than a visible error message on the
+  page. A **default/degraded value** returns a reasonable placeholder
+  when no cached data exists to fall back to -- a "trending items"
+  widget that can't reach its personalization service might show a
+  generic, non-personalized bestseller list instead. A **fail loudly**
+  response is still correct for calls where a wrong or stale answer
+  would be actively harmful rather than merely less good -- a payment
+  authorization call has no acceptable "stale" fallback; if the
+  payment gateway's circuit is open, the checkout should fail visibly
+  rather than silently proceeding with unconfirmed payment information.
+
+  Choosing the right fallback per call site is a deliberate design
+  decision, not a detail to default uniformly across a codebase:
+  it requires knowing whether staleness is tolerable for that specific
+  piece of data, and whether a wrong answer is actively worse than a
+  visible failure. A circuit breaker without any thought put into its
+  fallback path just relocates where a failure surfaces, without
+  capturing the real benefit graceful degradation could have provided
+  the user.
+example_code: |
+  # Fail-fast with no fallback: strictly better than hanging, but still
+  # a visible error where a better user experience was available.
+  def get_recommendations(user_id):
+      try:
+          return circuit_breaker.call(recommendation_service.get, user_id)
+      except CircuitOpenError:
+          raise                      # the user just sees a broken widget
+
+  # Cached fallback: stale data beats a visible error for low-stakes reads.
+  def get_recommendations_with_fallback(user_id):
+      try:
+          recs = circuit_breaker.call(recommendation_service.get, user_id)
+          cache.set(user_id, recs)
+          return recs
+      except CircuitOpenError:
+          return cache.get(user_id, default=GENERIC_BESTSELLERS)   # graceful degradation
+
+  # Fail loudly on purpose: a wrong/stale answer would be actively harmful.
+  def authorize_payment(order):
+      try:
+          return circuit_breaker.call(payment_gateway.authorize, order)
+      except CircuitOpenError:
+          raise CheckoutUnavailableError()   # no acceptable fallback exists for this call
+category: circuit_breaker
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [circuit_breaker, fallback, graceful_degradation, resilience]
+comprehension_check:
+  - question: "Why is 'fail' often not the best response when a circuit breaker is open?"
+    options:
+      - "What the call was for matters -- a cached or degraded fallback (like slightly stale recommendations) can provide a far better experience than a visible error, when staleness is tolerable for that data"
+      - "Failing fast is always worse than waiting out a full timeout"
+      - "Circuit breakers are incapable of ever failing, only succeeding"
+      - "Fallback strategies only exist for payment-related calls"
+    correct: 0
+    explanation: "Choosing the right fallback per call site is deliberate: cached/default responses work well for data where staleness is tolerable, while fail-fast is still correct where a wrong answer would be actively harmful."
+  - question: "Why does a payment authorization call use a 'fail loudly' fallback instead of a cached or default response?"
+    options:
+      - "A wrong or stale answer for payment authorization would be actively harmful, not just less good -- there's no acceptable stale substitute for confirming a real charge succeeded"
+      - "Payment calls should never use a circuit breaker at all"
+      - "Fail loudly is always the correct choice for every kind of call, with no exceptions"
+      - "Caching payment data is technically impossible"
+    correct: 0
+    explanation: "Unlike recommendations, where slightly stale data is a fine substitute, silently proceeding with unconfirmed payment information would be worse than a visible checkout failure."

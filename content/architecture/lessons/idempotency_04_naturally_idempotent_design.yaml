@@ -1,0 +1,89 @@
+id: idempotency_04
+title: "Designing Operations to Be Naturally Idempotent"
+language: architecture
+level: 49
+objective: "Recognize that some operations can be redesigned to be idempotent by construction, avoiding the need for an idempotency-key store entirely."
+explanation: |
+  This category's previous lessons all solved idempotency the same
+  way: keep a side record (an idempotency key store, a processed-
+  message-ID table) tracking what's already happened, and check it
+  before acting. That's a real, necessary mechanism for operations that
+  are inherently non-idempotent by nature -- "charge this card" always
+  needs *some* form of external bookkeeping, because charging a card is
+  never going to be naturally safe to repeat. But not every operation
+  needs that machinery -- some can be redesigned so that repeating them
+  is *naturally* harmless, with no side record required at all.
+
+  The clearest example is client-generated resource IDs combined with
+  an *upsert* (insert-or-update) rather than a plain insert: instead of
+  `POST /orders` creating a new row every time it's called (inherently
+  non-idempotent -- calling it twice creates two orders), the client
+  generates the order's ID itself (a UUID) and calls
+  `PUT /orders/{id}` with that ID, and the server performs an upsert
+  keyed on that ID. Calling it once creates the order; calling it again
+  with the *same* ID and the *same* data simply overwrites the same row
+  with the same values -- naturally idempotent, no separate tracking
+  table needed, because the operation's own key structure makes
+  repetition harmless by construction. This is exactly why HTTP
+  designates `PUT` (with a caller-specified resource identity) as
+  idempotent while `POST` (server-assigned identity, inherently
+  creates-a-new-thing) is not, mentioned in passing in this category's
+  opening lesson.
+
+  Absolute-value operations follow the same principle without needing
+  client-generated IDs at all: `SET status = "shipped"` is naturally
+  idempotent the same way this category's opening lesson noted for
+  `SET balance = 100`, while `increment_ship_count()` is not -- wherever
+  a relative/incremental operation can be redesigned as an absolute
+  assignment instead, the idempotency problem disappears at the design
+  level rather than needing to be solved with bookkeeping afterward.
+  Reaching for natural idempotency by redesigning the operation, where
+  it's actually possible, is simpler and has fewer moving parts than an
+  idempotency-key store -- the key-store mechanism from this category's
+  earlier lessons is what's needed specifically when the operation
+  can't be redesigned this way (a real card charge has no "absolute
+  value" version of itself).
+example_code: |
+  # Inherently non-idempotent: server-assigned ID, plain insert --
+  # calling this twice creates TWO orders.
+  def create_order_naive(order_data):
+      order_id = generate_new_id()          # a NEW id every single call
+      db.insert("orders", order_id, order_data)
+      return order_id
+
+  # Naturally idempotent by redesign: client-generated ID + upsert --
+  # calling this twice with the SAME id/data is harmless, no key store needed.
+  def create_order_idempotent(order_id, order_data):    # client generates order_id ONCE, reuses on retry
+      db.upsert("orders", order_id, order_data)          # same id + same data => same end state, every time
+      return order_id
+
+  # Relative vs. absolute: the same principle applied to a field update.
+  def mark_shipped_non_idempotent(order_id):
+      db.increment("orders", order_id, "ship_attempts")   # NOT idempotent -- each retry adds another attempt
+
+  def mark_shipped_idempotent(order_id):
+      db.set("orders", order_id, "status", "shipped")      # naturally idempotent -- same result, any number of calls
+category: idempotency
+category_level: 4
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [idempotency, api_design, http_semantics]
+comprehension_check:
+  - question: "How does combining a client-generated resource ID with an upsert make an operation naturally idempotent?"
+    options:
+      - "Calling it once creates the resource; calling it again with the same ID and data simply overwrites the same row with the same values, harmless by construction, with no separate tracking record needed"
+      - "Client-generated IDs have no effect on idempotency whatsoever"
+      - "It requires the server to reject every request after the first one"
+      - "Upserts are inherently non-idempotent and make the problem worse"
+    correct: 0
+    explanation: "This is exactly why HTTP designates PUT (caller-specified identity) as idempotent while POST (server-assigned identity, inherently creates a new thing) is not."
+  - question: "When is the idempotency-key store mechanism from earlier lessons in this category still needed, according to this lesson?"
+    options:
+      - "Specifically for operations that can't be redesigned to be naturally idempotent -- like a real card charge, which has no 'absolute value' version of itself"
+      - "It's never needed once natural idempotency techniques are known"
+      - "It's needed for every single operation, even ones that are naturally idempotent by design"
+      - "Only for read-only operations like GET requests"
+    correct: 0
+    explanation: "Natural idempotency (upserts, absolute-value assignments) removes the need for bookkeeping where the operation itself can be redesigned -- the key-store mechanism remains necessary for operations that genuinely can't be redesigned that way."

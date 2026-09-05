@@ -1,0 +1,69 @@
+id: event_driven_architecture_05
+title: "Choosing a Broker: Ordering, Partitioning, and Replay"
+language: architecture
+level: 5
+objective: "Understand the key properties that differentiate event-driven message brokers -- ordering guarantees, partitioning, and replayability -- and why they matter for design."
+explanation: |
+  Not all message brokers behave the same way, and the differences
+  matter for how a system built on top of one can behave correctly. A
+  simple queue (classic RabbitMQ-style) typically guarantees ordering
+  only within a single queue, and once a message is consumed and
+  acknowledged, it's gone -- there's no way for a new consumer to "go
+  back" and replay history it missed. A log-based broker (Kafka-style)
+  instead retains messages for a configured retention period regardless
+  of whether they've been consumed, ordered within a *partition* (a
+  named subdivision of a topic, often keyed by something like
+  `order_id`), and lets any number of independent consumers replay from
+  any point in that log -- a brand-new subscriber added months later
+  can still read the full history from the beginning if needed.
+
+  These differences drive real design decisions. If two events for the
+  *same* order (`PaymentReceived`, `OrderShipped`) must be processed in
+  the order they happened, they need to land in the same partition --
+  typically achieved by partitioning on `order_id`, so all of one
+  order's events are guaranteed to be ordered relative to each other
+  (though not necessarily relative to a *different* order's events,
+  which may land in a different partition and be processed
+  independently). Replayability matters just as much: it's what makes
+  event sourcing practical (rebuilding state by replaying history) and
+  what lets a brand-new read-model service (see this track's CQRS
+  exercise) bootstrap itself by consuming the entire historical event
+  log, not just events published after it started listening.
+example_code: |
+  # Partitioning by order_id keeps one order's events strictly ordered
+  # relative to each other, even though different orders' events may
+  # be processed concurrently across different partitions.
+  def publish(event):
+      partition_key = event["order_id"]           # same order -> same partition -> ordered
+      broker.publish(topic="orders", key=partition_key, event=event)
+
+  # Replay: a brand-new consumer can read the ENTIRE history from the
+  # beginning, not just events published after it started -- something
+  # a simple "consume and discard" queue generally can't offer.
+  def bootstrap_new_read_model():
+      for event in broker.read_from_beginning(topic="orders"):
+          apply_to_read_model(event)
+category: event_driven_architecture
+category_level: 5
+difficulty: deep_dive
+xp_reward: 15
+achievement: event_driven_architecture_master
+requires_code: false
+concept_tags: [message_broker, partitioning, event_replay, ordering_guarantees]
+comprehension_check:
+  - question: "Why might two events for the same order need to be partitioned together in a log-based broker?"
+    options:
+      - "To guarantee they're processed in the order they actually happened -- ordering is typically only guaranteed within a single partition, not across the whole topic"
+      - "Partitioning has no effect on the order in which events are processed"
+      - "All events across every order must always share one single partition"
+      - "Partitioning only affects how much disk space a broker uses"
+    correct: 0
+    explanation: "Partitioning by order_id keeps PaymentReceived before OrderShipped for the SAME order, while different orders' events can still be processed independently and concurrently."
+  - question: "What does 'replayability' let a brand-new consumer do that a simple consume-and-discard queue typically can't?"
+    options:
+      - "Read the entire historical event log from the beginning, not just events published after the consumer started listening"
+      - "Replayability has no practical use case in real systems"
+      - "Consume events faster than any other broker feature allows"
+      - "It only allows replaying the single most recent event"
+    correct: 0
+    explanation: "This is what makes event sourcing practical, and what lets a new CQRS read-model service bootstrap itself from the complete history instead of starting with an empty, incomplete view."

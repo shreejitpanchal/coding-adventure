@@ -62,6 +62,15 @@ CREATE TABLE IF NOT EXISTS daily_refresher_picks (
 );
 """
 
+# Bumped only if a future schema change makes an old export incompatible
+# with import_progress()'s column-list assumptions.
+PROGRESS_EXPORT_VERSION = 1
+
+_EXPORT_TABLES = [
+    "profile", "lesson_completions", "badges", "activity_log",
+    "quiz_attempts", "player_xp", "daily_refresher_picks",
+]
+
 # XP cost to clear level N is N * 100 (level 1->2 costs 100, 2->3 costs 200, ...).
 _XP_PER_LEVEL_STEP = 100
 
@@ -354,3 +363,50 @@ class ProgressStore:
                 (language,),
             )
             self._conn.execute("UPDATE player_xp SET total_xp = 0 WHERE language = ?", (language,))
+
+    # -- Export / Import -------------------------------------------------
+    def export_progress(self) -> dict:
+        """Serializes every progress table, across every language track,
+        into a plain JSON-safe dict -- the Settings screen's Export
+        Progress feature is a full backup/restore, not scoped to just the
+        currently-selected track, so switching tracks later never loses
+        what a restore brought back."""
+        conn = self._conn
+        conn.row_factory = sqlite3.Row
+        try:
+            tables: dict[str, list[dict]] = {}
+            with closing(conn.cursor()) as cur:
+                for table in _EXPORT_TABLES:
+                    cur.execute(f"SELECT * FROM {table}")
+                    tables[table] = [dict(row) for row in cur.fetchall()]
+        finally:
+            conn.row_factory = None
+        return {"version": PROGRESS_EXPORT_VERSION, "exported_at": _now(), "tables": tables}
+
+    def import_progress(self, data: dict) -> None:
+        """Replaces EVERY progress table with the given export's data, for
+        EVERY language track -- a full overwrite, not a merge. The caller
+        (the Settings screen) is responsible for confirming with the user
+        first, since whatever progress currently exists is discarded the
+        moment this runs, and there's no undo once it does. Runs as one
+        transaction: if anything here fails, SQLite rolls the whole import
+        back rather than leaving some tables overwritten and others not.
+        """
+        version = data.get("version")
+        if version != PROGRESS_EXPORT_VERSION:
+            raise ValueError(
+                f"Can't import this file -- it was exported by a different, incompatible "
+                f"version of this app (got version {version!r}, expected {PROGRESS_EXPORT_VERSION})."
+            )
+        tables = data.get("tables", {})
+        with self._conn:
+            for table in _EXPORT_TABLES:
+                self._conn.execute(f"DELETE FROM {table}")
+            for table in _EXPORT_TABLES:
+                for row in tables.get(table, []):
+                    columns = list(row.keys())
+                    placeholders = ", ".join("?" for _ in columns)
+                    self._conn.execute(
+                        f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+                        [row[c] for c in columns],
+                    )

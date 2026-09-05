@@ -36,7 +36,20 @@ CATEGORY_META: dict[str, CategoryMeta] = {
     "events": CategoryMeta("Application Events", "\U0001F4E3", "#5DE8FF"),
     "aop": CategoryMeta("Aspect-Oriented Programming", "\U0001F578️", "#FF8A5B"),
     "resilience": CategoryMeta("Resilience Patterns", "\U0001F6E1️", "#F97316"),
-    "ai": CategoryMeta("AI: ML, RAG, Agents & MCP", "\U0001F916", "#8B5CF6"),
+    "ml_fundamentals": CategoryMeta("ML Fundamentals", "\U0001F4CA", "#F472B6"),
+    "rag": CategoryMeta("Retrieval-Augmented Generation", "\U0001F50D", "#38BDF8"),
+    "agentic_frameworks": CategoryMeta("Agentic Frameworks", "\U0001F916", "#8B5CF6"),
+    "mcp": CategoryMeta("Model Context Protocol", "\U0001F50C", "#2DD4BF"),
+    "event_driven_architecture": CategoryMeta("Event-Driven Architecture", "\U0001F4E1", "#FB923C"),
+    "microservices": CategoryMeta("Microservices", "\U0001F9E9", "#4ADE9E"),
+    "cqrs": CategoryMeta("CQRS", "\U0001F500", "#5DE8FF"),
+    "saga_pattern": CategoryMeta("Saga Pattern", "\U0001F9F5", "#C77DFF"),
+    "strangler_fig": CategoryMeta("Strangler Fig", "\U0001F33F", "#84CC16"),
+    "domain_driven_design": CategoryMeta("Domain-Driven Design", "\U0001F5FA️", "#A3E635"),
+    "hexagonal_architecture": CategoryMeta("Hexagonal Architecture", "\U00002B22", "#7C9EFF"),
+    "api_gateway": CategoryMeta("API Gateway", "\U0001F6AA", "#F97316"),
+    "circuit_breaker": CategoryMeta("Circuit Breaker", "\U0001F50C", "#EF4444"),
+    "idempotency": CategoryMeta("Idempotency", "\U0001F501", "#38BDF8"),
 }
 
 DEFAULT_META = CategoryMeta("More Practice", "⭐", "#8A93C7")

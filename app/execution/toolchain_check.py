@@ -35,6 +35,8 @@ _REQUIREMENTS: dict[str, tuple[list[str], str]] = {
         ["node"],
         "Install Node.js LTS from https://nodejs.org and ensure node is on PATH.",
     ),
+    "ai": ([], "Bundled with this app -- runs on the same Python interpreter as the Python track."),
+    "architecture": ([], "No toolchain needed -- purely conceptual, no code runs for this track."),
 }
 
 

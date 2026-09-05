@@ -1,0 +1,84 @@
+id: strangler_fig_05
+title: "Knowing When the Migration Is Actually Done"
+language: architecture
+level: 25
+objective: "Recognize why a Strangler Fig migration needs an explicit definition of 'done' and a deliberate decommissioning step, and why skipping that step is the pattern's most common failure mode in practice."
+explanation: |
+  Every technique in this category so far -- the routing facade, the
+  anti-corruption layer, data synchronization, branch by abstraction --
+  exists to make each individual migration step safe and low-risk. That
+  safety has a specific, well-documented downside: because nothing ever
+  forces a final cutover the way a big-bang rewrite does, a Strangler
+  Fig migration can keep incrementally chipping away at a legacy system
+  for years without ever actually finishing, arriving instead at a
+  permanent, indefinite steady-state of "mostly migrated" -- the
+  routing facade, the last few unmigrated legacy routes, and both
+  databases' data-synchronization machinery all still running,
+  forever, because finishing the last 10% never felt as urgent as the
+  next quarter's new feature work.
+
+  This isn't a hypothetical risk -- it's the single most commonly cited
+  real-world failure mode of this pattern, precisely because every
+  individual step along the way is genuinely low-risk and easy to
+  defer, and the *aggregate* cost of the facade and dual-system
+  operation is diffuse and easy to underweight against the concrete
+  cost of any one final push. Avoiding it requires treating
+  decommissioning as an explicit, tracked, top-level goal of the
+  migration from the very start -- not an implicit side effect that
+  will happen naturally once enough routes are migrated -- with a
+  concrete list of exactly what "fully migrated" means (every route,
+  every table, every batch job that still reads the legacy database
+  directly) and ownership assigned to actually close it out.
+
+  The other end of the same lesson: a Strangler Fig migration that
+  never reaches full decommissioning isn't automatically a failure --
+  if the remaining unmigrated 10% is low-value, low-risk, rarely-touched
+  functionality, deliberately deciding to leave it on the legacy system
+  indefinitely (with that decision made explicitly, not by default) can
+  be the correct, pragmatic call. The failure mode isn't "the migration
+  didn't finish" -- it's "nobody ever decided whether it should, and the
+  facade and dual-system costs kept accumulating by default while the
+  question stayed unasked."
+example_code: |
+  # The trap: no explicit definition of "done" -- the facade and dual-system
+  # sync machinery become permanent by default, never revisited.
+  def route_request_stuck_forever(request):
+      if request.path in ALREADY_MIGRATED_ROUTES:      # this set stopped growing 2 years ago
+          return new_services.handle(request)
+      else:
+          return legacy_monolith.handle(request)        # "we'll get to the rest eventually"
+
+  # The fix: an explicit, tracked migration checklist with an owner,
+  # and a deliberate decision about anything left unmigrated.
+  MIGRATION_CHECKLIST = {
+      "orders_route": "migrated",
+      "billing_route": "migrated",
+      "legacy_reporting_batch_job": "DELIBERATELY not migrating -- low value, rarely used, revisit in 2027",
+      "inventory_route": "in progress, owner: platform-team, target: Q3",
+  }
+  # "not migrating" is a valid, explicit outcome here -- the failure mode
+  # this lesson names is an UNEXAMINED default, not a deliberate decision.
+category: strangler_fig
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: strangler_fig_master
+requires_code: false
+concept_tags: [strangler_fig, legacy_migration, technical_debt, architecture_tradeoffs]
+comprehension_check:
+  - question: "What is the most commonly cited real-world failure mode of the Strangler Fig pattern?"
+    options:
+      - "The migration never reaches a final cutover and settles into a permanent 'mostly migrated' state, with the facade and dual-system costs running indefinitely"
+      - "The pattern always causes a catastrophic outage on the first migrated route"
+      - "It's impossible to migrate more than one route using this pattern"
+      - "The legacy system must be deleted before any new service can be built"
+    correct: 0
+    explanation: "Because every individual step is low-risk and easy to defer, and the facade's aggregate ongoing cost is diffuse, migrations can stall indefinitely without any single event forcing completion the way a big-bang cutover would."
+  - question: "According to this lesson, is a migration that never fully decommissions the legacy system automatically a failure?"
+    options:
+      - "No -- deliberately deciding to leave low-value, rarely-touched functionality on the legacy system can be the correct call, as long as that decision is made explicitly rather than by default"
+      - "Yes, every Strangler Fig migration must always reach 100% legacy decommissioning with no exceptions"
+      - "Only migrations that finish within one year count as successful"
+      - "It's a failure only if the legacy system has zero remaining routes"
+    correct: 0
+    explanation: "The actual failure mode is an unexamined default -- nobody ever explicitly decided whether the remaining piece should be migrated, and costs accumulated while the question stayed unasked."

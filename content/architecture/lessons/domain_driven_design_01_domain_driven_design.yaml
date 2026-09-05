@@ -1,0 +1,115 @@
+id: domain_driven_design_01
+title: "Domain-Driven Design and Bounded Contexts"
+language: architecture
+level: 26
+objective: "Understand why Domain-Driven Design insists on a bounded context per subdomain, instead of one shared model for an entire business."
+explanation: |
+  A single, shared `Customer` class used by sales, support, and billing
+  looks efficient -- one definition, no duplication -- but it quietly
+  forces three genuinely different concerns to agree on one shape.
+  Sales cares about lead source and deal stage; support cares about
+  open tickets and SLA tier; billing cares about payment methods and
+  invoice history. A single shared model either bloats into a class
+  with fields relevant to all three (most of them irrelevant to any
+  given consumer at any given time), or becomes a constant source of
+  cross-team merge conflicts every time one team's legitimate need
+  changes a field the other two also depend on. The underlying mistake
+  is assuming "Customer" means the same *thing*, with the same shape
+  and the same rules, everywhere it's used across the business --
+  Domain-Driven Design's core claim is that it usually doesn't.
+
+  A *bounded context* is an explicit boundary within which a specific
+  model, with its own definition of "Customer," is consistent and
+  meaningful -- and outside of which that same definition may not apply
+  at all. The Sales bounded context's `Customer` might be a
+  `Lead`-turned-`Prospect` with a deal pipeline; the Support bounded
+  context's is a `Ticketholder` with an SLA tier; the Billing bounded
+  context's is a `PayingAccount` with payment methods. These aren't
+  three views onto one "true" Customer object -- they're three
+  legitimately different models, each internally consistent and
+  correctly shaped for its own domain, that happen to refer to the same
+  real-world person. Where contexts genuinely need to share
+  information (Billing needs to know Sales closed a deal), that's an
+  explicit, deliberately-designed integration between two bounded
+  contexts -- often literally the same kind of service boundary
+  described in this track's Microservices exercise -- not an implicit
+  shared class silently coupling three teams' definitions together.
+
+  This reframes "one big shared domain model for the whole company" as
+  the actual anti-pattern DDD is pushing back against, not the goal to
+  aim for -- a large business genuinely has multiple domains with
+  different rules, different vocabulary (the same word can mean
+  different things in different contexts, which DDD calls the
+  "ubiquitous language" problem when it isn't respected), and different
+  rates of change. The skill DDD is actually teaching is recognizing
+  where those bounded contexts naturally fall and deliberately drawing
+  boundaries there, rather than reflexively normalizing everything into
+  one shared model because sharing a definition feels more efficient
+  than it actually is once three different teams have to agree on every
+  change to it.
+example_code: |
+  # The trap: one shared Customer model, used (and modified) by three
+  # unrelated teams -- every field is relevant to only some consumers.
+  class Customer:
+      def __init__(self):
+          self.lead_source = None       # Sales cares about this
+          self.deal_stage = None        # Sales cares about this
+          self.open_tickets = []        # Support cares about this
+          self.sla_tier = None          # Support cares about this
+          self.payment_methods = []     # Billing cares about this
+          self.invoice_history = []     # Billing cares about this
+      # Every team's changes to this one class risk breaking the other two.
+
+  # The fix: separate models per bounded context -- each internally
+  # consistent, shaped for its own domain, with no shared class at all.
+  class Prospect:                       # Sales bounded context
+      def __init__(self):
+          self.lead_source = None
+          self.deal_stage = None
+
+  class Ticketholder:                   # Support bounded context
+      def __init__(self):
+          self.open_tickets = []
+          self.sla_tier = None
+
+  class PayingAccount:                  # Billing bounded context
+      def __init__(self):
+          self.payment_methods = []
+          self.invoice_history = []
+
+  # Where contexts genuinely need to share info, it's an EXPLICIT
+  # integration between two bounded contexts, not an implicit shared field.
+  def on_deal_closed(prospect: Prospect):
+      billing_service.create_account_from_closed_deal(prospect.id)
+category: domain_driven_design
+category_level: 1
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [domain_driven_design, bounded_context, ubiquitous_language]
+comprehension_check:
+  - question: "What problem does a single, shared 'Customer' model used across Sales, Support, and Billing tend to create?"
+    options:
+      - "It forces three genuinely different concerns to agree on one shape, leading to bloat or constant cross-team merge conflicts as each team's changes affect the others"
+      - "It has no downsides at all and is always the most efficient approach"
+      - "It makes the codebase impossible to compile"
+      - "Shared models are only a problem in monolithic architectures, never in any other context"
+    correct: 0
+    explanation: "Sales, Support, and Billing each care about different fields and different rules -- a single shared model either bloats with irrelevant fields or becomes a source of conflicts."
+  - question: "What is a 'bounded context' in Domain-Driven Design?"
+    options:
+      - "An explicit boundary within which a specific model (like a domain-specific definition of 'Customer') is consistent and meaningful, which may not apply outside that boundary"
+      - "A synonym for a single shared database table used by every team"
+      - "A rule that says every domain must use exactly one universal model"
+      - "A type of network boundary with no relation to domain modeling"
+    correct: 0
+    explanation: "Sales' Prospect, Support's Ticketholder, and Billing's PayingAccount are three legitimately different models within their own bounded contexts, not three views onto one 'true' shared Customer object."
+  - question: "According to DDD, what's the actual anti-pattern being pushed back against?"
+    options:
+      - "Reflexively normalizing everything into one shared domain model for an entire business, rather than recognizing where distinct bounded contexts naturally belong"
+      - "Ever having more than one class in a codebase"
+      - "Using any form of object-oriented programming at all"
+      - "Splitting an application into multiple deployable services"
+    correct: 0
+    explanation: "A large business genuinely has multiple domains with different rules and vocabulary -- DDD teaches recognizing and deliberately drawing boundaries between them, instead of forcing one shared model everywhere."

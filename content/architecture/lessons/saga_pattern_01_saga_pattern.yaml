@@ -1,0 +1,109 @@
+id: saga_pattern_01
+title: "The Saga Pattern"
+language: architecture
+level: 16
+objective: "Understand how the Saga pattern coordinates a transaction across multiple services using compensating actions, since there's no single database transaction spanning them."
+explanation: |
+  A single-database application can wrap "reserve inventory, charge the
+  card, schedule shipping" in one ACID transaction: if any step fails,
+  the database rolls the whole thing back automatically, and no
+  intermediate state is ever visible to anyone else. Once those three
+  steps belong to three separate microservices, each with its own
+  database (the standard microservices convention -- see this
+  category's Microservices exercise), that single rollback-everything
+  transaction no longer exists as a mechanism at all. If `Billing
+  Service` successfully charges the card but `ShippingService` then
+  fails to schedule the shipment, there's no database-level "undo" that
+  spans both services -- `InventoryService` and `BillingService` have
+  already committed their own local changes independently.
+
+  The Saga pattern accepts this reality and works with it explicitly: a
+  saga is a sequence of local transactions, one per service, where each
+  step also defines a *compensating action* -- an explicit operation
+  that semantically undoes that step if a later step in the sequence
+  fails. If reserving inventory, then charging the card, then
+  scheduling shipping is the forward sequence, and shipping fails, the
+  saga runs the compensations in reverse: `refund_payment()` (undoing
+  the charge) and `release_inventory()` (undoing the reservation) --
+  each of these is itself just a normal local operation in its own
+  service, not a database-level rollback. The system deliberately
+  passes through a real, if temporary, inconsistent state (money
+  charged, shipment not yet scheduled) and then explicitly, visibly
+  corrects it, rather than never allowing that state to exist in the
+  first place the way a single ACID transaction would.
+
+  This is a meaningfully different consistency model than a
+  transactional rollback, and it has to be designed for deliberately:
+  compensating actions have to be idempotent (safe to run more than
+  once, in case a compensation itself needs retrying -- see this
+  track's Idempotency exercise), and some actions genuinely can't be
+  compensated at all in the traditional sense (an email that's already
+  been sent can't be un-sent -- the "compensation" for that step might
+  instead be sending a follow-up correction). Choosing between an
+  *orchestrated* saga (one central coordinator explicitly calling each
+  step and its compensation in order) and a *choreographed* saga (each
+  service reacts to the previous service's event and independently
+  knows its own compensation, with no central coordinator at all) is
+  itself an architectural decision -- orchestration is easier to reason
+  about and debug as a single sequence, while choreography stays more
+  decoupled but makes the overall flow harder to see in any one place.
+example_code: |
+  # The trap: assuming a rollback-everything transaction still exists
+  # once these steps belong to separate services with separate databases.
+  def place_order_naive(order):
+      inventory_service.reserve_stock(order)   # commits independently
+      billing_service.charge_card(order)       # commits independently
+      shipping_service.schedule(order)         # if THIS fails, the first two are already committed
+      # there's no single "rollback" that undoes all three -- that
+      # mechanism simply doesn't exist across separate services/databases
+
+  # The fix: an orchestrated saga -- explicit compensations run in
+  # reverse order if a later step fails.
+  def place_order_saga(order):
+      completed_steps = []
+      try:
+          inventory_service.reserve_stock(order)
+          completed_steps.append("inventory")
+          billing_service.charge_card(order)
+          completed_steps.append("billing")
+          shipping_service.schedule(order)
+          completed_steps.append("shipping")
+      except ServiceError:
+          # Run compensations in REVERSE order for whatever already succeeded.
+          if "billing" in completed_steps:
+              billing_service.refund_payment(order)     # explicit undo, not a DB rollback
+          if "inventory" in completed_steps:
+              inventory_service.release_stock(order)    # explicit undo, not a DB rollback
+          raise OrderFailedError(order)
+category: saga_pattern
+category_level: 1
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [saga_pattern, distributed_transactions, compensating_actions, microservices]
+comprehension_check:
+  - question: "Why doesn't a single database rollback work once a transaction spans multiple microservices?"
+    options:
+      - "Each service has its own database and commits its own local changes independently -- there's no shared transaction mechanism spanning multiple separate databases"
+      - "Rollbacks are impossible in any database, monolith or not"
+      - "Microservices don't use databases at all"
+      - "It works exactly the same as a single-database rollback, with no difference"
+    correct: 0
+    explanation: "Once InventoryService and BillingService each commit to their own database independently, there's no single rollback mechanism that can undo both at once -- that's exactly the problem the Saga pattern is designed to address."
+  - question: "What does a saga do instead of relying on a database rollback when a later step fails?"
+    options:
+      - "It runs explicit compensating actions (like refund_payment or release_inventory) in reverse order to semantically undo whatever already succeeded"
+      - "It ignores the failure and proceeds as if nothing happened"
+      - "It deletes the entire database and starts over"
+      - "It waits indefinitely for the failed step to eventually succeed with no compensation at all"
+    correct: 0
+    explanation: "Each step's compensating action is a normal local operation in its own service -- not a database-level rollback -- explicitly correcting the temporary inconsistency the saga passed through."
+  - question: "What property must compensating actions generally have, since a compensation might itself need to be retried?"
+    options:
+      - "Idempotency -- safe to run more than once without causing incorrect results"
+      - "They must always run faster than the original action"
+      - "They must never be automated"
+      - "They must always involve sending an email"
+    correct: 0
+    explanation: "If refund_payment() needs to be retried after a transient failure, running it twice must not double-refund -- this is exactly the idempotency property covered elsewhere in this track."

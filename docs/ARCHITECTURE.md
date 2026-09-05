@@ -21,7 +21,7 @@ flowchart TB
         ui["Flet UI\n(main.py -> app/ui/*)"]
         core["Shared core\napp/engine, app/progress, app/config"]
         exec_["app/execution\none ExecutionEngine per language"]
-        toolchains[("Local toolchains\npython / javac+java / g++ / mvn+java")]
+        toolchains[("Local toolchains\npython / javac+java / g++ / mvn+java / node\n(ai reuses python's toolchain;\narchitecture needs none)")]
         fsdata[("settings.json +\nprogress.sqlite3\n(local disk)")]
         content[("content/<language>/*.yaml\n(exercises, quiz -- read-only)\n+ spring/scaffold/pom.xml")]
     end
@@ -107,6 +107,8 @@ classDiagram
         +list~str~ contains_patterns
         +list~str~ concept_tags
         +str spring_test_code
+        +bool requires_code
+        +list comprehension_check
     }
 
     class ExerciseEngine {
@@ -217,6 +219,8 @@ classDiagram
         +get_recent_failure_count(language, lesson_id) int
         +get_weekly_summary(language) WeeklySummary
         +reset_progress(language)
+        +export_progress() dict
+        +import_progress(data)
     }
     class PlayerLevel {
         +int level
@@ -280,28 +284,35 @@ the language is even offered as runnable.
 ```mermaid
 flowchart TB
     code["Submitted code (str)"]
-    lang{"exercise.language"}
+    lang{"exercise.requires_code?"}
     code --> lang
+    lang -->|false: architecture| comprehension["No execution at all --\ninline comprehension_check quiz\ngates completion instead"]
+    lang -->|true| langsel{"exercise.language"}
 
-    lang -->|python| pycheck["compile() syntax pre-check"]
+    langsel -->|python OR ai| pycheck["compile() syntax pre-check\n(ai maps to the SAME PythonEngine\ninstance -- _ENGINES['ai'] = _ENGINES['python'])"]
     pycheck -->|SyntaxError| pyerr["ExecutionResult(success=False,\nstderr=formatted syntax error)"]
     pycheck -->|ok| pyrun["python -I &lt;file&gt;\nsubprocess, 8s timeout, stdin piped"]
 
-    lang -->|java| jcheck["check_toolchain('java')"]
+    langsel -->|node| ncheck["check_toolchain('node')"]
+    ncheck -->|missing node| nblocked["ExecutionResult(blocked=True,\ninstall hint)"]
+    ncheck -->|available| nrun["node &lt;file&gt;\nsubprocess, timeout, stdin piped\n(no separate compile step)"]
+    nrun -->|syntax/runtime error| nerr["Node's own stderr output,\nsame path as a runtime failure"]
+
+    langsel -->|java| jcheck["check_toolchain('java')"]
     jcheck -->|missing javac/java| jblocked["ExecutionResult(blocked=True,\ninstall hint)"]
     jcheck -->|available| jclass["detect class name from source\n(public class X, else first class X)"]
     jclass --> jcompile["javac &lt;ClassName&gt;.java"]
     jcompile -->|compile error| jcerr["ExecutionResult(success=False,\nstderr=compiler output)"]
     jcompile -->|ok| jrun["java -cp &lt;dir&gt; &lt;ClassName&gt;\nsubprocess, timeout, stdin piped"]
 
-    lang -->|cpp| ccheck["check_toolchain('cpp')"]
+    langsel -->|cpp| ccheck["check_toolchain('cpp')"]
     ccheck -->|missing g++| cblocked["ExecutionResult(blocked=True,\ninstall hint)"]
     ccheck -->|available| ccompile["g++ -O2 -std=c++17 main.cpp -o main\ntemp dir, compile timeout"]
     ccompile -->|compile error| ccerr["ExecutionResult(success=False,\nstderr=compiler output)"]
     ccompile -->|ok| crun["run compiled binary\nsubprocess, timeout, stdin piped"]
     crun -->|crash, empty stderr| ccrash["_describe_crash(returncode)\nNTSTATUS / signal -> synthetic stderr line"]
 
-    lang -->|spring| scheck["check_toolchain('spring')"]
+    langsel -->|spring| scheck["check_toolchain('spring')"]
     scheck -->|missing mvn/java| sblocked["ExecutionResult(blocked=True,\ninstall hint)"]
     scheck -->|available| sscaffold["copy scaffold pom.xml,\nwrite code + exercise.spring_test_code\ninto temp Maven project"]
     sscaffold --> srun["mvn.cmd -q -o test\nPopen, 45s internal timeout"]
@@ -317,6 +328,8 @@ flowchart TB
     ccerr --> result
     sok --> result
     serr --> result
+    nrun --> result
+    nerr --> result
 
     result --> validator["app/engine/validator.py\nvalidate_output() +\nvalidate_contains()"]
     validator --> outcome{"Correct AND uses\nthe taught construct?"}

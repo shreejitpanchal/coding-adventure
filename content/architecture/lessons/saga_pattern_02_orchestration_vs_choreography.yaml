@@ -1,0 +1,92 @@
+id: saga_pattern_02
+title: "Orchestration vs. Choreography"
+language: architecture
+level: 17
+objective: "Compare the two ways to implement a saga -- a central orchestrator versus services choreographing themselves via events -- and understand the concrete tradeoffs between them."
+explanation: |
+  This category's opening lesson mentioned that a saga can be
+  implemented two different ways without changing what it accomplishes.
+  In an **orchestrated** saga, one component -- the orchestrator --
+  explicitly calls each service in sequence, waits for the result, and
+  decides what to do next, including which compensations to fire and in
+  what order. The entire flow exists as readable code (or an explicit
+  state machine) in one place: reading the orchestrator is reading the
+  whole saga, start to finish, success or failure.
+
+  In a **choreographed** saga, there is no central coordinator at all.
+  Each service reacts to an event published by the previous service,
+  performs its own step, and publishes its own event in turn --
+  `OrderCreated` triggers `InventoryService` to reserve stock and
+  publish `StockReserved`, which triggers `BillingService` to charge
+  the card and publish `PaymentCharged`, and so on. Each service also
+  independently knows how to react to a failure event by running its
+  own compensation, with no central authority telling it to.
+  Choreography keeps services fully decoupled from each other -- none
+  of them know the others exist, they only know about events -- but the
+  overall flow is no longer visible in any single place; understanding
+  "what happens when an order is placed" means tracing event
+  subscriptions across every service involved.
+
+  Neither is universally better. Orchestration adds a new component
+  (the orchestrator itself) that becomes a coordination bottleneck and
+  a single thing to reason about, test, and evolve -- it trades some
+  decoupling for debuggability. Choreography keeps services maximally
+  independent and avoids that extra component, but pays for it with a
+  flow that's spread across every participating service's event
+  handlers, making it easy to lose track of the overall sequence as
+  more steps get added, and harder to answer "what compensations run,
+  and in what order, if step 4 of 6 fails?" without reading every
+  service involved.
+example_code: |
+  # Orchestrated: ONE place defines the whole sequence and its compensations.
+  class OrderSagaOrchestrator:
+      def run(self, order):
+          self.inventory.reserve(order)
+          try:
+              self.billing.charge(order)
+          except PaymentError:
+              self.inventory.release(order)   # orchestrator decides the compensation
+              raise
+          self.shipping.schedule(order)
+
+  # Choreographed: NO central coordinator -- each service reacts to events
+  # published by the one before it, and knows its own compensation.
+  class InventoryService:
+      def on_order_created(self, event):
+          self.reserve(event.order_id)
+          publish(StockReserved(event.order_id))
+
+      def on_payment_failed(self, event):
+          self.release(event.order_id)   # this service knows its OWN compensation
+
+  class BillingService:
+      def on_stock_reserved(self, event):
+          try:
+              self.charge(event.order_id)
+              publish(PaymentCharged(event.order_id))
+          except PaymentError:
+              publish(PaymentFailed(event.order_id))   # triggers InventoryService's compensation
+category: saga_pattern
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [saga_pattern, orchestration, choreography, event_driven_architecture]
+comprehension_check:
+  - question: "In an orchestrated saga, where does the overall sequence of steps and compensations live?"
+    options:
+      - "In one central orchestrator component -- the entire flow is readable in a single place"
+      - "It doesn't exist as a concept in orchestrated sagas"
+      - "Spread invisibly across every participating service with no coordinator"
+      - "It's stored only in the database schema, never in code"
+    correct: 0
+    explanation: "Reading the orchestrator is reading the whole saga, start to finish, success or failure -- that centralization is its main debuggability advantage."
+  - question: "What is the main cost of a choreographed saga compared to an orchestrated one?"
+    options:
+      - "The overall flow is no longer visible in any single place -- understanding it means tracing event subscriptions across every service involved"
+      - "Choreographed sagas cannot use compensating actions at all"
+      - "Choreography requires more central coordination than orchestration"
+      - "Choreographed sagas are always slower to execute"
+    correct: 0
+    explanation: "Choreography keeps services maximally decoupled, but that decoupling is exactly what makes the overall sequence hard to see in any one place as more steps get added."

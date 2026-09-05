@@ -1,0 +1,88 @@
+id: api_gateway_02
+title: "Centralizing Cross-Cutting Concerns"
+language: architecture
+level: 37
+objective: "Understand why authentication, rate limiting, and logging are handled once at the gateway rather than reimplemented in every individual microservice."
+explanation: |
+  This category's opening lesson mentioned that a gateway can "handle
+  cross-cutting concerns once" without dwelling on why that matters so
+  much in practice. Consider what happens without it: a system with
+  twelve microservices, each needing to authenticate incoming requests,
+  means twelve separate implementations of token validation -- and
+  twelve separate places a security bug can be introduced when one
+  team's implementation drifts from the others', or twelve places that
+  need updating the day the auth token format changes. The same
+  duplication problem repeats for rate limiting (should this client be
+  throttled?), request logging (what got called, by whom, when), and
+  request-ID propagation for tracing a request across services.
+
+  Centralizing these concerns at the gateway means a request is
+  authenticated exactly once, at the boundary, before it ever reaches
+  any internal service -- internal services can then trust that
+  anything reaching them has already been authenticated (often via a
+  lightweight internal token the gateway attaches, rather than
+  re-validating the original credential at every hop), collapsing
+  twelve implementations into one. Rate limiting works the same way:
+  the gateway can enforce a client's quota globally, across all the
+  services that client might call, rather than each service tracking
+  usage independently and allowing a client to exceed its true intended
+  quota by spreading requests across services that don't coordinate
+  with each other.
+
+  This centralization is a real architectural bet, not a free
+  win: the gateway becomes the one place that absolutely must handle
+  these concerns correctly, since nothing downstream is double-checking
+  them, and a bug in the gateway's auth logic is now a single point of
+  failure for the *entire* system's security instead of an isolated
+  issue in one service. That concentration of responsibility is
+  precisely why gateway auth/rate-limiting logic tends to be treated as
+  particularly critical, heavily tested infrastructure rather than
+  ordinary application code.
+example_code: |
+  # WITHOUT centralization: every service reimplements auth and rate limiting.
+  class OrderService:
+      def handle_request(self, request):
+          if not validate_jwt(request.token):        # duplicated in every service
+              raise Unauthorized()
+          if not check_rate_limit(request.client_id): # duplicated in every service
+              raise TooManyRequests()
+          # actual business logic starts here
+
+  # WITH a gateway: these concerns are handled ONCE, at the boundary.
+  class ApiGateway:
+      def handle_request(self, request):
+          if not validate_jwt(request.token):
+              raise Unauthorized()
+          if not check_rate_limit_globally(request.client_id):   # tracks usage ACROSS all services
+              raise TooManyRequests()
+          internal_token = issue_internal_token(request)          # lightweight, trusted downstream
+          return route_to_service(request, internal_token)
+
+  class OrderService:
+      def handle_request(self, request):
+          # trusts the internal token -- no re-validation of the original credential
+          return self.place_order(request)
+category: api_gateway
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [api_gateway, cross_cutting_concerns, authentication, rate_limiting]
+comprehension_check:
+  - question: "What problem occurs when every microservice independently implements its own authentication and rate limiting?"
+    options:
+      - "It creates duplicated logic across every service, multiplying the places a security bug can be introduced or a format change needs updating, and lets clients evade a true quota by spreading requests across uncoordinated services"
+      - "There is no problem -- duplicating this logic is always the best approach"
+      - "It makes every service run measurably faster"
+      - "It only affects services written in different programming languages"
+    correct: 0
+    explanation: "Twelve services each implementing token validation means twelve separate places a security bug or format-drift issue can appear, instead of one centralized, consistently-maintained implementation."
+  - question: "What real cost does centralizing auth and rate limiting at the gateway introduce, according to this lesson?"
+    options:
+      - "The gateway becomes a single point of failure for these concerns across the entire system -- a bug in its auth logic now affects everything, since nothing downstream double-checks it"
+      - "Centralizing these concerns has no downside whatsoever"
+      - "It makes internal services incapable of ever being tested"
+      - "It requires removing authentication from the system entirely"
+    correct: 0
+    explanation: "Since internal services trust that requests reaching them are already authenticated, the gateway's own auth logic must be correct -- a flaw there is a single point of failure for the whole system's security."

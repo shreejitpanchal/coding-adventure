@@ -1,0 +1,88 @@
+id: strangler_fig_02
+title: "The Anti-Corruption Layer"
+language: architecture
+level: 22
+objective: "Understand how an anti-corruption layer translates between a new service's clean domain model and a legacy system's model, preventing the legacy system's design from leaking into new code."
+explanation: |
+  A migrated service built behind the Strangler Fig facade (see this
+  category's opening lesson) still often needs to talk to the legacy
+  system -- to read data it hasn't been migrated yet, or to keep the two
+  systems consistent during the transition. The tempting shortcut is to
+  have the new service just adopt the legacy system's data model
+  directly, since it's already there and "compatible." That shortcut is
+  exactly how a legacy system's accumulated quirks -- an `order_status`
+  field that's actually an integer enum with three different meanings
+  depending on which decade of code set it, a customer record with
+  fields duplicated across four differently-named columns from past
+  half-migrations -- end up copied wholesale into the brand-new service
+  that was supposed to be a clean start.
+
+  An **anti-corruption layer** (ACL) is a thin translation boundary
+  placed between the new service and the legacy system specifically to
+  prevent that leakage: it speaks the legacy system's model on one
+  side, and the new service's own clean domain model on the other, with
+  an explicit translation step in between that has nowhere to hide bad
+  decisions -- if the legacy status code `2` means "shipped but only
+  for orders placed before a certain date, otherwise it means
+  cancelled," that ugliness lives in exactly one place, the ACL's
+  translation function, and every other line of new-service code just
+  sees a clean `OrderStatus.SHIPPED` or `OrderStatus.CANCELLED` value.
+
+  The payoff compounds over the length of the migration: the new
+  service's domain model can be designed the way the domain actually
+  works, not the way the legacy schema happened to encode it fifteen
+  years ago, and when the legacy system is eventually decommissioned
+  (the end state of the Strangler Fig migration), only the ACL needs to
+  change or be deleted -- the rest of the new service, having never
+  seen the legacy shape directly, is untouched. Skipping the ACL as an
+  apparent shortcut is a classic mistake this category warns against
+  elsewhere too (see Database-per-Service in the Microservices topic):
+  the short-term convenience of reusing a model directly creates
+  long-term coupling that's exactly what the migration was supposed to
+  eliminate.
+example_code: |
+  # WITHOUT an anti-corruption layer: legacy quirks leak straight into
+  # the new service's own domain logic.
+  def process_order_naive(legacy_order):
+      if legacy_order["status_code"] == 2 and legacy_order["created"] < CUTOFF_DATE:
+          ship_order(legacy_order)          # legacy's weird status_code=2 special case,
+      elif legacy_order["status_code"] == 2:  # scattered throughout the NEW service now
+          cancel_order(legacy_order)
+
+  # WITH an anti-corruption layer: legacy ugliness is translated ONCE,
+  # in one place, into a clean model the rest of the new service uses.
+  class LegacyOrderTranslator:
+      def to_domain_model(self, legacy_order) -> OrderStatus:
+          if legacy_order["status_code"] == 2 and legacy_order["created"] < CUTOFF_DATE:
+              return OrderStatus.SHIPPED     # the ugly rule lives HERE, and only here
+          elif legacy_order["status_code"] == 2:
+              return OrderStatus.CANCELLED
+          return OrderStatus.from_code(legacy_order["status_code"])
+
+  def process_order_clean(order: OrderStatus):
+      if order == OrderStatus.SHIPPED:      # the rest of the new service never sees status_code at all
+          ship_order(order)
+category: strangler_fig
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [strangler_fig, anti_corruption_layer, legacy_migration, domain_driven_design]
+comprehension_check:
+  - question: "What is an anti-corruption layer's job during a Strangler Fig migration?"
+    options:
+      - "It translates between the legacy system's data model and the new service's own clean domain model, so legacy quirks never leak directly into new code"
+      - "It deletes the legacy system's data entirely before any migration begins"
+      - "It makes the new service adopt the exact same schema as the legacy system"
+      - "It has no purpose related to data models at all"
+    correct: 0
+    explanation: "Legacy quirks (odd status codes, duplicated fields from past half-migrations) get translated in exactly one place, so the rest of the new service only ever sees a clean domain model."
+  - question: "Why does skipping the anti-corruption layer as a 'shortcut' cause problems later?"
+    options:
+      - "It creates long-term coupling to the legacy model throughout the new service, exactly the coupling the migration was supposed to eliminate"
+      - "Skipping it has no downside since legacy and new schemas are always identical"
+      - "It makes the new service run measurably faster with no tradeoff"
+      - "It only matters for services that never talk to the legacy system"
+    correct: 0
+    explanation: "When the legacy system is eventually decommissioned, only the ACL would need to change if it exists -- without one, the legacy shape is scattered throughout the new service's own logic."

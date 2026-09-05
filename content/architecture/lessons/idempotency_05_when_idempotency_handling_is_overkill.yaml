@@ -1,0 +1,83 @@
+id: idempotency_05
+title: "When Explicit Idempotency Handling Is Overkill"
+language: architecture
+level: 50
+objective: "Recognize the specific conditions under which an operation genuinely needs idempotency handling, and why applying it universally to every operation is needless overhead."
+explanation: |
+  This category has built up real machinery -- idempotency-key stores,
+  idempotent consumers, atomic pending-state handling, natural-
+  idempotency redesigns -- and every one of these techniques exists to
+  solve a specific, concrete risk: an operation with a side effect,
+  reachable across an unreliable boundary, that might genuinely be
+  retried. All three conditions have to actually be true for the
+  problem to exist at all, and it's worth naming plainly, as this track
+  does for every other pattern, that applying idempotency machinery
+  where one of those conditions doesn't hold is pure overhead with no
+  corresponding benefit.
+
+  A read-only operation (`GET /order/123`) has no side effect to
+  duplicate in the first place -- reading the same thing five times is
+  already naturally harmless, exactly as this category's opening lesson
+  noted, and wrapping it in idempotency-key bookkeeping protects
+  against a risk that was never present. An operation that's never
+  retried -- a purely internal, synchronous, in-process call with no
+  network hop and no ambiguous-failure window (see this track's own
+  lesson on why in-process calls don't need a circuit breaker for the
+  same underlying reason) -- has no retry path to make safe, since
+  nothing is ever going to call it twice for the same logical request
+  in the first place. And a side-effecting operation that's already
+  naturally idempotent by its own structure (a plain `SET status =
+  "shipped"`, or an upsert keyed on a stable ID per this category's own
+  lesson on that) gets nothing from an *additional* idempotency-key
+  layer stacked on top of a redesign that already solved the problem.
+
+  The discipline this track applies everywhere else applies here too:
+  identify the actual risk a pattern protects against -- here, a
+  retried side-effecting operation across an unreliable boundary -- and
+  reach for the machinery exactly where all of those conditions
+  genuinely hold, rather than wrapping every operation in idempotency
+  bookkeeping as an undifferentiated default regardless of whether it's
+  a read, an in-process call, or already naturally safe to repeat.
+example_code: |
+  # OVERKILL: a read-only operation wrapped in idempotency-key bookkeeping --
+  # reading has no side effect to duplicate in the first place.
+  def get_order_unnecessary(order_id, idempotency_key):
+      existing = idempotency_store.get(idempotency_key)   # pure overhead -- GET is already naturally safe to repeat
+      if existing is not None:
+          return existing
+      result = db.query("orders", order_id)
+      idempotency_store.set(idempotency_key, result)
+      return result
+
+  # THE FIX: a read needs no idempotency handling of any kind.
+  def get_order_simple(order_id):
+      return db.query("orders", order_id)
+
+  # Idempotency machinery earns its cost specifically where ALL THREE hold:
+  # a side effect + an unreliable boundary + a genuine possibility of retry.
+  def charge_card(card_token, amount, idempotency_key):    # side effect, network boundary, genuinely retried
+      return idempotency_guarded_charge(card_token, amount, idempotency_key)
+category: idempotency
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: idempotency_master
+requires_code: false
+concept_tags: [idempotency, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "What three conditions all have to hold for an operation to genuinely need idempotency handling, according to this lesson?"
+    options:
+      - "A side effect, reachability across an unreliable boundary, and a genuine possibility that the operation might be retried"
+      - "The operation must be written in a distributed system, regardless of any other factor"
+      - "The operation must return a JSON response"
+      - "The operation must take longer than one second to execute"
+    correct: 0
+    explanation: "A read-only operation has no side effect to duplicate; an in-process call has no unreliable boundary or retry path; a naturally idempotent operation already solves the problem by construction -- all three conditions must hold for the risk to actually exist."
+  - question: "Why does wrapping a naturally idempotent operation (like an upsert keyed on a stable ID) in an additional idempotency-key layer add no value?"
+    options:
+      - "The redesign already solves the problem by construction -- stacking key-store bookkeeping on top protects against a risk that no longer exists"
+      - "Naturally idempotent operations are actually more dangerous than non-idempotent ones"
+      - "Idempotency keys are required by law for every upsert operation"
+      - "It always makes the operation run correctly for the first time only, then fail on every retry"
+    correct: 0
+    explanation: "This mirrors the same discipline this track applies elsewhere -- identify the actual risk a pattern protects against, and reach for the machinery only where that risk genuinely exists."

@@ -1,0 +1,77 @@
+id: ai_08
+title: "Chunk Boundaries That Silently Split a Phrase in Two"
+language: ai
+level: 8
+objective: "Fix a text chunker that splits documents into non-overlapping chunks, so a phrase spanning a chunk boundary survives intact in at least one chunk."
+explanation: |
+  Splitting a document into fixed-size, non-overlapping chunks --
+  `text[i:i+size]` advancing `i` by exactly `size` each time -- treats
+  the chunk boundary as if it were a meaningful place to cut, when it's
+  really just wherever the character count happened to land. A phrase
+  that straddles that boundary (the last few words of one chunk, the
+  first few words of the next) ends up split across two separate
+  chunks, with neither one containing the complete phrase intact. For a
+  RAG pipeline, this means a query whose answer depends on that
+  boundary-straddling phrase can fail to retrieve it at all -- not
+  because the information wasn't in the document, but because the
+  chunking step happened to slice it into two pieces, neither of which
+  is a good semantic match for the query on its own.
+
+  The fix is to make consecutive chunks *overlap* by some number of
+  characters: instead of advancing by the full chunk `size` each time,
+  advance by `size - overlap` -- each new chunk starts before the
+  previous one ended, so its end includes the previous chunk's tail
+  plus new content. Any phrase short enough to fit within the overlap
+  region is guaranteed to appear intact in at least one chunk, no
+  matter where it happens to fall relative to the boundaries -- the
+  redundancy costs some extra storage and retrieval overhead, but it's
+  the standard, deliberate tradeoff RAG pipelines make specifically to
+  avoid silently losing boundary-spanning context.
+example_code: |
+  # The trap: chunks abut exactly, with no overlap -- boundaries can split a phrase.
+  def chunk_trap(text, size):
+      return [text[i:i+size] for i in range(0, len(text), size)]
+
+  text = "the quick brown fox jumps over"
+  chunks_trap = chunk_trap(text, 10)
+  print(chunks_trap)                                  # ['the quick ', 'brown fox ', 'jumps over']
+  print(any("fox jumps" in c for c in chunks_trap))    # False -- split right across the boundary!
+
+  # The fix: overlapping chunks -- advance by (size - overlap), not size.
+  def chunk_with_overlap(text, size, overlap):
+      chunks = []
+      step = size - overlap
+      for i in range(0, len(text), step):
+          chunks.append(text[i:i + size])
+          if i + size >= len(text):
+              break
+      return chunks
+
+  chunks_fixed = chunk_with_overlap(text, 10, 5)
+  print(chunks_fixed)
+  print(any("fox jumps" in c for c in chunks_fixed))   # True -- the phrase survives intact
+starter_code: |
+  def chunk_with_overlap(text, size, overlap):
+      return [text[i:i + size] for i in range(0, len(text), size)]
+
+  text = "the quick brown fox jumps over"
+  chunks = chunk_with_overlap(text, 10, 5)
+  print(any("fox jumps" in c for c in chunks))
+challenge: |
+  Fix `chunk_with_overlap` so it actually uses the `overlap` parameter
+  -- advance by `size - overlap` each step instead of `size` -- so the
+  phrase "fox jumps" (which straddles a chunk boundary) survives intact
+  in at least one chunk (should print True).
+expected_output: |
+  True
+hints:
+  - "step = size - overlap; then use range(0, len(text), step) instead of range(0, len(text), size)."
+  - "Stop the loop once a chunk reaches the end of the text (if i + size >= len(text): break), so you don't get empty trailing chunks."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 3
+difficulty: core
+contains_patterns:
+  - "size - overlap"
+concept_tags: [text_chunking, chunk_overlap, rag_pipeline]

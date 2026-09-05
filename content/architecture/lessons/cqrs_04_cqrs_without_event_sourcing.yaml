@@ -1,0 +1,74 @@
+id: cqrs_04
+title: "CQRS Without Event Sourcing"
+language: architecture
+level: 14
+objective: "Understand that CQRS and event sourcing are two independent, separable patterns, and how a simpler CQRS variant works without maintaining an event log at all."
+explanation: |
+  Because CQRS and event sourcing pair so well together (see this
+  category's Projections lesson), it's easy to assume they're the same
+  thing or that one requires the other -- they don't. CQRS is only
+  about separating the write model from the read model; it says
+  nothing about *how* the write model itself stores data. A perfectly
+  valid, much simpler CQRS setup keeps a conventional write database
+  (current state, overwritten in place, no event log at all) and simply
+  triggers a direct update to a separate read model synchronously or
+  via a lightweight signal, right after each write succeeds -- with no
+  event stream, no replay capability, and none of event sourcing's
+  added complexity.
+
+  This simpler variant gives up event sourcing's specific benefits (a
+  full audit history, true replayability, "what was this at time T")
+  but keeps CQRS's core benefit -- a read model optimized independently
+  from the write model -- without paying event sourcing's costs
+  (schema versioning of events forever, snapshotting for performance,
+  designing every projection to handle out-of-order/duplicate
+  delivery). Choosing full event-sourced CQRS versus this simpler
+  variant is its own deliberate tradeoff: reach for the event-sourced
+  version specifically when the audit trail and replayability are
+  genuinely valuable to the domain, and reach for the simpler version
+  when a separately optimized read model is the only thing actually
+  needed.
+example_code: |
+  # Full CQRS + event sourcing: the write side maintains an event log,
+  # and the read model is built by replaying/projecting those events.
+  # (See this category's Projections lesson for that version.)
+
+  # Simpler CQRS, NO event sourcing: a conventional write database,
+  # with a direct signal to update the read model after each write.
+  class OrderCommandHandler:
+      def handle_place_order(self, command):
+          order = Order(command.items)
+          order.validate_invariants()
+          write_db.save(order)                  # conventional current-state storage, no event log
+          update_read_model(order)              # a direct call, not an event subscription
+
+  def update_read_model(order):
+      read_db.upsert(order.id, {
+          "status": order.status, "total": order.total,
+      })
+  # No event log exists to replay -- if the read model needs rebuilding,
+  # it's rebuilt by re-reading current state from the write database directly.
+category: cqrs
+category_level: 4
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [cqrs, event_sourcing, architecture_tradeoffs]
+comprehension_check:
+  - question: "Is event sourcing required to implement CQRS?"
+    options:
+      - "No -- CQRS is only about separating the write model from the read model, and says nothing about how the write model itself stores data; they're independent, separable patterns"
+      - "Yes, CQRS cannot exist without a full event-sourced write model"
+      - "CQRS and event sourcing are the exact same pattern with two different names"
+      - "Event sourcing replaces CQRS entirely, making CQRS unnecessary"
+    correct: 0
+    explanation: "A simpler CQRS variant keeps a conventional write database and simply triggers a direct update to a separate read model after each write, with no event log at all."
+  - question: "What does the simpler, non-event-sourced CQRS variant give up compared to the full event-sourced version?"
+    options:
+      - "A full audit history and true replayability -- 'what was this at time T' isn't answerable without an event log to replay"
+      - "It gives up the ability to have a separate read model at all"
+      - "It gives up nothing -- the two variants are functionally identical"
+      - "It requires MORE infrastructure than the event-sourced version"
+    correct: 0
+    explanation: "The simpler variant keeps CQRS's core benefit (an independently optimized read model) while avoiding event sourcing's specific costs (schema versioning, snapshotting, out-of-order handling)."

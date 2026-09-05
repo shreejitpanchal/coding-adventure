@@ -1,0 +1,67 @@
+id: microservices_04
+title: "Service Discovery and Dynamic Addressing"
+language: architecture
+level: 9
+objective: "Understand why hardcoding a service's network address breaks down in a dynamic microservices environment, and how service discovery solves it."
+explanation: |
+  A monolith's internal calls never need an address at all -- calling
+  another module is just a function call. Once services live in
+  separate processes, each needs a real network address to be called at
+  -- and hardcoding that address (`http://10.0.4.17:8080`) works only
+  as long as the service never moves, which in a modern containerized
+  or auto-scaled environment is essentially never true: a service might
+  be restarted with a new IP, scaled up to multiple instances behind
+  the scenes, or moved to a different host entirely, all without
+  warning, purely as normal operational behavior rather than a failure.
+
+  Service discovery solves this by decoupling "which service do I need"
+  from "where exactly is it right now." A service registers itself
+  (its current address) with a discovery mechanism when it starts --
+  either a dedicated registry (Consul, etcd, ZooKeeper) it actively
+  registers with, or, in Kubernetes-style environments, a stable DNS
+  name/virtual IP the platform itself maintains and load-balances
+  behind automatically. Callers look up "InventoryService" by name at
+  call time instead of hardcoding an address, and the discovery layer
+  resolves that name to whichever actual instance(s) are currently
+  healthy and available -- the caller never needs to know or update
+  anything when the underlying instances change, restart, or scale.
+example_code: |
+  # The trap: a hardcoded address breaks the moment the service moves,
+  # restarts with a new IP, or scales to multiple instances.
+  INVENTORY_SERVICE_URL = "http://10.0.4.17:8080"   # works until it doesn't
+
+  def reserve_stock(sku, qty):
+      return requests.post(f"{INVENTORY_SERVICE_URL}/reserve", json={"sku": sku, "qty": qty})
+
+  # The fix: look up the CURRENT address by name at call time.
+  def reserve_stock_via_discovery(sku, qty):
+      address = service_registry.resolve("inventory-service")  # always current, never stale
+      return requests.post(f"{address}/reserve", json={"sku": sku, "qty": qty})
+
+  # In Kubernetes-style environments, this often looks even simpler --
+  # a stable DNS name the platform resolves and load-balances automatically:
+  INVENTORY_SERVICE_URL = "http://inventory-service.internal"  # DNS, not a raw IP
+category: microservices
+category_level: 4
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [service_discovery, dynamic_addressing, microservices]
+comprehension_check:
+  - question: "Why does hardcoding a service's network address break down in a modern microservices environment?"
+    options:
+      - "Services can be restarted with a new IP, scaled to multiple instances, or moved to a different host as normal operational behavior -- a hardcoded address goes stale the moment any of that happens"
+      - "Hardcoded addresses never actually change in any real deployment"
+      - "It only affects services written in compiled languages"
+      - "Network addresses are irrelevant to how services communicate"
+    correct: 0
+    explanation: "In a containerized or auto-scaled environment, instances moving/restarting/scaling is routine, not a failure -- a hardcoded address can't keep up with that."
+  - question: "What does service discovery let a caller do instead of hardcoding an address?"
+    options:
+      - "Look up a service by name at call time, letting the discovery layer resolve it to whichever instance(s) are currently healthy and available"
+      - "It requires every caller to manually track every instance's IP address themselves"
+      - "It eliminates the need for services to have network addresses at all"
+      - "It only works for services running on the exact same physical machine"
+    correct: 0
+    explanation: "Whether via a dedicated registry (Consul, etcd) or a platform-managed DNS name (Kubernetes-style), the caller never needs to know or update anything when underlying instances change."

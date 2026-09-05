@@ -1,0 +1,122 @@
+id: circuit_breaker_01
+title: "The Circuit Breaker Pattern"
+language: architecture
+level: 41
+objective: "Understand how the Circuit Breaker pattern stops a struggling downstream service from being overwhelmed further by callers that keep retrying it."
+explanation: |
+  When a downstream service starts failing -- overloaded, crashing, or
+  just slow -- the naive response from every caller is to keep calling
+  it anyway, each call waiting out its own timeout before giving up.
+  Under real load, this makes the struggling service's situation
+  actively worse, not better: it's now fielding the same volume of
+  incoming requests as before, except now every one of them is failing
+  slowly instead of succeeding quickly, tying up threads and connection
+  pools on both the caller's side and the struggling service's side
+  while everyone waits out timeouts that were never going to succeed.
+  This is exactly the mechanism behind a cascading failure: one
+  overloaded service's slowness propagates outward and starts degrading
+  every service that calls it, and then every service that calls *those*
+  services, and so on -- a local problem becomes a system-wide one
+  purely because nothing stopped calling the failing service once it
+  was clearly in trouble.
+
+  A circuit breaker sits in front of a downstream call and tracks its
+  recent success/failure rate, modeling itself on the electrical
+  circuit breaker it's named after. In the *closed* state (the normal,
+  healthy state), calls pass through to the real service normally. Once
+  failures cross a configured threshold, the breaker *opens*: for a
+  cooldown period, calls fail immediately, without even attempting the
+  network call at all -- deliberately giving the struggling service
+  breathing room to recover, instead of continuing to bombard it with
+  requests it's already failing to handle. After the cooldown, the
+  breaker moves to *half-open*: it lets a small number of trial calls
+  through to test whether the downstream service has actually
+  recovered. If those trial calls succeed, the breaker closes again and
+  normal traffic resumes; if they still fail, it reopens and waits
+  another cooldown period before trying again.
+
+  The genuinely important shift this pattern makes is from "keep trying
+  and hope" to "stop calling a service that's clearly struggling, on
+  purpose, and check back periodically instead" -- deliberately failing
+  fast (returning an error, or a cached/degraded fallback response,
+  immediately) is a better outcome for the caller than waiting out a
+  timeout that was statistically very unlikely to succeed anyway, and
+  it's a better outcome for the struggling downstream service, which
+  gets a real chance to recover instead of being kept underwater by
+  callers that never back off. This is a different, complementary tool
+  from a Retry policy (which handles a single transient failure by
+  trying again) -- a circuit breaker is specifically about recognizing
+  a *sustained* pattern of failures and changing behavior at the system
+  level until there's actual evidence of recovery, not just retrying
+  the same failing call over and over.
+example_code: |
+  # The trap: every caller keeps retrying a failing service, making its
+  # overload worse and tying up resources on both sides waiting for
+  # timeouts that were never going to succeed.
+  def get_recommendations_naive(user_id):
+      for attempt in range(3):
+          try:
+              return recommendation_service.get(user_id, timeout=5)  # 3 x 5s of waiting, every call
+          except TimeoutError:
+              continue
+      return None
+
+  # The fix: a circuit breaker stops calling once failures cross a
+  # threshold, giving the struggling service room to recover.
+  class CircuitBreaker:
+      def __init__(self, failure_threshold=5, cooldown_seconds=30):
+          self.state = "closed"
+          self.failure_count = 0
+          self.failure_threshold = failure_threshold
+          self.cooldown_seconds = cooldown_seconds
+          self.opened_at = None
+
+      def call(self, fn, *args):
+          if self.state == "open":
+              if time.time() - self.opened_at < self.cooldown_seconds:
+                  raise CircuitOpenError("failing fast -- service is known to be struggling")
+              self.state = "half_open"    # cooldown elapsed -- try a trial call
+
+          try:
+              result = fn(*args)
+              self.state = "closed"       # success -- fully recovered, reset
+              self.failure_count = 0
+              return result
+          except Exception:
+              self.failure_count += 1
+              if self.failure_count >= self.failure_threshold:
+                  self.state = "open"
+                  self.opened_at = time.time()
+              raise
+category: circuit_breaker
+category_level: 1
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [circuit_breaker, cascading_failure, resilience, fail_fast]
+comprehension_check:
+  - question: "How can naive retrying make a struggling downstream service's situation worse?"
+    options:
+      - "The service keeps fielding the same volume of requests, except now every one fails slowly instead of quickly, tying up resources on both sides waiting out timeouts that were unlikely to succeed"
+      - "Retrying always fixes the problem immediately with no downside"
+      - "Retries are impossible to implement in any programming language"
+      - "It has no effect on the downstream service at all, only on the caller"
+    correct: 0
+    explanation: "This is exactly the mechanism behind a cascading failure -- one overloaded service's slowness propagates outward as callers keep piling on requests it's already failing to handle."
+  - question: "What are the three states a circuit breaker moves through?"
+    options:
+      - "Closed (calls pass through normally), open (calls fail immediately without attempting the network call), and half-open (a small number of trial calls test recovery)"
+      - "On, off, and reset -- with no other behavior"
+      - "Only two states: working and broken"
+      - "Fast, medium, and slow, based on response time alone"
+    correct: 0
+    explanation: "After failures cross a threshold, the breaker opens (failing fast during a cooldown), then moves to half-open to test with trial calls before deciding whether to close again or reopen."
+  - question: "How is a circuit breaker different from a simple retry policy?"
+    options:
+      - "A circuit breaker recognizes a sustained pattern of failures and changes behavior at the system level (stopping calls entirely for a period), while a retry policy just tries the same single failing call again"
+      - "They are exactly the same thing with different names"
+      - "A circuit breaker only works for successful calls, never failures"
+      - "Retry policies always take longer to implement than circuit breakers"
+    correct: 0
+    explanation: "They're complementary tools -- retry handles a single transient failure, while a circuit breaker handles a sustained pattern by deliberately failing fast until there's evidence of actual recovery."

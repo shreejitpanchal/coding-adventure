@@ -6,7 +6,7 @@ and how to run it, see the main [README](../README.md).
 
 ## Status
 
-All five tracks are fully built. Python and Java share the same 14 topic
+All seven tracks are fully built. Python and Java share the same 14 topic
 categories, real execution against a local `python`/`javac`+`java`
 toolchain. C++ has its own 10 topic categories (a general-purpose
 language subset rather than a framework), executed against a local
@@ -15,9 +15,22 @@ a local Maven + JDK toolchain via a scaffolded Maven project run through
 `mvn test` — see `app/execution/spring_engine.py` and "Execution
 engines" below for how that differs from the other four. Node.js has its
 own 6 topic categories (the same set as C++), executed directly against
-a local `node` toolchain with no separate compile step. Primarily a
-desktop app; there's also a Python-only Android build (`build_apk.sh`)
-— see "Android build (Python-only)" below.
+a local `node` toolchain with no separate compile step. AI is a full
+top-level track (not a Python category) with 4 topic categories —
+`ml_fundamentals`, `rag`, `agentic_frameworks`, `mcp`, 5 exercises each —
+executing on the exact same Python engine instance as the Python track,
+since its content is plain, dependency-free Python under the hood.
+Architecture is the one conceptual, no-code track: 10 topic
+categories — `event_driven_architecture`, `microservices`, `cqrs`,
+`saga_pattern`, `strangler_fig`, `domain_driven_design`,
+`hexagonal_architecture`, `api_gateway`, `circuit_breaker`,
+`idempotency`, 5 exercises each — every exercise has `requires_code:
+false` and gates completion on an inline multiple-choice comprehension
+check instead of running code; both AI and Architecture are always
+fully unlocked regardless of completion state (see "Progress and
+unlocking" below). Primarily a desktop app; there's also a Python-only
+Android build (`build_apk.sh`) — see "Android build (Python-only)"
+below.
 
 ## Running it
 
@@ -139,6 +152,12 @@ content/
   node/
     lessons/   # own 12 category keys -- C++'s 6 plus 6 more, see below
     quiz/
+  ai/
+    lessons/   # own 4 category keys, plain dependency-free Python content
+    quiz/
+  architecture/
+    lessons/   # own 10 category keys, every exercise requires_code: false
+    quiz/
 docs/          # this file + ARCHITECTURE.md
 tests/         # pytest suite, one file per module roughly mirroring app/
 data/          # gitignored -- settings.json + progress.sqlite3, created
@@ -195,39 +214,88 @@ directory — nothing hardcodes which categories a language "should"
 have, so adding an exercise in a new category is enough to make that
 category show up in the topic browser. When Java's category list fell
 behind Python's after a round of Python-only content additions, the fix
-was adding matching Java content, not touching any app code. Python has
-since grown a 15th category, `ai` (see below), that Java doesn't mirror
--- parity across the two tracks was never enforced by the engine, only
-maintained by convention where it made sense to.
+was adding matching Java content, not touching any app code. Category
+parity across tracks was never enforced by the engine, only maintained
+by convention where it made sense to — C++/Node use their own smaller
+6-10 category sets, and AI/Architecture (below) define entirely
+different category sets suited to their own subject matter.
 
-Python's `ai` category (title "AI: ML, RAG, Agents & MCP", 20 exercises
-across `category_level` 1-20) is a deliberate departure from every other
-category in this app: where every other category teaches a language's
-own mechanics/idioms/stdlib, `ai` teaches the underlying mechanics of
-machine learning, Retrieval-Augmented Generation, agentic frameworks,
-and the Model Context Protocol -- all as hand-rolled, dependency-free
-Python (no numpy, no network access, no LLM API calls), since this app's
-"real execution, exact deterministic output" model has no way to verify
-a live model call or network response, and the app is explicitly 100%
-offline. `ai_01`-`ai_05` cover ML fundamentals (a train/test split that
-owns its own seeded `random.Random` instead of depending on global
-state, data leakage from fitting a scaler on combined train+test data,
-thresholding probabilities before computing accuracy, gradient descent's
-sign convention, evaluating on held-out data instead of training data);
-`ai_06`-`ai_10` cover RAG (cosine similarity vs. raw dot product, top-k
-retrieval's sort direction, chunk overlap so a boundary-straddling
-phrase survives intact, a delimited prompt template instead of plain
-concatenation, respecting a context-window character budget);
-`ai_11`-`ai_15` cover agentic frameworks (a tool dispatcher that fails
-loudly instead of silently returning `None`, a `max_steps` guard against
-an unbounded loop, validating a tool call's required arguments before
-invoking it, preserving the system message when trimming conversation
-history, checking the correct stop-condition key); `ai_16`-`ai_20` cover
-MCP (JSON-RPC's required `"jsonrpc": "2.0"` field, `result`/`error`
-mutual exclusivity, detecting a duplicate tool registration, checking a
-server's advertised capabilities before calling a method, correlating
-responses to requests by `id` rather than arrival order -- the last one,
-`ai_master`, is this category's single achievement).
+### AI and Architecture — full top-level tracks, not Python categories
+
+`ai` and `architecture` are full entries in `app/engine/languages.py`'s
+`LANGUAGE_ORDER`, each with its own card on the language picker, its
+own independent XP/streak/progress, and (for `ai`) its own execution
+wiring — an earlier design considered nesting AI as a category inside
+Python's content, but both subjects are language-agnostic enough (ML/
+RAG/agentic-framework/MCP mechanics; system-design patterns) that a
+dedicated top-level track was the better fit.
+
+`ai` (4 categories — `ml_fundamentals`, `rag`, `agentic_frameworks`,
+`mcp`, 5 exercises each, 20 exercises total) is plain, hand-rolled,
+dependency-free Python under the hood (no numpy, no network access, no
+LLM API calls), since this app's "real execution, exact deterministic
+output" model has no way to verify a live model call or network
+response, and the app is explicitly 100% offline. `ml_fundamentals`
+covers a train/test split that owns its own seeded `random.Random`
+instead of depending on global state, data leakage from fitting a
+scaler on combined train+test data, thresholding probabilities before
+computing accuracy, gradient descent's sign convention, and evaluating
+on held-out data instead of training data; `rag` covers cosine
+similarity vs. raw dot product, top-k retrieval's sort direction, chunk
+overlap so a boundary-straddling phrase survives intact, a delimited
+prompt template instead of plain concatenation, and respecting a
+context-window character budget; `agentic_frameworks` covers a tool
+dispatcher that fails loudly instead of silently returning `None`, a
+`max_steps` guard against an unbounded loop, validating a tool call's
+required arguments before invoking it, preserving the system message
+when trimming conversation history, and checking the correct
+stop-condition key; `mcp` covers JSON-RPC's required `"jsonrpc": "2.0"`
+field, `result`/`error` mutual exclusivity, detecting a duplicate tool
+registration, checking a server's advertised capabilities before
+calling a method, and correlating responses to requests by `id` rather
+than arrival order. `app/execution/registry.py` maps `"ai"` to the
+*exact same* `PythonEngine`/`PythonInProcessEngine` instance registered
+for `"python"` (`_ENGINES["ai"] = _ENGINES["python"]`) rather than a
+separate implementation, since there's nothing language-specific to
+execute differently; `app/execution/errors.py`'s `translate_error()`
+treats `"ai"` identically to `"python"` for the same reason.
+
+`architecture` (10 categories — `event_driven_architecture`,
+`microservices`, `cqrs`, `saga_pattern`, `strangler_fig`,
+`domain_driven_design`, `hexagonal_architecture`, `api_gateway`,
+`circuit_breaker`, `idempotency`, 5 exercises each, 50 exercises total)
+is the one track with **`requires_code=False`** on every exercise — see
+"Comprehension-check exercises" below for what that changes about
+`lesson_screen.py`. Each of the 10 topics runs low-to-high-level across
+its 5 exercises rather than being a single overview page: `category_
+level` 1 introduces the pattern, 2-4 go progressively deeper into its
+real mechanics and failure modes, and `category_level` 5 (carrying that
+topic's `<category>_master` achievement) is always a deliberate "when
+this pattern is overkill" capstone — a recurring theme across this
+track's content, since every pattern here earns its cost only once its
+specific underlying problem is actually present.
+
+### Comprehension-check exercises (`requires_code=False`)
+
+`Exercise.requires_code: bool = True` and `Exercise.comprehension_check:
+list` (in `app/engine/exercise.py`) exist specifically for the
+`architecture` track, where the user reads an explanation/example but
+never edits or runs code. `lesson_screen.py`'s `_ExerciseController`
+branches on `exercise.requires_code` in `__init__`: when `True` (every
+track except `architecture`), it builds the code editor + Run button +
+Output card and calls `get_engine(exercise.language)`; when `False`,
+`self.engine` is set to `None`, `get_engine()`/`check_toolchain()` are
+never called at all, and `build_view()` renders a "Comprehension Check"
+card instead — an inline multiple-choice quiz (`comprehension_check`,
+same shape as a `QuizQuestion`: `question`/`options`/`correct`/
+`explanation`) reusing the same correct/incorrect-highlighting UX as
+`quiz_screen.py`. Answering every question correctly in one pass calls
+the same `_on_success()` every code exercise uses (same XP/achievement/
+category-unlock flow); any wrong answer requires retrying the whole
+check from the start via a "Try Again" button. This is why
+`architecture` needs no entry at all in `app/execution/registry.py`'s
+`_ENGINES` dict — nothing in the app ever attempts to execute its
+content.
 
 Each language's content for a shared category is written idiomatically
 for that language, not translated line-for-line — e.g. `sync_vs_async`
@@ -345,6 +413,19 @@ no separate unlock-tracking schema. The flagship **Gotcha Gauntlet**
 debug-puzzle track is just a category like any other
 (`app/engine/categories.GOTCHA_CATEGORY`), given its own card on the
 track hub instead of being buried in the plain topic browser.
+
+`app/engine/lesson_engine.py`'s `ALWAYS_UNLOCKED_LANGUAGES =
+{"architecture", "ai"}` is checked unconditionally as the very first
+branch inside `is_unlocked()`, before even the Android-specific
+`MOBILE_ALWAYS_UNLOCKED_LANGUAGES` check — every exercise in both
+tracks is unlocked and completable in any order from the start,
+regardless of platform. This is a deliberate product decision distinct
+from the Android bypass: neither track's content has a genuine
+prerequisite-chain reason to gate progression (Architecture's 5-page
+topics build low-to-high conceptually, but nothing about the app
+mechanics requires finishing page 2 before browsing page 4), so gating
+them the normal way would have added friction with no corresponding
+benefit.
 
 ### Quiz Bank
 
@@ -477,6 +558,37 @@ streaks, or completions between them — a user juggling both Python and
 Java sees two entirely independent progress states. XP-to-level curve:
 clearing level *N* costs `N * 100` XP, computed live from one stored
 `total_xp` counter (no separate mutable level field to keep in sync).
+
+### Export and import progress
+
+The Settings screen (`app/ui/settings_screen.py`'s `_build_backup_card`)
+lets a user back up or restore progress as a single JSON file, covering
+every language track at once. `ProgressStore.export_progress()`
+(`app/progress/store.py`) reads every row of every table listed in
+`_EXPORT_TABLES` via `sqlite3.Row` and dynamic column names (so the
+export/import code never hardcodes the schema twice), producing
+`{"version": PROGRESS_EXPORT_VERSION, "exported_at": ..., "tables":
+{...}}`. `import_progress()` checks the version field first (refusing
+to import a file from a future/incompatible export format) and then
+replaces every table's contents — `DELETE` all rows, re-`INSERT` every
+row from the file — inside one atomic transaction, so an import is
+always all rows or none, never a partial merge.
+
+On desktop, clicking Export goes straight to `ft.FilePicker().
+save_file(...)`. On mobile (`page.platform.is_mobile()`), a choice
+dialog offers "Save to Device" (the same `save_file` picker) or
+"Share…" (`ft.Share().share_files([ft.ShareFile.from_bytes(...)])`),
+which hands the exported JSON to the OS's native share sheet — Gmail
+included, if the user has it installed — rather than the app trying to
+target Gmail specifically, since Flet's `Share` service has no API to
+name a particular destination app; letting the user pick from the real
+OS share sheet is both the only available mechanism and arguably the
+better UX anyway. Import always shows a blocking confirmation dialog
+first (explicitly warning that current progress will be permanently
+overwritten) before calling `import_progress()`; on success it
+navigates to `/languages`, forcing every view to rebuild against the
+newly-imported data rather than leaving any stale in-memory progress
+numbers visible from before the import.
 
 ### Android build (Python-only)
 

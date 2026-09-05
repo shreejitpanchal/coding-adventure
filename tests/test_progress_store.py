@@ -56,3 +56,48 @@ def test_daily_refresher_picks_cleared_on_reset(store):
     store.save_daily_refresher_picks("python", "2026-01-01", ["ex1"])
     store.reset_progress("python")
     assert store.get_daily_refresher_picks("python", "2026-01-01") == []
+
+
+def test_export_then_import_restores_everything(store, tmp_path):
+    store.complete_lesson("python", "ex1", xp_reward=10)
+    store.award_badge("python", "first_badge")
+    store.record_quiz_attempt("java", 4, 5)
+    store.save_daily_refresher_picks("node", "2026-01-01", ["a", "b"])
+    store.record_play_today("python")
+
+    exported = store.export_progress()
+    assert exported["version"] == 1
+    assert "tables" in exported
+
+    fresh = ProgressStore(tmp_path / "restored.sqlite3")
+    try:
+        fresh.import_progress(exported)
+        assert fresh.get_player_level("python").total_xp == 10
+        assert fresh.is_lesson_completed("python", "ex1")
+        assert fresh.get_badges_with_dates("python")[0][0] == "first_badge"
+        assert fresh.get_best_quiz_score("java") == (4, 5)
+        assert fresh.get_daily_refresher_picks("node", "2026-01-01") == ["a", "b"]
+        assert fresh.get_streak_days("python") == 1
+    finally:
+        fresh.close()
+
+
+def test_import_overwrites_existing_progress(store):
+    store.complete_lesson("python", "old_lesson", xp_reward=50)
+    fresh_export = {
+        "version": 1,
+        "exported_at": "2026-01-01T00:00:00+00:00",
+        "tables": {
+            "profile": [], "lesson_completions": [], "badges": [],
+            "activity_log": [], "quiz_attempts": [], "player_xp": [],
+            "daily_refresher_picks": [],
+        },
+    }
+    store.import_progress(fresh_export)
+    assert not store.is_lesson_completed("python", "old_lesson")
+    assert store.get_player_level("python").total_xp == 0
+
+
+def test_import_rejects_incompatible_version(store):
+    with pytest.raises(ValueError):
+        store.import_progress({"version": 999, "tables": {}})

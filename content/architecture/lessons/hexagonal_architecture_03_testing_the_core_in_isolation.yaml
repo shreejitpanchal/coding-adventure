@@ -1,0 +1,95 @@
+id: hexagonal_architecture_03
+title: "Testing the Core in Isolation"
+language: architecture
+level: 33
+objective: "Understand how Hexagonal Architecture's port boundary enables fast, deterministic tests of business logic using in-memory fakes, without touching a real database, network, or external API."
+explanation: |
+  The payoff of driven ports (see this category's previous lesson) is
+  most concrete in testing. Business logic that calls a real database
+  or a real payment SDK directly needs that real (or realistically
+  mocked) infrastructure present just to run a single test -- a test
+  suite covering dozens of business-rule edge cases ends up slow
+  (real network calls, or at least a real local database), flaky
+  (a payment sandbox having an outage shouldn't fail a business-logic
+  test that has nothing to do with Stripe's actual availability), and
+  awkward to write (constructing the exact database state needed for one
+  specific edge case through real SQL, for every single test case).
+
+  Because the core only depends on port interfaces, a test can
+  substitute an **in-memory fake** implementing the same interface --
+  `FakePaymentGateway` records what it was asked to charge without
+  making any real network call; `InMemoryOrderRepository` stores orders
+  in a plain dict instead of hitting Postgres. These aren't the same
+  thing as a mocking-library mock that records "was this method
+  called" assertions -- a fake is a small, real, working implementation
+  of the port's contract, which means it behaves like the real thing
+  closely enough to exercise genuine behavior (querying it back after a
+  save actually returns what was saved) while staying fast, in-process,
+  and fully deterministic.
+
+  This produces a natural three-tier test strategy that follows the
+  hexagon's own shape: fast, plentiful unit tests against the core
+  logic using fakes for every port (the bulk of the test suite, run on
+  every commit); a much smaller set of adapter tests that verify each
+  real adapter genuinely satisfies its port's contract against the real
+  technology it wraps (does `StripePaymentAdapter` actually call
+  Stripe correctly? does `PostgresOrderRepository` actually persist
+  correctly?); and a handful of full end-to-end tests wiring real
+  adapters together to catch integration issues the first two tiers
+  can't see. The core's business rules get the fast, thorough testing
+  they need without every single test paying the cost of real
+  infrastructure.
+example_code: |
+  # A fake driven-port implementation: a small, REAL working implementation
+  # of the contract, not a mocking-library "was this called" assertion object.
+  class InMemoryOrderRepository:
+      def __init__(self):
+          self._orders = {}
+      def save(self, order):
+          self._orders[order.id] = order
+      def get(self, order_id):
+          return self._orders.get(order_id)   # genuinely round-trips, like the real thing would
+
+  class FakePaymentGateway:
+      def __init__(self, should_fail=False):
+          self.should_fail = should_fail
+          self.charges = []
+      def charge(self, amount, token):
+          if self.should_fail:
+              raise PaymentDeclinedError()
+          self.charges.append((amount, token))
+
+  # A fast, deterministic unit test of the CORE -- no real database, no real network.
+  def test_place_order_records_charge_and_saves_order():
+      payments = FakePaymentGateway()
+      orders = InMemoryOrderRepository()
+      service = OrderService(payments, orders)
+
+      service.place_order(sample_order)
+
+      assert payments.charges == [(sample_order.total, sample_order.card_token)]
+      assert orders.get(sample_order.id) is not None
+category: hexagonal_architecture
+category_level: 3
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [hexagonal_architecture, testing, ports_and_adapters]
+comprehension_check:
+  - question: "Why is an in-memory fake different from a typical mocking-library mock, in this lesson's framing?"
+    options:
+      - "A fake is a small, real, working implementation of the port's contract (it genuinely stores and returns data), not just an object recording 'was this method called' assertions"
+      - "Fakes and mocks are exactly the same thing with no meaningful difference"
+      - "Fakes always require a real network connection, unlike mocks"
+      - "Mocks are always faster than fakes in every situation"
+    correct: 0
+    explanation: "InMemoryOrderRepository genuinely stores and returns saved orders, closely enough to real behavior to exercise genuine logic, while staying fast and fully in-process."
+  - question: "What is the three-tier test strategy this lesson describes?"
+    options:
+      - "Many fast unit tests against the core using fakes for every port, a smaller set of adapter tests verifying each real adapter against its actual technology, and a handful of full end-to-end tests"
+      - "Only end-to-end tests, since Hexagonal Architecture makes unit testing unnecessary"
+      - "Only unit tests, since adapters never need to be tested at all"
+      - "A single test tier that mixes fakes and real infrastructure randomly"
+    correct: 0
+    explanation: "This gives the core's business rules fast, thorough testing without paying real-infrastructure costs on every single test, while adapter and end-to-end tests still catch what fakes alone can't."

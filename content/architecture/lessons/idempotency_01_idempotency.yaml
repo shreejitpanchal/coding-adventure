@@ -1,0 +1,111 @@
+id: idempotency_01
+title: "Idempotency in Distributed Systems"
+language: architecture
+level: 46
+objective: "Understand why idempotency -- an operation being safe to retry -- is essential once network calls can fail without the caller knowing whether the operation actually happened."
+explanation: |
+  A network call has a failure mode a local function call never has: it
+  can fail *after* the operation actually succeeded, purely because the
+  response never made it back to the caller (a dropped connection, a
+  timeout on an otherwise-successful request). From the caller's
+  perspective, a timeout on `POST /charge-card` is genuinely
+  ambiguous -- it might mean the charge never happened, or it might
+  mean the charge succeeded and only the confirmation got lost. If the
+  caller's only reasonable move is to retry (and in a distributed
+  system, retrying is usually the *correct* default response to an
+  ambiguous failure, not an edge case to avoid), then `charge_card()`
+  retried twice for what was really one logical request must not result
+  in charging the customer twice. This is precisely the property this
+  track's Saga Pattern exercise assumes compensating actions already
+  have -- and it's worth understanding on its own, since it applies
+  just as much to a simple retried API call as it does to an elaborate
+  multi-step saga.
+
+  *Idempotency* is the property that performing an operation multiple
+  times has the same effect as performing it once. `SET balance = 100`
+  is naturally idempotent -- running it five times leaves the same
+  final state as running it once. `balance += 10` is *not* naturally
+  idempotent -- running it five times adds 50, not 10. Many operations
+  that aren't naturally idempotent can be made idempotent deliberately:
+  the standard technique for a "charge this card" request is an
+  *idempotency key* -- a unique identifier the caller generates once
+  per logical request and includes on every attempt (including
+  retries). The server checks whether it has already processed that
+  exact key before doing anything: the very first attempt with a given
+  key actually charges the card and records the result against that
+  key; any subsequent attempt with the *same* key returns the
+  previously recorded result directly, without charging the card
+  again, no matter how many times the caller retries.
+
+  The genuinely important insight is that idempotency isn't a niche
+  concern only relevant to elaborate saga-style workflows -- it's a
+  default design requirement for *any* operation across a network
+  boundary that has side effects and might reasonably need to be
+  retried, which in a distributed system is nearly every write
+  operation. Read operations (`GET /order/123`) are naturally
+  idempotent already -- reading the same thing twice changes nothing --
+  which is exactly why HTTP's own semantics designate `GET` as
+  idempotent and safe to retry freely, while `POST` (creating a new
+  resource with side effects) is not idempotent by default and needs
+  the caller and server to deliberately agree on an idempotency-key
+  strategy (or a similarly explicit mechanism) if retries are going to
+  be safe.
+example_code: |
+  # The trap: retrying a non-idempotent operation double-charges the customer.
+  def charge_card_naive(card_token, amount):
+      return payment_provider.charge(card_token, amount)  # a timeout here gives NO idea if it succeeded
+
+  # Caller retries on timeout, since it's genuinely ambiguous whether the
+  # first attempt succeeded -- but this can charge the card TWICE.
+  try:
+      charge_card_naive(token, 100)
+  except TimeoutError:
+      charge_card_naive(token, 100)   # if the first attempt actually succeeded, this charges again!
+
+  # The fix: an idempotency key makes retries safe, no matter how many
+  # times the same logical request is attempted.
+  def charge_card(card_token, amount, idempotency_key):
+      existing = idempotency_store.get(idempotency_key)
+      if existing is not None:
+          return existing                                  # already processed -- return the SAME result, no re-charge
+      result = payment_provider.charge(card_token, amount)
+      idempotency_store.set(idempotency_key, result)        # recorded BEFORE returning to the caller
+      return result
+
+  key = generate_idempotency_key()   # generated ONCE per logical request, reused on every retry
+  try:
+      charge_card(token, 100, key)
+  except TimeoutError:
+      charge_card(token, 100, key)   # same key -- safe, returns the recorded result instead of re-charging
+category: idempotency
+category_level: 1
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [idempotency, idempotency_key, retries, distributed_systems]
+comprehension_check:
+  - question: "Why is a network call's timeout genuinely ambiguous in a way a local function call's failure isn't?"
+    options:
+      - "A timeout can mean the operation never happened, OR that it succeeded and only the confirmation response got lost -- the caller can't tell which"
+      - "Network calls never time out, so this ambiguity doesn't actually exist"
+      - "A timeout always means the operation definitely failed, with no ambiguity"
+      - "Local function calls have the exact same ambiguity as network calls"
+    correct: 0
+    explanation: "This ambiguity is exactly why retrying is usually the correct default response to a network failure -- and exactly why the retried operation needs to be safe to run more than once."
+  - question: "What does it mean for an operation to be idempotent?"
+    options:
+      - "Performing it multiple times has the same effect as performing it once"
+      - "It always executes instantly with no delay"
+      - "It can never fail under any circumstances"
+      - "It only works correctly the very first time it's called, never after"
+    correct: 0
+    explanation: "SET balance = 100 is naturally idempotent (same result no matter how many times it runs); balance += 10 is not (each run adds 10 more)."
+  - question: "How does an idempotency key make a 'charge this card' request safe to retry?"
+    options:
+      - "The server records the result against a unique key on the first attempt; any later attempt with the SAME key returns the recorded result instead of charging the card again"
+      - "It encrypts the card number so it can never be charged twice by definition"
+      - "It makes the network connection itself immune to ever timing out"
+      - "It requires the customer to manually approve every single retry"
+    correct: 0
+    explanation: "The caller generates one idempotency key per logical request and reuses it on every retry -- the server checks for that key first, so a retried request returns the already-recorded result rather than re-executing the charge."

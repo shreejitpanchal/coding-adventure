@@ -1,0 +1,106 @@
+id: api_gateway_01
+title: "API Gateway and Backend-for-Frontend"
+language: architecture
+level: 36
+objective: "Understand why an API Gateway sits in front of microservices, and why a Backend-for-Frontend takes that idea further for genuinely different clients."
+explanation: |
+  Once a system is split into a dozen microservices (see this track's
+  Microservices exercise), a mobile app that needs a single screen's
+  worth of data might otherwise have to call five different services
+  directly -- `UserService` for the profile, `OrderService` for recent
+  orders, `RecommendationService` for suggested items, and so on --
+  each with its own address, its own auth handshake, and its own
+  failure mode the client now has to handle individually. Every client
+  ends up needing to know the entire internal service topology, and
+  changing that topology (splitting a service in two, merging two
+  services back together) means updating every client that ever called
+  the affected services directly.
+
+  An API Gateway sits between clients and the internal services,
+  providing one stable entry point: it can route a single incoming
+  request to the right internal service, aggregate responses from
+  several services into one combined response the client actually
+  wants, and handle cross-cutting concerns once -- authentication,
+  rate limiting, request logging -- instead of every individual service
+  reimplementing them. Clients only ever need to know the gateway's
+  address and API shape; the internal topology behind it can be
+  restructured freely as long as the gateway's own external contract
+  stays stable. This is the same "stable interface hiding changeable
+  internals" idea behind Hexagonal Architecture's ports, applied at the
+  scale of an entire system's public API surface instead of a single
+  class's dependencies.
+
+  A single shared gateway can still become its own bottleneck once
+  different client types have genuinely different needs, though: a
+  mobile app on a slow connection wants a small, aggressively
+  summarized payload; a desktop web dashboard wants the full detailed
+  dataset; a partner's server-to-server integration wants yet another
+  shape entirely. Backend-for-Frontend (BFF) takes the API Gateway idea
+  further by giving each distinct client type its *own* dedicated
+  gateway, tailored specifically to that client's needs, rather than
+  one generic gateway trying to serve every client's needs at once (and
+  accumulating client-specific conditional logic as a result). The
+  tradeoff is now maintaining multiple gateways instead of one -- worth
+  it specifically when different clients' needs have diverged enough
+  that a single shared gateway's compromises are actively hurting more
+  than one client type, not a default to reach for the moment a second
+  client type appears.
+example_code: |
+  # Without a gateway: the client calls multiple services directly,
+  # and has to know the entire internal topology.
+  def render_dashboard_naive(user_id):
+      profile = user_service.get(user_id)                       # client knows about UserService
+      orders = order_service.get_recent(user_id)                 # client knows about OrderService
+      recs = recommendation_service.get_for_user(user_id)        # client knows about RecommendationService
+      return combine(profile, orders, recs)                      # client does the aggregation itself
+
+  # With an API Gateway: ONE stable entry point aggregates internally.
+  class ApiGateway:
+      def get_dashboard(self, user_id):
+          profile = user_service.get(user_id)
+          orders = order_service.get_recent(user_id)
+          recs = recommendation_service.get_for_user(user_id)
+          return combine(profile, orders, recs)          # aggregation lives in ONE place, not every client
+
+  # Backend-for-Frontend: each client type gets its OWN tailored gateway.
+  class MobileBFF:
+      def get_dashboard(self, user_id):
+          # aggressively summarized, small payload for a slow mobile connection
+          return {"name": ..., "order_count": ..., "top_rec": ...}
+
+  class WebDashboardBFF:
+      def get_dashboard(self, user_id):
+          # full detail, since a desktop dashboard can afford a larger payload
+          return {"profile": ..., "orders": [...], "recommendations": [...]}
+category: api_gateway
+category_level: 1
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [api_gateway, backend_for_frontend, microservices, aggregation]
+comprehension_check:
+  - question: "What problem does an API Gateway solve for clients of a microservices system?"
+    options:
+      - "Without it, every client would need to know the entire internal service topology and call multiple services directly, handling each one's auth and failures individually"
+      - "It eliminates the need for microservices to have any network communication at all"
+      - "It makes every internal service completely identical to every other one"
+      - "There is no problem to solve -- gateways add pure overhead with no benefit"
+    correct: 0
+    explanation: "The gateway provides one stable entry point that can route, aggregate, and handle cross-cutting concerns (auth, rate limiting) once, so clients don't need to know the internal topology."
+  - question: "Why might a single shared API Gateway eventually become a problem of its own?"
+    options:
+      - "Different client types (mobile, desktop web, partner integrations) can have genuinely different data-shape needs, and a single generic gateway accumulates client-specific conditional logic trying to serve all of them"
+      - "API Gateways can only handle one request at a time, ever"
+      - "A single gateway is always faster than having no gateway at all, with no downside"
+      - "Gateways are incompatible with microservices architecture entirely"
+    correct: 0
+    explanation: "A mobile client on a slow connection wants a small summarized payload, while a desktop dashboard wants full detail -- one generic gateway trying to serve both accumulates complexity."
+  - question: "What does the Backend-for-Frontend (BFF) pattern do differently from a single shared API Gateway?"
+    options:
+      - "It gives each distinct client type its own dedicated gateway, tailored specifically to that client's needs, instead of one gateway serving every client"
+      - "It removes the API Gateway layer entirely"
+      - "It requires every client to have identical needs by definition"
+      - "It only works for exactly one client type, the same as a single gateway"
+    correct: 0
+    explanation: "The tradeoff is maintaining multiple gateways instead of one -- worth it specifically when different clients' needs have diverged enough that a shared gateway's compromises are hurting more than one client type."

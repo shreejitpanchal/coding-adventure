@@ -1,0 +1,108 @@
+id: microservices_01
+title: "Microservices"
+language: architecture
+level: 6
+objective: "Understand what makes microservices genuinely different from a modular monolith, and what they actually cost in exchange for independent deployability."
+explanation: |
+  A "modular monolith" -- a single deployable application internally
+  split into well-defined modules (an orders module, a billing module,
+  an inventory module) -- already gives you separation of concerns and
+  clear boundaries in the *code*. What it doesn't give you is
+  independent *deployment*: shipping a one-line fix to the billing
+  module still means rebuilding, testing, and deploying the entire
+  application, and a memory leak in the inventory module can still take
+  down the orders module, since they share one process and one
+  lifecycle. Microservices split those modules into genuinely separate
+  *processes* (often separate deployable services, each with its own
+  database), communicating over the network -- typically HTTP/REST or
+  gRPC for direct calls, and often event-driven messaging (see this
+  category's Event-Driven Architecture exercise) for looser coupling.
+  This buys real independence: the billing team can deploy ten times a
+  day without coordinating with the inventory team, and a crash in one
+  service doesn't directly crash another's process.
+
+  That independence isn't free -- it's traded for genuine *distributed
+  systems* complexity that a monolith (modular or not) never has to
+  deal with. A function call within one process either returns a value
+  or raises immediately; a network call to another service can time
+  out, return a partial response, or fail in ways a local call
+  structurally cannot -- every service-to-service interaction now needs
+  its own timeout, retry logic, and a strategy for what happens if the
+  other side is unreachable (see this category's Saga Pattern exercise
+  for how this plays out across a transaction that spans several
+  services). Data consistency changes shape too: a monolith can often
+  wrap several operations in one database transaction; if `Order
+  Service` and `InventoryService` each own their own database (the
+  standard microservices convention -- one service, one database, no
+  service reaching directly into another's schema), there's no single
+  transaction spanning both anymore, only eventual consistency achieved
+  through careful design.
+
+  The practical lesson: microservices are a genuine, well-proven
+  architecture for scaling *organizations* (many independent teams
+  shipping independently) and for scaling specific bottlenecked
+  components independently -- but adopting them purely because they're
+  the popular pattern, without the organizational or scaling pressure
+  that actually justifies the added operational complexity (service
+  discovery, distributed tracing, network reliability, data
+  consistency across service boundaries), is one of the most common,
+  expensive architecture mistakes in the industry. A well-factored
+  modular monolith is often the right starting point, with a clear path
+  to extracting genuine microservices later, once (and if) the scaling
+  or team-independence pressure actually shows up.
+example_code: |
+  # Modular monolith: separate modules, ONE process, ONE deployment.
+  # order_module.py, billing_module.py, inventory_module.py all ship together,
+  # in one deploy, sharing one database transaction if needed.
+  def place_order(order):
+      with db.transaction():          # one atomic transaction across modules
+          order_module.save(order)
+          inventory_module.reserve_stock(order)
+          billing_module.charge(order)
+
+  # Microservices: separate PROCESSES, separate deploys, separate databases.
+  # OrderService (its own deploy, its own DB) calls InventoryService and
+  # BillingService over the network -- each can fail independently, and
+  # there's no shared transaction spanning all three anymore.
+  class OrderService:
+      def place_order(self, order):
+          self.db.save(order)                                  # own database only
+          try:
+              inventory_client.reserve_stock(order, timeout=2)  # network call -- can time out
+              billing_client.charge(order, timeout=2)           # network call -- can fail independently
+          except NetworkError:
+              # No shared transaction to roll back -- needs an explicit
+              # compensating action instead (see: Saga Pattern).
+              self.mark_order_for_compensation(order)
+category: microservices
+category_level: 1
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [microservices, modular_monolith, distributed_systems, independent_deployment]
+comprehension_check:
+  - question: "What's the key structural difference between a modular monolith and microservices?"
+    options:
+      - "Microservices split modules into genuinely separate processes/deployments (often with their own databases), while a modular monolith's modules still share one process and one deployment"
+      - "A modular monolith has no internal organization at all"
+      - "Microservices always run faster than any monolith"
+      - "There is no real difference -- they're the same thing with different names"
+    correct: 0
+    explanation: "Independent deployability -- being able to ship one service without rebuilding/redeploying everything -- is the defining benefit microservices add over a modular monolith."
+  - question: "What complexity do microservices introduce that a single-process monolith doesn't have to deal with?"
+    options:
+      - "Every service-to-service interaction is now a network call that can time out or partially fail, and there's typically no single database transaction spanning multiple services anymore"
+      - "Microservices eliminate the need for any error handling"
+      - "Microservices guarantee every operation is instantly consistent across all services"
+      - "There is no added complexity -- it's strictly simpler than a monolith"
+    correct: 0
+    explanation: "A local function call can only return or raise; a network call to another service can also time out or fail partially -- this is why patterns like Saga exist, to handle transactions that now span independently-failing services."
+  - question: "According to a common, well-documented architecture mistake, when should a team typically adopt microservices?"
+    options:
+      - "When genuine organizational (many independent teams) or scaling pressure justifies the added operational complexity -- not simply because the pattern is popular"
+      - "Immediately, for every project, regardless of team size or scale"
+      - "Only for projects with fewer than 2 developers"
+      - "Microservices should replace monoliths in literally every case with no exceptions"
+    correct: 0
+    explanation: "A well-factored modular monolith is often the right starting point, with microservices adopted later once real scaling or team-independence pressure actually appears -- adopting them prematurely is a common, expensive mistake."

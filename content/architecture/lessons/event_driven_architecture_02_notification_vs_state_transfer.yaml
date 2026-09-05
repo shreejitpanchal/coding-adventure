@@ -1,0 +1,62 @@
+id: event_driven_architecture_02
+title: "Notification Events vs. Event-Carried State Transfer"
+language: architecture
+level: 2
+objective: "Understand the difference between a thin notification event and one that carries a full copy of the changed data, and the tradeoff each makes."
+explanation: |
+  Not every event needs to carry the same amount of data, and the choice
+  has real consequences. A *notification event* -- `{"event":
+  "OrderUpdated", "order_id": 4521}` -- carries just enough information
+  to say "something changed, go look it up yourself." The subscriber
+  has to call back to `OrderService` to fetch the actual current state,
+  which keeps the event tiny and guarantees the subscriber always sees
+  the *current* data, but couples every subscriber to `OrderService`'s
+  availability at the moment they process the event -- if it's down,
+  every subscriber is stuck too.
+
+  *Event-carried state transfer* embeds the actual data in the event
+  itself -- `{"event": "OrderUpdated", "order_id": 4521, "status":
+  "shipped", "items": [...]}` -- so subscribers never need to call back
+  at all. This removes the runtime coupling to the source service
+  entirely, at the cost of a larger event payload and a new problem:
+  the subscriber's copy is a *snapshot at publish time*, which can
+  silently drift from the source's current truth if a later update
+  event is missed or processed out of order. Choosing between the two
+  is a genuine tradeoff between "small events plus a live dependency on
+  the source" and "self-contained events plus the risk of a stale
+  copy" -- neither one is universally correct.
+example_code: |
+  # Notification event: tiny, but subscribers must call back for data.
+  {"event": "OrderUpdated", "order_id": 4521}
+  # Subscriber: on_order_updated(event) -> order_service.get(event["order_id"])
+
+  # Event-carried state transfer: self-contained, no callback needed.
+  {
+    "event": "OrderUpdated", "order_id": 4521,
+    "status": "shipped", "items": [{"sku": "A1", "qty": 2}]
+  }
+  # Subscriber: on_order_updated(event) -> use event["status"] directly
+category: event_driven_architecture
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [event_driven_architecture, event_carried_state_transfer, notification_event]
+comprehension_check:
+  - question: "What does a subscriber have to do after receiving a thin 'notification' event?"
+    options:
+      - "Call back to the source service to fetch the actual current data, since the event itself only signals that something changed"
+      - "Nothing -- notification events already contain all the data needed"
+      - "Notification events cannot have subscribers at all"
+      - "Discard the event immediately without any further action"
+    correct: 0
+    explanation: "This callback requirement couples every subscriber's processing to the source service's availability at that exact moment."
+  - question: "What risk does event-carried state transfer introduce that a notification event avoids?"
+    options:
+      - "The embedded data is a snapshot at publish time, which can drift from the source's current truth if a later event is missed or processed out of order"
+      - "It has no risk at all -- it's strictly better in every situation"
+      - "It requires the subscriber to always be online"
+      - "It makes the event payload smaller than a notification event"
+    correct: 0
+    explanation: "Self-contained events remove the live dependency on the source service, but introduce the possibility of a stale copy if events are missed or reordered."

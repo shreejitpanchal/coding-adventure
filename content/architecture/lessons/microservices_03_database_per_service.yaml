@@ -1,0 +1,74 @@
+id: microservices_03
+title: "Database-per-Service and the Loss of Cross-Service Transactions"
+language: architecture
+level: 8
+objective: "Understand why each microservice owning its own database is the standard convention, and what it costs in exchange for the independence it buys."
+explanation: |
+  A shared database across several microservices looks convenient at
+  first -- one schema, no data duplication, and a JOIN can pull data
+  from "different services" in a single query. It's also a hidden form
+  of the exact coupling microservices are supposed to remove:
+  `InventoryService` can't change its own table's column names or
+  structure without checking whether `OrderService` (or anyone else)
+  reads that same table directly, which means the two services are no
+  longer independently deployable in any real sense -- a schema change
+  in one requires coordinating with every other service that happens
+  to query the same tables, silently reintroducing the monolith's
+  deployment coupling through the database layer instead of the code
+  layer.
+
+  Database-per-service is the standard convention specifically to avoid
+  this: each service owns its own database schema exclusively, and no
+  other service ever queries it directly -- if `OrderService` needs
+  data that conceptually belongs to `InventoryService`, it asks through
+  `InventoryService`'s own API (or reacts to events it publishes), never
+  by reaching into its tables. This restores real independence, at a
+  real cost: a query that would have been one JOIN across shared tables
+  becomes multiple API calls (or a maintained read model, see this
+  track's CQRS category) aggregated at the application layer, and --
+  since there's no longer a single database transaction spanning
+  services -- multi-service consistency now needs the Saga pattern's
+  compensating-action approach instead of a database rollback.
+example_code: |
+  # The trap: a shared database lets services silently couple through
+  # tables neither of them "owns" exclusively.
+  # InventoryService and OrderService both read/write the same "stock" table.
+  def reserve_stock_shared_db(order):
+      db.execute("UPDATE stock SET qty = qty - 1 WHERE sku = ?", order.sku)
+      # A schema change to `stock` now requires checking EVERY service that touches it.
+
+  # The fix: each service owns its OWN database -- no one else queries it directly.
+  class InventoryService:
+      def reserve_stock(self, sku, qty):
+          self.own_db.execute("UPDATE stock SET qty = qty - ? WHERE sku = ?", qty, sku)
+
+  class OrderService:
+      def place_order(self, order):
+          # Never touches InventoryService's database directly --
+          # goes through its API instead, preserving independence.
+          inventory_client.reserve_stock(order.sku, order.qty)
+          self.own_db.save(order)
+category: microservices
+category_level: 3
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [database_per_service, microservices, data_ownership]
+comprehension_check:
+  - question: "Why is a database shared across multiple microservices considered a hidden form of coupling?"
+    options:
+      - "A schema change in one service's tables requires checking every other service that queries the same tables directly, reintroducing deployment coupling through the database layer"
+      - "Shared databases have no downsides and are the recommended standard"
+      - "It makes every query run measurably slower with no other effect"
+      - "It only affects services written in different programming languages"
+    correct: 0
+    explanation: "This silently recreates the monolith's coupling -- services can no longer be deployed independently if a database schema change might break another service reading the same tables."
+  - question: "What does 'database-per-service' require when one service needs data that conceptually belongs to another?"
+    options:
+      - "It must ask through the owning service's own API (or react to its published events) -- never query that service's database tables directly"
+      - "It must be granted direct read access to every other service's database"
+      - "The two services must be merged back into one"
+      - "Database-per-service means no service can ever access another service's data in any way"
+    correct: 0
+    explanation: "This preserves real independent deployability, at the cost of turning what could have been a single JOIN into API calls or a maintained read model aggregated at the application layer."

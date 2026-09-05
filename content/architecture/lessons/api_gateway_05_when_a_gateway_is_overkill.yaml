@@ -1,0 +1,76 @@
+id: api_gateway_05
+title: "When an API Gateway Is Overkill"
+language: architecture
+level: 40
+objective: "Recognize that an API Gateway earns its cost specifically once multiple services and multiple clients create real coordination problems, and that adding one to a small system solves a problem that doesn't exist yet."
+explanation: |
+  Everything this category has built up -- routing, aggregation,
+  centralized auth and rate limiting, resilience against partial
+  backend failures, even GraphQL federation as a more expressive
+  alternative -- solves problems that only exist once a system actually
+  has multiple independently deployed services and clients that would
+  otherwise need to know about all of them directly. A system with a
+  single backend service and a single client type has none of those
+  problems by construction: there's no internal topology to hide, no
+  cross-cutting concern duplicated across multiple services (there's
+  only one service), and no aggregation to perform across services that
+  don't exist.
+
+  Introducing a gateway in front of a single monolithic backend anyway
+  adds a real cost with nothing to show for it: another network hop on
+  every single request, another component that has to be deployed,
+  monitored, and kept available (and per this category's own lesson on
+  the topic, a *new* single point of failure that wasn't there before),
+  and configuration for routing rules that only ever route to one place.
+  The client could simply call the one backend service directly, with
+  none of that overhead, and lose nothing -- there is no internal
+  topology being hidden, because there's only one thing back there.
+
+  The pattern earns its cost at the specific point where a client would
+  otherwise need direct knowledge of, and direct network calls to,
+  multiple independently-evolving backend services -- which is exactly
+  the point at which this track's own Microservices category applies.
+  Before that point, a gateway is solving a coordination problem that
+  hasn't actually arisen yet, following the same shape as every other
+  "don't reach for this before the underlying need is real" lesson in
+  this track: the machinery is genuinely valuable, precisely once, and
+  only once, the problem it solves actually exists.
+example_code: |
+  # OVERKILL: a gateway in front of exactly ONE backend service --
+  # there's no internal topology to hide, nothing to aggregate.
+  class UnnecessaryGateway:
+      def handle_request(self, request):
+          return single_backend_service.handle(request)   # routes to the ONE place, always
+
+  # THE FIX: for a single-service system, the client calls it directly --
+  # nothing is lost, and a needless network hop/component is avoided.
+  def client_call():
+      return single_backend_service.handle(request)
+
+  # A gateway earns its cost once MULTIPLE independently-evolving services
+  # exist and clients would otherwise need direct knowledge of all of them --
+  # see this track's Microservices category for exactly that threshold.
+category: api_gateway
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: api_gateway_master
+requires_code: false
+concept_tags: [api_gateway, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "Why does a single-service, single-client-type system get nothing from adding an API Gateway?"
+    options:
+      - "There's no internal topology to hide, no cross-cutting concern duplicated across multiple services, and no aggregation to perform -- all the problems a gateway solves require multiple services to exist in the first place"
+      - "API Gateways only work with more than one client type, by technical requirement"
+      - "A gateway always makes a single-service system faster with no downside"
+      - "Single-service systems are incapable of handling any network requests"
+    correct: 0
+    explanation: "The client could call the one backend service directly and lose nothing -- there's no internal topology being hidden, because there's only one thing back there."
+  - question: "According to this lesson, at what point does an API Gateway actually earn its cost?"
+    options:
+      - "Once a client would otherwise need direct knowledge of, and direct calls to, multiple independently-evolving backend services"
+      - "As soon as a system has any backend service at all, regardless of how many"
+      - "Only once a system has been running in production for over a year"
+      - "Gateways never earn their cost under any real circumstances"
+    correct: 0
+    explanation: "Before that point, a gateway solves a coordination problem that hasn't actually arisen yet -- the same 'don't reach for this before the need is real' lesson this track applies elsewhere."

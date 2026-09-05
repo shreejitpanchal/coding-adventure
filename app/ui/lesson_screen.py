@@ -1,4 +1,8 @@
-"""The Explain -> Example -> Try It -> Run -> Result flow for a single exercise."""
+"""The Explain -> Example -> Try It -> Run -> Result flow for a single
+exercise -- or, for a purely conceptual exercise (Exercise.requires_code
+is False, e.g. the `architecture` track), Explain -> Example ->
+Comprehension Check instead, with no code editor, Run button, or
+execution engine involved at all."""
 from __future__ import annotations
 
 import asyncio
@@ -39,7 +43,7 @@ class _ExerciseController:
         self.exercise = exercise
         self.theme = state.theme
         self.scale = state.font_scale
-        self.engine = get_engine(exercise.language)
+        self.engine = get_engine(exercise.language) if exercise.requires_code else None
 
         self._running = False
         self._run_handle: Optional[RunHandle] = None
@@ -48,6 +52,8 @@ class _ExerciseController:
         self._next_exercise_id: Optional[str] = None
         self._current_input_value: Optional[str] = None
         self.input_field: Optional[ft.TextField] = None
+        self._check_index = 0
+        self._check_wrong_count = 0
 
     def _fs(self, base: int) -> int:
         return scaled(base, self.scale)
@@ -77,21 +83,30 @@ class _ExerciseController:
             ft.Text(exercise.explanation.strip(), size=self._fs(14), color=theme.text_muted),
         ])
 
-        example_card = self._card("Example", [
-            make_read_only_code_block(exercise.example_code.strip(), scale=self.scale, theme=theme),
-        ])
+        controls = [header, explanation_card]
 
-        challenge_card = self._card("Your Task", [
-            ft.Text(exercise.challenge.strip(), size=self._fs(14), color=theme.text),
-        ])
+        if exercise.example_code.strip():
+            controls.append(self._card("Example", [
+                make_read_only_code_block(exercise.example_code.strip(), scale=self.scale, theme=theme),
+            ]))
 
-        code_card = self._build_code_card()
-        output_card = self._build_output_card()
         self._build_reward_card()
 
-        controls = [
-            header, explanation_card, example_card, challenge_card, code_card, output_card, self.reward_card,
-        ]
+        if exercise.requires_code:
+            if exercise.challenge.strip():
+                controls.append(self._card("Your Task", [
+                    ft.Text(exercise.challenge.strip(), size=self._fs(14), color=theme.text),
+                ]))
+            controls.append(self._build_code_card())
+            controls.append(self._build_output_card())
+        else:
+            if exercise.challenge.strip():
+                controls.append(self._card("Think About It", [
+                    ft.Text(exercise.challenge.strip(), size=self._fs(14), color=theme.text),
+                ]))
+            controls.append(self._build_comprehension_card())
+
+        controls.append(self.reward_card)
 
         self._content_column = ft.Column(controls, scroll=ft.ScrollMode.AUTO, spacing=10, expand=True)
         content = ft.Container(content=self._content_column, padding=24, expand=True)
@@ -170,6 +185,112 @@ class _ExerciseController:
 
         return self._card("Your Code", children)
 
+    def _build_comprehension_card(self) -> ft.Control:
+        """A short inline multiple-choice check that gates completion for a
+        requires_code=False exercise -- same shape as a QuizQuestion, but
+        embedded in the lesson flow instead of a standalone quiz session.
+        Answering every question correctly in one pass calls _on_success();
+        any wrong answer requires retrying the whole check from the start."""
+        theme = self.theme
+
+        self.check_progress_text = ft.Text("", size=self._fs(13), color=theme.text_muted)
+        self.check_question_text = ft.Text("", size=self._fs(15), weight=ft.FontWeight.BOLD, color=theme.text)
+        self.check_option_labels: list[ft.Text] = []
+        self.check_option_buttons = [self._make_check_option_button(i) for i in range(4)]
+        self.check_feedback_text = ft.Text("", size=self._fs(13))
+        self.check_next_label = ft.Text("Next →", size=self._fs(14), color="#FFFFFF")
+        self.check_next_button = ft.Button(
+            content=self.check_next_label, on_click=self._on_check_next, visible=False, height=44,
+            style=ft.ButtonStyle(bgcolor=theme.primary),
+        )
+        self.check_retry_button = ft.Button(
+            "↺ Try Again", on_click=self._on_check_retry, visible=False, height=44,
+            style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
+        )
+
+        self._render_check_question()
+
+        return self._card("Comprehension Check", [
+            self.check_progress_text,
+            self.check_question_text,
+            ft.Column(self.check_option_buttons, spacing=8),
+            self.check_feedback_text,
+            ft.Row([self.check_next_button, self.check_retry_button], spacing=10, wrap=True),
+        ])
+
+    def _make_check_option_button(self, index: int) -> ft.Button:
+        label = ft.Text("", size=self._fs(14))
+        self.check_option_labels.append(label)
+        return ft.Button(
+            content=label, on_click=lambda _e, i=index: self._on_check_select(i), height=48, width=560,
+            style=ft.ButtonStyle(bgcolor=self.theme.bg),
+        )
+
+    def _render_check_question(self) -> None:
+        theme = self.theme
+        questions = self.exercise.comprehension_check
+        q = questions[self._check_index]
+        self.check_progress_text.value = f"Question {self._check_index + 1} of {len(questions)}"
+        self.check_question_text.value = q["question"]
+        for i, button in enumerate(self.check_option_buttons):
+            button.visible = True
+            self.check_option_labels[i].value = q["options"][i]
+            self.check_option_labels[i].color = theme.text
+            button.disabled = False
+            button.style = ft.ButtonStyle(bgcolor=theme.bg)
+        self.check_feedback_text.value = ""
+        self.check_next_button.visible = False
+        self.check_retry_button.visible = False
+
+    def _on_check_select(self, index: int) -> None:
+        theme = self.theme
+        q = self.exercise.comprehension_check[self._check_index]
+        correct_index = q["correct"]
+        is_correct = index == correct_index
+        if not is_correct:
+            self._check_wrong_count += 1
+
+        for i, button in enumerate(self.check_option_buttons):
+            button.disabled = True
+            if i == correct_index:
+                button.style = ft.ButtonStyle(bgcolor=theme.success)
+                self.check_option_labels[i].color = "#FFFFFF"
+            elif i == index:
+                button.style = ft.ButtonStyle(bgcolor=theme.danger)
+                self.check_option_labels[i].color = "#FFFFFF"
+
+        self.check_feedback_text.value = ("Correct. " if is_correct else "Not quite. ") + q.get("explanation", "")
+        self.check_feedback_text.color = theme.success if is_correct else theme.danger
+        is_last = self._check_index + 1 >= len(self.exercise.comprehension_check)
+        self.check_next_label.value = "Finish" if is_last else "Next →"
+        self.check_next_button.visible = True
+        self.page.update()
+
+    def _on_check_next(self, e) -> None:
+        self._check_index += 1
+        if self._check_index >= len(self.exercise.comprehension_check):
+            if self._check_wrong_count == 0:
+                self._on_success()
+            else:
+                self.check_progress_text.value = f"You missed {self._check_wrong_count} question(s) this time."
+                self.check_question_text.value = ""
+                for button in self.check_option_buttons:
+                    button.visible = False
+                self.check_feedback_text.value = "Review the explanations above, then try again."
+                self.check_feedback_text.color = self.theme.warning
+                self.check_next_button.visible = False
+                self.check_retry_button.visible = True
+                self.page.update()
+        else:
+            self._render_check_question()
+            self.page.update()
+
+    def _on_check_retry(self, e) -> None:
+        self._check_index = 0
+        self._check_wrong_count = 0
+        self._render_check_question()
+        self.page.update()
+
     def _build_output_card(self) -> ft.Control:
         theme = self.theme
         self.output_text = ft.Text("Press Run to see what happens.", size=self._fs(14), color=theme.text_muted)
@@ -221,6 +342,8 @@ class _ExerciseController:
 
     # -- run flow -----------------------------------------------------
     async def _on_keyboard(self, e: ft.KeyboardEvent) -> None:
+        if not self.exercise.requires_code:
+            return
         if e.ctrl and e.key == "Enter" and not self.run_button.disabled and not self._running:
             await self._on_run(e)
 

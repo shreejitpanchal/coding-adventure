@@ -1,0 +1,72 @@
+id: microservices_02
+title: "Service Boundaries: By Bounded Context, Not by Layer"
+language: architecture
+level: 7
+objective: "Understand why splitting microservices along technical layers (a 'database service', a 'UI service') is a common mistake, compared to splitting by business capability."
+explanation: |
+  A tempting first instinct when splitting a monolith is to split along
+  *technical* layers -- a `DatabaseService` that owns all data access, a
+  `BusinessLogicService` that owns rules, a `UIService` that renders
+  pages. This looks organized, but it actually recreates the monolith's
+  coupling in a worse form: implementing one business feature (say,
+  "cancel an order") now requires coordinated changes across all three
+  services, each change requiring its own deploy, and every request
+  fans out across a chain of network calls just to do one cohesive
+  piece of business logic. Splitting by layer optimizes for "what kind
+  of code is this" rather than "what business capability does this
+  serve," which is exactly backwards for the independence microservices
+  are supposed to buy.
+
+  The better boundary follows Domain-Driven Design's bounded contexts
+  (see this track's own Domain-Driven Design category): each service owns a complete
+  vertical slice of one business capability -- its own data, its own
+  business rules, its own API -- rather than one horizontal layer
+  shared across every capability. An `OrderService` owns everything
+  order-related end to end; a `ShippingService` owns everything
+  shipping-related end to end. "Cancel an order" now touches
+  `OrderService` alone (plus whatever events it publishes for others to
+  react to), because the boundary was drawn around a real business
+  capability, not an implementation-technology layer.
+example_code: |
+  # The trap: split by technical layer -- one business feature spans all three.
+  class DatabaseService: ...       # owns ALL data access, for every feature
+  class BusinessLogicService: ...  # owns ALL business rules, for every feature
+  class UIService: ...             # owns ALL rendering, for every feature
+  # "Cancel an order" touches all three services, three separate deploys.
+
+  # The fix: split by business capability -- each service is a full vertical slice.
+  class OrderService:              # owns order data, order rules, order API -- end to end
+      def cancel_order(self, order_id):
+          order = self.db.get(order_id)
+          order.cancel()                        # business rule lives HERE, with its own data
+          self.db.save(order)
+          event_bus.publish("OrderCancelled", order)
+
+  class ShippingService:           # owns shipping data, shipping rules, shipping API
+      @event_bus.subscribe("OrderCancelled")
+      def on_order_cancelled(self, order):
+          self.cancel_pending_shipment(order.id)
+category: microservices
+category_level: 2
+difficulty: gotcha
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [microservices, service_boundaries, bounded_context]
+comprehension_check:
+  - question: "What's the problem with splitting microservices along technical layers (a DatabaseService, a BusinessLogicService, a UIService)?"
+    options:
+      - "Implementing one business feature now requires coordinated changes across all the layer-based services, recreating the monolith's coupling in a worse, more network-heavy form"
+      - "There is no problem -- this is the recommended way to split microservices"
+      - "Technical-layer splitting eliminates the need for a database entirely"
+      - "It's impossible to implement a UI layer as a separate service"
+    correct: 0
+    explanation: "Splitting by layer optimizes for 'what kind of code is this' instead of 'what business capability does this serve' -- exactly backwards for the independence microservices should provide."
+  - question: "What does splitting services by bounded context (business capability) look like instead?"
+    options:
+      - "Each service owns a complete vertical slice of one business capability end to end -- its own data, its own rules, its own API -- rather than one horizontal layer shared across every capability"
+      - "Every service must share the exact same database schema"
+      - "It requires eliminating all business logic from every service"
+      - "It's identical to splitting by technical layer, just renamed"
+    correct: 0
+    explanation: "An OrderService owning everything order-related end to end means 'cancel an order' touches one service, not a coordinated chain across three layer-based services."

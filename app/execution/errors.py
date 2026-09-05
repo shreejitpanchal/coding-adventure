@@ -105,7 +105,10 @@ _NODE_ERROR_TYPE_RE = re.compile(r"^(\w+)(?:\s*\[\w+\])?: (.+)$", re.MULTILINE)
 
 
 def translate_error(stderr: str, language: str = "python") -> tuple[str, str]:
-    if language == "python":
+    if language in ("python", "ai"):
+        # "ai" runs on the exact same Python interpreter as the python
+        # track (see app/execution/registry.py) -- its stderr is genuine
+        # CPython traceback text, so the same friendly-message table applies.
         exc_type = _last_exception_type(stderr)
         return PYTHON_FRIENDLY.get(exc_type, (DEFAULT_MESSAGE, DEFAULT_HINT))
     if language == "java":

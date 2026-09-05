@@ -1,0 +1,85 @@
+id: api_gateway_03
+title: "The Gateway as a Single Point of Failure"
+language: architecture
+level: 38
+objective: "Understand why a gateway's central position -- exactly what makes it useful -- also makes its own availability and resilience uniquely critical, and the mitigations that address that risk."
+explanation: |
+  Every request to every service now passes through one component (see
+  this category's previous two lessons) -- which is precisely what
+  makes the gateway valuable, and precisely what makes it dangerous if
+  it isn't built with that responsibility in mind. If twelve
+  microservices are each independently deployed and one of them goes
+  down, only the functionality that specific service provided is
+  affected. If the gateway itself goes down, *nothing* is reachable at
+  all, regardless of how healthy every individual service behind it
+  is -- the gateway has become the single point of failure for a system
+  that was specifically split into independent services to avoid
+  exactly that kind of blast radius.
+
+  The same concentration risk shows up in latency and fault
+  propagation, not just total outages. If the gateway aggregates
+  responses from three services (per this category's opening example)
+  and calls them sequentially, the client's total latency is the *sum*
+  of all three -- and if it calls them and waits for every one to
+  respond before returning anything, one slow or hanging service can
+  stall the entire aggregated response even though the other two
+  services responded instantly. A naive gateway can turn one
+  service's localized slowness into a system-wide slowness experienced
+  by every client.
+
+  The mitigations follow directly from naming the risk precisely: the
+  gateway itself needs to be deployed with real redundancy (multiple
+  instances behind a load balancer, not a single process), calls to
+  independent backend services should be issued concurrently rather
+  than sequentially where the responses don't depend on each other,
+  and each backend call needs its own timeout and circuit breaker (see
+  this track's own Circuit Breaker category) so one failing dependency
+  degrades gracefully -- returning a partial response with the healthy
+  data included, where the client experience allows it -- rather than
+  making the entire aggregated request fail because of a single
+  unhealthy dependency.
+example_code: |
+  # RISKY: sequential calls mean total latency is the SUM of every call,
+  # and one hanging service stalls the ENTIRE response.
+  def get_dashboard_naive(user_id):
+      profile = user_service.get(user_id)              # waits fully before starting the next call
+      orders = order_service.get_recent(user_id)
+      recs = recommendation_service.get_for_user(user_id)
+      return combine(profile, orders, recs)
+
+  # BETTER: concurrent calls with per-call timeouts and graceful degradation --
+  # one slow/failing service doesn't take down the whole aggregated response.
+  def get_dashboard_resilient(user_id):
+      results = run_concurrently([
+          (user_service.get, user_id, timeout=2),
+          (order_service.get_recent, user_id, timeout=2),
+          (recommendation_service.get_for_user, user_id, timeout=2),
+      ])
+      profile = results["user_service"] if results["user_service"].ok else None
+      orders = results["order_service"] if results["order_service"].ok else []
+      recs = results["recommendation_service"] if results["recommendation_service"].ok else []
+      return combine(profile, orders, recs)   # a partial response, not a total failure
+category: api_gateway
+category_level: 3
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [api_gateway, single_point_of_failure, resilience, circuit_breaker]
+comprehension_check:
+  - question: "Why does an API Gateway's central position make it uniquely risky compared to any one individual microservice going down?"
+    options:
+      - "If the gateway itself goes down, nothing is reachable at all, regardless of how healthy every individual service behind it is -- unlike one service failing, which only affects its own functionality"
+      - "The gateway has no more risk than any other single service in the system"
+      - "A gateway going down only affects requests made on weekends"
+      - "Microservices cannot function at all without a gateway present"
+    correct: 0
+    explanation: "The gateway becomes the single point of failure for a system that was specifically split into independent services to avoid exactly that kind of blast radius."
+  - question: "What happens if a gateway calls three backend services sequentially and waits for all of them before responding?"
+    options:
+      - "Total latency becomes the sum of all three calls, and one slow or hanging service can stall the entire aggregated response even if the others responded instantly"
+      - "The three calls automatically run in parallel regardless of how they're coded"
+      - "It has no effect on latency at all"
+      - "Sequential calls are always faster than concurrent calls"
+    correct: 0
+    explanation: "A naive gateway can turn one service's localized slowness into system-wide slowness -- the fix is issuing independent calls concurrently with their own timeouts, degrading gracefully instead of failing entirely."

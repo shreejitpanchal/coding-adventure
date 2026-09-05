@@ -1,0 +1,84 @@
+id: saga_pattern_04
+title: "The Pivot Transaction: Where Retreat Becomes Advance"
+language: architecture
+level: 19
+objective: "Understand the concept of a saga's pivot transaction -- the step after which the saga can no longer be compensated backward and must instead be retried forward until it succeeds."
+explanation: |
+  Every step in a saga so far in this category has been treated as
+  symmetric: it either succeeds and the saga moves on, or it fails and
+  the saga compensates backward through everything already done. Real
+  sagas usually have a step where that symmetry breaks -- a **pivot
+  transaction**, the point past which backward compensation is either
+  impossible or no longer the right response, and the only remaining
+  option if something goes wrong is to retry forward until it succeeds.
+
+  A shipment-scheduling step is a common pivot: once a courier has
+  physically been dispatched to pick up a package, there's no
+  meaningful "compensation" that un-dispatches them the way
+  `refund_payment()` cleanly reverses a charge -- the courier is
+  already in a truck. Steps *before* the pivot (reserve inventory,
+  charge the card) are safely compensatable, because nothing externally
+  irreversible has happened yet. Steps *at or after* the pivot are
+  treated differently on purpose: if scheduling the shipment fails
+  because of a transient error (the courier API timed out), the correct
+  response isn't to compensate everything backward and refund the
+  customer -- it's to retry the shipment-scheduling step itself until
+  it succeeds, since the alternative (unwinding a step that may have
+  partially, irreversibly happened) is worse than a delayed retry.
+
+  Identifying the pivot transaction is a deliberate design step for
+  every saga, not something that falls out automatically: it's
+  whichever step is the last one that's still safely, cleanly
+  compensatable, or equivalently the first one that either can't be
+  undone or shouldn't be undone even if it technically could (a
+  "welcome" email that's already been sent falls into the same category
+  -- see this category's opening lesson). Sagas are typically designed
+  with retry-with-backoff logic specifically for the pivot step and
+  everything after it, and compensation logic specifically for
+  everything before it -- treating the entire sequence as uniformly
+  compensatable is the mistake this lesson is naming.
+example_code: |
+  # BEFORE the pivot: safely compensatable if a later step fails.
+  inventory_service.reserve_stock(order)      # compensatable: release_stock()
+  billing_service.charge_card(order)          # compensatable: refund_payment()
+
+  # THE PIVOT: once dispatched, there's no clean "un-dispatch" --
+  # from here on, the saga retries FORWARD instead of compensating BACKWARD.
+  def schedule_shipment_with_retry(order, max_attempts=5):
+      for attempt in range(max_attempts):
+          try:
+              courier_api.dispatch(order)     # once this succeeds, it's irreversible
+              return
+          except TransientCourierError:
+              backoff_sleep(attempt)
+      # only after exhausting retries does this become a genuine incident,
+      # NOT an automatic compensate-everything-backward response
+      alert_ops_team(order)
+
+  # AFTER the pivot: further steps assume dispatch already succeeded,
+  # and are themselves typically also retry-forward, not compensatable.
+  notification_service.send_shipment_confirmation(order)
+category: saga_pattern
+category_level: 4
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [saga_pattern, pivot_transaction, distributed_transactions, retries]
+comprehension_check:
+  - question: "What is a saga's pivot transaction?"
+    options:
+      - "The step after which backward compensation is no longer possible or appropriate, and failures must instead be handled by retrying forward until success"
+      - "The very first step of every saga, with no exceptions"
+      - "A step that has no effect on the saga's outcome either way"
+      - "A transaction that always runs on a completely separate database"
+    correct: 0
+    explanation: "Once a courier has physically been dispatched, there's no clean compensation the way refund_payment() cleanly reverses a charge -- from that point on, the saga must retry forward instead."
+  - question: "Why do sagas typically use different failure-handling logic before versus at/after the pivot transaction?"
+    options:
+      - "Steps before the pivot are safely undoable via compensation, while steps at or after it either can't be undone or shouldn't be, so retry-with-backoff is used instead"
+      - "There is no meaningful difference, and both should always use identical logic"
+      - "Steps before the pivot should never be retried under any circumstances"
+      - "The pivot transaction only exists in sagas with exactly two steps"
+    correct: 0
+    explanation: "Treating the entire sequence as uniformly compensatable is exactly the mistake this lesson identifies -- identifying the pivot is a deliberate design step for every saga."

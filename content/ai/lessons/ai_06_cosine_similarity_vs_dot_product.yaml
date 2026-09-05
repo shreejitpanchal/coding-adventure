@@ -1,0 +1,80 @@
+id: ai_06
+title: "Using Raw Dot Product Where Cosine Similarity Was Needed"
+language: ai
+level: 6
+objective: "Fix a similarity function that uses raw dot product (which is sensitive to vector magnitude) instead of cosine similarity, which measures direction alone."
+explanation: |
+  A dot product between two vectors grows with their *magnitude*, not
+  just how aligned their directions are -- `dot([1,2,3], [2,4,6])`
+  (two vectors pointing in the exact same direction, one just twice as
+  long) is `28`, a number with no fixed scale to interpret at all: it
+  could mean "very similar," "somewhat similar," or "not similar,"
+  depending entirely on how long the two vectors happen to be, which is
+  rarely what a retrieval system actually wants to know. In a RAG
+  pipeline, document embeddings can naturally vary in magnitude for
+  reasons that have nothing to do with *semantic* similarity (document
+  length, embedding model quirks) -- using raw dot product as the
+  ranking score means a long, loosely-related document can outscore a
+  short, precisely-relevant one purely because its vector happens to be
+  longer.
+
+  Cosine similarity fixes this by normalizing away magnitude entirely:
+  dividing the dot product by the product of both vectors' magnitudes
+  (`dot / (|a| * |b|)`) leaves a value in `[-1, 1]` that depends only on
+  the *angle* between the two vectors -- `1.0` means pointing in exactly
+  the same direction, regardless of how long either vector is. This is
+  why cosine similarity, not raw dot product, is the standard metric for
+  comparing embedding vectors in retrieval and semantic search: it
+  answers "how aligned in meaning are these two," which is the question
+  that actually matters, rather than "how large are these vectors,"
+  which usually isn't a meaningful signal at all.
+example_code: |
+  import math
+
+  # The trap: raw dot product is sensitive to vector magnitude.
+  def similarity_trap(a, b):
+      return sum(x * y for x, y in zip(a, b))
+
+  same_direction = [2, 4, 6]     # same direction as [1,2,3], just longer
+  different_direction = [1, 0, 0]
+  query = [1, 2, 3]
+  print(round(similarity_trap(query, same_direction), 4))       # 28 -- large purely from magnitude
+  print(round(similarity_trap(query, different_direction), 4))  # 1  -- looks LESS similar than it should
+
+  # The fix: cosine similarity normalizes away magnitude entirely.
+  def cosine_similarity(a, b):
+      dot = sum(x * y for x, y in zip(a, b))
+      mag_a = math.sqrt(sum(x * x for x in a))
+      mag_b = math.sqrt(sum(x * x for x in b))
+      return dot / (mag_a * mag_b)
+
+  print(round(cosine_similarity(query, same_direction), 4))       # 1.0 -- correctly identical direction
+  print(round(cosine_similarity(query, different_direction), 4))  # 0.2673 -- correctly less similar
+starter_code: |
+  import math
+
+  def cosine_similarity(a, b):
+      return sum(x * y for x, y in zip(a, b))
+
+  query = [1, 2, 3]
+  same_direction = [2, 4, 6]
+  print(round(cosine_similarity(query, same_direction), 4))
+challenge: |
+  Fix `cosine_similarity` so it actually computes cosine similarity
+  (dividing the dot product by the product of both vectors' magnitudes)
+  instead of returning the raw dot product -- the result for these two
+  same-direction vectors should be 1.0.
+expected_output: |
+  1.0
+hints:
+  - "mag_a = math.sqrt(sum(x*x for x in a)); mag_b = math.sqrt(sum(x*x for x in b)); return dot / (mag_a * mag_b)"
+  - "Keep the dot product computation as-is -- it's still needed, just no longer the whole answer on its own."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 1
+difficulty: core
+contains_patterns:
+  - "math\\.sqrt"
+  - "mag_a \\* mag_b"
+concept_tags: [cosine_similarity, embeddings, vector_similarity]

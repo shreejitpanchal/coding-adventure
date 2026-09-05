@@ -1,0 +1,98 @@
+id: event_driven_architecture_01
+title: "Event-Driven Architecture"
+language: architecture
+level: 1
+objective: "Understand how event-driven architecture decouples services by having them react to published facts instead of calling each other directly."
+explanation: |
+  In a direct-call architecture, `OrderService` that needs to update
+  inventory and notify shipping has to know about `InventoryService` and
+  `ShippingService` explicitly -- it calls them by name, waits for each
+  response, and fails (or has to implement its own retry/compensation
+  logic) if either one is down. Adding a fourth interested service (say,
+  analytics) means modifying `OrderService` again to add yet another
+  outbound call. The caller ends up tightly coupled to every consumer of
+  its output, even though conceptually all it actually did was "an order
+  happened" -- it shouldn't need to know or care who's listening.
+
+  Event-driven architecture inverts this: `OrderService` publishes a
+  fact -- `OrderPlaced` -- to a broker (a message queue or event stream
+  like Kafka, RabbitMQ, or a cloud pub/sub service) and moves on,
+  without knowing or caring who, if anyone, is listening. `Inventory
+  Service`, `ShippingService`, and `AnalyticsService` each independently
+  *subscribe* to `OrderPlaced` and react in their own time, on their own
+  schedule. Adding a new consumer means writing a new subscriber --
+  zero changes to `OrderService` itself, since it was never coupled to
+  any specific consumer in the first place. This also naturally
+  decouples *availability*: if `ShippingService` is temporarily down,
+  the event sits durably in the broker until it recovers, rather than
+  the entire order-placement flow failing because one downstream
+  service happened to be unreachable at that exact moment.
+
+  The tradeoff is that event-driven systems trade *immediate
+  consistency* for *resilience and decoupling*: after `OrderPlaced` is
+  published, there's a window (however small) where inventory hasn't
+  been decremented yet and shipping hasn't been notified yet -- the
+  system is only *eventually* consistent, not instantly so. Debugging
+  also gets harder: instead of a single call stack you can step through,
+  understanding "what happened for order #4521" means tracing a fact
+  through however many independent subscribers reacted to it, each on
+  their own timeline -- which is exactly why distributed tracing and
+  correlation IDs (see this app's `ai` track for the mechanics of one)
+  become essential once a system goes event-driven.
+example_code: |
+  # Direct-call (tightly coupled): OrderService must know every consumer.
+  class OrderService:
+      def place_order(self, order):
+          save(order)
+          inventory_service.reserve_stock(order)     # must know about it
+          shipping_service.schedule_shipment(order)   # must know about it
+          analytics_service.record_order(order)       # adding this means editing OrderService
+
+  # Event-driven (decoupled): OrderService only announces a fact.
+  class OrderService:
+      def place_order(self, order):
+          save(order)
+          event_bus.publish("OrderPlaced", order)     # doesn't know or care who's listening
+
+  # Each interested service subscribes independently -- OrderService
+  # never changes when a new subscriber is added.
+  @event_bus.subscribe("OrderPlaced")
+  def on_order_placed_reserve_stock(order): ...
+
+  @event_bus.subscribe("OrderPlaced")
+  def on_order_placed_schedule_shipment(order): ...
+
+  @event_bus.subscribe("OrderPlaced")
+  def on_order_placed_record_analytics(order): ...  # added with zero changes elsewhere
+category: event_driven_architecture
+category_level: 1
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [event_driven_architecture, decoupling, eventual_consistency, message_broker]
+comprehension_check:
+  - question: "What's the main structural difference between a direct-call architecture and an event-driven one?"
+    options:
+      - "In event-driven architecture, the publisher announces a fact and doesn't know or care which services are listening, unlike a direct caller which must name every consumer explicitly"
+      - "Event-driven architecture never uses a network at all"
+      - "Direct calls are always faster and event-driven systems have no valid use case"
+      - "They're functionally identical, just different terminology"
+    correct: 0
+    explanation: "Decoupling the publisher from its consumers is the core benefit -- adding a new subscriber requires zero changes to the service that publishes the event."
+  - question: "What's the main tradeoff event-driven architecture makes to gain this decoupling?"
+    options:
+      - "Immediate consistency, in exchange for eventual consistency and added complexity in tracing what happened across independent subscribers"
+      - "There is no tradeoff -- it's strictly better in every way"
+      - "It requires giving up all forms of error handling"
+      - "It only works for systems with a single service"
+    correct: 0
+    explanation: "After an event is published, there's a window where downstream subscribers haven't yet reacted -- the system is only eventually consistent, and debugging requires tracing a fact across independently-timed subscribers instead of a single call stack."
+  - question: "If ShippingService is temporarily down in an event-driven system, what typically happens to an OrderPlaced event meant for it?"
+    options:
+      - "It sits durably in the message broker until ShippingService recovers and can process it"
+      - "The entire order-placement flow fails immediately"
+      - "The event is silently lost forever with no way to recover it"
+      - "OrderService automatically retries calling ShippingService directly"
+    correct: 0
+    explanation: "A durable broker (Kafka, RabbitMQ, etc.) holds the event until a consumer is available to process it, decoupling the publisher's availability from each subscriber's availability."

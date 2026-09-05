@@ -1,0 +1,78 @@
+id: ai_11
+title: "An Agent's Tool Dispatcher That Fails Silently"
+language: ai
+level: 11
+objective: "Fix a tool dispatcher that silently returns None for an unrecognized tool name, by raising a clear error instead."
+explanation: |
+  An agentic system's dispatcher receives a tool name (chosen by the
+  model, or by whatever's driving the agent loop) and has to route it
+  to the matching function. Checking `if tool_name in tools:` and
+  calling the matching function handles the known case correctly, but
+  with no corresponding `else`, an *unrecognized* tool name falls
+  straight through the function with nothing executed and nothing
+  returned -- which in Python means the function implicitly returns
+  `None`. Nothing about this crashes, logs a warning, or otherwise
+  signals that anything went wrong; the caller just receives `None`
+  back, indistinguishable from a tool that legitimately returned no
+  useful result. In an agent loop, this kind of silent failure is
+  dangerous specifically because it doesn't stop anything -- the loop
+  keeps going, potentially building on a `None` result as if it were a
+  real answer, with no error anywhere in the trace to point back to the
+  actual cause: a tool name that was never recognized in the first
+  place.
+
+  The fix is to make the unknown-tool case explicit and loud: `raise
+  ValueError(f"unknown tool: {tool_name}")` in an `else` branch turns a
+  silent, hard-to-trace `None` into an immediate, specific exception
+  that names exactly what went wrong. This is the general principle
+  behind "fail loudly and immediately" error handling -- an agent
+  system that can call arbitrary tools by name needs every dispatch
+  path, including the unrecognized-name path, to produce a clear signal
+  rather than a value that's indistinguishable from a legitimate
+  result.
+example_code: |
+  # The trap: an unrecognized tool name silently falls through to None.
+  def dispatch_trap(tool_name, args, tools):
+      if tool_name in tools:
+          return tools[tool_name](**args)
+      # no else -- falls through, implicitly returns None
+
+  tools = {"add": lambda a, b: a + b}
+  result = dispatch_trap("multiply", {"a": 2, "b": 3}, tools)
+  print(result)   # None -- with no indication anything went wrong at all
+
+  # The fix: raise a clear, specific error for an unrecognized tool name.
+  def dispatch(tool_name, args, tools):
+      if tool_name not in tools:
+          raise ValueError(f"unknown tool: {tool_name}")
+      return tools[tool_name](**args)
+
+  try:
+      dispatch("multiply", {"a": 2, "b": 3}, tools)
+  except ValueError as e:
+      print(f"caught: {e}")   # caught: unknown tool: multiply
+starter_code: |
+  def dispatch(tool_name, args, tools):
+      if tool_name in tools:
+          return tools[tool_name](**args)
+
+  tools = {"add": lambda a, b: a + b}
+  result = dispatch("multiply", {"a": 2, "b": 3}, tools)
+  print(result is None)
+challenge: |
+  Fix `dispatch` so calling it with an unrecognized tool name raises a
+  ValueError ("unknown tool: multiply") instead of silently returning
+  None -- catch it and print "caught: unknown tool: multiply".
+expected_output: |
+  caught: unknown tool: multiply
+hints:
+  - "if tool_name not in tools: raise ValueError(f\"unknown tool: {tool_name}\")"
+  - "Wrap the dispatch(...) call in a try/except ValueError as e, printing f\"caught: {e}\" in the except block."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "raise ValueError"
+concept_tags: [tool_dispatch, agentic_framework, error_handling]

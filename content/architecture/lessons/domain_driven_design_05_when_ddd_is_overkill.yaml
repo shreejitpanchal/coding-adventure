@@ -1,0 +1,87 @@
+id: domain_driven_design_05
+title: "When DDD Is Overkill"
+language: architecture
+level: 30
+objective: "Recognize that Domain-Driven Design's full toolkit is aimed at genuinely complex domains, and that applying it to a simple CRUD application adds ceremony without a corresponding benefit."
+explanation: |
+  Everything built up in this category -- bounded contexts, aggregates
+  enforcing invariants, a carefully maintained ubiquitous language,
+  deliberate context-mapping relationships -- earns its cost
+  specifically when the underlying domain has real complexity worth
+  modeling carefully: genuinely intricate business rules, multiple
+  teams whose concepts of the same real-world thing legitimately
+  diverge, and behavior that's expected to keep evolving as the domain
+  itself is better understood over time. That complexity is exactly
+  what DDD's ceremony is *for* -- it's not accidental overhead, it's
+  the price of correctly modeling something that's actually
+  complicated.
+
+  A simple internal tool -- a form that creates a row, a list view that
+  reads rows, an edit screen that updates a row -- has none of that
+  underlying complexity to justify the ceremony. Introducing an
+  aggregate root with enforced invariants around a table that has no
+  meaningful invariants beyond basic field validation, or drawing
+  bounded-context boundaries around a domain with exactly one team and
+  one shared understanding of every term, adds indirection and
+  process with nothing underneath it to protect. The tell is the same
+  one this track raises for CQRS and sagas: DDD's machinery solves
+  *specific* problems (multi-team model divergence, complex invariants
+  spanning several objects, a domain vocabulary that's easy to get
+  subtly wrong) -- if none of those specific problems is actually
+  present, the machinery has nothing to attach to and is pure cost.
+
+  This doesn't mean DDD is "only for huge companies" -- a small team
+  can absolutely have a genuinely complex domain (a scheduling system
+  with intricate conflict-resolution rules, say) that benefits from
+  careful modeling regardless of team size. The actual test is the
+  domain's complexity, not the organization's size: a one-person
+  project with a genuinely gnarly domain can benefit from thinking in
+  aggregates and a careful ubiquitous language, while a fifty-person
+  team building straightforward CRUD screens gets nothing from DDD's
+  ceremony beyond the cost of applying it.
+example_code: |
+  # OVERKILL: a simple settings form has no invariants worth an aggregate,
+  # no divergent teams needing a bounded context, no complex domain rules.
+  class UserSettingsAggregateRoot:                # unnecessary ceremony
+      def __init__(self):
+          self._settings = {}
+
+      def update_setting(self, key, value):        # no invariant is actually being protected here
+          self._settings[key] = value
+
+  # THE FIX: for genuinely simple CRUD, a plain model is the right level
+  # of ceremony -- nothing is lost by skipping aggregates/bounded contexts.
+  class UserSettings:
+      def __init__(self):
+          self.settings = {}
+
+      def set(self, key, value):
+          self.settings[key] = value    # no invariant to protect, so nothing to enforce beyond this
+
+  # DDD's machinery earns its cost when a REAL problem is present --
+  # e.g. a scheduling system with genuinely intricate conflict-resolution
+  # invariants -- regardless of whether the team is 1 person or 50.
+category: domain_driven_design
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: domain_driven_design_master
+requires_code: false
+concept_tags: [domain_driven_design, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "What determines whether DDD's full toolkit is worth applying to a given project, according to this lesson?"
+    options:
+      - "The domain's actual complexity -- intricate business rules, divergent team concepts, evolving behavior -- not the size of the organization building it"
+      - "Whether the company building it has more than 100 employees"
+      - "DDD should always be applied to every project regardless of domain complexity"
+      - "Whether the project uses a relational database"
+    correct: 0
+    explanation: "A one-person project with a genuinely gnarly domain can benefit from DDD's modeling tools, while a fifty-person team building straightforward CRUD screens gets nothing from the ceremony."
+  - question: "What happens when DDD's machinery (aggregates, bounded contexts, context mapping) is applied to a domain with no real underlying complexity?"
+    options:
+      - "It adds indirection and process with nothing underneath it to protect -- the machinery has no specific problem to attach to"
+      - "It always makes the application meaningfully faster"
+      - "It has no downside whatsoever in any situation"
+      - "It automatically simplifies the codebase regardless of the domain"
+    correct: 0
+    explanation: "DDD's ceremony is the price of correctly modeling genuine complexity -- without that complexity present, the same machinery is pure cost with no corresponding benefit."

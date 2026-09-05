@@ -4,7 +4,7 @@ from app.engine import lesson_engine as lesson_engine_module
 
 def test_loads_python_content():
     engine = ExerciseEngine("python")
-    assert len(engine) == 95
+    assert len(engine) == 75
     assert engine.has("idioms_gotchas_01")
     assert not engine.has("does_not_exist")
 
@@ -16,8 +16,7 @@ def test_categories_derived_from_content():
     assert "gotcha_gauntlet" in categories
     assert "thread_scheduling" in categories
     assert "observability" in categories
-    assert "ai" in categories
-    assert len(categories) == 15
+    assert len(categories) == 14
 
 
 def test_category_level_1_always_unlocked():
@@ -135,3 +134,45 @@ def test_loads_spring_content():
     assert "events" in categories
     assert "aop" in categories
     assert "resilience" in categories
+
+
+def test_loads_ai_content():
+    engine = ExerciseEngine("ai")
+    assert len(engine) == 20
+    assert engine.has("ai_01")
+    categories = engine.categories()
+    assert len(categories) == 4
+    assert categories == ["ml_fundamentals", "rag", "agentic_frameworks", "mcp"]
+    for category in categories:
+        assert len(engine.lessons_in_category(category)) == 5
+
+
+def test_ai_and_architecture_always_fully_unlocked():
+    for language in ("ai", "architecture"):
+        engine = ExerciseEngine(language)
+        assert len(engine) > 0
+        assert all(engine.is_unlocked(ex, completed_ids=set()) for ex in engine.all_in_order())
+
+
+def test_loads_architecture_content():
+    engine = ExerciseEngine("architecture")
+    assert len(engine) == 50
+    assert engine.has("event_driven_architecture_01")
+    categories = engine.categories()
+    assert categories == [
+        "event_driven_architecture",
+        "microservices",
+        "cqrs",
+        "saga_pattern",
+        "strangler_fig",
+        "domain_driven_design",
+        "hexagonal_architecture",
+        "api_gateway",
+        "circuit_breaker",
+        "idempotency",
+    ]
+    for category in categories:
+        assert len(engine.lessons_in_category(category)) == 5
+    for ex in engine.all_in_order():
+        assert ex.requires_code is False
+        assert len(ex.comprehension_check) >= 2

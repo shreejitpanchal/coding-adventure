@@ -1,0 +1,83 @@
+id: domain_driven_design_04
+title: "Context Mapping: Relationships Between Bounded Contexts"
+language: architecture
+level: 29
+objective: "Understand context mapping -- the deliberate design of how two bounded contexts relate to and integrate with each other -- and the tradeoffs between the main relationship patterns."
+explanation: |
+  This category's opening lesson established that bounded contexts have
+  their own independent models, and that where they need to share
+  information, that's an explicit, deliberately-designed integration --
+  but "explicit integration" isn't one single mechanism, and *which*
+  relationship pattern gets used between two specific contexts is
+  itself a real architectural decision with real tradeoffs, not an
+  afterthought once the contexts themselves are drawn.
+
+  A **shared kernel** is the tightest coupling: two contexts explicitly
+  agree to share a small, jointly-owned piece of model (a `Money` value
+  type, say) that both depend on directly -- convenient when the shared
+  piece is genuinely small and stable, but it means neither team can
+  change that shared piece unilaterally, since both sides depend on it
+  directly. A **customer-supplier** relationship is looser: one context
+  (the supplier, e.g. `InventoryContext`) provides data the other (the
+  customer, e.g. `OrderContext`) depends on, with the supplier team
+  committing to consider the customer's needs when planning changes --
+  a real but negotiated dependency, not a full shared model. An
+  **anti-corruption layer** (this track's Strangler Fig category covers
+  the same mechanism for legacy migration) is the loosest: the
+  downstream context translates the upstream context's model into its
+  own on the way in, so the upstream context's internal changes never
+  propagate directly into the downstream context's own domain model at
+  all.
+
+  Choosing between these isn't about picking the "best" one -- it's
+  about matching the coupling to the actual relationship between the
+  two teams and contexts involved. Two contexts owned by the same
+  team, evolving together, can reasonably share a kernel; two contexts
+  owned by teams with different priorities and release cadences, where
+  one is a legacy or third-party system the other team doesn't control
+  at all, need the isolation an anti-corruption layer provides,
+  precisely because the downstream team has no influence over the
+  upstream model's changes and needs to be insulated from them.
+example_code: |
+  # Shared kernel: both contexts depend DIRECTLY on the same jointly-owned type --
+  # tight coupling, appropriate only when it's small, stable, and jointly maintained.
+  from shared_kernel import Money   # both OrderContext and BillingContext import this directly
+
+  # Customer-supplier: OrderContext depends on InventoryContext's data,
+  # and InventoryContext's team commits to considering that dependency.
+  class OrderContext:
+      def place_order(self, order):
+          available = inventory_context_api.check_availability(order.product_id)  # a negotiated dependency
+
+  # Anti-corruption layer: the loosest coupling -- upstream's model never
+  # propagates directly into this context's own domain model.
+  class LegacySupplierTranslator:
+      def to_domain_model(self, legacy_supplier_response) -> Product:
+          return Product(
+              name=legacy_supplier_response["itm_desc"],   # upstream's own quirky shape,
+              price=Money(legacy_supplier_response["px_cents"] / 100),  # translated ONCE, here
+          )
+category: domain_driven_design
+category_level: 4
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [domain_driven_design, context_mapping, bounded_context, anti_corruption_layer]
+comprehension_check:
+  - question: "What is a 'shared kernel' relationship between two bounded contexts?"
+    options:
+      - "Two contexts explicitly agree to share a small, jointly-owned piece of model that both depend on directly -- appropriate when it's genuinely small and stable"
+      - "A relationship where the two contexts share absolutely nothing at all"
+      - "A synonym for a full merge of two bounded contexts into one"
+      - "A pattern that only applies to legacy systems"
+    correct: 0
+    explanation: "It's the tightest coupling option -- neither team can change the shared piece unilaterally, since both sides depend on it directly, so it only makes sense for something genuinely small and stable."
+  - question: "When is an anti-corruption layer the right choice between two bounded contexts, according to this lesson?"
+    options:
+      - "When one context (e.g. a legacy or third-party system) is outside the downstream team's control, so they need insulation from its internal changes"
+      - "It's always the best choice for every relationship between any two contexts"
+      - "Only when the two contexts are owned by exactly the same team"
+      - "It's never an appropriate choice between bounded contexts"
+    correct: 0
+    explanation: "Matching the coupling to the actual relationship matters -- an ACL insulates a downstream context from an upstream model the team has no influence over changing."

@@ -1,0 +1,105 @@
+id: strangler_fig_01
+title: "The Strangler Fig Pattern"
+language: architecture
+level: 21
+objective: "Understand how the Strangler Fig pattern lets a legacy system be replaced incrementally, behind a routing facade, instead of through a risky big-bang rewrite."
+explanation: |
+  A full rewrite of a legacy system -- freeze the old system, build a
+  replacement from scratch, cut over all at once -- is one of the most
+  consistently risky moves in software engineering, for a well-known
+  reason: the old system, however unpleasant its code is, has usually
+  accumulated years of accidentally-load-bearing edge-case handling
+  that nobody remembers the reason for anymore, and a rewrite has to
+  either rediscover every one of those edge cases from scratch or ship
+  without them. The "big bang" cutover then exposes every gap at once,
+  on the same day, with the old system already decommissioned and
+  unavailable as a fallback -- exactly the worst possible way to
+  discover what was missing.
+
+  The Strangler Fig pattern (named after the vine that grows around a
+  host tree, gradually taking over its structure until the original
+  tree is no longer needed) avoids the big-bang cutover entirely: a
+  routing facade sits in front of the legacy system, and new
+  functionality is built as separate, independent services behind that
+  facade. The facade initially routes every request to the legacy
+  system unchanged; incrementally, specific routes get redirected to a
+  new service instead, one capability at a time, while everything else
+  keeps flowing through the old system exactly as before. `/api/orders`
+  might get its own new service this quarter while `/api/billing`
+  still goes straight to the legacy monolith -- both routes are live in
+  production simultaneously, and each migrated route can be validated
+  independently, with the option to route it right back to the legacy
+  system if something's wrong, since the old code path hasn't been
+  deleted yet.
+
+  This trades a single high-risk cutover for a longer migration with
+  many small, independently reversible steps -- each one small enough
+  to actually validate in production before moving to the next, and
+  small enough that a mistake affects one route, not the entire system.
+  The legacy system is only fully decommissioned once every meaningful
+  capability has been migrated and validated -- which can take a long
+  time, and the facade itself (plus running two systems side by side
+  during the transition) is a genuine, ongoing operational cost, not a
+  free lunch. The pattern is specifically valuable when the risk of a
+  big-bang rewrite (a system whose behavior is poorly understood,
+  whose edge cases are undocumented, or whose failure would be
+  extremely costly) outweighs the cost of running two systems
+  side-by-side for an extended migration period -- for a small,
+  well-understood system, a straightforward rewrite can still be the
+  faster, simpler choice.
+example_code: |
+  # A routing facade sits in front of both systems -- initially,
+  # everything goes to legacy.
+  def route_request(request):
+      if request.path.startswith("/api/orders"):
+          return new_orders_service.handle(request)     # migrated -- validated in production
+      else:
+          return legacy_monolith.handle(request)         # not yet migrated -- unchanged behavior
+
+  # Over time, more routes move from the else-branch to explicit,
+  # independently-validated branches -- each one is a small, reversible step.
+  def route_request_later(request):
+      if request.path.startswith("/api/orders"):
+          return new_orders_service.handle(request)      # migrated (validated last quarter)
+      elif request.path.startswith("/api/inventory"):
+          return new_inventory_service.handle(request)    # migrated (validated this quarter)
+      else:
+          return legacy_monolith.handle(request)           # everything else, still safely on legacy
+
+  # If a migrated route has a problem, it's a one-line, low-risk revert --
+  # not a full-system rollback, since legacy_monolith is still running
+  # and still knows how to handle it.
+  def rollback_orders_route(request):
+      return legacy_monolith.handle(request)               # instant fallback, old code path never deleted
+category: strangler_fig
+category_level: 1
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [strangler_fig, legacy_migration, incremental_rewrite, routing_facade]
+comprehension_check:
+  - question: "What's the main risk of a 'big bang' full rewrite that the Strangler Fig pattern is designed to avoid?"
+    options:
+      - "Years of accidentally-load-bearing edge-case handling in the legacy system get rediscovered (or missed) all at once, on the day of a single high-risk cutover with no fallback"
+      - "Big bang rewrites are always faster than incremental migration"
+      - "There is no risk at all in a full rewrite -- the pattern solves a non-problem"
+      - "Strangler Fig has nothing to do with rewrites or migrations"
+    correct: 0
+    explanation: "A full cutover exposes every gap in the new system at once, with the old system already decommissioned and unavailable as a fallback -- the worst possible way to discover what was missing."
+  - question: "How does the Strangler Fig pattern route traffic during a migration?"
+    options:
+      - "A routing facade sends most traffic to the legacy system while incrementally redirecting specific, validated routes to new services one at a time"
+      - "All traffic switches to the new system on day one, with no facade at all"
+      - "It requires deleting the legacy system before writing any new code"
+      - "It only works if the legacy system is already fully decommissioned"
+    correct: 0
+    explanation: "Both the legacy system and newly migrated services run simultaneously in production -- each migrated route can be validated independently, with an easy fallback to legacy if something's wrong."
+  - question: "What's the real, ongoing cost of using the Strangler Fig pattern during a migration?"
+    options:
+      - "Running two systems side by side (the legacy system plus the routing facade and new services) for an extended period is a genuine operational cost, not free"
+      - "There is no cost at all -- it's strictly better than a rewrite in every situation"
+      - "It requires no additional infrastructure whatsoever"
+      - "It only takes one day to complete, same as a big-bang rewrite"
+    correct: 0
+    explanation: "For a small, well-understood legacy system, a straightforward rewrite can still be faster and simpler -- Strangler Fig earns its cost specifically when a big-bang cutover's risk is high enough to justify a longer, incremental migration."

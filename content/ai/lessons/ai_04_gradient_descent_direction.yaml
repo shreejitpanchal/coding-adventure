@@ -1,0 +1,83 @@
+id: ai_04
+title: "Gradient Descent That Ascends Instead of Descends"
+language: ai
+level: 4
+objective: "Fix a gradient descent update that adds the gradient instead of subtracting it, which pushes the parameter away from the minimum instead of toward it."
+explanation: |
+  The gradient of a loss function at a given point tells you the
+  direction of *steepest increase* -- to reduce the loss, a parameter
+  update has to move in the *opposite* direction, which is exactly what
+  the minus sign in `theta - lr * grad` is doing: `lr` (the learning
+  rate) scales how big a step to take, and the subtraction is what
+  turns "which way loss increases fastest" into "which way to actually
+  move to make loss smaller." Writing `theta + lr * grad` by mistake --
+  an easy typo, since addition looks equally plausible at a glance if
+  the reasoning behind the minus sign isn't front of mind -- doesn't
+  just fail to improve the parameter; it actively pushes it further
+  from the value that would minimize the loss, every single step,
+  making the model measurably *worse* the longer training runs.
+
+  This is a purely structural bug, not a numerical precision issue: the
+  gradient computation itself (`2 * (pred - y) * x`, the derivative of
+  squared error) can be completely correct, and the loop can run for
+  any number of iterations without crashing or raising a warning --
+  it'll just converge confidently toward the wrong answer, or diverge
+  outright, since the loss it's supposedly reducing is actually
+  increasing every step. The single minus-vs-plus sign is the entire
+  difference between "gradient descent" (the standard optimization
+  technique) and its useless mirror image, sometimes called "gradient
+  ascent" -- occasionally intentional (maximizing a reward instead of
+  minimizing a loss), but a bug whenever the actual goal was to
+  minimize something.
+example_code: |
+  # The trap: ADDING the gradient pushes theta the wrong way.
+  def gradient_step_trap(theta, x, y, lr):
+      pred = theta * x
+      grad = 2 * (pred - y) * x
+      return theta + lr * grad         # WRONG sign -- ascends the loss instead
+
+  # The fix: SUBTRACTING the gradient descends toward the minimum.
+  def gradient_step(theta, x, y, lr):
+      pred = theta * x
+      grad = 2 * (pred - y) * x
+      return theta - lr * grad
+
+  # Fitting y = theta * x to a single point (x=2, y=10) -- the true
+  # minimum is theta=5 (since 5*2=10 has zero error).
+  theta = 0.0
+  for _ in range(5):
+      theta = gradient_step(theta, 2.0, 10.0, 0.01)
+  print(f"{theta:.4f}")   # 1.7046 -- correctly moving toward 5
+
+  theta_trap = 0.0
+  for _ in range(5):
+      theta_trap = gradient_step_trap(theta_trap, 2.0, 10.0, 0.01)
+  print(f"{theta_trap:.4f}")  # -2.3466 -- moving AWAY from 5, the wrong direction
+starter_code: |
+  def gradient_step(theta, x, y, lr):
+      pred = theta * x
+      grad = 2 * (pred - y) * x
+      return theta + lr * grad
+
+  theta = 0.0
+  for _ in range(5):
+      theta = gradient_step(theta, 2.0, 10.0, 0.01)
+  print(f"{theta:.4f}")
+challenge: |
+  Fix `gradient_step` so theta converges toward the true minimum (5.0,
+  since fitting y = theta * x to the point (2, 10) requires theta = 5)
+  instead of moving away from it -- subtract the gradient step instead
+  of adding it.
+expected_output: |
+  1.7046
+hints:
+  - "return theta - lr * grad -- just flip the + to a -."
+  - "The gradient computation itself (grad = 2 * (pred - y) * x) is already correct and doesn't need to change."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 4
+difficulty: deep_dive
+contains_patterns:
+  - "theta - lr \\* grad"
+concept_tags: [gradient_descent, optimization, linear_regression]

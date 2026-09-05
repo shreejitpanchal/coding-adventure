@@ -1,0 +1,84 @@
+id: idempotency_03
+title: "The Race Condition Inside Idempotency Key Handling"
+language: architecture
+level: 48
+objective: "Recognize that a naive check-then-act idempotency key implementation has its own race condition when two requests with the same key arrive concurrently, and how a pending-state marker closes the gap."
+explanation: |
+  This category's opening lesson implemented an idempotency check as
+  "look up the key; if not found, do the work and record it" -- which
+  is correct for the case it was designed for, retries that happen
+  *sequentially* (a caller waits for a timeout, then retries after the
+  first attempt has already finished one way or another). It has a gap
+  for a case that's easy to miss: two requests carrying the *same*
+  idempotency key arriving concurrently, close enough together that
+  the second one's lookup runs *before* the first one has finished
+  recording its result. Both requests see "key not found," both
+  proceed to actually perform the side effect, and the card gets
+  charged twice anyway -- the exact outcome the idempotency key was
+  supposed to prevent, just via a narrower timing window instead of an
+  obviously-sequential retry.
+
+  This can genuinely happen: a client with an aggressive short timeout
+  might fire a retry before the original request has actually finished
+  processing on the server, or a buggy client might simply issue the
+  same logical request twice in quick succession without waiting for a
+  response at all. The fix is to close the gap between "check" and
+  "act" atomically, the same category of problem this app's other
+  concurrency-adjacent lessons address: record the key in a **pending**
+  state, atomically, *before* starting the actual work (using a
+  database's own uniqueness constraint to guarantee only one request
+  can win that atomic insert), so a second concurrent request with the
+  same key either sees the pending marker and waits for the result, or
+  fails the atomic insert outright and knows another request is already
+  in flight for that exact key.
+
+  This is the same class of bug as any other check-then-act race
+  condition -- the fix is always to make the check and the act one
+  atomic operation (here, an atomic "insert if not exists" against the
+  idempotency store) rather than two separate steps with a window in
+  between where two callers can both pass the check before either has
+  acted.
+example_code: |
+  # NAIVE: check-then-act has a race window for CONCURRENT requests
+  # with the same key -- both can pass the check before either records.
+  def charge_card_naive_race(card_token, amount, idempotency_key):
+      existing = idempotency_store.get(idempotency_key)   # request A and B can BOTH see "not found" here
+      if existing is not None:
+          return existing
+      result = payment_provider.charge(card_token, amount)  # BOTH charge the card
+      idempotency_store.set(idempotency_key, result)
+      return result
+
+  # FIXED: an atomic "insert if not exists" closes the race window --
+  # only ONE concurrent request can win it.
+  def charge_card_safe(card_token, amount, idempotency_key):
+      inserted = idempotency_store.insert_if_not_exists(idempotency_key, status="pending")
+      if not inserted:
+          return idempotency_store.wait_for_result(idempotency_key)  # another request is already in flight
+      result = payment_provider.charge(card_token, amount)
+      idempotency_store.set(idempotency_key, result, status="complete")
+      return result
+category: idempotency
+category_level: 3
+difficulty: gotcha
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [idempotency, race_condition, concurrency, idempotency_key]
+comprehension_check:
+  - question: "How can two concurrent requests with the same idempotency key both end up performing a non-idempotent side effect, despite the idempotency key existing?"
+    options:
+      - "A naive check-then-act implementation lets both requests see 'key not found' before either has finished recording its result, since the check and the act aren't atomic"
+      - "This is impossible once an idempotency key is in use, under any timing"
+      - "Idempotency keys only protect against sequential retries and were never intended to handle any concurrency"
+      - "It only happens if the idempotency key itself is invalid"
+    correct: 0
+    explanation: "A narrow timing window where both requests pass the lookup before either records a result reproduces the exact double-charge outcome the idempotency key was meant to prevent."
+  - question: "What is the fix for this race condition?"
+    options:
+      - "Make the check and the act one atomic operation -- e.g. an atomic 'insert if not exists' against the idempotency store, so only one concurrent request can win it"
+      - "Add a longer timeout to the client so it never retries"
+      - "Remove the idempotency key mechanism entirely, since it doesn't help"
+      - "Always process every request twice to guarantee consistency"
+    correct: 0
+    explanation: "This is the same fix as any other check-then-act race condition -- closing the gap between checking and acting with a single atomic operation, using the database's own uniqueness guarantee."

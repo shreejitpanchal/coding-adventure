@@ -1,0 +1,85 @@
+id: circuit_breaker_05
+title: "When a Circuit Breaker Is Overkill"
+language: architecture
+level: 45
+objective: "Recognize that circuit breakers earn their cost specifically for calls to external, independently-failing dependencies over an unreliable boundary like a network, and are unnecessary machinery for in-process calls."
+explanation: |
+  Every mechanism this category has covered -- the open/closed/half-open
+  state machine, fallback strategies, bulkheads, threshold tuning --
+  exists to manage the specific risk of calling something across a
+  genuinely unreliable boundary: a network call to another service,
+  which can be slow, can fail independently of the caller, and can be
+  overwhelmed by continued traffic in a way that a circuit breaker's
+  fail-fast behavior specifically protects against. That risk profile
+  is what all of this machinery is *for* -- it doesn't automatically
+  apply to every function call in a codebase just because failure is
+  theoretically possible somewhere.
+
+  A plain in-process function call -- calling another method within the
+  same application, in the same memory space, with no network hop
+  involved -- doesn't have this risk profile at all. It doesn't get
+  slower under the caller's own load the way an independently-scaled
+  remote service can; it fails (an exception) or it doesn't, atomically
+  and immediately, with no "hanging while tying up a connection pool
+  waiting on a struggling remote process" failure mode for a circuit
+  breaker to protect against. Wrapping every internal method call in a
+  circuit breaker "just in case" adds real overhead (tracking state,
+  checking thresholds) and real complexity (another failure mode to
+  reason about: what does it mean for an in-process call's "circuit" to
+  be open?) with no corresponding risk actually being mitigated.
+
+  The pattern earns its cost specifically at genuine network
+  boundaries to genuinely independent systems -- calls to another
+  microservice, a third-party API, a database over the network -- where
+  the caller and the callee can fail, slow down, and recover on
+  entirely independent timelines. The same discipline this track
+  applies elsewhere (CQRS for genuinely divergent read/write needs, a
+  saga for genuinely cross-service transactions, hexagonal ports for
+  genuinely substitutable infrastructure) applies here too: identify
+  the actual risk the pattern protects against, and reach for it
+  exactly where that risk is real, not reflexively around every call in
+  the codebase.
+example_code: |
+  # OVERKILL: wrapping a plain in-process method call in a circuit breaker --
+  # this call has no network-failure risk profile to protect against at all.
+  class OrderValidator:
+      def validate(self, order):
+          return circuit_breaker.call(self._check_business_rules, order)  # unnecessary machinery
+
+      def _check_business_rules(self, order):
+          return order.total > 0 and len(order.line_items) > 0   # fails atomically, no hang, no network
+
+  # THE FIX: a plain in-process call needs no circuit breaker at all.
+  class OrderValidatorSimple:
+      def validate(self, order):
+          return self._check_business_rules(order)
+
+  # A circuit breaker earns its cost specifically at a REAL network boundary,
+  # where the callee can fail/slow down/recover on an independent timeline:
+  class RecommendationClient:
+      def get_recommendations(self, user_id):
+          return circuit_breaker.call(recommendation_service_over_network.get, user_id)
+category: circuit_breaker
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: circuit_breaker_master
+requires_code: false
+concept_tags: [circuit_breaker, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "Why doesn't a plain in-process function call need a circuit breaker?"
+    options:
+      - "It doesn't have the risk profile a circuit breaker protects against -- it fails atomically and immediately, with no independent slowdown or network-hang failure mode to guard against"
+      - "In-process calls are technically incapable of ever failing"
+      - "Circuit breakers only work across network boundaries for technical reasons unrelated to risk"
+      - "Every function call in a codebase should always be wrapped in a circuit breaker regardless of risk"
+    correct: 0
+    explanation: "An in-process call doesn't get slower under load the way an independently-scaled remote service can, and has no 'hanging while tying up a connection pool' failure mode -- the exact risk circuit breakers exist to mitigate."
+  - question: "Where does a circuit breaker actually earn its cost, according to this lesson?"
+    options:
+      - "At genuine network boundaries to genuinely independent systems -- another microservice, a third-party API, a database over the network -- where the caller and callee can fail on independent timelines"
+      - "Everywhere in a codebase, with no exceptions, regardless of whether a network call is involved"
+      - "Only inside unit tests, never in production code"
+      - "Circuit breakers never actually earn their cost in any situation"
+    correct: 0
+    explanation: "This mirrors the same discipline this track applies to other patterns: identify the actual risk being protected against, and reach for the pattern exactly where that risk is real."

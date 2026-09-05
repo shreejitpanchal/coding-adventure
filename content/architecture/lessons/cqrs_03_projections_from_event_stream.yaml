@@ -1,0 +1,72 @@
+id: cqrs_03
+title: "Projections: Building Read Models from an Event Stream"
+language: architecture
+level: 13
+objective: "Understand how a CQRS read model is kept up to date by subscribing to write-side events and incrementally updating a projection, rather than being queried live from the write database."
+explanation: |
+  Once a read model is a separately optimized, denormalized structure
+  (see this category's own lesson on that), the question becomes: how
+  does it actually stay current as the write side changes? Querying the
+  write database live to rebuild the read model on every request would
+  defeat the entire purpose -- that's exactly the join-on-every-read
+  cost denormalization was meant to avoid. The standard mechanism is a
+  *projection*: a subscriber that listens to the events the write side
+  publishes (`OrderPlaced`, `OrderShipped`) and incrementally updates
+  the read model's stored documents each time a relevant event arrives,
+  entirely asynchronously and independently of whatever request
+  originally triggered the write.
+
+  A projection is conceptually simple -- for each event type it cares
+  about, it knows exactly how to update the read model to reflect that
+  change -- but it has real responsibilities: it needs to handle events
+  arriving out of order or more than once (see this track's Event-Driven
+  Architecture category for at-least-once delivery), and if it's ever
+  rebuilt from scratch (a schema change, a bug fix), it needs to be able
+  to replay the *entire* historical event stream from the beginning to
+  reconstruct the read model correctly, not just react to new events
+  going forward. This replay capability is exactly why CQRS pairs so
+  naturally with event sourcing and a replayable, log-based broker
+  (Kafka-style) -- a read model isn't a fragile cache that has to be
+  right the first time; it's fully, deterministically rebuildable from
+  the event log whenever needed.
+example_code: |
+  # A projection: listens to write-side events, updates the read model incrementally.
+  class OrderDashboardProjection:
+      def on_order_placed(self, event):
+          read_db.upsert(event.order_id, {
+              "status": "placed", "customer_name": event.customer_name, "total": event.total,
+          })
+
+      def on_order_shipped(self, event):
+          read_db.update(event.order_id, {"status": "shipped"})
+
+  # Rebuilding from scratch: replay the ENTIRE event history to reconstruct
+  # the read model deterministically, not just react to new events.
+  def rebuild_projection_from_scratch(projection):
+      read_db.clear()
+      for event in event_log.read_from_beginning():
+          projection.handle(event)   # same handler logic, applied to the full history
+category: cqrs
+category_level: 3
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [cqrs, projections, event_driven_architecture]
+comprehension_check:
+  - question: "How does a CQRS read model typically stay up to date with write-side changes?"
+    options:
+      - "A projection subscribes to the events the write side publishes and incrementally updates the read model each time a relevant event arrives, asynchronously"
+      - "The read model queries the write database live on every single request"
+      - "Read models never update after they're first created"
+      - "Projections have nothing to do with keeping read models current"
+    correct: 0
+    explanation: "Querying the write database live on every request would defeat the entire purpose of denormalizing the read model in the first place."
+  - question: "Why does a projection need to be able to replay the entire historical event stream, not just react to new events?"
+    options:
+      - "If the read model is ever rebuilt from scratch (a schema change, a bug fix), replaying the full history is how it's reconstructed correctly and deterministically"
+      - "Replaying history is never actually necessary for any reason"
+      - "It's only needed if the read model has never been queried before"
+      - "New events and historical events are processed by completely unrelated systems"
+    correct: 0
+    explanation: "This is exactly why CQRS pairs naturally with event sourcing and a replayable log-based broker -- a read model is fully rebuildable from the event log whenever needed."

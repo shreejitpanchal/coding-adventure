@@ -1,0 +1,69 @@
+id: cqrs_02
+title: "Denormalized Read Models for Query Performance"
+language: architecture
+level: 12
+objective: "Understand why a CQRS read model is often deliberately denormalized, trading storage duplication for query speed."
+explanation: |
+  A normalized write model avoids duplicating data -- an order
+  references a customer by ID, line items reference products by ID,
+  and each fact is stored exactly once, which is exactly what a write
+  model needs to enforce consistency correctly. Answering "show me this
+  order's dashboard" from that same normalized shape means joining
+  across orders, customers, products, and line items every single time
+  the dashboard is viewed -- correct, but potentially slow at scale,
+  and repeated on every read even though the underlying data rarely
+  changes between views.
+
+  A CQRS read model can trade that normalization away deliberately: a
+  single denormalized document already contains the customer's name,
+  the product names, and the computed total, pre-joined and ready to
+  serve directly with no query-time joins at all. The data is
+  duplicated -- the customer's name lives in the write model *and* in
+  every read-model document that references them -- but that
+  duplication is the entire point: it moves the cost of joining from
+  every read to the one-time cost of building the projection when the
+  underlying write-side data changes (see this category's Projections
+  exercise). This tradeoff only pays off when reads genuinely
+  outnumber writes by a wide margin, which is common for
+  dashboards/reporting views but not universal -- denormalizing data
+  that's rarely read is pure overhead with no compensating benefit.
+example_code: |
+  # Normalized write model: no duplication, but every read needs a join.
+  def get_order_dashboard_normalized(order_id):
+      order = orders_db.get(order_id)
+      customer = customers_db.get(order.customer_id)     # join #1, every single read
+      items = [products_db.get(i.product_id) for i in order.line_items]  # join #2, every read
+
+  # Denormalized read model: pre-joined once, served directly forever after.
+  read_model_document = {
+      "order_id": 4521,
+      "customer_name": "Ada Lovelace",     # duplicated from the write model, on purpose
+      "items": [{"name": "Widget", "qty": 2}],  # pre-joined, no query-time lookup needed
+      "total": 49.99,
+  }
+  def get_order_dashboard_denormalized(order_id):
+      return read_model_db.get(order_id)   # ONE lookup, no joins at read time at all
+category: cqrs
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [cqrs, read_model, denormalization]
+comprehension_check:
+  - question: "Why might a CQRS read model deliberately duplicate data that the write model already stores once?"
+    options:
+      - "Denormalizing pre-joins the data once, moving the cost of joining from every single read to the one-time cost of building the projection -- worthwhile when reads far outnumber writes"
+      - "Data duplication is always a mistake with no valid justification"
+      - "The write model and read model must always contain completely different, non-overlapping data"
+      - "It's required by CQRS's specification with no performance rationale"
+    correct: 0
+    explanation: "A pre-joined document (customer name, product names, computed total already included) can be served directly with a single lookup, instead of joining across multiple tables on every read."
+  - question: "When does denormalizing a read model NOT pay off, according to this lesson?"
+    options:
+      - "When the underlying data is rarely read -- denormalizing it is then pure overhead with no compensating benefit"
+      - "It always pays off in every situation with no exceptions"
+      - "Only when the write model has zero writes ever"
+      - "Denormalization never has any downside to weigh against"
+    correct: 0
+    explanation: "The tradeoff specifically pays off when reads genuinely outnumber writes by a wide margin -- common for dashboards, but not universal."

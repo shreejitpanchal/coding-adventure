@@ -1,0 +1,75 @@
+id: ai_05
+title: "Evaluating a Model on the Data It Was Trained On"
+language: ai
+level: 5
+objective: "Fix an evaluation call that reports accuracy on the training set instead of a held-out test set, since training accuracy tells you almost nothing about real-world generalization."
+explanation: |
+  A model's accuracy on the exact data it was fit to is close to a
+  best-case, most-flattering number -- a model that simply memorized
+  its training examples (like a lookup table keyed by input, returning
+  whatever label it saw during training) scores perfectly on that same
+  training data by construction, having never actually learned any
+  general pattern at all. Calling `evaluate(model, train_x, train_y)`
+  and reporting that number as "the model's accuracy" answers a
+  question nobody actually cares about -- "how well does the model
+  reproduce data it already memorized" -- instead of the question that
+  matters: "how well does it perform on inputs it has never seen
+  before." Nothing about the evaluation code itself has to be wrong for
+  this to happen; the bug is entirely in *which data* got passed to it.
+
+  The fix is to evaluate on a genuinely held-out test set -- data the
+  model never had access to while being fit -- so the resulting number
+  actually estimates real-world performance instead of measuring
+  memorization. This is one of the most common and consequential
+  mistakes in practical machine learning: reporting training accuracy
+  (or worse, training loss) as if it were a meaningful performance
+  metric, when the entire reason a train/test split exists in the first
+  place is to prevent exactly this measurement from being mistaken for
+  the one that actually matters.
+example_code: |
+  def memorize(x, memory):
+      return memory.get(x, 0)   # a "model" that just memorized training labels
+
+  def evaluate(predict_fn, memory, xs, ys):
+      preds = [predict_fn(x, memory) for x in xs]
+      return sum(1 for p, y in zip(preds, ys) if p == y) / len(ys)
+
+  memory = {1: 1, 2: 0, 3: 1}
+  train_x, train_y = [1, 2, 3], [1, 0, 1]
+  test_x, test_y = [4, 5, 6], [1, 0, 1]     # genuinely unseen inputs
+
+  # The trap: evaluating on the same data the "model" memorized.
+  print(evaluate(memorize, memory, train_x, train_y))  # 1.0 -- looks perfect, tells you nothing
+
+  # The fix: evaluate on genuinely held-out data instead.
+  print(evaluate(memorize, memory, test_x, test_y))    # 0.333... -- the real generalization number
+starter_code: |
+  def memorize(x, memory):
+      return memory.get(x, 0)
+
+  def evaluate(predict_fn, memory, xs, ys):
+      preds = [predict_fn(x, memory) for x in xs]
+      return sum(1 for p, y in zip(preds, ys) if p == y) / len(ys)
+
+  memory = {1: 1, 2: 0, 3: 1}
+  train_x, train_y = [1, 2, 3], [1, 0, 1]
+  test_x, test_y = [4, 5, 6], [1, 0, 1]
+
+  print(round(evaluate(memorize, memory, train_x, train_y), 4))
+challenge: |
+  Fix this so it reports the model's real generalization performance
+  (0.3333) by evaluating on `test_x`/`test_y` instead of
+  `train_x`/`train_y`.
+expected_output: |
+  0.3333
+hints:
+  - "Change evaluate(memorize, memory, train_x, train_y) to evaluate(memorize, memory, test_x, test_y)."
+  - "The evaluate() function itself is already correct -- only which dataset gets passed to it needs to change."
+xp_reward: 15
+achievement: ml_fundamentals_master
+category: ml_fundamentals
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "evaluate\\(memorize, memory, test_x, test_y\\)"
+concept_tags: [generalization, overfitting, train_test_evaluation]

@@ -1,0 +1,82 @@
+id: circuit_breaker_04
+title: "Tuning Thresholds: False Trips vs. Slow Detection"
+language: architecture
+level: 44
+objective: "Understand the tradeoff involved in configuring a circuit breaker's failure threshold and cooldown period, and why both a too-sensitive and a too-lenient configuration cause real problems."
+explanation: |
+  This category's opening lesson introduced `failure_threshold` and
+  `cooldown_seconds` as configuration values without dwelling on how to
+  actually choose them -- but getting them wrong in either direction
+  causes a genuine operational problem, not just a slightly-off
+  setting. A threshold set **too low** (tripping open after just one or
+  two failures) makes the breaker trigger on ordinary, expected
+  transient noise -- a single slow response during a brief network
+  blip, or one request that happened to hit a momentarily busy server --
+  and now the breaker is failing fast on a dependency that was never
+  actually struggling, actively hurting availability instead of
+  protecting it. This is a **false trip**: real capacity was available,
+  but the circuit cut it off anyway because the threshold couldn't
+  distinguish ordinary noise from a genuine sustained problem.
+
+  A threshold set **too high** (requiring, say, 500 failures before
+  tripping) has the opposite problem: by the time enough failures have
+  accumulated to trip the breaker, the downstream service has already
+  been meaningfully overwhelmed for a long stretch, and every caller
+  spent that whole stretch waiting out real timeouts instead of failing
+  fast -- exactly the cascading-failure damage circuit breakers exist
+  to prevent, just delayed rather than avoided. The same tension exists
+  for the cooldown period: too short, and the breaker re-opens the
+  floodgates onto a service that hasn't actually finished recovering
+  yet (immediately re-tripping, possibly worse than before); too long,
+  and a genuinely recovered service gets denied real traffic for far
+  longer than necessary.
+
+  There's no universal correct number -- the right threshold depends on
+  the call's actual baseline failure rate under normal healthy
+  conditions (measure it before guessing), and the right cooldown
+  depends on how long the downstream service realistically takes to
+  recover from the kind of failure being protected against. This is
+  exactly why circuit breaker configuration is treated as something to
+  tune against real observed traffic patterns and revisit as those
+  patterns change, not a value chosen once from a generic default and
+  left alone indefinitely.
+example_code: |
+  # TOO SENSITIVE: trips on ordinary transient noise, hurting availability
+  # for a dependency that was never actually struggling.
+  flaky_breaker = CircuitBreaker(failure_threshold=1, cooldown_seconds=60)
+  # ONE slow response during a brief network blip trips this -- a false trip.
+
+  # TOO LENIENT: by the time this trips, real damage has already accumulated.
+  sluggish_breaker = CircuitBreaker(failure_threshold=500, cooldown_seconds=5)
+  # 500 failed calls' worth of tied-up threads/timeouts happened BEFORE protection kicked in.
+
+  # TUNED to the dependency's actual observed behavior: threshold above
+  # normal baseline noise, cooldown matched to realistic recovery time.
+  tuned_breaker = CircuitBreaker(
+      failure_threshold=20,     # measured: normal baseline failure rate is ~2-3 per window
+      cooldown_seconds=30,      # measured: this service typically recovers from overload within ~20-30s
+  )
+category: circuit_breaker
+category_level: 4
+difficulty: gotcha
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [circuit_breaker, resilience, configuration_tuning]
+comprehension_check:
+  - question: "What happens when a circuit breaker's failure threshold is set too low?"
+    options:
+      - "It triggers on ordinary, expected transient noise (a single slow response or blip), failing fast on a dependency that was never actually struggling -- a false trip that hurts availability"
+      - "It has no negative effect -- a lower threshold is always safer"
+      - "It makes the downstream service permanently unavailable"
+      - "A low threshold only affects services written in the same language as the caller"
+    correct: 0
+    explanation: "The breaker can't distinguish ordinary noise from a genuine sustained problem, so it cuts off real available capacity unnecessarily."
+  - question: "How should the right failure threshold and cooldown period actually be chosen, according to this lesson?"
+    options:
+      - "Based on the call's actual observed baseline failure rate under normal conditions and how long the downstream service realistically takes to recover -- measured and tuned, not a generic default left alone forever"
+      - "Always use the same fixed numbers for every dependency in every system"
+      - "Threshold and cooldown values have no real effect on system behavior"
+      - "The lowest possible threshold and the longest possible cooldown are always correct"
+    correct: 0
+    explanation: "There's no universal correct number -- it depends on the specific dependency's real behavior, and should be revisited as observed traffic patterns change."

@@ -1,0 +1,82 @@
+id: strangler_fig_03
+title: "Keeping Data in Sync During Migration"
+language: architecture
+level: 23
+objective: "Understand the core challenge of a Strangler Fig migration once a capability owns its own data store -- keeping it consistent with the legacy system for as long as both are live -- and the main strategies for doing so."
+explanation: |
+  As long as a migrated route (see this category's opening lesson)
+  still reads and writes through the legacy database, data consistency
+  during the migration is automatic -- there's still only one copy of
+  the data. The moment a migrated service gets its *own* database (the
+  natural next step, and the same reasoning as this track's
+  Database-per-Service lesson), a new problem appears: the same
+  logical data -- a customer's shipping address, an order's status --
+  now potentially exists in two places, the legacy database and the new
+  service's database, and something has to keep them from drifting
+  apart for as long as both systems are simultaneously live in
+  production.
+
+  **Dual writes** is the simplest approach: whichever system receives a
+  write first passes it along to the other. It's simple to reason about
+  but fragile in exactly the way distributed writes always are --
+  if the second write fails after the first succeeds, the two stores
+  now disagree, and nothing detects that automatically unless
+  something else is built to catch it. **Change data capture (CDC)** is
+  the more robust alternative: rather than the application code
+  performing two separate writes, a CDC tool watches the legacy
+  database's own transaction log (the mechanism databases already use
+  internally for replication) and streams every change out as an event
+  that the new service consumes to update its own store -- since it
+  reads from the database's actual committed log rather than trusting
+  application code to remember to write twice, it can't miss a write
+  the way a dual-write implementation bug could.
+
+  Whichever mechanism is used, the migration needs an explicit answer
+  to "which system is authoritative for this data, right now" -- ideally
+  one direction at a time (legacy authoritative, syncing to new; then
+  later, new authoritative, syncing to legacy or the legacy path
+  retired entirely) rather than genuinely bidirectional sync, which
+  multiplies the ways the two stores can end up disagreeing. This
+  temporary dual-store period is real, ongoing operational
+  complexity -- exactly the cost this category's opening lesson names as
+  the tradeoff for avoiding a big-bang cutover's risk.
+example_code: |
+  # Dual writes: simple, but a partial failure leaves the two stores
+  # silently disagreeing with nothing to detect it automatically.
+  def update_shipping_address_dual_write(customer_id, address):
+      legacy_db.update_address(customer_id, address)     # succeeds
+      new_service_db.update_address(customer_id, address)  # if THIS fails, stores now disagree silently
+
+  # Change data capture: a CDC tool reads the legacy database's own
+  # transaction log and streams changes out -- can't miss a write the
+  # way an application-level dual write could.
+  class CustomerAddressCDCConsumer:
+      def on_legacy_db_change_event(self, change_event):
+          if change_event.table == "customers" and change_event.column == "shipping_address":
+              new_service_db.update_address(change_event.row_id, change_event.new_value)
+  # The application code writes to ONE place (legacy); the sync is driven
+  # by the database's own committed log, not by remembering to write twice.
+category: strangler_fig
+category_level: 3
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [strangler_fig, data_synchronization, change_data_capture, legacy_migration]
+comprehension_check:
+  - question: "When does data synchronization become a real problem during a Strangler Fig migration?"
+    options:
+      - "Once a migrated service gets its own database, since the same logical data can now exist in two places that must be kept from drifting apart"
+      - "It's a problem from the very first day of any migration, even before any service has its own database"
+      - "It's never a real problem in any Strangler Fig migration"
+      - "Only once the legacy system has been fully decommissioned"
+    correct: 0
+    explanation: "As long as a route still reads/writes through the legacy database, there's still only one copy of the data -- the problem appears specifically once a service gets its own separate store."
+  - question: "Why is change data capture (CDC) generally more robust than application-level dual writes?"
+    options:
+      - "It reads from the database's own committed transaction log rather than relying on application code to remember to perform two separate writes, so it can't silently miss a write"
+      - "CDC requires no infrastructure at all, unlike dual writes"
+      - "CDC and dual writes provide identical guarantees with no tradeoff"
+      - "CDC only works if there is exactly one database involved"
+    correct: 0
+    explanation: "A dual write can fail on the second write after the first succeeds, leaving the stores silently disagreeing -- CDC instead streams from the database's actual log, which already reflects what was truly committed."

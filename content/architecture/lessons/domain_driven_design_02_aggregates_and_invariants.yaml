@@ -1,0 +1,87 @@
+id: domain_driven_design_02
+title: "Aggregates: Consistency Boundaries Within a Bounded Context"
+language: architecture
+level: 27
+objective: "Understand the aggregate pattern -- a cluster of objects treated as one consistency unit with a single entry point -- and why it exists to protect invariants that span multiple objects."
+explanation: |
+  Even within a single bounded context (see this category's opening
+  lesson), a domain model is rarely one flat object -- an `Order` has
+  `LineItems`, and business rules often span both: "an order's total
+  must equal the sum of its line items," or "an order can't be shipped
+  if it has zero line items." If any code anywhere can reach in and
+  modify a `LineItem` directly, without going through `Order`, nothing
+  enforces those rules -- a line item could be deleted, silently
+  leaving the cached total wrong, or an empty order could be marked
+  shipped, because the rule lived nowhere enforceable.
+
+  An **aggregate** groups a cluster of related objects (an `Order` and
+  its `LineItems`) under a single **aggregate root** (`Order`) that is
+  the *only* object outside code is allowed to reference or modify
+  directly. Every change to a `LineItem` has to go through a method on
+  `Order` -- `order.add_item(...)`, `order.remove_item(...)` -- and
+  those methods are exactly where the cross-object invariant gets
+  enforced, in one place, every time, instead of being a rule that
+  every caller has to remember to uphold on their own. `LineItem`
+  itself becomes something outside code never touches by ID directly;
+  it only exists reachably through its `Order`.
+
+  This has a very concrete design consequence: aggregates should be
+  kept as small as the actual invariant requires, not drawn around
+  "everything that seems related." Making `Order` and `Customer` one
+  giant aggregate because they're conceptually connected would mean
+  every order modification takes a lock (conceptually, if not always
+  literally) on the entire customer record too, for no invariant that
+  actually needs it -- there's no rule saying "an order's total and a
+  customer's loyalty tier must always be updated atomically together."
+  The aggregate boundary should be drawn exactly around whatever must
+  be transactionally, atomically consistent at all times, and nothing
+  broader -- a smaller aggregate means more objects can be modified
+  concurrently without contention, and a boundary drawn too widely is a
+  needless performance and complexity cost with no corresponding
+  correctness benefit.
+example_code: |
+  # WITHOUT an aggregate boundary: nothing stops code from reaching in
+  # and violating an invariant that spans Order and its LineItems.
+  order.line_items.append(LineItem(...))          # bypasses any total/shipped-state validation
+  del order.line_items[0]                          # nothing recalculates the total, or checks "can this order still ship?"
+
+  # WITH an aggregate: Order is the ONLY entry point -- LineItem is
+  # never modified directly from outside.
+  class Order:  # the aggregate root
+      def add_item(self, item: LineItem):
+          if self.status == "shipped":
+              raise InvalidOperationError("cannot modify a shipped order")
+          self._line_items.append(item)
+          self._recalculate_total()               # invariant enforced HERE, every time, in one place
+
+      def remove_item(self, item_id):
+          if len(self._line_items) == 1:
+              raise InvalidOperationError("an order cannot have zero line items")
+          self._line_items = [i for i in self._line_items if i.id != item_id]
+          self._recalculate_total()
+
+  # LineItem is never referenced or modified directly from outside Order.
+category: domain_driven_design
+category_level: 2
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [domain_driven_design, aggregate, invariants, consistency_boundary]
+comprehension_check:
+  - question: "What problem does the aggregate pattern solve?"
+    options:
+      - "It protects invariants that span multiple related objects (like an order's total matching its line items) by funneling every change through a single aggregate root"
+      - "It makes every object in the domain model directly modifiable from anywhere"
+      - "It eliminates the need for any business rules at all"
+      - "It merges every bounded context into a single shared aggregate"
+    correct: 0
+    explanation: "If code could modify a LineItem directly without going through Order, nothing would enforce rules like 'the total must equal the sum of the line items' -- the aggregate root is the one place those rules are enforced every time."
+  - question: "Why should an aggregate boundary be kept as small as the actual invariant requires, rather than drawn around 'everything that seems related'?"
+    options:
+      - "A boundary drawn too widely (e.g. merging Order and Customer with no invariant requiring it) creates needless contention and complexity with no correctness benefit"
+      - "Larger aggregates always perform better than smaller ones"
+      - "Aggregates must always contain every object in the entire domain model"
+      - "There is no such thing as too large an aggregate"
+    correct: 0
+    explanation: "A smaller aggregate means more objects can be modified concurrently without contention -- the boundary should match exactly what must be transactionally consistent at all times, nothing broader."

@@ -1,0 +1,83 @@
+id: hexagonal_architecture_04
+title: "Where Wiring Happens: The Composition Root"
+language: architecture
+level: 34
+objective: "Understand the composition root -- the single place where concrete adapters are chosen and wired into the core -- and why the core itself must never make that choice."
+explanation: |
+  Every lesson in this category so far has insisted the core never
+  references a concrete adapter -- `OrderService` depends on
+  `PaymentGateway`, never on `StripePaymentAdapter` directly. That
+  raises an immediate question this lesson answers: something,
+  somewhere, has to actually decide "use `StripePaymentAdapter` for
+  real runs, `FakePaymentGateway` for tests" and construct the objects
+  accordingly. That decision has to live *outside* the core entirely --
+  if `OrderService` decided for itself which adapter to instantiate, it
+  would be right back to depending on a concrete adapter, undoing the
+  whole point of defining `PaymentGateway` as a port in the first place.
+
+  The **composition root** is that single place: typically the
+  application's entry point (`main()`, or a framework's dependency-
+  injection configuration), where every concrete adapter gets
+  instantiated and handed to the core's constructors. This is the one
+  and only part of the entire codebase that's allowed to know about
+  both the core's port interfaces *and* the concrete adapter classes at
+  the same time -- it imports `StripePaymentAdapter`, imports
+  `OrderService`, and wires them together, while `OrderService` itself
+  never imports `StripePaymentAdapter` at all. Spring's dependency
+  injection container (see the Spring track's own content on this) is
+  effectively an automated composition root: instead of manually
+  writing `OrderService(StripePaymentAdapter(), PostgresOrderRepository())`,
+  the container scans for implementations and wires them together based
+  on configuration.
+
+  Keeping the composition root as the *only* place this wiring
+  decision is made has a direct practical benefit: switching from
+  Stripe to a different payment provider, or from Postgres to a
+  different database, means changing one line in one file, not hunting
+  through the core for every place a concrete adapter might have been
+  instantiated directly. If a concrete adapter class name shows up
+  anywhere inside the core's own logic, that's the specific tell that
+  the composition root discipline has been violated somewhere.
+example_code: |
+  # The composition root: the ONLY place that knows about BOTH the core's
+  # ports AND the concrete adapters -- everything gets wired together here.
+  def main():
+      payments = StripePaymentAdapter(api_key=config.STRIPE_KEY)      # concrete adapter, chosen HERE
+      orders = PostgresOrderRepository(connection_string=config.DB_URL)  # concrete adapter, chosen HERE
+
+      order_service = OrderService(payments, orders)                  # core never chose either one itself
+
+      http_controller = HttpOrderController(order_service)
+      run_web_server(http_controller)
+
+  # For tests, a DIFFERENT composition happens -- still outside the core:
+  def build_test_order_service():
+      return OrderService(FakePaymentGateway(), InMemoryOrderRepository())
+
+  # If OrderService itself ever imported StripePaymentAdapter directly,
+  # that would be a violation of composition-root discipline -- the core
+  # would be right back to depending on a concrete adapter.
+category: hexagonal_architecture
+category_level: 4
+difficulty: gotcha
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [hexagonal_architecture, composition_root, dependency_injection, ports_and_adapters]
+comprehension_check:
+  - question: "What is the composition root's job?"
+    options:
+      - "It's the single place in the codebase that knows about both the core's port interfaces and the concrete adapter classes, wiring them together -- typically at the application's entry point"
+      - "It's a synonym for the application core's own business logic"
+      - "It's a database table storing configuration values"
+      - "Every class in the codebase should independently act as its own composition root"
+    correct: 0
+    explanation: "It imports both StripePaymentAdapter and OrderService and wires them together, while OrderService itself never imports StripePaymentAdapter at all."
+  - question: "What is the specific tell that composition-root discipline has been violated somewhere in the codebase?"
+    options:
+      - "A concrete adapter class name shows up directly inside the application core's own logic, instead of only inside the composition root"
+      - "The application has more than one adapter implementing the same port"
+      - "The composition root is located in a file called main.py"
+      - "Tests use a fake instead of a real adapter"
+    correct: 0
+    explanation: "If OrderService referenced StripePaymentAdapter directly anywhere, it would be depending on a concrete adapter again -- undoing the whole point of defining PaymentGateway as a port."

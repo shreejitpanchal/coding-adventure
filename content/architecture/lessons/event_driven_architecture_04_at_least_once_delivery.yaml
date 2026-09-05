@@ -1,0 +1,67 @@
+id: event_driven_architecture_04
+title: "At-Least-Once Delivery and Idempotent Consumers"
+language: architecture
+level: 4
+objective: "Understand why most message brokers guarantee at-least-once delivery rather than exactly-once, and why that makes consumers responsible for their own idempotency."
+explanation: |
+  Guaranteeing a message is delivered *exactly once* -- never lost, never
+  duplicated -- sounds like the obviously correct goal, but it's
+  extraordinarily expensive to actually guarantee across an unreliable
+  network with independently-failing services, and most real message
+  brokers (Kafka, RabbitMQ, SQS, and others) deliberately don't promise
+  it by default. What they promise instead is *at-least-once* delivery:
+  a message will be delivered one or more times, never zero -- which
+  means a consumer has to be prepared to receive and process the exact
+  same message twice. This isn't a broker bug; it's what happens when a
+  consumer successfully processes a message but the acknowledgment back
+  to the broker gets lost -- the broker, having no confirmation,
+  redelivers the message it can't be sure was actually handled.
+
+  This makes every event consumer responsible for its own idempotency
+  (see this track's Idempotency exercise for the general mechanics):
+  processing the *same* event twice must produce the same end result as
+  processing it once. A consumer that decrements inventory by 1 every
+  time it sees an `OrderPlaced` event will silently double-decrement if
+  that event is redelivered -- the fix is the same idempotency-key
+  pattern used anywhere else a retried operation needs to be safe:
+  record which event IDs have already been processed, and skip any
+  event whose ID has already been seen, rather than assuming the broker
+  will never redeliver.
+example_code: |
+  # The trap: assumes each event is delivered exactly once.
+  def on_order_placed_trap(event):
+      inventory_service.decrement_stock(event["sku"], event["qty"])
+      # if this event is redelivered (ack was lost), stock gets decremented TWICE
+
+  # The fix: track processed event IDs, skip duplicates.
+  processed_event_ids = set()
+
+  def on_order_placed(event):
+      if event["event_id"] in processed_event_ids:
+          return                                     # already handled -- skip, don't re-decrement
+      inventory_service.decrement_stock(event["sku"], event["qty"])
+      processed_event_ids.add(event["event_id"])      # record it BEFORE acknowledging
+category: event_driven_architecture
+category_level: 4
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [at_least_once_delivery, idempotent_consumer, message_broker]
+comprehension_check:
+  - question: "Why do most real message brokers guarantee 'at-least-once' delivery instead of 'exactly-once'?"
+    options:
+      - "Guaranteeing exactly-once delivery across an unreliable network with independently-failing services is extraordinarily expensive, so brokers instead guarantee a message is never lost, even if it means it might be delivered more than once"
+      - "Brokers are buggy and this is an unintentional flaw"
+      - "Exactly-once delivery is trivially easy and brokers just choose not to implement it"
+      - "At-least-once delivery means messages are sometimes lost entirely"
+    correct: 0
+    explanation: "A lost acknowledgment from consumer back to broker is a normal failure mode -- the broker, unsure whether the message was handled, redelivers it rather than risk losing it."
+  - question: "What must an event consumer do to safely handle at-least-once delivery?"
+    options:
+      - "Be idempotent -- processing the same event twice must produce the same result as processing it once, typically by tracking already-processed event IDs"
+      - "Nothing -- at-least-once delivery requires no special handling from consumers"
+      - "Refuse to process any event that could theoretically be redelivered"
+      - "Always process every event exactly twice on purpose"
+    correct: 0
+    explanation: "A consumer that blindly decrements inventory on every OrderPlaced event will double-decrement on redelivery -- tracking processed event IDs prevents this."

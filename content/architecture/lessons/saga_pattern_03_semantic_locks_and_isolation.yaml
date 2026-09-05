@@ -1,0 +1,87 @@
+id: saga_pattern_03
+title: "Semantic Locks and Isolation Anomalies"
+language: architecture
+level: 18
+objective: "Understand why sagas lack the isolation guarantee of ACID transactions, and how a semantic lock (a visible 'pending' state) prevents other operations from acting on partially-completed data."
+explanation: |
+  An ACID transaction gives you isolation: nothing outside the
+  transaction can see its intermediate state, only the state before it
+  started or the state after it commits. A saga gives up this guarantee
+  entirely, on purpose (see this category's opening lesson) -- its
+  compensating-action model *requires* that intermediate state be
+  reachable, since a later step's compensation has to reference and
+  undo the concrete result of an earlier step. But that gap creates a
+  new problem: while a saga is mid-flight, other parts of the system
+  can see and act on data that hasn't finished being processed yet, and
+  might still be rolled back by a compensation.
+
+  Concretely: `InventoryService` reserves 3 units of a product for an
+  order, then the saga stalls waiting on `BillingService`. If a
+  completely unrelated process reads that inventory record right now,
+  it sees stock as reserved, unavailable for other orders -- correct.
+  But if instead the reservation step *decremented* available stock
+  directly rather than tracking it as a separate "reserved" quantity,
+  and the saga later fails and compensates by incrementing it back,
+  there's a window where the true availability was misrepresented, and
+  worse, two concurrent sagas touching the same record can interleave
+  their compensations incorrectly if the implementation isn't careful.
+
+  A **semantic lock** is the standard fix: instead of directly mutating
+  a field in a way that looks identical to a normal committed change,
+  the step marks the record with an explicit, visible "pending"
+  status -- `status: "reserved_pending_payment"` rather than silently
+  decrementing a plain `available_stock` counter. Anything else reading
+  that record (another saga, a dashboard, a report) can see it's
+  mid-flight and choose how to treat it -- typically by treating pending
+  reservations as unavailable-for-now but visibly distinct from a
+  permanently committed sale, and safe to compensate cleanly back to
+  "available" without any ambiguity about what state it's reverting
+  from. The lock is "semantic" because nothing at the database level
+  enforces it the way a real row lock would -- it's a convention every
+  participant has to explicitly honor.
+example_code: |
+  # WITHOUT a semantic lock: a plain counter decrement looks identical
+  # to a permanent sale -- no visible distinction, ambiguous compensation.
+  def reserve_stock_naive(product_id, qty):
+      product = db.get(product_id)
+      product.available_stock -= qty   # looks the same whether pending or final
+      db.save(product)
+  # if the saga later fails, incrementing back can race with a CONCURRENT
+  # saga's own decrement on the same record -- ambiguous which qty to undo
+
+  # WITH a semantic lock: an explicit, visible pending state.
+  def reserve_stock_with_semantic_lock(product_id, qty, order_id):
+      product = db.get(product_id)
+      product.reservations[order_id] = {
+          "qty": qty, "status": "reserved_pending_payment",  # visible, distinct from a committed sale
+      }
+      db.save(product)
+
+  def compensate_release_stock(product_id, order_id):
+      product = db.get(product_id)
+      del product.reservations[order_id]   # unambiguous: this exact pending reservation is undone
+      db.save(product)
+category: saga_pattern
+category_level: 3
+difficulty: gotcha
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [saga_pattern, semantic_lock, isolation, distributed_transactions]
+comprehension_check:
+  - question: "Why do sagas give up the isolation guarantee that a normal ACID transaction provides?"
+    options:
+      - "The compensating-action model requires intermediate state to be reachable, since a later step's compensation must reference and undo the concrete result of an earlier step"
+      - "Sagas are not allowed to modify any data at all"
+      - "Isolation is impossible in any distributed system for any reason"
+      - "Sagas run faster than transactions specifically because they skip isolation checks"
+    correct: 0
+    explanation: "This is a deliberate tradeoff, not an oversight -- the saga model needs visible intermediate state to compensate correctly later."
+  - question: "What problem does a semantic lock solve?"
+    options:
+      - "It makes a step's pending, not-yet-final state explicitly visible (e.g. a distinct status field) instead of silently mutating a field in a way indistinguishable from a permanent committed change"
+      - "It physically locks a database row the same way a real row-level lock does"
+      - "It prevents any other process from ever reading the record again"
+      - "It removes the need for compensating actions entirely"
+    correct: 0
+    explanation: "A semantic lock is a convention, not a database-enforced lock -- it lets other participants see that a record is mid-flight and treat it accordingly, and lets a compensation revert cleanly and unambiguously."

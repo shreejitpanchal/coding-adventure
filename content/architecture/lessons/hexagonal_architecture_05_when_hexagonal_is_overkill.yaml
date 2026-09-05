@@ -1,0 +1,86 @@
+id: hexagonal_architecture_05
+title: "When Hexagonal Architecture Is Overkill"
+language: architecture
+level: 35
+objective: "Recognize that Hexagonal Architecture's port/adapter ceremony earns its cost specifically when infrastructure is genuinely likely to change or needs to be substituted for fast tests, and is needless overhead otherwise."
+explanation: |
+  Every port defined in this category has a real cost: an interface to
+  write and maintain, an extra layer of indirection between the calling
+  code and the concrete implementation, and (per the previous lesson) a
+  composition root that has to wire everything together explicitly
+  instead of letting the core just instantiate what it needs directly.
+  That cost buys something specific -- substitutability for tests, and
+  insulation from a concrete technology choice changing later -- and
+  like every pattern in this track, it's worth naming plainly when that
+  purchase isn't actually needed.
+
+  A small script or a throwaway internal tool that will only ever talk
+  to exactly one database, will never reasonably swap it for another,
+  and doesn't need fast unit tests decoupled from that database (because
+  it has no complex business logic worth unit-testing in isolation in
+  the first place) gets nothing from wrapping that database access
+  behind a `Repository` port -- the interface, the adapter, and the
+  composition root are pure ceremony wrapped around a single concrete
+  implementation that was never going anywhere. Calling the database
+  library directly is simply the correct amount of abstraction for that
+  specific piece of code.
+
+  The pattern earns its cost precisely at the intersection this
+  category has built up: business logic complex enough to be worth
+  testing thoroughly and in isolation, *and* a real chance that some
+  piece of infrastructure changes over the system's lifetime (a
+  payment provider, a database engine, a message broker) or needs a
+  fake substituted for realistic test coverage. Applying full
+  ports-and-adapters ceremony to every single database call in a
+  simple application, regardless of whether either condition is
+  actually true, produces a codebase with more interfaces than
+  concrete classes and no corresponding gain in testability or
+  flexibility to show for it -- exactly the over-application this
+  track has flagged for CQRS, sagas, and DDD alike: powerful machinery,
+  reached for reflexively instead of in response to an actual need.
+example_code: |
+  # OVERKILL: a throwaway script with ONE database, no complex logic to
+  # unit-test in isolation, and no realistic chance of ever swapping it.
+  class UserRepository(Protocol):               # unnecessary ceremony for this use case
+      def get(self, user_id): ...
+
+  class SqliteUserRepository(UserRepository):
+      def get(self, user_id):
+          return sqlite_conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+
+  def print_user_report(repo: UserRepository, user_id):
+      print(repo.get(user_id))                  # this will NEVER be called with anything but Sqlite
+
+  # THE FIX: for a simple script with no real substitution need,
+  # calling the concrete implementation directly is the right amount of ceremony.
+  def print_user_report_simple(user_id):
+      user = sqlite_conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+      print(user)
+
+  # Hexagonal Architecture earns its cost specifically where BOTH are true:
+  # complex business logic worth isolating in tests, AND a real chance
+  # the underlying infrastructure changes over the system's lifetime.
+category: hexagonal_architecture
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: hexagonal_architecture_master
+requires_code: false
+concept_tags: [hexagonal_architecture, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "Under what conditions does Hexagonal Architecture's port/adapter ceremony actually earn its cost?"
+    options:
+      - "When business logic is complex enough to be worth testing in isolation, and there's a real chance some piece of infrastructure will change or need a fake substitute for tests"
+      - "It should always be applied to every single database call in every application, with no exceptions"
+      - "Only when the application has a graphical user interface"
+      - "It never earns its cost under any circumstances"
+    correct: 0
+    explanation: "Without complex logic worth isolating and without a real chance of substitution, the interface, adapter, and composition root are pure ceremony around a single concrete implementation that was never going anywhere."
+  - question: "What does this lesson say happens when full ports-and-adapters ceremony is applied reflexively to a simple application?"
+    options:
+      - "The codebase ends up with more interfaces than concrete classes, with no corresponding gain in testability or flexibility to show for it"
+      - "The application automatically becomes easier to test with no added complexity"
+      - "It has no effect on the codebase's structure at all"
+      - "It is always the correct choice regardless of the application's actual needs"
+    correct: 0
+    explanation: "This mirrors the over-application pattern flagged elsewhere in this track for CQRS, sagas, and DDD -- powerful machinery reached for reflexively instead of in response to an actual need."

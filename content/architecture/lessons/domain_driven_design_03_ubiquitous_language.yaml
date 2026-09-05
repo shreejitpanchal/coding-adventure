@@ -1,0 +1,84 @@
+id: domain_driven_design_03
+title: "Ubiquitous Language in Practice"
+language: architecture
+level: 28
+objective: "Understand the ubiquitous language principle -- code should use the exact vocabulary domain experts use, inside a given bounded context -- and the concrete cost of code and conversation drifting apart."
+explanation: |
+  This category's opening lesson mentioned the ubiquitous language
+  problem in passing: the same word can mean different things in
+  different bounded contexts. The principle itself is stronger and more
+  concrete than just "watch out for ambiguous words" -- within a single
+  bounded context, the code's own class names, method names, and
+  variable names should be the *exact* words domain experts actually
+  use when discussing that domain, not a technical translation of them.
+  If underwriters talk about "binding a policy" and the codebase instead
+  has a method called `finalizeInsuranceRecord()`, that's not a neutral
+  rename -- it's a quiet, compounding translation cost paid on every
+  single conversation between engineers and domain experts from then on.
+
+  The failure mode this produces is specific and common: a developer
+  and an underwriter discuss "binding a policy" in a meeting, the
+  developer mentally translates it to `finalizeInsuranceRecord()`
+  before writing any code, and six months later a new developer reading
+  `finalizeInsuranceRecord()` has no way to connect it back to "binding"
+  without asking someone -- the domain concept and the code have quietly
+  drifted into two different vocabularies that need constant manual
+  translation to reconcile. Left long enough, the code stops being a
+  reliable place to learn how the domain actually works, because it
+  no longer speaks the domain's own language.
+
+  Enforcing this in practice means literally naming things after
+  conversations with domain experts, in their words, and pushing back
+  when a technical-sounding synonym creeps in for convenience --
+  `bind_policy()`, not `finalize_insurance_record()`; `Underwriter`, not
+  `RiskApprover`. It also means the language is expected to *evolve* as
+  understanding deepens: if the team and the domain experts jointly
+  discover a better term partway through a project, the code should be
+  renamed to match, treating the vocabulary itself as an artifact worth
+  actively maintaining rather than a naming decision made once at the
+  start and left alone.
+example_code: |
+  # The drift: code uses generic/technical vocabulary instead of the
+  # domain experts' actual words -- a quiet, compounding translation cost.
+  class InsuranceRecord:
+      def finalize_insurance_record(self):
+          self.status = "FINALIZED"
+
+  def approve_risk(record):
+      record.finalize_insurance_record()
+
+  # The fix: code uses the EXACT words domain experts use in conversation.
+  class Policy:
+      def bind(self):               # underwriters say "bind a policy" -- so does the code
+          self.status = "BOUND"
+
+  class Underwriter:                # not "RiskApprover" -- match the domain's own vocabulary
+      def bind_policy(self, policy: Policy):
+          policy.bind()
+
+  # A developer reading this code can walk into an underwriting meeting
+  # and understand the conversation immediately -- no mental translation needed.
+category: domain_driven_design
+category_level: 3
+difficulty: warmup
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [domain_driven_design, ubiquitous_language, naming]
+comprehension_check:
+  - question: "What does the ubiquitous language principle require, within a single bounded context?"
+    options:
+      - "Code's class, method, and variable names should be the exact words domain experts actually use, not a technical translation of them"
+      - "Every class must be named using only generic, technology-neutral terms"
+      - "Domain experts should learn to use the codebase's existing technical vocabulary instead"
+      - "It only applies to comments, never to actual code identifiers"
+    correct: 0
+    explanation: "If underwriters say 'bind a policy' but the code has finalizeInsuranceRecord(), that mismatch is a quiet, compounding translation cost paid on every conversation between engineers and domain experts."
+  - question: "According to this lesson, how should the ubiquitous language be treated as a project progresses?"
+    options:
+      - "As something that evolves -- if a better term is jointly discovered later, the code should be renamed to match, not left as a one-time naming decision"
+      - "It should be fixed permanently on day one and never changed again"
+      - "It only matters during the initial project kickoff meeting"
+      - "It has nothing to do with renaming code over time"
+    correct: 0
+    explanation: "The vocabulary is an artifact worth actively maintaining -- as understanding deepens, code should be updated to keep speaking the domain's current, actual language."

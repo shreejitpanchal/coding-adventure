@@ -1,0 +1,87 @@
+id: api_gateway_04
+title: "GraphQL Federation as an Alternative to Hand-Rolled Aggregation"
+language: architecture
+level: 39
+objective: "Understand GraphQL federation as an alternative to a gateway's hand-written aggregation code, letting each service declare its own piece of a combined schema instead of a central gateway hardcoding every combination."
+explanation: |
+  The `combine(profile, orders, recs)` style of gateway aggregation used
+  throughout this category works, but it has a scaling problem of its
+  own: every new combination of data a client might want (a screen
+  needing profile + orders but not recommendations; a different screen
+  needing recommendations + orders but not profile) means another
+  hand-written aggregation method in the gateway, or a growing set of
+  query parameters controlling which pieces to include. The gateway's
+  own code grows in proportion to the number of client data-shape
+  combinations, not the number of underlying services.
+
+  **GraphQL federation** addresses this differently: each backend
+  service declares its own piece of a single, combined GraphQL schema
+  (`UserService` owns the `User` type's fields, `OrderService` owns the
+  `Order` type's fields and how an `Order` relates to a `User`), and a
+  federation gateway stitches those declarations into one unified
+  schema at startup. Clients then send a single GraphQL query
+  specifying *exactly* the fields they want, in whatever combination
+  they need, and the federation gateway resolves that query by calling
+  only the specific services that own the requested fields --
+  no hand-written aggregation method has to exist in advance for that
+  particular combination, because the client's query itself expresses
+  the combination.
+
+  This isn't a strictly better replacement for a REST-style aggregating
+  gateway -- it trades one kind of complexity for another. A federated
+  schema requires real discipline across every contributing team (each
+  service's schema fragment has to compose correctly with every other
+  team's, and a bad or breaking schema change now has system-wide
+  reach), and the resolution logic under the hood still has to solve
+  exactly the same fan-out, timeout, and partial-failure concerns this
+  category's previous lesson covered -- federation changes how the
+  aggregation is *expressed* and *discovered*, not whether the
+  underlying multi-service coordination problem exists at all.
+example_code: |
+  # Hand-written gateway aggregation: a NEW method for every combination clients need.
+  class ApiGateway:
+      def get_profile_and_orders(self, user_id): ...      # one specific combination
+      def get_orders_and_recs(self, user_id): ...          # another specific combination
+      def get_everything(self, user_id): ...                # yet another
+
+  # GraphQL federation: each service declares ITS OWN piece of one combined schema.
+  # UserService's schema fragment:
+  #   type User { id: ID!, name: String! }
+  # OrderService's schema fragment:
+  #   type Order { id: ID!, total: Float! }
+  #   extend type User { orders: [Order!]! }   # OrderService extends User with its own field
+
+  # A client sends ONE query expressing exactly the combination it needs --
+  # no gateway method had to be pre-written for this specific shape:
+  # query {
+  #   user(id: "123") {
+  #     name
+  #     orders { total }
+  #   }
+  # }
+  # The federation gateway resolves this by calling UserService for `name`
+  # and OrderService for `orders`, then combining -- automatically, per query.
+category: api_gateway
+category_level: 4
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [api_gateway, graphql_federation, aggregation, microservices]
+comprehension_check:
+  - question: "What scaling problem does hand-written REST-style gateway aggregation run into?"
+    options:
+      - "The gateway's own code grows in proportion to the number of different client data-shape combinations needed, since each combination needs its own hand-written aggregation method"
+      - "REST-style aggregation has no scaling problems of any kind"
+      - "It can only ever support exactly one combination of data per gateway"
+      - "It requires rewriting every backend service for each new combination"
+    correct: 0
+    explanation: "A new screen needing a different combination of profile/orders/recommendations means either another hand-written method or growing query-parameter logic in the gateway."
+  - question: "How does GraphQL federation address that scaling problem?"
+    options:
+      - "Each service declares its own piece of a combined schema, and clients send a query expressing exactly the fields/combination they want -- no pre-written aggregation method is needed for each combination"
+      - "It eliminates the need for any backend services to communicate at all"
+      - "It requires exactly one service to own the entire combined schema"
+      - "It removes the need to handle fan-out, timeouts, or partial failures entirely"
+    correct: 0
+    explanation: "The client's query itself expresses the desired combination -- but the underlying fan-out, timeout, and partial-failure concerns from aggregating across services still exist under the hood."

@@ -47,9 +47,19 @@ LANGUAGES: dict[str, LanguageInfo] = {
         tagline="Event loop gotchas, async/await, and idiomatic modern JavaScript -- keep your instincts sharp.",
         available=True,
     ),
+    "ai": LanguageInfo(
+        key="ai", title="AI", icon="\U0001F916",
+        tagline="ML fundamentals, RAG, agentic frameworks, and MCP -- hand-rolled, dependency-free Python.",
+        available=True,
+    ),
+    "architecture": LanguageInfo(
+        key="architecture", title="Architecture", icon="\U0001F3D7️",
+        tagline="Event-driven design, microservices, CQRS, and modern system-design principles -- conceptual, no code to run.",
+        available=True,
+    ),
 }
 
-LANGUAGE_ORDER = ["python", "java", "cpp", "spring", "node"]
+LANGUAGE_ORDER = ["python", "java", "cpp", "spring", "node", "ai", "architecture"]
 
 
 def get_language(key: str) -> LanguageInfo:

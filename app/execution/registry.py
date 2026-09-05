@@ -26,6 +26,11 @@ _ENGINES: dict[str, ExecutionEngine] = {
     "spring": SpringEngine(),
     "node": NodeEngine(),
 }
+# "ai" (ML/RAG/agentic frameworks/MCP) is its own top-level track for
+# progress/XP/streak purposes, but its content is plain, dependency-free
+# Python -- it runs on the exact same engine instance as the python track
+# itself, not a separate implementation.
+_ENGINES["ai"] = _ENGINES["python"]
 
 
 def get_engine(language: str) -> ExecutionEngine:

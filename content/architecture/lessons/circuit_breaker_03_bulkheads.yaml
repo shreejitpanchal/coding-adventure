@@ -1,0 +1,90 @@
+id: circuit_breaker_03
+title: "Bulkheads: Isolating Resource Pools per Dependency"
+language: architecture
+level: 43
+objective: "Understand the Bulkhead pattern -- isolating each dependency's resource pool (threads, connections) so one struggling dependency can't starve resources needed by calls to healthy dependencies."
+explanation: |
+  A circuit breaker (see this category's opening lesson) stops a caller
+  from continuing to *call* a struggling service, but it doesn't by
+  itself prevent a more subtle problem: if every outbound call in a
+  service -- to `RecommendationService`, to `InventoryService`, to
+  `PaymentService` -- draws from one shared pool of worker threads or
+  connections, a struggling `RecommendationService` can exhaust that
+  entire shared pool with calls that are slowly timing out, before the
+  circuit breaker even has enough failed calls to trip open. While
+  those threads sit blocked waiting on `RecommendationService`, calls
+  to the completely healthy `InventoryService` and `PaymentService`
+  have no threads left available to run on at all -- one struggling
+  dependency has taken down access to two healthy ones, purely through
+  shared resource contention, not through any actual coupling between
+  the services themselves.
+
+  The **Bulkhead** pattern (named after a ship's watertight
+  compartments -- flooding in one compartment doesn't sink the whole
+  ship) fixes this by giving each dependency its own dedicated,
+  isolated resource pool: a fixed number of threads/connections
+  reserved specifically for calls to `RecommendationService`, a
+  separate fixed pool for `InventoryService`, another for
+  `PaymentService`. If `RecommendationService`'s pool is fully
+  exhausted by its own struggling calls, that's now a *contained*
+  problem -- calls to `InventoryService` and `PaymentService` draw from
+  their own separate pools and are completely unaffected, exactly the
+  isolation a real ship's compartments provide against flooding.
+
+  Bulkheads and circuit breakers are complementary, not competing,
+  layers: the bulkhead limits the *blast radius* of a struggling
+  dependency by containing resource exhaustion to its own pool, while
+  the circuit breaker (once enough calls within that pool have failed)
+  stops sending it more traffic entirely and lets it recover. Using a
+  circuit breaker alone, without a bulkhead, still leaves the
+  shared-pool-exhaustion failure mode this lesson opens with fully
+  possible -- the two patterns solve genuinely different halves of the
+  same underlying cascading-failure problem.
+example_code: |
+  # WITHOUT bulkheads: one shared thread pool -- a struggling dependency
+  # can exhaust it and starve calls to completely healthy dependencies.
+  shared_pool = ThreadPool(size=20)
+
+  def call_recommendation_service(user_id):
+      return shared_pool.submit(recommendation_service.get, user_id)  # slow calls eat shared capacity
+
+  def call_inventory_service(product_id):
+      return shared_pool.submit(inventory_service.check, product_id)   # starved if the pool above fills up
+
+  # WITH bulkheads: each dependency gets its OWN isolated pool --
+  # exhaustion in one is contained, and can't affect the others.
+  recommendation_pool = ThreadPool(size=10)
+  inventory_pool = ThreadPool(size=10)
+  payment_pool = ThreadPool(size=10)
+
+  def call_recommendation_service_isolated(user_id):
+      return recommendation_pool.submit(recommendation_service.get, user_id)
+
+  def call_inventory_service_isolated(product_id):
+      return inventory_pool.submit(inventory_service.check, product_id)
+  # RecommendationService exhausting its own 10 threads never touches
+  # InventoryService's or PaymentService's separate, dedicated pools.
+category: circuit_breaker
+category_level: 3
+difficulty: deep_dive
+xp_reward: 15
+achievement: null
+requires_code: false
+concept_tags: [circuit_breaker, bulkhead, resilience, cascading_failure]
+comprehension_check:
+  - question: "What failure mode can occur even with a circuit breaker in place, if all outbound calls share one thread/connection pool?"
+    options:
+      - "A struggling dependency can exhaust the entire shared pool with slowly-timing-out calls before the circuit breaker trips, starving calls to completely unrelated, healthy dependencies"
+      - "Circuit breakers make shared resource pools completely unnecessary"
+      - "Shared pools have no downside as long as a circuit breaker exists somewhere in the system"
+      - "This failure mode only happens if the circuit breaker is misconfigured"
+    correct: 0
+    explanation: "While threads sit blocked waiting on the struggling service, calls to healthy services have no threads left to run on -- pure resource contention, with no actual coupling between the services themselves."
+  - question: "How does the Bulkhead pattern prevent that failure mode?"
+    options:
+      - "It gives each dependency its own dedicated, isolated resource pool, so exhaustion in one dependency's pool is contained and can't starve calls to other dependencies"
+      - "It merges all dependencies into a single larger shared pool"
+      - "It removes the need for a circuit breaker entirely"
+      - "It only isolates pools for dependencies that have never failed before"
+    correct: 0
+    explanation: "Named after a ship's watertight compartments, bulkheads contain resource exhaustion to one dependency's own pool -- complementary to a circuit breaker, which then stops sending that struggling dependency more traffic."

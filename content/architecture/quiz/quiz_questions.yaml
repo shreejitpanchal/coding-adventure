@@ -1,0 +1,220 @@
+questions:
+  - id: q01
+    question: "In event-driven architecture, what happens when a new service needs to react to an existing event like OrderPlaced?"
+    options:
+      - "It subscribes independently to the event -- the publishing service needs zero code changes"
+      - "The publishing service must be modified to add an explicit call to the new service"
+      - "Event-driven architecture doesn't support adding new consumers after the fact"
+      - "All existing subscribers must be rewritten whenever a new one is added"
+    correct: 0
+    explanation: "This is the core decoupling benefit -- the publisher never knows or cares who's listening, so new subscribers are pure additions."
+    concept_tags: [event_driven_architecture, decoupling]
+
+  - id: q02
+    question: "What does 'eventual consistency' mean in the context of an event-driven system?"
+    options:
+      - "There's a window after an event is published where downstream state hasn't caught up yet, though it will settle correctly given time"
+      - "The system's data is permanently inconsistent and never resolves"
+      - "It means the same thing as strong, immediate consistency"
+      - "It only applies to systems with a single service"
+    correct: 0
+    explanation: "Event-driven systems trade immediate consistency for decoupling and resilience -- the tradeoff this pattern deliberately makes."
+    concept_tags: [event_driven_architecture, eventual_consistency]
+
+  - id: q03
+    question: "What's the primary reason a team would split a modular monolith into microservices?"
+    options:
+      - "To gain independent deployability -- different teams can ship their services without coordinating with each other"
+      - "Microservices are always simpler to build than a monolith"
+      - "To eliminate the need for a database entirely"
+      - "Because a monolith can never be organized into modules"
+    correct: 0
+    explanation: "A modular monolith already separates concerns in code; microservices add the ability to deploy each part independently, at the cost of distributed-systems complexity."
+    concept_tags: [microservices, independent_deployment]
+
+  - id: q04
+    question: "Why is adopting microservices purely because they're a popular pattern considered a common architecture mistake?"
+    options:
+      - "It adds real operational complexity (network calls, service discovery, data consistency across boundaries) without the organizational or scaling pressure that would justify it"
+      - "Microservices are objectively worse than monoliths in every situation"
+      - "It's actually never a mistake to adopt microservices"
+      - "Microservices are illegal under most software licenses"
+    correct: 0
+    explanation: "A well-factored modular monolith is often the right starting point, with microservices extracted later once real pressure appears."
+    concept_tags: [microservices, distributed_systems]
+
+  - id: q05
+    question: "In CQRS, what's the key difference between the write model and the read model?"
+    options:
+      - "The write model enforces business invariants for commands; the read model is often a separately optimized, denormalized view purpose-built for queries"
+      - "They must always be the exact same class and database table"
+      - "The write model is only used for reading, and vice versa"
+      - "CQRS eliminates the need for any data validation"
+    correct: 0
+    explanation: "Splitting them lets each side be optimized for its actual job -- but requires keeping the read model synchronized, usually via events."
+    concept_tags: [cqrs, read_model, write_model]
+
+  - id: q06
+    question: "When is CQRS considered the RIGHT architectural choice, per common guidance?"
+    options:
+      - "When the read and write shapes/scaling needs have genuinely diverged enough to justify two models and their synchronization"
+      - "For every single CRUD application from day one"
+      - "Only for applications with no write operations at all"
+      - "CQRS should never be used under any circumstances"
+    correct: 0
+    explanation: "Applying full CQRS to a simple app where one model already serves both jobs well is a recognized case of over-engineering."
+    concept_tags: [cqrs, eventual_consistency]
+
+  - id: q07
+    question: "Why can't a single ACID database transaction span multiple microservices, each with its own database?"
+    options:
+      - "Each service commits its own local changes independently -- there's no shared transactional mechanism spanning separate databases"
+      - "ACID transactions are impossible in any architecture"
+      - "Microservices never use databases"
+      - "It works exactly like a single-database transaction, with no real difference"
+    correct: 0
+    explanation: "This is exactly the gap the Saga pattern fills, using compensating actions instead of a database-level rollback."
+    concept_tags: [saga_pattern, distributed_transactions]
+
+  - id: q08
+    question: "What is a 'compensating action' in the Saga pattern?"
+    options:
+      - "An explicit operation that semantically undoes a previously-succeeded step, run when a later step in the sequence fails"
+      - "A retry of the exact same failed operation"
+      - "A database-level automatic rollback"
+      - "An action that only runs when every step in the saga succeeds"
+    correct: 0
+    explanation: "refund_payment() and release_inventory() are compensations for charge_card() and reserve_stock() -- each undoes its own step explicitly, not via a shared rollback."
+    concept_tags: [saga_pattern, compensating_actions]
+
+  - id: q09
+    question: "What's the main risk the Strangler Fig pattern is designed to avoid?"
+    options:
+      - "The single high-risk 'big bang' cutover of a full rewrite, where every gap in the new system is discovered at once with the old system already decommissioned"
+      - "The pattern has no specific risk it addresses"
+      - "It's designed to make migrations happen faster, with no relation to risk"
+      - "It only applies to systems that have never been in production"
+    correct: 0
+    explanation: "A routing facade lets specific routes migrate incrementally, each independently validated, with an easy fallback to the legacy system if something's wrong."
+    concept_tags: [strangler_fig, legacy_migration]
+
+  - id: q10
+    question: "During a Strangler Fig migration, what's still true about the legacy system?"
+    options:
+      - "It keeps running in production, handling all not-yet-migrated routes, until every meaningful capability has been migrated and validated"
+      - "It must be deleted before any migration work can begin"
+      - "It's only used for testing, never for real production traffic"
+      - "It automatically migrates itself with no facade or explicit routing needed"
+    correct: 0
+    explanation: "Running two systems side by side during the transition is a genuine, ongoing cost -- but it's what makes each migrated route independently reversible."
+    concept_tags: [strangler_fig, routing_facade]
+
+  - id: q11
+    question: "Why does Domain-Driven Design recommend separate models per bounded context instead of one shared model like 'Customer' across a whole business?"
+    options:
+      - "Different subdomains (Sales, Support, Billing) genuinely have different rules and vocabulary for the 'same' concept -- one shared model forces them to awkwardly agree on one shape"
+      - "DDD requires every business to have exactly one class total"
+      - "Bounded contexts are only a theoretical idea with no practical benefit"
+      - "Sharing a model is always more efficient with no downsides"
+    correct: 0
+    explanation: "A bounded context is an explicit boundary within which a specific model is consistent and meaningful -- outside it, that same definition may not apply."
+    concept_tags: [domain_driven_design, bounded_context]
+
+  - id: q12
+    question: "What does Domain-Driven Design's 'ubiquitous language' concept refer to?"
+    options:
+      - "The idea that the same word can mean different things in different bounded contexts, and each context needs its own consistent vocabulary"
+      - "A requirement that every team uses English exclusively"
+      - "A single global glossary shared unchanged across an entire company"
+      - "A programming language that must be used for all domain modeling"
+    correct: 0
+    explanation: "Respecting that 'Customer' means something different in Sales vs. Billing is exactly what drawing separate bounded contexts protects."
+    concept_tags: [domain_driven_design, ubiquitous_language]
+
+  - id: q13
+    question: "In Hexagonal Architecture, what direction do dependencies point?"
+    options:
+      - "Adapters depend on the application core's port interfaces -- the core never depends on any specific adapter or infrastructure technology"
+      - "The core directly imports specific database drivers and SDKs"
+      - "There is no defined dependency direction in this pattern"
+      - "Ports depend on adapters, which depend on the core"
+    correct: 0
+    explanation: "This inversion is what makes substituting a FakePaymentGateway in tests, or swapping a real provider later, possible without touching the core's code."
+    concept_tags: [hexagonal_architecture, dependency_inversion]
+
+  - id: q14
+    question: "Why is the 'hexagon' shape in Hexagonal Architecture not meaningful geometry?"
+    options:
+      - "It's just a visual convention showing the core in the middle with room for multiple ports around its edges -- the important idea is the dependency direction, not the number of sides"
+      - "It must always have exactly six ports, no more and no fewer"
+      - "The shape determines how many microservices a system can have"
+      - "Hexagons are required because of a specific programming language limitation"
+    correct: 0
+    explanation: "The core concept (ports as the core's own interfaces, adapters implementing them from outside) is what matters -- the hexagon is just a diagramming convention."
+    concept_tags: [hexagonal_architecture, ports_and_adapters]
+
+  - id: q15
+    question: "What problem does an API Gateway solve for clients calling into a microservices system?"
+    options:
+      - "It provides one stable entry point that can route, aggregate multiple services' responses, and handle cross-cutting concerns like auth once, instead of every client knowing the full internal topology"
+      - "It requires every client to call every internal service directly"
+      - "It eliminates the need for microservices to communicate over a network"
+      - "It only works if there is exactly one microservice in the system"
+    correct: 0
+    explanation: "Clients only need to know the gateway's stable external contract -- the internal topology behind it can change freely."
+    concept_tags: [api_gateway, microservices]
+
+  - id: q16
+    question: "When does a Backend-for-Frontend (BFF) make sense over a single shared API Gateway?"
+    options:
+      - "When different client types (mobile, web, partner integrations) have diverged enough in their data-shape needs that one generic gateway's compromises are actively hurting more than one client"
+      - "Immediately, for every system with even one client type"
+      - "BFF and API Gateway are the exact same thing with no distinction"
+      - "Only when there is no gateway at all in the system"
+    correct: 0
+    explanation: "BFF gives each distinct client its own tailored gateway -- worth the cost of maintaining multiple gateways once client needs have genuinely diverged."
+    concept_tags: [backend_for_frontend, api_gateway]
+
+  - id: q17
+    question: "How does naive retrying make a struggling downstream service's overload worse, motivating the Circuit Breaker pattern?"
+    options:
+      - "The service keeps fielding the same request volume, except now every request fails slowly instead of succeeding quickly, tying up resources on both sides"
+      - "Retrying always immediately fixes any downstream problem"
+      - "Retries have zero effect on the downstream service, only on the caller's own resources"
+      - "Circuit breakers have nothing to do with retry behavior"
+    correct: 0
+    explanation: "This cascading effect is exactly what a circuit breaker's 'open' state prevents, by failing fast instead of continuing to hammer a struggling service."
+    concept_tags: [circuit_breaker, cascading_failure]
+
+  - id: q18
+    question: "What happens in a circuit breaker's 'half-open' state?"
+    options:
+      - "A small number of trial calls are let through to test whether the downstream service has recovered, before deciding whether to close or reopen the breaker"
+      - "All calls are permanently blocked with no way to ever recover"
+      - "It behaves identically to the closed state, with no testing at all"
+      - "It only occurs once, the very first time the breaker is created"
+    correct: 0
+    explanation: "If the trial calls succeed, the breaker closes and normal traffic resumes; if they still fail, it reopens for another cooldown period."
+    concept_tags: [circuit_breaker, fail_fast]
+
+  - id: q19
+    question: "Why must a 'charge this card' operation typically be made idempotent in a distributed system?"
+    options:
+      - "A network timeout is ambiguous (the charge may have succeeded or failed), so a caller's reasonable retry must not risk charging the customer twice"
+      - "Idempotency has nothing to do with retries or network failures"
+      - "Charging a card is always naturally idempotent with no extra work needed"
+      - "It only matters for read operations, never for operations with side effects"
+    correct: 0
+    explanation: "An idempotency key lets the server recognize a retried request and return the already-recorded result instead of re-executing the charge."
+    concept_tags: [idempotency, idempotency_key]
+
+  - id: q20
+    question: "Why does HTTP designate GET as idempotent and safe to retry, while POST is not idempotent by default?"
+    options:
+      - "GET only reads data (reading the same thing twice changes nothing), while POST typically creates a new resource with a side effect that would duplicate on a naive retry"
+      - "GET and POST are functionally identical in every way"
+      - "POST is always faster to retry safely than GET"
+      - "HTTP has no concept of idempotency at all"
+    correct: 0
+    explanation: "This is exactly why write operations across a network boundary need a deliberate idempotency strategy (like an idempotency key) if retries are going to be safe, while reads don't."
+    concept_tags: [idempotency, retries]

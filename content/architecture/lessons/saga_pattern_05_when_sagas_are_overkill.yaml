@@ -1,0 +1,85 @@
+id: saga_pattern_05
+title: "When a Saga Is the Wrong Tool"
+language: architecture
+level: 20
+objective: "Recognize the situations where reaching for a saga adds unjustified complexity, and the simpler alternatives that should be considered first."
+explanation: |
+  This category has built up the saga pattern's real machinery --
+  compensating actions, orchestration vs. choreography, semantic locks,
+  pivot transactions -- and all of that machinery is genuine, necessary
+  complexity for the problem it solves: coordinating a multi-step
+  operation across services that each have their own database, with no
+  shared transaction. But that specific problem has to actually exist
+  before that machinery is worth paying for, and it's common to reach
+  for a saga out of habit once a system has multiple services, even
+  when the operation in question doesn't need one.
+
+  The clearest sign a saga is overkill: the steps in question all
+  belong to the *same* service and the *same* database. If
+  `reserve_stock`, `apply_discount`, and `update_order_status` are all
+  just methods on `OrderService` touching `OrderService`'s own tables,
+  a single local ACID transaction handles all of it correctly, with
+  real rollback-on-failure, real isolation, and none of a saga's
+  eventual-consistency window or compensating-action design burden. The
+  saga pattern exists specifically for the case where that single
+  transaction is no longer available because the steps are owned by
+  genuinely different services -- reaching for saga machinery inside
+  one service's own transaction boundary solves a problem that was
+  never actually there.
+
+  A second, subtler sign: even across services, some operations don't
+  need strict step-by-step coordination at all -- if a failure in step 3
+  doesn't actually need step 1 undone (the two aren't meaningfully
+  coupled, or step 1's effect is harmless to leave as-is), simpler
+  patterns like fire-and-forget events or a periodic reconciliation job
+  that fixes drift can solve the same problem with far less machinery
+  than a full compensating saga. As with every pattern in this track,
+  the right default is the simplest thing that satisfies the actual
+  consistency requirement, and a saga earns its cost only once a
+  genuine cross-service, needs-to-be-undone-together operation is
+  actually present.
+example_code: |
+  # OVERKILL: these three steps are all on the SAME service, SAME database --
+  # a saga's compensating actions solve a problem that doesn't exist here.
+  class OrderServiceSagaOverkill:
+      def place_order(self, order):
+          try:
+              self.reserve_stock(order)
+              self.apply_discount(order)
+              self.update_order_status(order, "placed")
+          except Exception:
+              self.compensate_undo_discount(order)     # unnecessary machinery --
+              self.compensate_undo_stock_reservation(order)  # a local transaction already does this correctly
+
+  # THE FIX: a single local ACID transaction -- real rollback, real isolation,
+  # no compensating-action design burden needed at all.
+  class OrderServiceSimple:
+      def place_order(self, order):
+          with db.transaction():          # one transaction, one database, automatic rollback
+              self.reserve_stock(order)
+              self.apply_discount(order)
+              self.update_order_status(order, "placed")
+category: saga_pattern
+category_level: 5
+difficulty: gotcha
+xp_reward: 10
+achievement: saga_pattern_master
+requires_code: false
+concept_tags: [saga_pattern, over_engineering, architecture_tradeoffs]
+comprehension_check:
+  - question: "What is the clearest sign that a saga is being reached for unnecessarily?"
+    options:
+      - "All the steps in question belong to the same service and the same database -- a single local ACID transaction already handles rollback and isolation correctly"
+      - "The operation involves more than one step of any kind"
+      - "Sagas should always be used whenever more than one service exists in the system"
+      - "The operation doesn't send any emails"
+    correct: 0
+    explanation: "The saga pattern exists specifically for the case where a single shared transaction is unavailable because steps are owned by genuinely different services -- using saga machinery inside one service's own transaction boundary solves a problem that isn't there."
+  - question: "Besides using a plain local transaction, what's another simpler alternative to a full compensating saga mentioned in this lesson?"
+    options:
+      - "Fire-and-forget events or a periodic reconciliation job, for cases where a failure doesn't actually require an earlier step to be undone"
+      - "There are no simpler alternatives to a saga in any situation"
+      - "Manually pausing the entire system until a human resolves the issue"
+      - "Running every step twice to double-check it succeeded"
+    correct: 0
+    explanation: "Not every cross-service operation needs strict step-by-step coordination -- when steps aren't meaningfully coupled, simpler mechanisms can satisfy the actual consistency requirement with far less machinery."

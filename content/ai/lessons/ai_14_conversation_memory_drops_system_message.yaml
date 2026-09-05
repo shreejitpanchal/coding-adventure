@@ -1,0 +1,78 @@
+id: ai_14
+title: "Trimming Conversation History Drops the System Message"
+language: ai
+level: 14
+objective: "Fix a conversation-history trimmer that keeps only the most recent messages, which silently drops the system message once history grows past the limit."
+explanation: |
+  Trimming a growing conversation history to the last `N` messages with
+  a plain slice -- `history[-max_messages:]` -- keeps whatever happens
+  to be most recent, with no special treatment for *which* message that
+  is. The very first message in an agent's history is typically the
+  system message: the instructions defining the agent's role, its
+  constraints, and how it should behave for the entire session. Once
+  the conversation grows past `max_messages` total entries, a plain
+  "keep the last N" slice starts dropping that system message right
+  along with old chat turns -- the agent silently loses its own
+  operating instructions partway through a long conversation, with
+  nothing in the trimming logic itself signaling that anything
+  important was discarded.
+
+  The fix is to treat the system message as a permanent fixture,
+  separate from the sliding window applied to everything else: keep
+  `history[0]` unconditionally, and fill the remaining budget
+  (`max_messages - 1` slots) with the most recent other messages --
+  `[history[0]] + history[-(max_messages - 1):]`. This preserves the
+  agent's foundational instructions for the entire session while still
+  bounding memory growth for everything else, which is exactly the
+  "keep first, slide the rest" pattern real conversational agent
+  frameworks use to manage context length without losing the
+  instructions the whole conversation depends on.
+example_code: |
+  # The trap: a plain slice drops the system message once history grows.
+  def trim_history_trap(history, max_messages):
+      return history[-max_messages:]
+
+  history = [
+      "system: be concise and polite",
+      "user: hi", "assistant: hello",
+      "user: what's 2+2?", "assistant: 4",
+  ]
+  print(trim_history_trap(history, 3))
+  # ["assistant: hello", "user: what's 2+2?", "assistant: 4"] -- the system message is GONE
+
+  # The fix: always keep the system message, slide the window over the rest.
+  def trim_history(history, max_messages):
+      if len(history) <= max_messages:
+          return history
+      return [history[0]] + history[-(max_messages - 1):]
+
+  print(trim_history(history, 3))
+  # ["system: be concise and polite", "user: what's 2+2?", "assistant: 4"] -- system message preserved
+starter_code: |
+  def trim_history(history, max_messages):
+      return history[-max_messages:]
+
+  history = [
+      "system: be concise and polite",
+      "user: hi", "assistant: hello",
+      "user: what's 2+2?", "assistant: 4",
+  ]
+  trimmed = trim_history(history, 3)
+  print(trimmed[0].startswith("system:"))
+challenge: |
+  Fix `trim_history` so the system message (history[0]) is always kept,
+  even after trimming -- fill the remaining budget with the most recent
+  other messages instead of just slicing the last max_messages entries.
+expected_output: |
+  True
+hints:
+  - "if len(history) <= max_messages: return history"
+  - "Otherwise: return [history[0]] + history[-(max_messages - 1):] -- one slot for the system message, the rest for the most recent messages."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\[history\\[0\\]\\] \\+ history\\["
+concept_tags: [conversation_memory, context_window, agentic_framework]
