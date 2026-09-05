@@ -4,6 +4,14 @@ page.views.clear() + page.views.append(...) on every route change, rebuilding
 exactly one view fresh each time -- avoids ever showing stale progress/XP
 numbers on a view built earlier. `history` is a small Python-side back
 stack since page.views is deliberately kept at length 1.
+
+Because there's only ever one view, each view's `can_pop` is set to False
+so Flutter can't silently pop (and, with nothing beneath it in the
+Navigator, exit the app on Android's hardware/gesture back button) --
+`on_confirm_pop` is the hook Flutter actually solicits on every back
+attempt when can_pop is False, so that's where go_back() runs, not
+`page.on_view_pop` (which per Flet's own docs/examples only fires *after*
+a pop the framework was allowed to perform itself -- never true here).
 """
 from __future__ import annotations
 
@@ -86,24 +94,37 @@ def main(page: ft.Page) -> None:
         # Since page.views is deliberately kept at length 1 (see module
         # docstring), Flutter's Navigator has nothing else to pop -- with
         # the default can_pop=True, Android's hardware/gesture back button
-        # would pop this lone view straight off the stack and exit the app
-        # instead of running our own history-based back navigation below.
-        # can_pop=False makes Flutter intercept that system back action and
-        # route it through on_view_pop/view_pop() instead, same as tapping
-        # an in-app back button already does.
-        page.views[-1].can_pop = False
+        # would pop this lone view straight off the stack and exit the app.
+        # can_pop=False blocks that native pop instead, which is what makes
+        # Flutter solicit on_confirm_pop below on every back attempt (system
+        # back, app-bar back, or otherwise) rather than acting on it itself.
+        view = page.views[-1]
+        view.can_pop = False
+
+        async def on_confirm_pop(_e: ft.Event) -> None:
+            go_back()
+            # We already handle "back" ourselves via go_back()'s page.go()
+            # above (which clears+rebuilds page.views with the previous
+            # route) -- confirm_pop(False) just tells Flutter not to *also*
+            # pop this (now-superseded) view natively on top of that.
+            await view.confirm_pop(False)
+
+        view.on_confirm_pop = on_confirm_pop
 
         page.bgcolor = state.theme.bg
         page.theme_mode = ft.ThemeMode.DARK if state.theme.is_dark else ft.ThemeMode.LIGHT
         page.update()
 
-    def view_pop(_e: ft.ViewPopEvent) -> None:
+    def go_back() -> None:
         if history:
             previous_route = history.pop()
             navigating_back["value"] = True
             page.go(previous_route)
         else:
             page.run_task(page.window.close)
+
+    def view_pop(_e: ft.ViewPopEvent) -> None:
+        go_back()
 
     page.on_route_change = route_change
     page.on_view_pop = view_pop
