@@ -79,6 +79,16 @@ def main(page: ft.Page) -> None:
         else:
             page.views.append(build_language_select_view(page, state))
 
+        # Since page.views is deliberately kept at length 1 (see module
+        # docstring), Flutter's Navigator has nothing else to pop -- with
+        # the default can_pop=True, Android's hardware/gesture back button
+        # would pop this lone view straight off the stack and exit the app
+        # instead of running our own history-based back navigation below.
+        # can_pop=False makes Flutter intercept that system back action and
+        # route it through on_view_pop/view_pop() instead, same as tapping
+        # an in-app back button already does.
+        page.views[-1].can_pop = False
+
         page.bgcolor = state.theme.bg
         page.theme_mode = ft.ThemeMode.DARK if state.theme.is_dark else ft.ThemeMode.LIGHT
         page.update()
