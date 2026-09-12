@@ -1,0 +1,64 @@
+id: core_refresher_44
+title: "__call__ Makes an Instance Usable Like a Plain Function"
+language: python
+level: 157
+objective: "Replace a named method that has to be called explicitly with __call__, so an instance itself can be invoked directly, the same way a plain function is."
+explanation: |
+  A class instance that wraps up one piece of stored state and one
+  operation on it (an adder holding an amount, applied to different
+  numbers) can be called explicitly via a named method (`add5.add(10)`)
+  -- or, by implementing `__call__(self, ...)`, the instance itself
+  becomes directly callable: `add5(10)`, with no method name at all,
+  the same syntax used for a plain function. This is what makes
+  something like a configured, stateful callback object usable
+  anywhere a plain function is expected, without callers needing to
+  know it's secretly an object with stored state.
+
+  The bug this exercise fixes requires calling a named `add()` method.
+  The fix implements `__call__`, so the instance is directly callable.
+example_code: |
+  # Requires calling a named method explicitly.
+  class AdderMethod:
+      def __init__(self, n):
+          self.n = n
+      def add(self, x):
+          return x + self.n
+
+  add5_loop = AdderMethod(5)
+  print(add5_loop.add(10))                 # 15
+
+  # __call__ makes the instance itself directly callable.
+  class Adder:
+      def __init__(self, n):
+          self.n = n
+      def __call__(self, x):
+          return x + self.n
+
+  add5 = Adder(5)
+  print(add5(10))                          # 15 -- called directly, like a function
+starter_code: |
+  class Adder:
+      def __init__(self, n):
+          self.n = n
+      def add(self, x):
+          return x + self.n
+
+  add5 = Adder(5)
+  print(add5.add(10))
+challenge: |
+  Fix `Adder` so it implements `__call__` instead of a named `add()`
+  method, and call the instance directly as `add5(10)`. Keep the same
+  output: 15.
+expected_output: |
+  15
+hints:
+  - "Rename add to __call__, then call the instance directly: add5(10) instead of add5.add(10)."
+  - "__call__ is what makes an instance usable with plain function-call syntax -- add5(10) is really Python calling add5.__call__(10) under the hood."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 44
+difficulty: core
+contains_patterns:
+  - "def __call__\\(self, x\\):"
+concept_tags: [dunder_methods, callable_objects]

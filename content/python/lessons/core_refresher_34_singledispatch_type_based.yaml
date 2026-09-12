@@ -1,0 +1,67 @@
+id: core_refresher_34
+title: "functools.singledispatch Replaces an isinstance Chain With Type-Based Dispatch"
+language: python
+level: 147
+objective: "Replace a function using a chain of isinstance() checks with functools.singledispatch, registering a separate implementation per type."
+explanation: |
+  A function branching on `isinstance(x, int)`, then `isinstance(x,
+  str)`, and so on grows a longer and longer chain every time a new
+  type needs its own handling, all crammed into one function body.
+  `functools.singledispatch` inverts this: one function is registered
+  as the default, and `@name.register` attaches a separate
+  implementation per type, each in its own small function -- adding
+  support for a new type means adding a new registered function, not
+  editing a growing chain of `isinstance` checks in one place.
+example_code: |
+  # A growing chain of isinstance checks in one function body.
+  def describe_loop(x):
+      if isinstance(x, int):
+          return f"int:{x}"
+      elif isinstance(x, str):
+          return f"str:{x}"
+      return "unknown"
+
+  print(describe_loop(5))                  # int:5
+
+  # singledispatch registers a separate implementation per type.
+  from functools import singledispatch
+
+  @singledispatch
+  def describe(x):
+      return "unknown"
+
+  @describe.register
+  def _(x: int):
+      return f"int:{x}"
+
+  @describe.register
+  def _(x: str):
+      return f"str:{x}"
+
+  print(describe(5))                       # int:5
+starter_code: |
+  def describe(x):
+      if isinstance(x, int):
+          return f"int:{x}"
+      elif isinstance(x, str):
+          return f"str:{x}"
+      return "unknown"
+
+  print(describe(5))
+challenge: |
+  Rewrite `describe` using `@singledispatch` with a default
+  implementation plus `@describe.register` functions for `int` and
+  `str`. Keep the same output: int:5.
+expected_output: |
+  int:5
+hints:
+  - "from functools import singledispatch, then @singledispatch above the default def describe(x): return \"unknown\"."
+  - "@describe.register above def _(x: int): ... registers a type-specific implementation -- the parameter's type hint is what tells singledispatch which type it handles."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 34
+difficulty: core
+contains_patterns:
+  - "@singledispatch"
+concept_tags: [singledispatch, functools]

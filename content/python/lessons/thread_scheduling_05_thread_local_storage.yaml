@@ -105,7 +105,7 @@ hints:
   - "local_data = threading.local() -- create it once, outside any thread."
   - "Each thread sets local_data.value = n and reads it right back before storing into results."
 xp_reward: 15
-achievement: thread_scheduling_master
+achievement: null
 category: thread_scheduling
 category_level: 5
 difficulty: deep_dive

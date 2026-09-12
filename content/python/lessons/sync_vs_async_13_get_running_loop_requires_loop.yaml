@@ -1,0 +1,72 @@
+id: sync_vs_async_13
+title: "get_running_loop() Only Works From INSIDE a Running Event Loop"
+language: python
+level: 443
+objective: "Fix code calling asyncio.get_running_loop() from plain synchronous code (with no event loop actually running yet), which raises RuntimeError immediately, when calling it from inside a coroutine -- while asyncio.run() actually has a loop running -- correctly retrieves the real, active loop."
+explanation: |
+  `asyncio.get_running_loop()` does exactly what its name says --
+  it only ever returns the loop that's *currently running*, right
+  now, in the thread calling it. There's no running loop at all in
+  plain synchronous code sitting outside `asyncio.run(...)` (or
+  outside a coroutine that `run()`/another loop is actively driving),
+  so calling it from there raises `RuntimeError: no running event
+  loop` immediately -- it never creates one, and never falls back to
+  anything else. The fix isn't a different function call; it's calling
+  it from the right *place*: from inside a coroutine, while an event
+  loop (via `asyncio.run()`) is genuinely active and driving it.
+
+  The fix moves the `get_running_loop()` call inside a coroutine,
+  called through `asyncio.run(...)`.
+example_code: |
+  # The trap: called from plain sync code -- no event loop is running yet.
+  import asyncio
+
+  def get_loop_trap():
+      return asyncio.get_running_loop()
+
+  try:
+      get_loop_trap()
+      print("ok")
+  except RuntimeError:
+      print("crashed")
+  # "crashed" -- there's genuinely no running event loop at this point at all
+
+  # The fix: call it from INSIDE a coroutine, with a loop actually running.
+  async def get_loop():
+      return asyncio.get_running_loop()
+
+  async def main():
+      loop = await get_loop()
+      print(loop is not None)
+
+  asyncio.run(main())
+  # True -- correctly retrieved the real, active loop asyncio.run() is driving
+starter_code: |
+  import asyncio
+
+  def get_loop():
+      return asyncio.get_running_loop()
+
+  try:
+      get_loop()
+      print("ok")
+  except RuntimeError:
+      print("crashed")
+challenge: |
+  Fix this by making `get_loop` an `async def` function, calling it
+  from inside another coroutine run through `asyncio.run(...)`,
+  printing whether the returned loop `is not None`. It should print
+  `True`, not `crashed`.
+expected_output: |
+  True
+hints:
+  - "async def get_loop(): return asyncio.get_running_loop(), then async def main(): loop = await get_loop(); print(loop is not None), run via asyncio.run(main())."
+  - "get_running_loop() only works while an event loop is genuinely active and running -- calling it from plain sync code outside asyncio.run() always raises RuntimeError."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "async def get_loop\\(\\):"
+concept_tags: [asyncio, event_loop, sync_vs_async]

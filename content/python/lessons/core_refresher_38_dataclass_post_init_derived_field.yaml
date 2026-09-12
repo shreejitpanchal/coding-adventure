@@ -1,0 +1,73 @@
+id: core_refresher_38
+title: "__post_init__ Computes a Derived Field the Caller Shouldn't Have to Supply"
+language: python
+level: 151
+objective: "Fix a dataclass that requires the caller to compute and pass a derived field manually, when __post_init__ can compute it automatically right after the other fields are set."
+explanation: |
+  A dataclass field that's fully determined by the other fields (an
+  `area` computed from `width` and `height`) shouldn't need to be
+  passed in by the caller at all -- doing so means every caller has to
+  remember the correct formula, and nothing stops them from passing a
+  value that doesn't actually match. `__post_init__` runs automatically
+  right after the generated `__init__` finishes setting the declared
+  fields, which is exactly where a derived field can be computed once,
+  correctly, in one place -- combined with `field(init=False)` so the
+  field is never accepted as a constructor argument in the first place.
+
+  The bug this exercise fixes requires the caller to pass `area`
+  explicitly. The fix computes it automatically in `__post_init__`.
+example_code: |
+  # The caller has to compute and pass area manually every time.
+  from dataclasses import dataclass
+
+  @dataclass
+  class RectangleLoop:
+      width: float
+      height: float
+      area: float
+
+  r_loop = RectangleLoop(3, 4, 3 * 4)       # caller must remember the formula correctly
+  print(r_loop.area)                        # 12
+
+  # __post_init__ computes it automatically -- nothing to remember.
+  from dataclasses import dataclass, field
+
+  @dataclass
+  class Rectangle:
+      width: float
+      height: float
+      area: float = field(init=False)
+      def __post_init__(self):
+          self.area = self.width * self.height
+
+  r = Rectangle(3, 4)
+  print(r.area)                             # 12
+starter_code: |
+  from dataclasses import dataclass
+
+  @dataclass
+  class Rectangle:
+      width: float
+      height: float
+      area: float
+
+  r = Rectangle(3, 4, 3 * 4)
+  print(r.area)
+challenge: |
+  Fix `Rectangle` so `area` is `field(init=False)` and computed
+  automatically in `__post_init__` (`self.area = self.width *
+  self.height`), instead of being passed in by the caller. Construct it
+  as `Rectangle(3, 4)`. Keep the same output: 12.
+expected_output: |
+  12
+hints:
+  - "area: float = field(init=False), then def __post_init__(self): self.area = self.width * self.height."
+  - "field(init=False) means the caller can no longer pass area at all -- it's computed automatically right after width and height are set."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "def __post_init__\\(self\\):"
+concept_tags: [dataclasses, post_init]

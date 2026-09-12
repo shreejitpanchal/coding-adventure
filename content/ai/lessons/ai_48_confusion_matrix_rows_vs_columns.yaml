@@ -1,0 +1,67 @@
+id: ai_48
+title: "Confusion Matrix: Rows Are Actual, Columns Are Predicted"
+language: ai
+level: 48
+objective: "Fix a hand-rolled confusion matrix builder that swaps rows and columns, indexing by predicted label first instead of actual label first."
+explanation: |
+  A confusion matrix's cells count, for every (actual, predicted) pair,
+  how many examples fell into that combination -- but the convention
+  for which axis is which matters, because every downstream metric
+  (precision reads down a column, recall reads across a row, in the
+  standard convention) assumes rows are the actual/true label and
+  columns are the predicted label. Swap that convention silently and
+  the matrix still looks like a valid confusion matrix -- same numbers,
+  same shape -- but every precision/recall computed from it afterward
+  reads as the OTHER metric instead, without any error ever being
+  raised.
+
+  The fix indexes `matrix[actual][predicted]`, matching the standard
+  convention (the same one scikit-learn's `confusion_matrix` uses), so
+  a reader (or any downstream metric code) can rely on rows meaning
+  "what it really was" and columns meaning "what the model guessed."
+example_code: |
+  # The trap: indexed by PREDICTED first, ACTUAL second -- silently
+  # swaps the standard row/column convention.
+  def confusion_matrix_trap(y_true, y_pred, n_classes):
+      matrix = [[0] * n_classes for _ in range(n_classes)]
+      for t, p in zip(y_true, y_pred):
+          matrix[p][t] += 1   # bug: predicted as row, actual as column
+      return matrix
+
+  # The fix: indexed by ACTUAL first, PREDICTED second (the standard convention).
+  def confusion_matrix(y_true, y_pred, n_classes):
+      matrix = [[0] * n_classes for _ in range(n_classes)]
+      for t, p in zip(y_true, y_pred):
+          matrix[t][p] += 1
+      return matrix
+
+  y_true = [0, 0, 1, 1, 1]
+  y_pred = [0, 1, 1, 1, 0]
+  print(confusion_matrix(y_true, y_pred, 2))
+starter_code: |
+  def confusion_matrix(y_true, y_pred, n_classes):
+      matrix = [[0] * n_classes for _ in range(n_classes)]
+      for t, p in zip(y_true, y_pred):
+          matrix[p][t] += 1
+      return matrix
+
+  y_true = [0, 0, 1, 1, 1]
+  y_pred = [0, 1, 1, 1, 0]
+  print(confusion_matrix(y_true, y_pred, 2))
+challenge: |
+  Fix `confusion_matrix` so it indexes `matrix[t][p]` (actual as row,
+  predicted as column), not `matrix[p][t]`. It should print
+  `[[1, 1], [1, 2]]`.
+expected_output: |
+  [[1, 1], [1, 2]]
+hints:
+  - "Swap the indexing order inside the loop: matrix[t][p] += 1, not matrix[p][t] += 1."
+  - "Row index = actual label (t), column index = predicted label (p) -- this is the scikit-learn convention downstream metrics assume."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "matrix\\[t\\]\\[p\\]"
+concept_tags: [ml_fundamentals, confusion_matrix, evaluation_metrics]

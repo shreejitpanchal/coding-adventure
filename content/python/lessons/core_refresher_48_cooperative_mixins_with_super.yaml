@@ -1,0 +1,101 @@
+id: core_refresher_48
+title: "Cooperative Mixins Need Every save() to Call super().save()"
+language: python
+level: 161
+objective: "Fix two mixin classes that each fully override save() with no super() call, when only the first mixin in the MRO ever actually runs -- cooperative mixins need every override to call super() so the chain continues to the next one."
+explanation: |
+  Combining two mixins that each independently override the same
+  method (`save()`) only works if each override calls `super().save()`
+  to continue the chain -- without it, whichever mixin comes first in
+  the method resolution order runs its own logic and simply returns,
+  and the *other* mixin's `save()` is never reached at all, even though
+  it's sitting right there in the class's bases. This is the
+  cooperative multiple-inheritance pattern: every mixin does its own
+  part, then explicitly hands off to whatever comes next in the MRO via
+  `super()`, all the way down to a base class that finally does
+  nothing (or the real work).
+
+  The bug this exercise fixes has two mixins that never call
+  `super().save()`. The fix adds that call to both, so both mixins'
+  logic actually runs.
+example_code: |
+  # Neither mixin calls super().save() -- only the FIRST one in the
+  # MRO ever actually runs.
+  calls_loop = []
+
+  class LoggingMixinLoop:
+      def save(self):
+          calls_loop.append("logging")
+
+  class ValidatingMixinLoop:
+      def save(self):
+          calls_loop.append("validating")
+
+  class ModelLoop(LoggingMixinLoop, ValidatingMixinLoop):
+      pass
+
+  ModelLoop().save()
+  print(len(calls_loop))
+  # 1 -- ValidatingMixin's save() was never reached at all
+
+  # Cooperative mixins: every save() calls super().save() to continue
+  # the chain.
+  calls = []
+
+  class LoggingMixin:
+      def save(self):
+          calls.append("logging")
+          super().save()
+
+  class ValidatingMixin:
+      def save(self):
+          calls.append("validating")
+          super().save()
+
+  class Base:
+      def save(self):
+          pass
+
+  class Model(LoggingMixin, ValidatingMixin, Base):
+      pass
+
+  Model().save()
+  print(len(calls))
+  # 2 -- both mixins ran, cooperatively chained via super()
+starter_code: |
+  calls = []
+
+  class LoggingMixin:
+      def save(self):
+          calls.append("logging")
+
+  class ValidatingMixin:
+      def save(self):
+          calls.append("validating")
+
+  class Base:
+      def save(self):
+          pass
+
+  class Model(LoggingMixin, ValidatingMixin, Base):
+      pass
+
+  Model().save()
+  print(len(calls))
+challenge: |
+  Fix `LoggingMixin` and `ValidatingMixin` so each `save()` calls
+  `super().save()` after appending, continuing the chain to the next
+  class in the MRO. Keep the same output: 2.
+expected_output: |
+  2
+hints:
+  - "Add super().save() as the last line inside both LoggingMixin.save() and ValidatingMixin.save()."
+  - "Without super().save(), whichever mixin comes first in the MRO runs its own logic and simply stops -- the other mixin's override is never reached."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 48
+difficulty: core
+contains_patterns:
+  - "super\\(\\)\\.save\\(\\)"
+concept_tags: [multiple_inheritance, cooperative_mixins]

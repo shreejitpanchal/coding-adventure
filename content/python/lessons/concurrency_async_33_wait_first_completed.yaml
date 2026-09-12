@@ -1,0 +1,86 @@
+id: concurrency_async_33
+title: "Reacting to Whichever Coroutine Finishes First, Without Waiting for the Rest"
+language: python
+level: 323
+objective: "Fix code that uses asyncio.gather (which always waits for EVERY coroutine to finish) when the actual goal is reacting to just the FIRST one to complete -- asyncio.wait with return_when=FIRST_COMPLETED returns as soon as any one finishes, leaving the rest still running."
+explanation: |
+  `asyncio.gather(*coros)` always waits for *every* coroutine to
+  finish before returning anything -- correct when every result is
+  actually needed, but wasteful when the goal is something like
+  "whichever of several redundant data sources answers first, use
+  that one" and the rest can simply be abandoned. `asyncio.wait
+  (tasks, return_when=asyncio.FIRST_COMPLETED)` returns as soon as
+  *any* task in the set finishes, handing back two sets -- `done` and
+  `pending` -- so the caller can grab the first result immediately
+  without waiting on the slower ones at all.
+
+  The fix replaces `gather` with `asyncio.wait(...,
+  return_when=asyncio.FIRST_COMPLETED)`, reading the result from
+  whichever task landed in `done`.
+example_code: |
+  # The trap: gather() always waits for EVERY coroutine, even once one
+  # has already answered.
+  import asyncio
+
+  async def fast():
+      await asyncio.sleep(0.01)
+      return "fast"
+
+  async def slow():
+      await asyncio.sleep(0.5)
+      return "slow"
+
+  async def main_trap():
+      results = await asyncio.gather(fast(), slow())
+      print(results[0])
+      # "fast" -- correct value, but had to wait for slow() too, unnecessarily
+
+  # The fix: wait(..., FIRST_COMPLETED) returns as soon as ANY task finishes.
+  async def main():
+      task_fast = asyncio.create_task(fast())
+      task_slow = asyncio.create_task(slow())
+      done, pending = await asyncio.wait(
+          {task_fast, task_slow}, return_when=asyncio.FIRST_COMPLETED
+      )
+      winner = done.pop()
+      print(winner.result())
+      for task in pending:
+          task.cancel()
+
+  asyncio.run(main())
+  # "fast" -- correctly returned as soon as the first task finished, not both
+starter_code: |
+  import asyncio
+
+  async def fast():
+      await asyncio.sleep(0.01)
+      return "fast"
+
+  async def slow():
+      await asyncio.sleep(0.5)
+      return "slow"
+
+  async def main():
+      results = await asyncio.gather(fast(), slow())
+      print(results[0])
+
+  asyncio.run(main())
+challenge: |
+  Rewrite `main` using `asyncio.wait({task_fast, task_slow},
+  return_when=asyncio.FIRST_COMPLETED)` on tasks created with
+  `asyncio.create_task`, printing the winning task's `.result()`,
+  instead of `gather` (which waits for both). Keep the same output:
+  `fast`.
+expected_output: |
+  fast
+hints:
+  - "task_fast = asyncio.create_task(fast()); task_slow = asyncio.create_task(slow()); done, pending = await asyncio.wait({task_fast, task_slow}, return_when=asyncio.FIRST_COMPLETED)."
+  - "gather() always waits for every coroutine -- asyncio.wait with FIRST_COMPLETED returns as soon as any ONE of them finishes, leaving the rest in 'pending'."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 33
+difficulty: deep_dive
+contains_patterns:
+  - "return_when=asyncio\\.FIRST_COMPLETED"
+concept_tags: [asyncio, wait, concurrency]

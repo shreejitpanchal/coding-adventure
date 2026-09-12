@@ -1,0 +1,68 @@
+id: ai_373
+title: "An A2A Response Must Be Matched by Its Own ID, Not by Arrival Order"
+language: ai
+level: 373
+objective: "Fix a response-correlation function that matches A2A responses to pending delegations purely by arrival position, when a delegating agent with multiple outstanding requests needs to match each response to the actual task it answers, regardless of which order the responses happen to come back in."
+explanation: |
+  A delegating agent can have several outstanding A2A requests in
+  flight at once, and nothing guarantees the responses come back in
+  the same order the requests were sent -- a delegated agent that
+  finishes a quick task responds before one still working on a slower
+  one. Matching purely by position (the first response pairs with the
+  first request) silently mismatches results the moment responses
+  arrive out of order, the exact scenario an explicit `id` field on
+  every message exists to prevent.
+
+  The bug this exercise fixes zips responses to `pending_ids` by
+  position. The fix reads each response's own `id` and uses that to
+  look up which task it actually answers.
+example_code: |
+  # The trap: matches by ARRIVAL POSITION, not by the response's own id.
+  def correlate_trap(pending_ids, responses):
+      results = {}
+      for i, resp in enumerate(responses):
+          results[pending_ids[i]] = resp["result"]
+      return results
+
+  pending_ids = ["task-1", "task-2"]
+  out_of_order = [{"id": "task-2", "result": "done-2"}, {"id": "task-1", "result": "done-1"}]
+  print(correlate_trap(pending_ids, out_of_order)["task-1"])
+  # "done-2" -- WRONG, matched by arrival position, not the actual id
+
+  # The fix: correlate using each response's own id.
+  def correlate(pending_ids, responses):
+      results = {}
+      for resp in responses:
+          results[resp["id"]] = resp["result"]
+      return results
+
+  print(correlate(pending_ids, out_of_order)["task-1"])
+  # "done-1" -- correctly matched regardless of arrival order
+starter_code: |
+  def correlate(pending_ids, responses):
+      results = {}
+      for i, resp in enumerate(responses):
+          results[pending_ids[i]] = resp["result"]
+      return results
+
+  pending_ids = ["task-1", "task-2"]
+  out_of_order = [{"id": "task-2", "result": "done-2"}, {"id": "task-1", "result": "done-1"}]
+  print(correlate(pending_ids, out_of_order)["task-1"])
+challenge: |
+  Fix `correlate` so it reads each response's own `"id"` field
+  directly (`results[resp["id"]] = resp["result"]`), instead of
+  matching by arrival position via `enumerate`. It should print
+  `done-1`, not `done-2`.
+expected_output: |
+  done-1
+hints:
+  - "Drop enumerate() and pending_request_ids[i] entirely -- just do: results[resp[\"id\"]] = resp[\"result\"]."
+  - "The whole point of an explicit id field is that correlation doesn't depend on arrival order at all."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "results\\[resp\\[\"id\"\\]\\]"
+concept_tags: [solace_agent_mesh, a2a_protocol, request_correlation]

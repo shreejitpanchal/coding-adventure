@@ -1,0 +1,53 @@
+id: idioms_gotchas_17
+title: "enumerate() Can Start Wherever You Need, Not Just at 0"
+language: python
+level: 86
+objective: "Fix a function that manually adds 1 to enumerate()'s index every iteration, when enumerate() already accepts a 'start' parameter that does exactly this -- the manual approach works, but it duplicates logic the stdlib already provides directly."
+explanation: |
+  `enumerate()` always starts counting at 0 by default, but it also
+  accepts a `start` argument that shifts where the count begins --
+  `enumerate(items, start=1)` numbers items 1, 2, 3, ... instead of 0,
+  1, 2, ... A function that instead manually adds 1 to the default
+  0-based index every iteration duplicates exactly what `start` already
+  does, and is one easy-to-miss off-by-one edit away from getting it
+  wrong.
+
+  The bug this exercise fixes manually computes `i + 1` inside the
+  loop. The fix uses `enumerate(items, start=1)` directly.
+example_code: |
+  # The trap: manually adds 1 to the default 0-based index every
+  # iteration -- duplicates what enumerate's own start parameter does.
+  def numbered_lines_trap(lines):
+      return [f"{i + 1}: {line}" for i, line in enumerate(lines)]
+
+  print(numbered_lines_trap(["a", "b"])[0])
+  # "1: a" -- this happens to work, but only because +1 was written correctly
+
+  # The fix: enumerate's own start parameter does this directly.
+  def numbered_lines(lines):
+      return [f"{i}: {line}" for i, line in enumerate(lines, start=1)]
+
+  print(numbered_lines(["a", "b"])[0])
+  # "1: a" -- same result, without a manually-tracked off-by-one adjustment
+starter_code: |
+  def numbered_lines(lines):
+      return [f"{i + 1}: {line}" for i, line in enumerate(lines)]
+
+  print(numbered_lines(["a", "b"])[0])
+challenge: |
+  Fix `numbered_lines` so it uses `enumerate(lines, start=1)` and
+  references `i` directly in the f-string, instead of manually adding
+  1 to a default 0-based index. It should still print `1: a`.
+expected_output: |
+  1: a
+hints:
+  - "Change enumerate(lines) to enumerate(lines, start=1), and drop the + 1 from the f-string."
+  - "enumerate's start parameter does exactly the same thing as manually adding 1 -- but without a separate adjustment to keep in sync."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 17
+difficulty: warmup
+contains_patterns:
+  - "enumerate\\(lines, start=1\\)"
+concept_tags: [idioms, enumerate, iteration]

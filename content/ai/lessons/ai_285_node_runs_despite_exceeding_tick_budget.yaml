@@ -1,0 +1,60 @@
+id: ai_285
+title: "A Node Already Over Its Tick Budget Shouldn't Run at All"
+language: ai
+level: 285
+objective: "Fix a budget-aware node runner that never actually checks ticks_used against max_ticks, when a node whose execution budget is already exhausted should be treated as failed rather than allowed to run anyway."
+explanation: |
+  A per-node execution budget (a tick count, a time allowance) is
+  useless if nothing actually checks it before running the node --
+  the check has to happen at the runner level, before the node's own
+  work begins, or a node that's already blown through its allotted
+  budget just runs anyway as if nothing were wrong.
+
+  The bug this exercise fixes calls `node_fn(state)` regardless of
+  `ticks_used` versus `max_ticks`. The fix checks the budget first and
+  reports it as exceeded instead of running the node.
+example_code: |
+  # The trap: never checks ticks_used against max_ticks at all -- a
+  # node that's already over budget still runs.
+  def run_with_budget_trap(node_fn, state, ticks_used, max_ticks):
+      return node_fn(state)
+
+  def slow_node(state):
+      return "ran anyway"
+
+  print(run_with_budget_trap(slow_node, {}, ticks_used=10, max_ticks=5))
+  # "ran anyway" -- ran despite already being over budget
+
+  # The fix: check the budget first.
+  def run_with_budget(node_fn, state, ticks_used, max_ticks):
+      if ticks_used >= max_ticks:
+          return "BUDGET_EXCEEDED"
+      return node_fn(state)
+
+  print(run_with_budget(slow_node, {}, ticks_used=10, max_ticks=5))
+  # "BUDGET_EXCEEDED" -- correctly refused to run an already-over-budget node
+starter_code: |
+  def slow_node(state):
+      return "ran anyway"
+
+  def run_with_budget(node_fn, state, ticks_used, max_ticks):
+      return node_fn(state)
+
+  print(run_with_budget(slow_node, {}, ticks_used=10, max_ticks=5))
+challenge: |
+  Fix `run_with_budget` so it checks `if ticks_used >= max_ticks:
+  return "BUDGET_EXCEEDED"` before calling `node_fn`. It should print
+  `BUDGET_EXCEEDED`, not `ran anyway`.
+expected_output: |
+  BUDGET_EXCEEDED
+hints:
+  - "Add the check as the very first line: if ticks_used >= max_ticks: return \"BUDGET_EXCEEDED\"."
+  - "Declaring a budget and actually enforcing it before the node runs are two different things -- this bug only does the first."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 20
+difficulty: warmup
+contains_patterns:
+  - "ticks_used >= max_ticks"
+concept_tags: [langgraph, execution_budget, node_timeout]

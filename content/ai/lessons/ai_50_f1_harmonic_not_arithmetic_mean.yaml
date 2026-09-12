@@ -1,0 +1,59 @@
+id: ai_50
+title: "F1 Score Is a Harmonic Mean, Not an Arithmetic Average"
+language: ai
+level: 50
+objective: "Fix an F1 score calculation that averages precision and recall arithmetically, which hides a badly imbalanced precision/recall pair behind a deceptively reasonable-looking number."
+explanation: |
+  Precision and recall can trade off sharply -- a model that predicts
+  "positive" for almost everything gets high recall but terrible
+  precision, and vice versa. **F1** is specifically the *harmonic* mean
+  of the two, `2 * P * R / (P + R)`, chosen precisely because the
+  harmonic mean punishes a large gap between them far more than an
+  arithmetic average would -- a model with precision 0.99 and recall
+  0.01 has an arithmetic average of 0.5 (looks mediocre-but-okay) but an
+  F1 of roughly 0.02 (correctly reflecting that the model is nearly
+  useless for anything requiring both).
+
+  The bug this exercise fixes is exactly that substitution: averaging
+  precision and recall the ordinary way instead of the harmonic way.
+  On a precision/recall pair that's already somewhat imbalanced (0.8
+  and 0.4), the arithmetic mean (0.6) already overstates how balanced
+  the model's behavior actually is compared to the harmonic mean
+  (0.533) -- and the gap between the two formulas only widens the more
+  imbalanced precision and recall actually are.
+example_code: |
+  # The trap: an ordinary arithmetic average of precision and recall.
+  def f1_trap(precision, recall):
+      return (precision + recall) / 2
+
+  print(round(f1_trap(0.8, 0.4), 3))   # 0.6 -- overstates how balanced this model is
+
+  # The fix: the harmonic mean, which punishes imbalance between the two.
+  def f1(precision, recall):
+      if precision + recall == 0:
+          return 0.0
+      return 2 * precision * recall / (precision + recall)
+
+  print(round(f1(0.8, 0.4), 3))   # 0.533 -- correctly reflects the real tradeoff
+starter_code: |
+  def f1(precision, recall):
+      return (precision + recall) / 2
+
+  print(round(f1(0.8, 0.4), 3))
+challenge: |
+  Fix `f1` so it computes the harmonic mean, `2 * precision * recall /
+  (precision + recall)` (guarding division by zero), instead of the
+  arithmetic average. It should print `0.533`, not `0.6`.
+expected_output: |
+  0.533
+hints:
+  - "Replace (precision + recall) / 2 with 2 * precision * recall / (precision + recall)."
+  - "Guard the zero case first: if precision + recall == 0: return 0.0, before doing the division."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 10
+difficulty: gotcha
+contains_patterns:
+  - "2 \\* precision \\* recall"
+concept_tags: [ml_fundamentals, f1_score, evaluation_metrics]

@@ -1,0 +1,59 @@
+id: idioms_gotchas_27
+title: "bool Is a Subclass of int -- True and False Are Really 1 and 0"
+language: python
+level: 96
+objective: "Fix a counting function that only counts values that are 'is True' exactly, when a flag stored as a plain integer (1 for true, 0 for false) elsewhere in the same data should be counted too -- bool being a subclass of int is exactly why summing works, and identity-checking against True specifically misses it."
+explanation: |
+  `bool` is a subclass of `int` in Python -- `True` really is `1` and
+  `False` really is `0`, not just values that happen to *compare*
+  equal to them. `isinstance(True, int)` is `True`, and `True + True`
+  is `2`. This means a mixed list of real booleans and plain integer
+  flags meant to represent the same thing (`1`/`0`) can be summed
+  directly to count how many are "true," without needing to check each
+  one's exact type first -- but an identity check against `True`
+  specifically (`is True`) misses every plain-integer `1` in the data,
+  since `1 is True` is `False` even though `1 == True` is `True`.
+
+  The bug this exercise fixes filters with `f is True`, an identity
+  check that misses integer flags. The fix sums the list directly,
+  relying on `bool` genuinely being an `int` under the hood.
+example_code: |
+  # The trap: `is True` is an IDENTITY check -- it misses integer
+  # flags (1) that represent "true" but aren't the literal True object.
+  def count_trues_trap(flags):
+      return len([f for f in flags if f is True])
+
+  flags = [True, 1, False, 0, True]
+  print(count_trues_trap(flags))
+  # 2 -- missed both "1" values, which represent true just as much as True does
+
+  # The fix: sum directly -- True/False and integer 1/0 all add up
+  # correctly, since bool genuinely IS a subclass of int.
+  def count_trues(flags):
+      return sum(flags)
+
+  print(count_trues(flags))
+  # 3 -- correctly counted every truthy flag, boolean or integer
+starter_code: |
+  def count_trues(flags):
+      return len([f for f in flags if f is True])
+
+  flags = [True, 1, False, 0, True]
+  print(count_trues(flags))
+challenge: |
+  Fix `count_trues` so it returns `sum(flags)` directly, instead of
+  filtering with the identity check `f is True`. It should print `3`,
+  not `2`.
+expected_output: |
+  3
+hints:
+  - "Replace the whole list-comprehension-and-len() approach with just: return sum(flags)."
+  - "True and False really are 1 and 0 under the hood -- summing a mixed list of booleans and 1/0 integers correctly counts every truthy one."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "return sum\\(flags\\)"
+concept_tags: [idioms, bool_int_subclass, identity_vs_equality]

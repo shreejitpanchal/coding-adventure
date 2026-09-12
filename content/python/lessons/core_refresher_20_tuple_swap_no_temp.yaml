@@ -1,0 +1,49 @@
+id: core_refresher_20
+title: "Swap Two Variables in One Line -- No Temporary Variable Needed"
+language: python
+level: 133
+objective: "Replace a three-line variable swap using a temporary variable with the idiomatic one-line 'a, b = b, a'."
+explanation: |
+  Swapping two variables the way most languages require -- store one
+  in a temporary variable, overwrite it, restore from the temporary --
+  needs a third name that exists purely to hold a value during the
+  swap. Python's tuple assignment makes the temporary variable
+  unnecessary: `a, b = b, a` evaluates the entire right-hand side
+  (`b, a`) into a tuple *first*, using the original values of both,
+  before assigning anything -- so by the time the assignment happens,
+  both original values are already safely captured, with no risk of
+  overwriting one before the other is read.
+example_code: |
+  # A temporary variable holds one value during the swap.
+  a, b = 1, 2
+  temp = a
+  a = b
+  b = temp
+  print(a, b)                              # 2 1
+
+  # Tuple assignment swaps directly -- no temporary variable needed.
+  a, b = 1, 2
+  a, b = b, a
+  print(a, b)                              # 2 1
+starter_code: |
+  a, b = 1, 2
+  temp = a
+  a = b
+  b = temp
+  print(a, b)
+challenge: |
+  Rewrite this swap as a single line: `a, b = b, a`, with no temporary
+  variable. Keep the same output: 2 1.
+expected_output: |
+  2 1
+hints:
+  - "Replace the three lines with: a, b = b, a."
+  - "The right-hand side (b, a) is fully evaluated into a tuple BEFORE either assignment happens -- both original values are safely captured first."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 20
+difficulty: core
+contains_patterns:
+  - "a, b = b, a"
+concept_tags: [tuple_assignment, variable_swap]

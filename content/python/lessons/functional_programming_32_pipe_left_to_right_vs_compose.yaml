@@ -1,0 +1,74 @@
+id: functional_programming_32
+title: "pipe() Applies Left-to-Right -- The Opposite Order From compose()"
+language: python
+level: 367
+objective: "Write a pipe(*funcs) helper that applies functions LEFT-TO-RIGHT (the first one listed runs first), contrasted with this category's earlier compose(f, g), which deliberately runs right-to-left -- mixing the two conventions up silently produces the wrong order."
+explanation: |
+  This category's `compose(f, g)` lesson deliberately runs `g` first
+  and `f` second, matching the mathematical `f(g(x))` convention --
+  right-to-left, even though `f` is written first. Some functional
+  libraries define a `pipe` helper instead, specifically to avoid that
+  reversed reading: `pipe(f, g)` runs `f` *first*, then `g`, matching
+  the order the functions are actually listed in, left-to-right. Both
+  conventions are legitimate and both exist in real codebases -- the
+  danger is mixing them up, assuming one behaves like the other, and
+  getting a silently reversed order of operations.
+
+  This exercise builds `pipe(*funcs)` using `functools.reduce`,
+  applying every function in the order they're listed.
+example_code: |
+  # compose(f, g): g runs FIRST, f runs SECOND (right-to-left).
+  def compose(f, g):
+      return lambda x: f(g(x))
+
+  def double(x):
+      return x * 2
+
+  def increment(x):
+      return x + 1
+
+  composed = compose(increment, double)
+  print(composed(5))
+  # 11 -- double ran FIRST (5*2=10), increment SECOND (10+1=11)
+
+  # pipe(*funcs): the FIRST function listed runs FIRST (left-to-right).
+  from functools import reduce
+
+  def pipe(*funcs):
+      return reduce(lambda acc, f: lambda x: f(acc(x)), funcs, lambda x: x)
+
+  piped = pipe(double, increment)
+  print(piped(5))
+  # 11 -- double ran FIRST (5*2=10), increment SECOND (10+1=11) -- same
+  # RESULT here, but because pipe(double, increment) lists double FIRST,
+  # not because of any right-to-left reversal the way compose needs
+starter_code: |
+  def double(x):
+      return x * 2
+
+  def increment(x):
+      return x + 1
+
+  def compose(f, g):
+      return lambda x: f(g(x))
+
+  composed = compose(increment, double)
+  print(composed(5))
+challenge: |
+  Write `pipe(*funcs)` using `functools.reduce`, folding with
+  `lambda acc, f: lambda x: f(acc(x))` starting from `lambda x: x`,
+  applying functions LEFT-TO-RIGHT. Call `pipe(double, increment)`
+  instead of `compose(increment, double)`. Keep the same output: 11.
+expected_output: |
+  11
+hints:
+  - "from functools import reduce, then: def pipe(*funcs): return reduce(lambda acc, f: lambda x: f(acc(x)), funcs, lambda x: x)."
+  - "pipe(double, increment) runs double FIRST (the order they're listed) -- compose(increment, double) needed the arguments reversed to get the same effective order."
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 32
+difficulty: deep_dive
+contains_patterns:
+  - "def pipe\\(\\*funcs\\):"
+concept_tags: [functional_programming, composition, pipelines]

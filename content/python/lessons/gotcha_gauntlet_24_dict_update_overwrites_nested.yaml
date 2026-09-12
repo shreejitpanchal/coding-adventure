@@ -1,0 +1,69 @@
+id: gotcha_gauntlet_24
+title: "The Settings Update That Wiped Out Everything Else in a Nested Section"
+language: python
+level: 269
+objective: "Fix a dict.update() call that overwrites a nested sub-dict wholesale, discarding every OTHER key that sub-dict already had, when a real config merge needs to recurse into shared nested keys instead of replacing them outright."
+explanation: |
+  `dict.update(other)` is only ever a *shallow* merge -- for any key
+  that exists in both dicts, the value from `other` completely replaces
+  the original value, with no attempt to look inside and merge nested
+  structures. Updating a settings dict's `"display"` section with a
+  new dict containing only `{"theme": "dark"}` doesn't add `"theme"`
+  alongside whatever else `"display"` already had -- it replaces the
+  *entire* `"display"` value with just `{"theme": "dark"}`, silently
+  discarding every sibling key (like `"font_size"`) that section used
+  to have.
+
+  The fix is a small recursive merge: for any key present in both
+  dicts where *both* values are themselves dicts, merge them
+  recursively instead of just overwriting; only fall back to plain
+  overwrite for keys that aren't nested dicts on both sides.
+example_code: |
+  # The trap: update() replaces the WHOLE nested section, not just the new key.
+  settings_trap = {"display": {"theme": "light", "font_size": 12}}
+
+  def apply_update_trap(settings, updates):
+      settings.update(updates)
+      return settings
+
+  print(apply_update_trap(settings_trap, {"display": {"theme": "dark"}}))
+  # {'display': {'theme': 'dark'}} -- WRONG, font_size was silently wiped out
+
+  # The fix: recursively merge nested dicts instead of overwriting them.
+  def deep_merge(base, updates):
+      for key, value in updates.items():
+          if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+              deep_merge(base[key], value)
+          else:
+              base[key] = value
+      return base
+
+  settings = {"display": {"theme": "light", "font_size": 12}}
+  print(deep_merge(settings, {"display": {"theme": "dark"}}))
+  # {'display': {'theme': 'dark', 'font_size': 12}} -- correctly preserved font_size
+starter_code: |
+  settings = {"display": {"theme": "light", "font_size": 12}}
+
+  def apply_update(settings, updates):
+      settings.update(updates)
+      return settings
+
+  print(apply_update(settings, {"display": {"theme": "dark"}}))
+challenge: |
+  Replace `apply_update` with a `deep_merge` function that recurses
+  into shared nested dicts instead of overwriting them wholesale. It
+  should print `{'display': {'theme': 'dark', 'font_size': 12}}`, not
+  `{'display': {'theme': 'dark'}}`.
+expected_output: |
+  {'display': {'theme': 'dark', 'font_size': 12}}
+hints:
+  - "def deep_merge(base, updates): for key, value in updates.items(): if key in base and isinstance(base[key], dict) and isinstance(value, dict): deep_merge(base[key], value) else: base[key] = value; return base."
+  - "update() only ever overwrites matching keys wholesale -- it never looks inside a nested dict to merge it, no matter how deep the nesting goes."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 24
+difficulty: deep_dive
+contains_patterns:
+  - "def deep_merge\\(base, updates\\):"
+concept_tags: [dictionaries, merging, gotchas]

@@ -1,0 +1,73 @@
+id: idioms_gotchas_19
+title: "Assigning to a Name Anywhere in a Function Makes It Local -- Even Before the Assignment Line"
+language: python
+level: 88
+objective: "Fix a function that raises UnboundLocalError trying to read a module-level variable it also assigns to later, when Python decides a name is local to the WHOLE function the moment it sees any assignment to it anywhere in that function's body."
+explanation: |
+  Python decides whether a name is local to a function by scanning the
+  *entire* function body for assignments to it, before the function
+  ever runs -- not line by line as execution proceeds. If a function
+  assigns to a name anywhere in its body, that name is treated as
+  local for the *entire* function, including any line before the
+  assignment that tries to read it. Reading it before that point
+  doesn't fall back to a same-named global variable; it raises
+  `UnboundLocalError`, because Python already decided this name is
+  local and the local variable simply hasn't been assigned yet at that
+  point in execution.
+
+  The bug this exercise fixes reads `counter` (intending the global)
+  and then assigns to it later in the same function, with no `global`
+  declaration. The fix declares `global counter` explicitly.
+example_code: |
+  # The trap: assigns to counter later in the function -- which makes
+  # Python treat it as LOCAL for the whole function, so reading it
+  # earlier raises UnboundLocalError instead of seeing the global.
+  counter = 0
+
+  def bump_trap():
+      print(counter)   # intended to read the global...
+      counter = counter + 1   # ...but this assignment makes counter LOCAL everywhere in this function
+
+  try:
+      bump_trap()
+  except UnboundLocalError:
+      print("unhandled")
+
+  # The fix: declare "global counter" explicitly.
+  counter = 0
+
+  def bump():
+      global counter
+      print(counter)
+      counter = counter + 1
+
+  bump()
+  # 0 -- correctly reads the global counter before incrementing it
+starter_code: |
+  counter = 0
+
+  def bump():
+      print(counter)
+      counter = counter + 1
+
+  try:
+      bump()
+  except UnboundLocalError:
+      print("unhandled")
+challenge: |
+  Fix `bump` so it declares `global counter` as its first line, letting
+  it read and modify the actual module-level `counter` instead of an
+  implicitly-local one. It should print `0`, not `unhandled`.
+expected_output: |
+  0
+hints:
+  - "Add global counter as the very first line inside the function body."
+  - "Python decides a name is local by scanning the WHOLE function for assignments to it, before execution even begins -- it's not decided line by line as the function runs."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 19
+difficulty: gotcha
+contains_patterns:
+  - "global counter"
+concept_tags: [idioms, scoping, unboundlocalerror]

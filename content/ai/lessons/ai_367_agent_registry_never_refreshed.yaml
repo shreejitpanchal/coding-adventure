@@ -1,0 +1,56 @@
+id: ai_367
+title: "A Stale Agent Registry Should Be Refreshed, Not Trusted Forever"
+language: ai
+level: 367
+objective: "Fix a registry lookup that always returns a cached snapshot of the agent registry, when the mesh's actual set of agents and capabilities can change over time -- a cached copy that's never refreshed silently drifts further from reality the longer it goes untouched."
+explanation: |
+  Agents can be deployed, retired, or updated with new capabilities
+  over the mesh's lifetime, and a registry lookup that always returns
+  a cached snapshot taken at some earlier point has no way to reflect
+  any of that. A newly deployed agent with a needed capability stays
+  invisible to routing forever if the cache is never actually
+  refreshed, and a retired agent's stale entry keeps looking valid long
+  after it stopped existing.
+
+  The bug this exercise fixes always returns `cached_registry`. The
+  fix calls the provided refresh function instead.
+example_code: |
+  # The trap: always returns the STALE cached registry, never
+  # refetches even when the real registry has changed.
+  def find_agent_trap(task, cached_registry, fetch_fn):
+      return cached_registry
+
+  cached_registry = [{"name": "old-agent", "capabilities": ["chart_rendering"]}]
+  fresh_registry = [{"name": "new-agent", "capabilities": ["chart_rendering", "pdf_export"]}]
+  print(len(find_agent_trap(None, cached_registry, lambda: fresh_registry)))
+  # 1 -- stale, doesn't reflect the current real registry at all
+
+  # The fix: call the refresh function to get the current registry.
+  def find_agent(task, cached_registry, fetch_fn):
+      return fetch_fn()
+
+  print(len(find_agent(None, cached_registry, lambda: fresh_registry)))
+  # 2 -- correctly reflects the current, up-to-date registry
+starter_code: |
+  def find_agent(task, cached_registry, fetch_fn):
+      return cached_registry
+
+  cached_registry = [{"name": "old-agent", "capabilities": ["chart_rendering"]}]
+  fresh_registry = [{"name": "new-agent", "capabilities": ["chart_rendering", "pdf_export"]}]
+  print(len(find_agent(None, cached_registry, lambda: fresh_registry)))
+challenge: |
+  Fix `find_agent` so it returns `fetch_fn()` instead of the stale
+  `cached_registry`. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Replace return cached_registry with return fetch_fn()."
+  - "A cache that's never invalidated or refreshed is really just a permanently frozen snapshot, not a genuine cache."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "return fetch_fn\\(\\)"
+concept_tags: [solace_agent_mesh, agent_card, registry_staleness]

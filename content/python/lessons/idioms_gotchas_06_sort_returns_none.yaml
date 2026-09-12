@@ -62,7 +62,7 @@ hints:
   - "list.sort() mutates in place and returns None -- it's not chainable."
   - "Use sorted(scores) instead, which returns a new sorted list."
 xp_reward: 10
-achievement: idioms_gotchas_master
+achievement: null
 category: idioms_gotchas
 category_level: 6
 difficulty: gotcha

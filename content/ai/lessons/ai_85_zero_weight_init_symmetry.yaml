@@ -1,0 +1,65 @@
+id: ai_85
+title: "All-Zero Weight Initialization Breaks Symmetry -- Every Neuron Learns the Same Thing"
+language: ai
+level: 85
+objective: "Fix a weight initializer that sets every weight to zero, which makes every neuron in a layer compute the exact same output and receive the exact same gradient update forever -- they never differentiate from each other at all."
+explanation: |
+  If every weight in a layer starts at exactly `0`, every neuron in
+  that layer computes exactly the same output on the same input
+  (since multiplying by zero produces the same zero, regardless of the
+  input), and during backpropagation, every one of those neurons then
+  receives exactly the same gradient too. Nothing about training ever
+  breaks that symmetry -- with identical starting weights and identical
+  updates forever after, every neuron in the layer stays identical to
+  every other one, permanently, no matter how long training continues.
+  A layer full of identical neurons has the same representational
+  power as a layer with just *one* neuron, wasting the rest entirely.
+
+  The bug this exercise fixes initializes every weight to exactly
+  `0.0`. The fix uses small random values instead, so each neuron
+  starts slightly different from the others -- **that** difference is
+  what lets backpropagation drive them toward learning genuinely
+  different, useful features instead of staying frozen in permanent
+  lockstep.
+example_code: |
+  # The trap: every weight starts at exactly 0 -- every neuron stays
+  # IDENTICAL to every other one, forever, since nothing breaks the tie.
+  def init_weights_trap(n_neurons, n_inputs):
+      return [[0.0] * n_inputs for _ in range(n_neurons)]
+
+  weights_trap = init_weights_trap(3, 2)
+  print(weights_trap[0] == weights_trap[1] == weights_trap[2])   # True -- all three neurons are identical
+
+  # The fix: small random values -- each neuron starts genuinely different.
+  import random
+
+  def init_weights(n_neurons, n_inputs, seed):
+      rng = random.Random(seed)
+      return [[rng.uniform(-0.1, 0.1) for _ in range(n_inputs)] for _ in range(n_neurons)]
+
+  weights = init_weights(3, 2, seed=1)
+  print(weights[0] == weights[1] == weights[2])   # False -- correctly broken symmetry
+starter_code: |
+  def init_weights(n_neurons, n_inputs):
+      return [[0.0] * n_inputs for _ in range(n_neurons)]
+
+  weights = init_weights(3, 2)
+  print(weights[0] == weights[1] == weights[2])
+challenge: |
+  Fix `init_weights` so it fills each neuron's weights with small
+  random values (e.g. `random.Random(seed).uniform(-0.1, 0.1)`) instead
+  of all zeros, so different neurons start genuinely different from
+  each other. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add `import random`, a `seed` parameter, and build each neuron's row with rng.uniform(-0.1, 0.1) per weight instead of 0.0."
+  - "With genuinely random values (not all zero), it becomes astronomically unlikely for two neurons' weight lists to be exactly equal -- the symmetry is broken."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "rng\\.uniform\\("
+concept_tags: [ml_fundamentals, weight_initialization, neural_networks]

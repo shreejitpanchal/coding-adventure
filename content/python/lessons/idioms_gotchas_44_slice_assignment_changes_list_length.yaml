@@ -1,0 +1,59 @@
+id: idioms_gotchas_44
+title: "Slice Assignment Can Grow or Shrink a List -- It's Not Just 'Set These Positions'"
+language: python
+level: 113
+objective: "Fix a function that assigns a 3-element list into a 1-element slice, when slice assignment splices in exactly however many elements were given -- growing or shrinking the list to fit, rather than just overwriting the values already at those positions."
+explanation: |
+  `lst[1:2] = [8, 9, 10]` doesn't mean "set index 1 to these three
+  values" -- it means "replace the elements currently at positions 1
+  through 1 (a single element) with the entire new sequence given,"
+  and the new sequence doesn't have to be the same length as the slice
+  it's replacing. The list genuinely grows or shrinks to accommodate
+  whatever was assigned, which is easy to forget when the intent was
+  really just "replace this one value."
+
+  The bug this exercise fixes assigns a 3-element list into a 1-element
+  slice, growing the list unexpectedly. The fix assigns directly to the
+  single index instead.
+example_code: |
+  # The trap: assigns a 3-element list into a 1-element SLICE -- this
+  # splices in all three values, growing the list instead of just
+  # replacing one value.
+  def replace_middle_trap(lst):
+      lst[1:2] = [8, 9, 10]
+      return lst
+
+  print(len(replace_middle_trap([1, 2, 3])))
+  # 5 -- the list grew from 3 items to 5, since slice assignment
+  # splices in whatever length was given
+
+  # The fix: assign directly to the single index instead.
+  def replace_middle(lst):
+      lst[1] = 8
+      return lst
+
+  print(len(replace_middle([1, 2, 3])))
+  # 3 -- correctly stayed the same length
+starter_code: |
+  def replace_middle(lst):
+      lst[1:2] = [8, 9, 10]
+      return lst
+
+  print(len(replace_middle([1, 2, 3])))
+challenge: |
+  Fix `replace_middle` so it assigns `lst[1] = 8` directly (a single
+  index), instead of `lst[1:2] = [8, 9, 10]` (a slice assignment). It
+  should print `3`, not `5`.
+expected_output: |
+  3
+hints:
+  - "Replace lst[1:2] = [8, 9, 10] with lst[1] = 8."
+  - "Slice assignment splices in exactly the length of whatever's assigned, growing or shrinking the list to fit -- it's a fundamentally different operation from setting a single index."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "lst\\[1\\] = 8"
+concept_tags: [idioms, slice_assignment, list_mutation]

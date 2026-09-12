@@ -1,0 +1,71 @@
+id: functional_programming_10
+title: "Python Has No Tail-Call Optimization -- Deep Recursion Just Crashes"
+language: python
+level: 345
+objective: "Fix a recursive sum function that crashes with RecursionError on a large input, when Python (unlike some functional languages) never optimizes tail-recursive calls into a loop -- an iterative accumulator handles arbitrary length without growing the call stack at all."
+explanation: |
+  Some functional languages specifically optimize "tail calls" -- a
+  recursive call that's the very last thing a function does -- into a
+  plain loop internally, so tail-recursive code can process arbitrarily
+  large inputs without growing the call stack. CPython deliberately
+  does *not* do this: every recursive call, tail position or not, adds
+  a new stack frame, and Python's default recursion limit (`sys.
+  getrecursionlimit()`, usually 1000) means a recursive function
+  processing a large-enough list crashes with `RecursionError: maximum
+  recursion depth exceeded`, even though the exact same logic written
+  as a loop would handle it without any trouble at all.
+
+  The fix rewrites the recursive version as a plain iterative
+  accumulator loop, which never grows the call stack regardless of
+  input size.
+example_code: |
+  # The trap: recursion crashes on a large input -- no tail-call optimization.
+  def sum_list_trap(items):
+      if not items:
+          return 0
+      return items[0] + sum_list_trap(items[1:])
+
+  big_list = list(range(5000))
+  try:
+      print(sum_list_trap(big_list))
+      print("ok")
+  except RecursionError:
+      print("crashed")
+  # "crashed" -- 5000 levels of recursion exceeds the default recursion limit
+
+  # The fix: an iterative accumulator never grows the call stack at all.
+  def sum_list(items):
+      total = 0
+      for item in items:
+          total += item
+      return total
+
+  print(sum_list(big_list))
+  # 12497500 -- correctly handled, regardless of how large the input is
+starter_code: |
+  def sum_list(items):
+      if not items:
+          return 0
+      return items[0] + sum_list(items[1:])
+
+  big_list = list(range(5000))
+  try:
+      print(sum_list(big_list))
+  except RecursionError:
+      print("crashed")
+challenge: |
+  Rewrite `sum_list` as a plain iterative loop with a running `total`,
+  instead of recursion. It should print `12497500`, not `crashed`.
+expected_output: |
+  12497500
+hints:
+  - "total = 0; for item in items: total += item; return total."
+  - "Python never optimizes tail-recursive calls into a loop -- every recursive call adds a real stack frame, so a large enough input always eventually hits the recursion limit."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 10
+difficulty: gotcha
+contains_patterns:
+  - "total \\+= item"
+concept_tags: [functional_programming, recursion, gotchas]

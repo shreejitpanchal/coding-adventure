@@ -1,0 +1,82 @@
+id: stdlib_deep_dive_19
+title: "Without functools.wraps, a Decorated Function Loses Its Own Identity"
+language: python
+level: 220
+objective: "Fix a decorator whose inner wrapper function has no @functools.wraps, when every decorated function ends up reporting its __name__ as 'wrapper' -- functools.wraps copies the original function's identity onto the wrapper."
+explanation: |
+  A decorator's inner function replaces the original at the name it
+  was decorating, and without any extra care, that replacement's own
+  identity (`__name__`, `__doc__`) is whatever the wrapper function
+  itself is called -- typically the generic `"wrapper"` -- not the
+  original function's real name. `functools.wraps(func)` fixes this by
+  copying `func`'s `__name__`, `__doc__`, and other metadata onto the
+  wrapper, so debuggers, `help()`, and introspection tools still see
+  the original function's real identity, not an anonymous-looking
+  `"wrapper"` for every single decorated function in the codebase.
+
+  The bug this exercise fixes has no `@functools.wraps` on the inner
+  wrapper. The fix adds it.
+example_code: |
+  # The trap: no @functools.wraps -- the decorated function reports
+  # its identity as "wrapper", not its own real name.
+  def make_decorator_trap():
+      def logged(func):
+          def wrapper(*args, **kwargs):
+              return func(*args, **kwargs)
+          return wrapper
+      return logged
+
+  @make_decorator_trap()
+  def greet_trap(name):
+      return f"hi {name}"
+
+  print(greet_trap.__name__)
+  # "wrapper" -- WRONG, lost the original function's own identity
+
+  # The fix: @functools.wraps copies the original's identity onto the wrapper.
+  import functools
+
+  def make_decorator():
+      def logged(func):
+          @functools.wraps(func)
+          def wrapper(*args, **kwargs):
+              return func(*args, **kwargs)
+          return wrapper
+      return logged
+
+  @make_decorator()
+  def greet(name):
+      return f"hi {name}"
+
+  print(greet.__name__)
+  # "greet" -- correctly preserved
+starter_code: |
+  def make_decorator():
+      def logged(func):
+          def wrapper(*args, **kwargs):
+              return func(*args, **kwargs)
+          return wrapper
+      return logged
+
+  @make_decorator()
+  def greet(name):
+      return f"hi {name}"
+
+  print(greet.__name__)
+challenge: |
+  Fix this by importing `functools` and adding `@functools.wraps(func)`
+  directly above the inner `wrapper` function. It should print `greet`,
+  not `wrapper`.
+expected_output: |
+  greet
+hints:
+  - "import functools, then add @functools.wraps(func) as the line directly above def wrapper(*args, **kwargs):."
+  - "wraps() has to be given the ORIGINAL function (func) -- it copies func's own __name__ and __doc__ onto the wrapper it's decorating."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 19
+difficulty: gotcha
+contains_patterns:
+  - "@functools\\.wraps\\(func\\)"
+concept_tags: [functools, wraps, decorators]

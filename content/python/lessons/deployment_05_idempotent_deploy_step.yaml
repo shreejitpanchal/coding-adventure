@@ -76,7 +76,7 @@ hints:
   - "Check `if name in resources` before doing anything else."
   - "Only call resources.add(name) and report \"created\" for a genuinely new name."
 xp_reward: 15
-achievement: deployment_master
+achievement: null
 category: deployment
 category_level: 5
 difficulty: deep_dive

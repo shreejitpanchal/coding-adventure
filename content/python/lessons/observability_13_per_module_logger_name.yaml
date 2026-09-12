@@ -1,0 +1,68 @@
+id: observability_13
+title: "Always Returning the Root Logger Makes Every Module Indistinguishable"
+language: python
+level: 413
+objective: "Fix a logger factory that always returns logging.getLogger() (the root logger, the same single object every time), when logging.getLogger(name) -- keyed by the calling module's name -- returns a genuinely distinct, independently configurable logger per module."
+explanation: |
+  `logging.getLogger()` with no argument returns the single, shared
+  root logger -- calling it from anywhere in the codebase returns that
+  exact same object every time, with no way to configure one module's
+  logging level or handlers independently of any other's. `logging.
+  getLogger(name)` (conventionally called with `__name__`, so each
+  module automatically gets a logger named after its own dotted module
+  path) returns a genuinely distinct logger per name, cached and
+  reused for that same name afterward -- letting one module's logger
+  be set to `DEBUG` for close inspection while everything else stays
+  at `WARNING`, entirely independently, since they're different
+  objects.
+
+  The fix returns `logging.getLogger(module_name)` instead of the
+  bare root logger.
+example_code: |
+  # The trap: always the SAME root logger -- no per-module distinction at all.
+  import logging
+
+  def get_logger_trap(module_name):
+      return logging.getLogger()
+
+  logger_a_trap = get_logger_trap("module_a")
+  logger_b_trap = get_logger_trap("module_b")
+  print(logger_a_trap is logger_b_trap)
+  # True -- WRONG, these were supposed to be independently configurable loggers
+
+  # The fix: getLogger(name) returns a genuinely DISTINCT logger per name.
+  def get_logger(module_name):
+      return logging.getLogger(module_name)
+
+  logger_a = get_logger("module_a")
+  logger_b = get_logger("module_b")
+  print(logger_a is logger_b)
+  print(logger_a.name)
+  # False
+  # module_a -- correctly distinct, independently configurable loggers
+starter_code: |
+  import logging
+
+  def get_logger(module_name):
+      return logging.getLogger()
+
+  logger_a = get_logger("module_a")
+  logger_b = get_logger("module_b")
+  print(logger_a is logger_b)
+challenge: |
+  Fix `get_logger` so it returns `logging.getLogger(module_name)`,
+  instead of the bare root logger `logging.getLogger()`. It should
+  print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "return logging.getLogger(module_name)."
+  - "The bare root logger is the exact same single object no matter who calls it -- passing a name is what gives each module its own genuinely distinct, independently configurable logger."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "logging\\.getLogger\\(module_name\\)"
+concept_tags: [observability, logging]

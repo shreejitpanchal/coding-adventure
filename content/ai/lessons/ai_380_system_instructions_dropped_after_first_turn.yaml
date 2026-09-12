@@ -1,0 +1,59 @@
+id: ai_380
+title: "System Instructions Need to Be Present on Every Turn, Not Just the First"
+language: ai
+level: 380
+objective: "Fix a prompt builder that includes the system instructions only on the very first turn, when a model needs its operating instructions present in every single call it makes -- dropping them after the first turn means every later turn runs with no guidance at all."
+explanation: |
+  A model call is stateless from the model's own point of view -- it
+  only knows what's actually included in that specific call's prompt,
+  regardless of what was sent on any earlier turn. Including the
+  system instructions only when `turn_number == 0` means every
+  subsequent turn silently runs with no guidance on tone, role, or
+  constraints at all, even though the conversation is still ongoing and
+  those instructions are just as relevant as they were on turn one.
+
+  The bug this exercise fixes only includes system instructions when
+  `turn_number == 0`. The fix includes them on every turn,
+  unconditionally.
+example_code: |
+  # The trap: only includes system instructions on the FIRST turn --
+  # every later turn runs with no guidance at all.
+  def build_prompt_trap(system_instructions, conversation, turn_number):
+      if turn_number == 0:
+          return [{"role": "system", "content": system_instructions}] + conversation
+      return conversation
+
+  print(len(build_prompt_trap("Be concise.", [{"role": "user", "content": "hi"}], turn_number=1)))
+  # 1 -- system instructions are gone on this later turn
+
+  # The fix: include system instructions on every turn, unconditionally.
+  def build_prompt(system_instructions, conversation, turn_number):
+      return [{"role": "system", "content": system_instructions}] + conversation
+
+  print(len(build_prompt("Be concise.", [{"role": "user", "content": "hi"}], turn_number=1)))
+  # 2 -- correctly present regardless of which turn this is
+starter_code: |
+  def build_prompt(system_instructions, conversation, turn_number):
+      if turn_number == 0:
+          return [{"role": "system", "content": system_instructions}] + conversation
+      return conversation
+
+  print(len(build_prompt("Be concise.", [{"role": "user", "content": "hi"}], turn_number=1)))
+challenge: |
+  Fix `build_prompt` so it always returns `[{"role": "system",
+  "content": system_instructions}] + conversation`, regardless of
+  `turn_number`, instead of only including the system message on the
+  first turn. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Drop the if turn_number == 0: branch entirely -- just always prepend the system message."
+  - "A model call has no memory of what was included in an earlier call -- every call needs its own complete, self-sufficient prompt."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 25
+difficulty: gotcha
+contains_patterns:
+  - "return \\[\\{\"role\": \"system\", \"content\": system_instructions\\}\\] \\+ conversation"
+concept_tags: [solace_agent_mesh, agent_reasoning_loop, prompt_construction]

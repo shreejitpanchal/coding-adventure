@@ -1,0 +1,73 @@
+id: ai_286
+title: "A Dangling Edge to a Nonexistent Node Should Be Caught Before the Graph Ever Runs"
+language: ai
+level: 286
+objective: "Fix a graph-compilation check that always reports success regardless of the edges it was given, when an edge pointing at a node that was never registered should be caught as a validation error at compile time, not discovered later as a confusing runtime crash."
+explanation: |
+  Validating a graph's structure before it ever runs -- every edge's
+  target actually exists as a registered node, or is the `END`
+  sentinel -- catches a typo or a forgotten node registration
+  immediately, with a message that names exactly what's wrong. Skipping
+  that check defers the same problem to whenever execution first
+  reaches the dangling edge, at which point the failure looks like a
+  generic `KeyError` with none of the compile-time context about which
+  edge was actually misconfigured.
+
+  The bug this exercise fixes always returns `True`, never checking
+  anything about the edges at all. The fix walks every edge and raises
+  a specific error naming any target that isn't a real node (and isn't
+  `END`).
+example_code: |
+  # The trap: never checks anything -- claims the graph is valid no
+  # matter what its edges actually point to.
+  def compile_graph_trap(nodes, edges):
+      return True
+
+  nodes = {"a": lambda s: s, "b": lambda s: s}
+  edges = {"a": "b", "b": "c"}   # "c" was never registered as a node at all!
+  print(compile_graph_trap(nodes, edges))
+  # True -- wrongly claims the graph is valid despite a dangling edge
+
+  # The fix: validate every edge target actually exists.
+  def compile_graph(nodes, edges):
+      for source, target in edges.items():
+          if target not in nodes and target != "END":
+              raise ValueError(f"edge points to unknown node: {target}")
+      return True
+
+  try:
+      compile_graph(nodes, edges)
+      print(True)
+  except ValueError as e:
+      print(str(e))
+  # "edge points to unknown node: c" -- correctly caught before the graph ever runs
+starter_code: |
+  def compile_graph(nodes, edges):
+      return True
+
+  nodes = {"a": lambda s: s, "b": lambda s: s}
+  edges = {"a": "b", "b": "c"}
+  try:
+      compile_graph(nodes, edges)
+      print(True)
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `compile_graph` so it loops over `edges.items()`, raising
+  `ValueError(f"edge points to unknown node: {target}")` for any
+  `target` that's neither in `nodes` nor `"END"`, instead of always
+  returning `True`. It should print
+  `edge points to unknown node: c`, not `True`.
+expected_output: |
+  edge points to unknown node: c
+hints:
+  - "for source, target in edges.items(): if target not in nodes and target != \"END\": raise ValueError(...)."
+  - "END is a legitimate edge target even though it was never registered as a real node -- the check needs to explicitly exempt it."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 21
+difficulty: core
+contains_patterns:
+  - "target not in nodes and target != \"END\""
+concept_tags: [langgraph, graph_validation, compile_time_checks]

@@ -1,0 +1,53 @@
+id: ai_318
+title: "A Run's Type Should Reflect What Actually Ran, Not a Hardcoded Guess"
+language: ai
+level: 318
+objective: "Fix a run-building function that hardcodes every run's type as 'chain,' when a tool call, an LLM call, and a retriever call are all genuinely different kinds of runs that filtering and analysis tools rely on being reported correctly."
+explanation: |
+  A run's `run_type` (`"llm"`, `"chain"`, `"tool"`, `"retriever"`) is
+  what lets a dashboard filter to "just the LLM calls" or "just the
+  tool invocations" across an entire trace. Hardcoding every run as
+  `"chain"` regardless of what it actually was makes that kind of
+  filtering meaningless -- a tool call and an LLM call end up
+  indistinguishable in anything that groups or filters by type.
+
+  The bug this exercise fixes always sets `"run_type": "chain"`. The
+  fix uses the actual type that was passed in.
+example_code: |
+  # The trap: always "chain," regardless of what actually ran.
+  def build_run_trap(name, actual_type):
+      return {"name": name, "run_type": "chain"}
+
+  run_trap = build_run_trap("web_search", actual_type="tool")
+  print(run_trap["run_type"])
+  # "chain" -- wrong, this was actually a tool call
+
+  # The fix: use the actual type that was passed in.
+  def build_run(name, actual_type):
+      return {"name": name, "run_type": actual_type}
+
+  run = build_run("web_search", actual_type="tool")
+  print(run["run_type"])
+  # "tool" -- correctly reflects what actually ran
+starter_code: |
+  def build_run(name, actual_type):
+      return {"name": name, "run_type": "chain"}
+
+  run = build_run("web_search", actual_type="tool")
+  print(run["run_type"])
+challenge: |
+  Fix `build_run` so it sets `"run_type": actual_type`, instead of the
+  hardcoded literal `"chain"`. It should print `tool`, not `chain`.
+expected_output: |
+  tool
+hints:
+  - "Replace \"run_type\": \"chain\" with \"run_type\": actual_type."
+  - "A dashboard filtering by run type relies on this field being genuinely accurate for every single run, not a placeholder value."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 8
+difficulty: warmup
+contains_patterns:
+  - "\"run_type\": actual_type"
+concept_tags: [langsmith, run_type, tracing]

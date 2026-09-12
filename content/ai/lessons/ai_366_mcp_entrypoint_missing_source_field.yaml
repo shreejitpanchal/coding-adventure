@@ -1,0 +1,56 @@
+id: ai_366
+title: "Every Entrypoint Must Produce the Same Common Task Shape, Source Field Included"
+language: ai
+level: 366
+objective: "Fix an MCP entrypoint's translation that omits the 'source' field, when this category's foundational lesson established that every transport must normalize into the exact same {text, source} shape -- an entrypoint that skips one of those two fields breaks that uniformity for anything downstream that relies on it."
+explanation: |
+  This category opened with the principle that every entrypoint --
+  regardless of transport -- has to produce the identical normalized
+  task shape, so nothing downstream needs to know or care where a task
+  originally came from. An MCP-sourced task missing the `source` field
+  it's supposed to carry alongside `text` breaks that guarantee: code
+  that reasonably assumes every task has a `source` (for logging,
+  routing, or analytics) crashes or silently misbehaves the moment an
+  MCP-originated task is the one it happens to receive.
+
+  The bug this exercise fixes returns just `{"text": ...}`. The fix
+  includes `"source": "mcp"` alongside it.
+example_code: |
+  # The trap: never includes "source" at all -- breaks the common
+  # {"text", "source"} shape every other entrypoint produces.
+  def translate_mcp_task_trap(raw_payload):
+      return {"text": raw_payload.get("prompt")}
+
+  task_trap = translate_mcp_task_trap({"prompt": "summarize this document"})
+  print("source" in task_trap)
+  # False
+
+  # The fix: include the source field, matching every other transport.
+  def translate_mcp_task(raw_payload):
+      return {"text": raw_payload.get("prompt"), "source": "mcp"}
+
+  task = translate_mcp_task({"prompt": "summarize this document"})
+  print("source" in task)
+  # True -- correctly matches the common shape
+starter_code: |
+  def translate_mcp_task(raw_payload):
+      return {"text": raw_payload.get("prompt")}
+
+  task = translate_mcp_task({"prompt": "summarize this document"})
+  print("source" in task)
+challenge: |
+  Fix `translate_mcp_task` so it also includes `"source": "mcp"` in
+  the returned dict. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"source\": \"mcp\" as a second key in the returned dict, alongside \"text\"."
+  - "Every entrypoint transport needs to produce the exact same shape -- the MCP one is no exception, even though it's a different transport from Slack or email."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 11
+difficulty: warmup
+contains_patterns:
+  - "\"source\": \"mcp\""
+concept_tags: [solace_agent_mesh, entrypoint, protocol_translation]

@@ -1,0 +1,68 @@
+id: functional_programming_13
+title: "A Generator Expression Computes Lazily -- A List Comprehension Builds Everything Upfront"
+language: python
+level: 348
+objective: "Fix code that builds a full list comprehension purely to check whether ANY element matches a condition, when a generator expression combined with any() stops at the first match instead of computing every single element first."
+explanation: |
+  `[expensive(x) for x in data]` (a list comprehension) computes and
+  stores *every* element before anything else can happen, even if only
+  the very first one was actually needed. A generator expression --
+  the same syntax with `()` instead of `[]` -- produces values lazily,
+  one at a time, only as they're actually consumed. Combined with
+  `any(...)`, which short-circuits the instant it finds a truthy
+  value, a generator expression means the whole check stops at the
+  *first* match, never computing the remaining elements at all --
+  unlike a list comprehension, which always computes every element up
+  front regardless of how the result is eventually used.
+
+  The fix replaces the list comprehension (`[...]`) with a generator
+  expression (`(...)`), letting `any()` short-circuit correctly.
+example_code: |
+  # The trap: a list comprehension computes EVERY element up front.
+  calls_trap = []
+
+  def is_even_trap(n):
+      calls_trap.append(n)
+      return n % 2 == 0
+
+  result_trap = any([is_even_trap(n) for n in [1, 2, 3, 4, 5]])
+  print(len(calls_trap))
+  # 5 -- WRONG if the intent was stopping at the first match (n=2)
+
+  # The fix: a generator expression computes lazily -- any() short-circuits.
+  calls = []
+
+  def is_even(n):
+      calls.append(n)
+      return n % 2 == 0
+
+  result = any(is_even(n) for n in [1, 2, 3, 4, 5])
+  print(len(calls))
+  # 2 -- correctly stopped as soon as a match (n=2) was found
+starter_code: |
+  calls = []
+
+  def is_even(n):
+      calls.append(n)
+      return n % 2 == 0
+
+  result = any([is_even(n) for n in [1, 2, 3, 4, 5]])
+  print(len(calls))
+challenge: |
+  Fix this by removing the square brackets, turning the list
+  comprehension into a generator expression --
+  `any(is_even(n) for n in [1, 2, 3, 4, 5])`. It should print `2`, not
+  `5`.
+expected_output: |
+  2
+hints:
+  - "Remove the [ ] around the comprehension: any(is_even(n) for n in [1, 2, 3, 4, 5])."
+  - "A list comprehension always builds the whole list first, regardless of how it's used -- a generator expression computes lazily, letting any() stop at the first match."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 13
+difficulty: gotcha
+contains_patterns:
+  - "any\\(is_even\\(n\\) for n in \\[1, 2, 3, 4, 5\\]\\)"
+concept_tags: [functional_programming, generators, laziness, gotchas]

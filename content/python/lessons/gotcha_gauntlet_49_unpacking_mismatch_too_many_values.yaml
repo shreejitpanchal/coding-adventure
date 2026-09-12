@@ -1,0 +1,65 @@
+id: gotcha_gauntlet_49
+title: "The Unpacking That Broke the Moment a Function Grew a Third Return Value"
+language: python
+level: 294
+objective: "Fix a ValueError raised because a function now returns three values instead of the two it used to, while the caller's unpacking assignment still only expects two -- the caller's unpacking needs to match the function's ACTUAL current return shape."
+explanation: |
+  `low, high = get_stats()` requires `get_stats()` to return *exactly*
+  two values -- not "at least two," not "the first two of however many
+  there are." The moment a function is extended to return an
+  additional value (a stats function growing from `(low, high)` to
+  `(low, high, avg)`), every existing call site that unpacks its
+  result into a fixed number of names breaks with `ValueError: too
+  many values to unpack (expected 2)`, even though the two values that
+  *were* there before are still perfectly correct.
+
+  The fix is straightforward once you know where to look: update the
+  unpacking assignment to match the function's actual current return
+  shape -- `low, high, avg = get_stats()` -- rather than the shape it
+  used to have before it was extended.
+example_code: |
+  # The trap: the caller still expects the OLD two-value shape.
+  def get_stats_trap():
+      return 10, 20, 30          # extended to return THREE values
+
+  try:
+      low, high = get_stats_trap()
+      print("ok")
+  except ValueError:
+      print("crashed")
+  # "crashed" -- too many values to unpack (expected 2)
+
+  # The fix: unpack matching the function's actual CURRENT return shape.
+  def get_stats():
+      return 10, 20, 30
+
+  low, high, avg = get_stats()
+  print(low, high, avg)
+  # 10 20 30 -- correctly matches the function's real, current return shape
+starter_code: |
+  def get_stats():
+      return 10, 20, 30
+
+  try:
+      low, high = get_stats()
+      print(low, high)
+  except ValueError:
+      print("crashed")
+challenge: |
+  Fix this by unpacking into three names -- `low, high, avg =
+  get_stats()` -- matching the function's actual current return shape,
+  instead of the old two-value unpacking. It should print `10 20 30`,
+  not `crashed`.
+expected_output: |
+  10 20 30
+hints:
+  - "low, high, avg = get_stats(), then print(low, high, avg)."
+  - "Unpacking requires an EXACT count match -- when a function is extended to return more values, every call site unpacking its result needs updating too, not just the function itself."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 49
+difficulty: gotcha
+contains_patterns:
+  - "low, high, avg = get_stats\\(\\)"
+concept_tags: [unpacking, tuples, gotchas]

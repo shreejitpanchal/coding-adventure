@@ -1,0 +1,100 @@
+id: ai_405
+title: "Capstone: Entrypoint Translation and Capability Matching, Fixed Together"
+language: ai
+level: 405
+objective: "Fix a request handler combining this category's opening two lessons into one composite bug -- a translated task missing its 'source' field, and a routing step that grabs the first registered agent instead of actually matching by required capability -- so only fixing both together correctly routes a request to an agent that can genuinely do the work."
+explanation: |
+  This category opened by establishing that every entrypoint must
+  normalize into the same `{text, source}` shape, and that delegation
+  has to be driven by matching a task's required capability against
+  real agent cards, not by picking whichever agent happens to be
+  listed first. This capstone combines both defects into a single
+  request-handling function: the built task is missing its `source`
+  field, and the agent selection never actually checks the required
+  capability at all -- so a request meant for a chart-rendering agent
+  can get silently routed to a completely unrelated database agent,
+  while the task itself is also malformed.
+
+  The bug this exercise fixes builds a task with no `source` field and
+  always selects `agent_registry[0]`, ignoring the required
+  capability. The fix builds the correct common task shape and filters
+  candidates by their advertised capability before selecting one.
+example_code: |
+  # The trap: the task is missing its "source" field, AND agent
+  # selection never checks the required capability at all.
+  def process_request_trap(raw_payload, agent_registry, model_fn):
+      task = {"text": raw_payload["message"]}
+      agent = agent_registry[0]
+      conversation = [task]
+      response = model_fn(conversation)
+      if "final_answer" in response:
+          return {"handled_by": agent["name"], "answer": response["final_answer"]}
+      return {"handled_by": agent["name"], "answer": "incomplete"}
+
+  agent_registry = [
+      {"name": "db-agent", "capabilities": ["database_query"]},
+      {"name": "chart-agent", "capabilities": ["chart_rendering"]},
+  ]
+  def model_fn(conversation):
+      return {"final_answer": "chart rendered"}
+
+  result_trap = process_request_trap({"message": "render a chart"}, agent_registry, model_fn)
+  print(result_trap["handled_by"])
+  # "db-agent" -- wrong agent entirely, and the task itself was missing its "source" field too
+
+  # The fix: build the correct common task shape, and filter by
+  # required capability before selecting an agent.
+  def process_request(raw_payload, agent_registry, model_fn, required_capability):
+      task = {"text": raw_payload["message"], "source": "webhook"}
+      agent = None
+      for candidate in agent_registry:
+          if required_capability in candidate["capabilities"]:
+              agent = candidate
+              break
+      conversation = [task]
+      response = model_fn(conversation)
+      if "final_answer" in response:
+          return {"handled_by": agent["name"], "answer": response["final_answer"]}
+      return {"handled_by": agent["name"], "answer": "incomplete"}
+
+  result = process_request({"message": "render a chart"}, agent_registry, model_fn, "chart_rendering")
+  print(result["handled_by"])
+  # "chart-agent" -- correctly matched by capability
+starter_code: |
+  def process_request(raw_payload, agent_registry, model_fn, required_capability):
+      task = {"text": raw_payload["message"]}
+      agent = agent_registry[0]
+      conversation = [task]
+      response = model_fn(conversation)
+      if "final_answer" in response:
+          return {"handled_by": agent["name"], "answer": response["final_answer"]}
+      return {"handled_by": agent["name"], "answer": "incomplete"}
+
+  agent_registry = [
+      {"name": "db-agent", "capabilities": ["database_query"]},
+      {"name": "chart-agent", "capabilities": ["chart_rendering"]},
+  ]
+  def model_fn(conversation):
+      return {"final_answer": "chart rendered"}
+
+  result = process_request({"message": "render a chart"}, agent_registry, model_fn, "chart_rendering")
+  print(result["handled_by"])
+challenge: |
+  Fix both bugs together: include `"source": "webhook"` when building
+  `task`, and loop over `agent_registry` selecting the first candidate
+  whose `"capabilities"` list actually contains `required_capability`,
+  instead of always `agent_registry[0]`. It should print `chart-agent`,
+  not `db-agent`.
+expected_output: |
+  chart-agent
+hints:
+  - "Fix the task shape first: task = {\"text\": raw_payload[\"message\"], \"source\": \"webhook\"}."
+  - "Then fix agent selection: for candidate in agent_registry: if required_capability in candidate[\"capabilities\"]: agent = candidate; break."
+xp_reward: 20
+achievement: solace_agent_mesh_master
+category: solace_agent_mesh
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "if required_capability in candidate\\[\"capabilities\"\\]:"
+concept_tags: [solace_agent_mesh, capstone, entrypoint, agent_card]

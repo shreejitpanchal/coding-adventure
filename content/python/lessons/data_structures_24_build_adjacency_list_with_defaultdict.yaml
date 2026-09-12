@@ -1,0 +1,66 @@
+id: data_structures_24
+title: "Building an Adjacency List Is Another Job for defaultdict"
+language: python
+level: 181
+objective: "Rewrite an edge-list-to-adjacency-list builder using defaultdict(list), instead of a manual 'if key not in graph' guard."
+explanation: |
+  Converting a flat list of edges into an adjacency list (a dict
+  mapping each node to its list of neighbors) is exactly the grouping
+  problem this category's very first lesson covers -- and
+  `defaultdict(list)` solves it the same way here: no `if a not in
+  graph: graph[a] = []` guard needed before appending, since a missing
+  key's default (a fresh empty list) is created automatically on first
+  use.
+example_code: |
+  # Manual existence check before appending.
+  def build_adjacency_loop(edges):
+      graph = {}
+      for a, b in edges:
+          if a not in graph:
+              graph[a] = []
+          graph[a].append(b)
+      return graph
+
+  edges = [("A", "B"), ("A", "C"), ("B", "D")]
+  print(build_adjacency_loop(edges))
+  # {'A': ['B', 'C'], 'B': ['D']}
+
+  # defaultdict(list) removes the guard entirely.
+  from collections import defaultdict
+
+  def build_adjacency(edges):
+      graph = defaultdict(list)
+      for a, b in edges:
+          graph[a].append(b)
+      return dict(graph)
+
+  print(build_adjacency(edges))
+  # {'A': ['B', 'C'], 'B': ['D']}
+starter_code: |
+  def build_adjacency(edges):
+      graph = {}
+      for a, b in edges:
+          if a not in graph:
+              graph[a] = []
+          graph[a].append(b)
+      return graph
+
+  edges = [("A", "B"), ("A", "C"), ("B", "D")]
+  print(build_adjacency(edges))
+challenge: |
+  Rewrite `build_adjacency` using `collections.defaultdict(list)`,
+  instead of the manual existence check. Keep the same output:
+  {'A': ['B', 'C'], 'B': ['D']}.
+expected_output: |
+  {'A': ['B', 'C'], 'B': ['D']}
+hints:
+  - "from collections import defaultdict, then graph = defaultdict(list), with no if-check needed before appending."
+  - "Return dict(graph) at the end if you want a plain dict in the printed output rather than a defaultdict repr."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "graph = defaultdict\\(list\\)"
+concept_tags: [defaultdict, graphs, adjacency_list]

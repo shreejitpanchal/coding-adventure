@@ -1,0 +1,65 @@
+id: gotcha_gauntlet_19
+title: "The Config Default That Never Kicked In Because the Key Was Already There"
+language: python
+level: 264
+objective: "Fix code assuming dict.get(key, default) applies the default whenever the resulting value is falsy, when get() only falls back on a MISSING key -- a key that exists with value None still returns None, not the default."
+explanation: |
+  `dict.get(key, default)` only falls back to `default` when `key`
+  isn't in the dict *at all* -- it has no idea whether the value
+  stored there is "meaningful" or not. A config dict that explicitly
+  stores `{"timeout": None}` (perhaps meaning "not yet configured," or
+  written by code that serializes every field including unset ones)
+  still has the key `"timeout"` present, so `config.get("timeout",
+  30)` returns the stored `None`, not `30` -- the default only ever
+  covers a genuinely absent key, never an explicitly-present one whose
+  value happens to be `None` or otherwise falsy.
+
+  The fix is to explicitly check for `None` after the `get()` call
+  (or use `config.get("timeout") or 30`, being careful that `or` has
+  the same falsy-value blind spot for a legitimately-set `0`) and
+  substitute the real default only then.
+example_code: |
+  # The trap: assumes get()'s default covers a None VALUE -- it only
+  # covers a MISSING key.
+  config_trap = {"timeout": None}
+
+  def get_timeout_trap(config):
+      return config.get("timeout", 30)
+
+  print(get_timeout_trap(config_trap))
+  # None -- WRONG, "timeout" IS present, so the default never applied
+
+  # The fix: explicitly substitute the default when the stored value is None.
+  config = {"timeout": None}
+
+  def get_timeout(config):
+      value = config.get("timeout", 30)
+      return 30 if value is None else value
+
+  print(get_timeout(config))
+  # 30 -- correctly substituted, since the stored value was explicitly None
+starter_code: |
+  config = {"timeout": None}
+
+  def get_timeout(config):
+      return config.get("timeout", 30)
+
+  print(get_timeout(config))
+challenge: |
+  Fix `get_timeout` so it checks `if value is None` after calling
+  `get()`, substituting `30` explicitly when the stored value is
+  `None`, instead of relying on `get()`'s default to cover that case.
+  It should print `30`, not `None`.
+expected_output: |
+  30
+hints:
+  - "value = config.get(\"timeout\", 30), then return 30 if value is None else value."
+  - "get()'s default only ever applies to a MISSING key -- a key that's present with value None still returns None, never the default."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 19
+difficulty: gotcha
+contains_patterns:
+  - "30 if value is None else value"
+concept_tags: [dictionaries, none, gotchas]

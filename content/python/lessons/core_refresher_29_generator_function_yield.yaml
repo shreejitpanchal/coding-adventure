@@ -1,0 +1,59 @@
+id: core_refresher_29
+title: "A Generator Function Produces Values Lazily via yield"
+language: python
+level: 142
+objective: "Replace a function that builds and returns a full list with a generator function using yield, producing each value lazily instead of all at once."
+explanation: |
+  A `yield` statement turns an ordinary-looking function into a
+  *generator function* -- calling it doesn't run the body at all yet,
+  it returns a generator object that runs the body incrementally, one
+  step at a time, pausing at each `yield` and resuming exactly there on
+  the next value requested. This produces the same sequence of values a
+  function that builds a full list would, without ever holding the
+  entire sequence in memory at once -- the values simply don't all
+  exist simultaneously; each one is computed only when actually asked
+  for.
+
+  The bug this exercise fixes builds a complete list eagerly. The fix
+  uses `yield` to produce each value lazily.
+example_code: |
+  # Builds the ENTIRE list of squares before returning anything.
+  def squares_loop(n):
+      result = []
+      for i in range(n):
+          result.append(i * i)
+      return result
+
+  print(list(squares_loop(4)))             # [0, 1, 4, 9]
+
+  # yield produces each value lazily, one at a time.
+  def squares(n):
+      for i in range(n):
+          yield i * i
+
+  print(list(squares(4)))                  # [0, 1, 4, 9]
+starter_code: |
+  def squares(n):
+      result = []
+      for i in range(n):
+          result.append(i * i)
+      return result
+
+  print(list(squares(4)))
+challenge: |
+  Rewrite `squares` as a generator function using `yield i * i` instead
+  of building and returning a list. Keep the same output when wrapped
+  in `list(...)`: [0, 1, 4, 9].
+expected_output: |
+  [0, 1, 4, 9]
+hints:
+  - "Replace the whole loop-and-return with: for i in range(n): yield i * i."
+  - "yield pauses the function and hands back one value at a time -- list() then drives it to completion, collecting every yielded value."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 29
+difficulty: core
+contains_patterns:
+  - "yield i \\* i"
+concept_tags: [generators, yield]

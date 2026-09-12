@@ -1,0 +1,66 @@
+id: ai_326
+title: "A Test Split Must Actually Be Held Out, Not the Entire Dataset Again"
+language: ai
+level: 326
+objective: "Fix a dataset-splitting function whose test set is the entire dataset instead of just the held-out portion, when train and test are supposed to be disjoint -- overlapping them defeats the point of holding anything out at all."
+explanation: |
+  Splitting a dataset into train and test portions only means anything
+  if the two sets are genuinely disjoint -- test examples are supposed
+  to be ones the training process never saw, so evaluating against them
+  actually says something about generalization rather than just
+  measuring how well something memorized what it was directly given. A
+  split whose "test" set is really the whole dataset (train examples
+  included) makes every test-set evaluation partly measure memorization
+  of the very data used for training.
+
+  The bug this exercise fixes sets `test = examples`, the entire
+  dataset. The fix slices `test` to only the portion after
+  `split_index`, genuinely held out from `train`.
+example_code: |
+  # The trap: test is the ENTIRE dataset, not just the held-out
+  # portion -- train and test overlap completely.
+  def split_dataset_trap(examples, split_index):
+      train = examples[:split_index]
+      test = examples
+      return train, test
+
+  examples = ["e1", "e2", "e3", "e4"]
+  train_trap, test_trap = split_dataset_trap(examples, 2)
+  print(len(set(train_trap) & set(test_trap)))
+  # 2 -- train and test share examples, which should never happen
+
+  # The fix: test is only the portion AFTER split_index.
+  def split_dataset(examples, split_index):
+      train = examples[:split_index]
+      test = examples[split_index:]
+      return train, test
+
+  train, test = split_dataset(examples, 2)
+  print(len(set(train) & set(test)))
+  # 0 -- correctly disjoint
+starter_code: |
+  def split_dataset(examples, split_index):
+      train = examples[:split_index]
+      test = examples
+      return train, test
+
+  examples = ["e1", "e2", "e3", "e4"]
+  train, test = split_dataset(examples, 2)
+  print(len(set(train) & set(test)))
+challenge: |
+  Fix `split_dataset` so `test = examples[split_index:]`, genuinely
+  disjoint from `train`, instead of `test = examples` (the whole
+  dataset). It should print `0`, not `2`.
+expected_output: |
+  0
+hints:
+  - "Replace test = examples with test = examples[split_index:]."
+  - "train takes everything up to split_index; test needs to take everything AFTER it -- the two slices should never overlap."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 16
+difficulty: warmup
+contains_patterns:
+  - "test = examples\\[split_index:\\]"
+concept_tags: [langsmith, dataset_splitting, evaluation]

@@ -1,0 +1,82 @@
+id: ai_243
+title: "An LLM Cache Only Helps If It's Actually Checked Before Recomputing"
+language: ai
+level: 243
+objective: "Fix a cached-call wrapper that recomputes the result every single time regardless of the cache, when the identical prompt seen twice should hit the cache on the second call instead of calling the model again."
+explanation: |
+  Caching an LLM call by its exact prompt text avoids paying for (and
+  waiting on) a fresh model call when the exact same prompt comes
+  through again -- a genuinely common case in a chain that gets called
+  repeatedly with overlapping inputs. A wrapper that accepts a `cache`
+  parameter but never actually checks it before calling the model, and
+  never populates it afterward, provides zero benefit: every call is a
+  cache miss because nothing was ever cached in the first place.
+
+  The bug this exercise fixes calls the underlying model every time,
+  never touching `cache`. The fix checks the cache first, and only
+  calls the model (then stores the result) on an actual miss.
+example_code: |
+  # The trap: never checks or populates the cache at all -- every call
+  # recomputes from scratch.
+  _call_count_trap = {"n": 0}
+  def call_llm_trap(prompt):
+      _call_count_trap["n"] += 1
+      return f"response to {prompt}"
+
+  def cached_call_trap(prompt, cache):
+      return call_llm_trap(prompt)
+
+  cache = {}
+  cached_call_trap("hello", cache)
+  cached_call_trap("hello", cache)
+  print(_call_count_trap["n"])   # 2 -- recomputed both times despite the identical prompt
+
+  # The fix: check the cache first, only call the model on a genuine miss.
+  _call_count = {"n": 0}
+  def call_llm(prompt):
+      _call_count["n"] += 1
+      return f"response to {prompt}"
+
+  def cached_call(prompt, cache):
+      if prompt in cache:
+          return cache[prompt]
+      result = call_llm(prompt)
+      cache[prompt] = result
+      return result
+
+  cache2 = {}
+  cached_call("hello", cache2)
+  cached_call("hello", cache2)
+  print(_call_count["n"])   # 1 -- the second call correctly hit the cache
+starter_code: |
+  _call_count = {"n": 0}
+
+  def call_llm(prompt):
+      _call_count["n"] += 1
+      return f"response to {prompt}"
+
+  def cached_call(prompt, cache):
+      return call_llm(prompt)
+
+  cache = {}
+  cached_call("hello", cache)
+  cached_call("hello", cache)
+  print(_call_count["n"])
+challenge: |
+  Fix `cached_call` so it returns `cache[prompt]` when `prompt` is
+  already a key in `cache`, and otherwise calls `call_llm`, stores the
+  result, and returns it -- instead of always calling `call_llm`
+  unconditionally. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "if prompt in cache: return cache[prompt] -- check this FIRST, before calling call_llm at all."
+  - "On a miss, store the result with cache[prompt] = result before returning it, so the next identical call actually hits."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 23
+difficulty: core
+contains_patterns:
+  - "if prompt in cache:"
+concept_tags: [langchain, caching, llm_calls]

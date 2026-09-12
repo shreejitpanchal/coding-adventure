@@ -1,0 +1,91 @@
+id: deployment_13
+title: "A Crash Mid-Write Corrupted the Config File Instead of Leaving It Untouched"
+language: python
+level: 403
+objective: "Fix a config writer that writes directly into the real target file, so a crash partway through the write leaves it corrupted (neither the old content nor the new), when writing to a temporary file first and only then atomically renaming it into place means a crash never touches the real path at all."
+explanation: |
+  Writing new content directly into a file that's already live means
+  the file is in a genuinely broken, half-written state for the entire
+  duration of the write -- if anything crashes partway through
+  (a process kill, a disk error, an unhandled exception), whatever was
+  written so far is left sitting at the real path, neither the old
+  content nor the complete new content, corrupted in a way nothing
+  reading that file afterward can recover from. Writing the new
+  content to a *separate* temporary file first, then using `os.
+  replace(tmp_path, path)` -- an atomic rename on both POSIX and
+  Windows -- means a crash during the actual writing only ever
+  corrupts the temp file, which nothing else is reading; the real
+  path is only ever touched by the single, atomic rename step at the
+  very end, once the new content is already fully and correctly
+  written.
+
+  The fix writes to a temp file first, only renaming it into place
+  once the write has fully succeeded.
+example_code: |
+  # The trap: writes directly into the REAL path -- a crash leaves it corrupted.
+  def write_config_trap(path, content):
+      with open(path, "w") as f:
+          f.write(content[:4])
+          raise RuntimeError("crashed mid-write")
+
+  # (path already contains "OLD_CONFIG")
+  try:
+      write_config_trap(path, "NEW_CONFIG_VALUE")
+  except RuntimeError:
+      pass
+  print(open(path).read())
+  # "NEW_" -- WRONG, the real config file is now corrupted -- neither old nor new
+
+  # The fix: write to a TEMP file, only os.replace() into place once fully written.
+  import os
+
+  def write_config(path, content):
+      tmp_path = path + ".tmp"
+      with open(tmp_path, "w") as f:
+          f.write(content[:4])
+          raise RuntimeError("crashed mid-write")   # still crashes, but only the TEMP file is touched
+      os.replace(tmp_path, path)                     # never reached
+
+  try:
+      write_config(path, "NEW_CONFIG_VALUE")
+  except RuntimeError:
+      pass
+  print(open(path).read())
+  # "OLD_CONFIG" -- correctly untouched; the crash never reached the real path at all
+starter_code: |
+  import tempfile, os
+
+  with tempfile.TemporaryDirectory() as tmp_dir:
+      path = os.path.join(tmp_dir, "config.txt")
+      with open(path, "w") as f:
+          f.write("OLD_CONFIG")
+
+      def write_config(path, content):
+          with open(path, "w") as f:
+              f.write(content[:4])
+              raise RuntimeError("crashed mid-write")
+
+      try:
+          write_config(path, "NEW_CONFIG_VALUE")
+      except RuntimeError:
+          pass
+      print(open(path).read())
+challenge: |
+  Fix `write_config` so it writes to `path + ".tmp"` first, then calls
+  `os.replace(tmp_path, path)` only after the write succeeds, instead
+  of writing directly into `path`. It should print `OLD_CONFIG`, not
+  `NEW_`.
+expected_output: |
+  OLD_CONFIG
+hints:
+  - "tmp_path = path + \".tmp\", write to tmp_path instead of path, then os.replace(tmp_path, path) as the last line."
+  - "A crash mid-write only corrupts whatever file was ACTUALLY being written to -- writing to a temp file first means the real path is never touched until the single atomic rename at the end."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 13
+difficulty: deep_dive
+contains_patterns:
+  - "tmp_path = path \\+ \"\\.tmp\""
+  - "os\\.replace\\(tmp_path, path\\)"
+concept_tags: [deployment, atomicity, file_writes]

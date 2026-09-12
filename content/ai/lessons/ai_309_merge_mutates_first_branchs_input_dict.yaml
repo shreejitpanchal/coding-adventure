@@ -1,0 +1,69 @@
+id: ai_309
+title: "Merging Two Branches' State Shouldn't Mutate Either Branch's Own Input"
+language: ai
+level: 309
+objective: "Fix a parallel-branch merge that mutates one of the branch dicts in place via .update(), when a caller that still holds a reference to that branch's own dict shouldn't see it silently change just because it happened to be merged."
+explanation: |
+  Merging two dicts together is only safe when neither of the original
+  inputs is treated as disposable -- calling `.update()` directly on
+  one of them mutates that dict in place, so anyone else still holding
+  a reference to it (a caller that passed it in expecting to read it
+  again afterward) sees it silently change too. This is the same
+  aliasing hazard this category's earlier node-purity lesson covers,
+  here showing up specifically in a merge step instead of a plain node.
+
+  The bug this exercise fixes calls `branch_a.update(branch_b)`,
+  mutating `branch_a` directly. The fix starts from a fresh copy before
+  merging, leaving both original inputs untouched.
+example_code: |
+  # The trap: mutates branch_a IN PLACE via update() -- a caller
+  # still holding a reference to branch_a sees it silently change too.
+  def merge_parallel_trap(branch_a, branch_b):
+      merged = branch_a
+      merged.update(branch_b)
+      return merged
+
+  branch_a = {"summary": "great"}
+  branch_b = {"sentiment": "positive"}
+  merge_parallel_trap(branch_a, branch_b)
+  print("sentiment" in branch_a)
+  # True -- branch_a was mutated as a side effect, even though it was meant to be read-only input
+
+  # The fix: start from a fresh copy before merging.
+  def merge_parallel(branch_a, branch_b):
+      merged = dict(branch_a)
+      merged.update(branch_b)
+      return merged
+
+  branch_a2 = {"summary": "great"}
+  branch_b2 = {"sentiment": "positive"}
+  merge_parallel(branch_a2, branch_b2)
+  print("sentiment" in branch_a2)
+  # False -- correctly left the original input untouched
+starter_code: |
+  def merge_parallel(branch_a, branch_b):
+      merged = branch_a
+      merged.update(branch_b)
+      return merged
+
+  branch_a = {"summary": "great"}
+  branch_b = {"sentiment": "positive"}
+  merge_parallel(branch_a, branch_b)
+  print("sentiment" in branch_a)
+challenge: |
+  Fix `merge_parallel` so it starts from `merged = dict(branch_a)` (a
+  fresh copy) before calling `.update(branch_b)`, instead of assigning
+  `merged = branch_a` directly. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change merged = branch_a to merged = dict(branch_a) -- everything else about the function can stay the same."
+  - "merged = branch_a doesn't create a new dict at all -- it's just another name for the exact same object, so mutating merged mutates branch_a too."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "merged = dict\\(branch_a\\)"
+concept_tags: [langgraph, state_merging, aliasing]

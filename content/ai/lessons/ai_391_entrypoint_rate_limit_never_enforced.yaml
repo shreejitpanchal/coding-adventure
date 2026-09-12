@@ -1,0 +1,57 @@
+id: ai_391
+title: "An Entrypoint Needs to Actually Throttle a Flood of Requests From One User"
+language: ai
+level: 391
+objective: "Fix a request handler that processes every request regardless of how many the same user has already sent, when an unbounded flood from one user (a runaway script, an accidental loop on their end) should be throttled instead of consuming unlimited downstream resources."
+explanation: |
+  A single user (or a misbehaving integration acting on their behalf)
+  sending far more requests than any reasonable interaction would
+  produce is exactly the situation rate limiting exists to catch --
+  processing every single one anyway, with no check against how many
+  have already come through in the current window, means one runaway
+  client can consume unlimited downstream compute with no defense
+  mechanism ever engaging.
+
+  The bug this exercise fixes never checks `request_count` against
+  `max_per_window` at all. The fix rejects the request once that limit
+  is exceeded.
+example_code: |
+  # The trap: never checks request_count against max_per_window at
+  # all -- a flood of requests from one user all get processed with
+  # zero throttling.
+  def handle_request_trap(user_id, request_count, max_per_window):
+      return "processed"
+
+  print(handle_request_trap("user-1", request_count=500, max_per_window=10))
+  # "processed" -- wildly over the limit, still accepted
+
+  # The fix: reject the request once the limit is exceeded.
+  def handle_request(user_id, request_count, max_per_window):
+      if request_count > max_per_window:
+          return "RATE_LIMITED"
+      return "processed"
+
+  print(handle_request("user-1", request_count=500, max_per_window=10))
+  # "RATE_LIMITED" -- correctly throttled
+starter_code: |
+  def handle_request(user_id, request_count, max_per_window):
+      return "processed"
+
+  print(handle_request("user-1", request_count=500, max_per_window=10))
+challenge: |
+  Fix `handle_request` so it returns `"RATE_LIMITED"` when
+  `request_count > max_per_window`, instead of always returning
+  `"processed"`. It should print `RATE_LIMITED`, not `processed`.
+expected_output: |
+  RATE_LIMITED
+hints:
+  - "Add: if request_count > max_per_window: return \"RATE_LIMITED\", as the first check in the function."
+  - "A rate limit that never actually compares the current count against the configured maximum provides no real protection at all."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 36
+difficulty: warmup
+contains_patterns:
+  - "request_count > max_per_window"
+concept_tags: [solace_agent_mesh, entrypoint, rate_limiting]

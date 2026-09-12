@@ -1,0 +1,56 @@
+id: ai_372
+title: "An A2A Topic Must Use the Mesh's Own Configured Namespace, Not a Hardcoded One"
+language: ai
+level: 372
+objective: "Fix a topic-building function that hardcodes 'a2a/v1' as its prefix, when a real mesh deployment's own configured namespace has to prefix every topic -- otherwise messages published under the wrong namespace never reach anyone actually subscribed within the real one."
+explanation: |
+  Multiple separate Solace Agent Mesh deployments can share the same
+  underlying event broker, and the namespace prefix is what keeps
+  their topics from colliding -- `acme-mesh/a2a/v1/...` versus
+  `other-mesh/a2a/v1/...`. A topic builder that hardcodes a fixed
+  prefix instead of using the mesh's own actual configured namespace
+  publishes to a topic nobody in the real deployment is subscribed to,
+  since every genuine subscriber's topic includes their own mesh's
+  namespace.
+
+  The bug this exercise fixes hardcodes `"a2a/v1"`, ignoring `namespace`
+  entirely. The fix builds the topic using the actual configured
+  namespace.
+example_code: |
+  # The trap: hardcodes "a2a/v1" instead of using the mesh's OWN
+  # configured namespace prefix.
+  def build_topic_trap(agent_name, namespace):
+      return f"a2a/v1/{agent_name}"
+
+  print(build_topic_trap("summarizer-agent", namespace="acme-mesh"))
+  # "a2a/v1/summarizer-agent" -- wrong, ignores the mesh's actual namespace entirely
+
+  # The fix: build the topic using the actual configured namespace.
+  def build_topic(agent_name, namespace):
+      return f"{namespace}/a2a/v1/{agent_name}"
+
+  print(build_topic("summarizer-agent", namespace="acme-mesh"))
+  # "acme-mesh/a2a/v1/summarizer-agent" -- correctly namespaced
+starter_code: |
+  def build_topic(agent_name, namespace):
+      return f"a2a/v1/{agent_name}"
+
+  print(build_topic("summarizer-agent", namespace="acme-mesh"))
+challenge: |
+  Fix `build_topic` so it returns `f"{namespace}/a2a/v1/{agent_name}"`,
+  instead of hardcoding `"a2a/v1"` and ignoring `namespace` entirely.
+  It should print `acme-mesh/a2a/v1/summarizer-agent`, not
+  `a2a/v1/summarizer-agent`.
+expected_output: |
+  acme-mesh/a2a/v1/summarizer-agent
+hints:
+  - "Change the f-string to start with {namespace}/ before a2a/v1/{agent_name}."
+  - "Multiple mesh deployments can share the same broker -- the namespace prefix is what keeps their topics from colliding with each other."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 17
+difficulty: warmup
+contains_patterns:
+  - "f\"\\{namespace\\}/a2a/v1/\\{agent_name\\}\""
+concept_tags: [solace_agent_mesh, a2a_protocol, topic_namespacing]

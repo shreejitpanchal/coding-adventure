@@ -1,0 +1,110 @@
+id: packaging_11
+title: "A Single 'Visited' Set Silently Accepts an Impossible Circular Dependency"
+language: python
+level: 391
+objective: "Fix a topological sort that tracks only ONE 'visited' set, which silently produces a bogus install order for a genuinely circular dependency (a needs b, b needs a) instead of detecting and raising on it -- tracking a SEPARATE 'in progress' set catches a node being revisited while still on the current recursion path."
+explanation: |
+  A single `visited` set can't distinguish "fully processed, safe to
+  skip" from "currently being processed, still partway down this exact
+  recursion path" -- both look identical from inside the set. That
+  blind spot lets a genuine cycle slip through silently: visiting `a`
+  marks it visited, recurses into `b`, which recurses back into `a` --
+  and since `a` is already in the one `visited` set, the recursion just
+  returns immediately, as if `a` were already safely finished, when
+  really it's still stuck in the middle of its own unfinished
+  recursive call. The result is a plausible-looking but genuinely
+  bogus order, with no indication anything was wrong, for a dependency
+  pair that's actually impossible to install at all.
+
+  The fix tracks an `in_progress` set separately from `done` --
+  encountering a name that's still `in_progress` means a real cycle
+  was found, which should raise, not silently return.
+example_code: |
+  # The trap: ONE visited set can't tell "done" apart from "still in progress".
+  def install_order_trap(deps):
+      visited = set()
+      order = []
+      def visit(name):
+          if name in visited:
+              return
+          visited.add(name)
+          for dep in deps[name]:
+              visit(dep)
+          order.append(name)
+      for name in deps:
+          visit(name)
+      return order
+
+  try:
+      print(install_order_trap({"a": ["b"], "b": ["a"]}))
+      print("no error raised")
+  except ValueError:
+      print("circular dependency detected")
+  # (some bogus order)
+  # no error raised -- WRONG, "a" needs "b" and "b" needs "a" is impossible
+
+  # The fix: track in_progress separately -- a revisit while in progress IS a cycle.
+  def install_order(deps):
+      done = set()
+      in_progress = set()
+      order = []
+      def visit(name):
+          if name in done:
+              return
+          if name in in_progress:
+              raise ValueError(f"circular dependency detected: {name}")
+          in_progress.add(name)
+          for dep in deps[name]:
+              visit(dep)
+          in_progress.discard(name)
+          done.add(name)
+          order.append(name)
+      for name in deps:
+          visit(name)
+      return order
+
+  try:
+      print(install_order({"a": ["b"], "b": ["a"]}))
+      print("no error raised")
+  except ValueError:
+      print("circular dependency detected")
+  # circular dependency detected -- correctly caught, instead of silently proceeding
+starter_code: |
+  def install_order(deps):
+      visited = set()
+      order = []
+      def visit(name):
+          if name in visited:
+              return
+          visited.add(name)
+          for dep in deps[name]:
+              visit(dep)
+          order.append(name)
+      for name in deps:
+          visit(name)
+      return order
+
+  try:
+      print(install_order({"a": ["b"], "b": ["a"]}))
+      print("no error raised")
+  except ValueError:
+      print("circular dependency detected")
+challenge: |
+  Fix `install_order` by tracking `done` and `in_progress` as separate
+  sets, raising `ValueError` when `visit` encounters a name that's
+  still `in_progress`. It should print `circular dependency detected`,
+  not `no error raised`.
+expected_output: |
+  circular dependency detected
+hints:
+  - "done = set(); in_progress = set(); inside visit: if name in done: return; if name in in_progress: raise ValueError(...)."
+  - "in_progress.add(name) before recursing, in_progress.discard(name) and done.add(name) after -- a name still in_progress when revisited IS a real cycle."
+xp_reward: 15
+achievement: null
+category: packaging
+category_level: 11
+difficulty: deep_dive
+contains_patterns:
+  - "in_progress"
+  - "raise ValueError"
+concept_tags: [packaging, dependency_graph, cycle_detection]

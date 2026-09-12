@@ -1,0 +1,58 @@
+id: stdlib_deep_dive_16
+title: "itertools.cycle Repeats a Sequence Forever -- islice Bounds It to a Fixed Length"
+language: python
+level: 217
+objective: "Replace a manual loop using modulo indexing to repeat a short pattern with itertools.cycle combined with islice."
+explanation: |
+  Repeating a short pattern to fill a fixed-length result (`['a', 'b',
+  'a', 'b', 'a']` from the pattern `['a', 'b']`) by hand needs modulo
+  arithmetic on the index to wrap back into the pattern's own length.
+  `itertools.cycle(pattern)` produces the same repeating sequence
+  directly and genuinely infinitely, so it needs `islice` (the same
+  bounding tool from this category's `count` lesson) to cut it down to
+  a specific finite length -- no modulo arithmetic needed at all, since
+  `cycle` handles the wraparound internally.
+example_code: |
+  # A manual loop, using modulo to wrap the index back into the pattern.
+  def repeat_pattern_loop(pattern, n):
+      result = []
+      for i in range(n):
+          result.append(pattern[i % len(pattern)])
+      return result
+
+  print(repeat_pattern_loop(["a", "b"], 5))
+  # ['a', 'b', 'a', 'b', 'a']
+
+  # cycle() + islice() compose to the same bounded, repeating sequence.
+  from itertools import cycle, islice
+
+  def repeat_pattern(pattern, n):
+      return list(islice(cycle(pattern), n))
+
+  print(repeat_pattern(["a", "b"], 5))
+  # ['a', 'b', 'a', 'b', 'a']
+starter_code: |
+  def repeat_pattern(pattern, n):
+      result = []
+      for i in range(n):
+          result.append(pattern[i % len(pattern)])
+      return result
+
+  print(repeat_pattern(["a", "b"], 5))
+challenge: |
+  Rewrite `repeat_pattern` using `itertools.cycle(pattern)` combined
+  with `itertools.islice(..., n)`, instead of manual modulo indexing.
+  Keep the same output: ['a', 'b', 'a', 'b', 'a'].
+expected_output: |
+  ['a', 'b', 'a', 'b', 'a']
+hints:
+  - "from itertools import cycle, islice, then: return list(islice(cycle(pattern), n))."
+  - "cycle(pattern) handles the wraparound internally -- no modulo arithmetic needed anywhere in the caller's own code."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "islice\\(cycle\\(pattern\\), n\\)"
+concept_tags: [itertools, cycle, islice]

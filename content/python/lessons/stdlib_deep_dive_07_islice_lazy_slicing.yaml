@@ -1,0 +1,53 @@
+id: stdlib_deep_dive_07
+title: "itertools.islice Slices an Iterator Without Ever Materializing It"
+language: python
+level: 208
+objective: "Use itertools.islice to take the first few values from an iterator, instead of converting the whole thing to a list first just to slice it."
+explanation: |
+  Ordinary slicing (`[:5]`) only works on something that already
+  supports indexing -- a list, a string, a tuple -- not a bare
+  iterator, which only knows how to produce "the next value." Wrapping
+  an iterator in `list(...)` first to slice it forces the *entire*
+  iterator to be consumed and stored in memory, even if only the first
+  few values were actually wanted. `itertools.islice(iterator, n)`
+  slices lazily, pulling only as many values as needed and stopping
+  there, which matters most for iterators that are large, or genuinely
+  infinite.
+example_code: |
+  # Materializes the WHOLE iterator into a list, just to slice it.
+  def first_three_loop(iterator):
+      return list(iterator)[:3]
+
+  print(first_three_loop(iter([1, 2, 3, 4, 5])))
+  # [1, 2, 3]
+
+  # islice slices lazily -- only pulls what's actually needed.
+  from itertools import islice
+
+  def first_three(iterator):
+      return list(islice(iterator, 3))
+
+  print(first_three(iter([1, 2, 3, 4, 5])))
+  # [1, 2, 3]
+starter_code: |
+  def first_three(iterator):
+      return list(iterator)[:3]
+
+  print(first_three(iter([1, 2, 3, 4, 5])))
+challenge: |
+  Rewrite `first_three` using `itertools.islice(iterator, 3)`, instead
+  of materializing the whole iterator first. Keep the same output:
+  [1, 2, 3].
+expected_output: |
+  [1, 2, 3]
+hints:
+  - "from itertools import islice, then: return list(islice(iterator, 3))."
+  - "islice never asks the iterator for more values than it actually needs -- unlike list(iterator), which drains it completely first."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "islice\\(iterator, 3\\)"
+concept_tags: [itertools, islice]

@@ -1,0 +1,70 @@
+id: ai_76
+title: "Naive Oversampling Duplicates Rows -- It Doesn't Create New Information"
+language: ai
+level: 76
+objective: "Fix an oversampling function that duplicates minority-class rows to balance the dataset, then recognize what it does and doesn't actually accomplish -- more copies of the same information, not genuinely new synthetic examples the way SMOTE-style techniques produce."
+explanation: |
+  The simplest way to address class imbalance is to just duplicate
+  minority-class rows until the class counts match -- and it genuinely
+  does rebalance the *counts*, but it's worth being precise about what
+  it does and doesn't do: duplicating a row doesn't add any new
+  information, it just makes the model see the exact same minority
+  examples more times during training, which can encourage overfitting
+  to those specific few examples rather than genuinely learning the
+  minority class's broader pattern. Techniques like SMOTE address this
+  by generating *synthetic* new examples (interpolated between existing
+  minority points) rather than exact duplicates -- a more sophisticated
+  fix this exercise doesn't implement, but is worth naming as the
+  reason naive duplication is a starting point, not the final answer.
+
+  The bug this exercise fixes duplicates minority rows *incorrectly* --
+  it computes how many extra copies are needed but appends the wrong
+  count, leaving the classes still imbalanced after "oversampling."
+  The fix computes and appends exactly enough duplicates to match the
+  majority class's count.
+example_code: |
+  # The trap: computes the needed duplicate count based on the WRONG
+  # class's size, still leaving the dataset imbalanced afterward.
+  def oversample_trap(minority_rows, majority_count):
+      needed = majority_count - len(minority_rows) - 1   # bug: off-by-one, undershoots by 1
+      return minority_rows + minority_rows[:needed] if needed > 0 else minority_rows
+
+  minority = ["m1", "m2"]
+  result_trap = oversample_trap(minority, majority_count=5)
+  print(len(result_trap))   # 4 -- one short of the target 5
+
+  # The fix: compute the exact number of duplicates needed to match majority_count.
+  def oversample(minority_rows, majority_count):
+      needed = majority_count - len(minority_rows)
+      extra = (minority_rows * ((needed // len(minority_rows)) + 1))[:needed]
+      return minority_rows + extra
+
+  result = oversample(minority, majority_count=5)
+  print(len(result))   # 5 -- correctly matches the majority class's count
+starter_code: |
+  def oversample(minority_rows, majority_count):
+      needed = majority_count - len(minority_rows) - 1
+      return minority_rows + minority_rows[:needed] if needed > 0 else minority_rows
+
+  minority = ["m1", "m2"]
+  result = oversample(minority, majority_count=5)
+  print(len(result))
+challenge: |
+  Fix `oversample` so `needed` is computed as `majority_count -
+  len(minority_rows)` (no off-by-one), and enough duplicates are
+  appended to reach exactly `majority_count` total rows, even if that
+  requires cycling through `minority_rows` more than once. It should
+  print `5`, not `4`.
+expected_output: |
+  5
+hints:
+  - "Remove the \"- 1\" from the needed calculation: needed = majority_count - len(minority_rows)."
+  - "If needed can exceed len(minority_rows), build enough repeated copies first: (minority_rows * ((needed // len(minority_rows)) + 1))[:needed], then append that to minority_rows."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 36
+difficulty: core
+contains_patterns:
+  - "majority_count - len\\(minority_rows\\)"
+concept_tags: [ml_fundamentals, oversampling, class_imbalance]

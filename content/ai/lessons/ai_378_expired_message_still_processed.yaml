@@ -1,0 +1,58 @@
+id: ai_378
+title: "An Expired A2A Message Should Be Discarded, Not Acted On"
+language: ai
+level: 378
+objective: "Fix a message handler that processes every message regardless of its own expiry, when a task that was only ever relevant for a limited window of time shouldn't be acted on well after that window has already closed."
+explanation: |
+  A task can carry an `expires_at` specifically because acting on it
+  after that point no longer makes sense -- a delayed message queue, a
+  slow consumer, or a retried delivery could all deliver a task well
+  after its relevance window has passed. Processing it anyway means
+  potentially taking a real action (sending a report, triggering a
+  workflow) based on something that was only ever meant to happen
+  within a window that's already closed.
+
+  The bug this exercise fixes never checks `expires_at` against the
+  current time at all. The fix compares them first and reports the
+  message as expired if it's past due.
+example_code: |
+  # The trap: never checks the message's own expiry at all -- a
+  # stale, timed-out task still gets acted on.
+  def handle_message_trap(message, current_time):
+      return "processed"
+
+  message = {"task": "send report", "expires_at": 100}
+  print(handle_message_trap(message, current_time=150))
+  # "processed" -- WRONG, this expired 50 ticks ago
+
+  # The fix: check expires_at against the current time first.
+  def handle_message(message, current_time):
+      if current_time > message["expires_at"]:
+          return "expired"
+      return "processed"
+
+  print(handle_message(message, current_time=150))
+  # "expired" -- correctly refused to act on a stale message
+starter_code: |
+  def handle_message(message, current_time):
+      return "processed"
+
+  message = {"task": "send report", "expires_at": 100}
+  print(handle_message(message, current_time=150))
+challenge: |
+  Fix `handle_message` so it returns `"expired"` when `current_time >
+  message["expires_at"]`, instead of always returning `"processed"`.
+  It should print `expired`, not `processed`.
+expected_output: |
+  expired
+hints:
+  - "Add: if current_time > message[\"expires_at\"]: return \"expired\", as the first check in the function."
+  - "A message delivered well after its own relevance window has closed shouldn't be treated the same as one that arrived on time."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 23
+difficulty: warmup
+contains_patterns:
+  - "current_time > message\\[\"expires_at\"\\]"
+concept_tags: [solace_agent_mesh, a2a_protocol, message_expiry]

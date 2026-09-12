@@ -1,0 +1,56 @@
+id: ai_201
+title: "A Tool Call Should Check Required Arguments Before Running, Not After"
+language: ai
+level: 201
+objective: "Fix a tool-call handler that never checks whether the arguments it received actually include every field the tool's schema requires, so a call missing a required field runs anyway instead of failing with a clear message."
+explanation: |
+  A tool's input schema names which arguments are required, and a
+  well-behaved server checks incoming arguments against that list
+  *before* attempting to run the tool -- catching a missing field with
+  a clear, immediate error instead of letting the tool's own code fail
+  confusingly (or silently misbehave) partway through because something
+  it assumed would be there wasn't.
+
+  The bug this exercise fixes never looks at `required_fields` at all --
+  it runs regardless of what's actually present. The fix checks for
+  every required field up front and reports exactly which ones are
+  missing.
+example_code: |
+  # The trap: never checks required_fields at all -- runs regardless of
+  # what's actually present in args.
+  def call_tool_trap(args, required_fields):
+      return "ok"
+
+  print(call_tool_trap({"name": "x"}, ["name", "amount"]))   # "ok" -- but "amount" was never provided!
+
+  # The fix: check every required field is present before running.
+  def call_tool(args, required_fields):
+      missing = [f for f in required_fields if f not in args]
+      if missing:
+          return "error: missing " + ",".join(missing)
+      return "ok"
+
+  print(call_tool({"name": "x"}, ["name", "amount"]))   # "error: missing amount" -- caught up front, with a clear message
+starter_code: |
+  def call_tool(args, required_fields):
+      return "ok"
+
+  print(call_tool({"name": "x"}, ["name", "amount"]))
+challenge: |
+  Fix `call_tool` so it builds a `missing` list of required fields not
+  present in `args`, and returns `"error: missing " + ",".join(missing)`
+  when anything is missing, instead of always returning `"ok"`. It
+  should print `error: missing amount`, not `ok`.
+expected_output: |
+  error: missing amount
+hints:
+  - "missing = [f for f in required_fields if f not in args] -- then check `if missing:` before falling through to the success path."
+  - "Checking up front turns a confusing failure deep inside the tool's own code into one clear, immediate error message."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "f for f in required_fields if f not in args"
+concept_tags: [mcp, input_schema, argument_validation]

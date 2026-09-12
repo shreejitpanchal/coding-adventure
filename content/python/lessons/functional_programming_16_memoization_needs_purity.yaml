@@ -1,0 +1,78 @@
+id: functional_programming_16
+title: "Memoizing a Function That Reads External State Caches a Stale Answer"
+language: python
+level: 351
+objective: "Fix an @lru_cache-decorated function that reads a mutable value from outside its own arguments, so changing that outside value doesn't affect the cached result at all -- memoization only works correctly for a truly pure function, one whose entire output depends on its arguments, not on anything else."
+explanation: |
+  `@lru_cache` decides whether it already has an answer purely by
+  looking at the *arguments* a call was made with -- it has no way to
+  know that a function's result secretly also depends on some external
+  mutable state, like a config dict read from inside the function
+  body. The first call with `base=100` gets cached under the key
+  `(100,)`; a later call with the *same* `base=100`, even after the
+  external config has genuinely changed, returns that same stale
+  cached value, since `lru_cache` never sees any evidence that
+  anything relevant changed. This is exactly why memoization requires
+  genuine purity -- passing every actual input as an explicit
+  argument, not reading anything from outside.
+
+  The fix makes the varying value an explicit parameter, so it becomes
+  part of the cache key and changing it correctly triggers a fresh
+  computation.
+example_code: |
+  # The trap: reads external mutable state -- lru_cache can't see it change.
+  from functools import lru_cache
+
+  config_trap = {"rate": 0.1}
+
+  @lru_cache
+  def get_price_trap(base):
+      return base * (1 + config_trap["rate"])
+
+  print(get_price_trap(100))
+  config_trap["rate"] = 0.2
+  print(get_price_trap(100))
+  # 110.0
+  # 110.0 -- WRONG, the rate change had NO effect, since the cache key
+  # never included it in the first place
+
+  # The fix: pass the varying value explicitly -- it becomes part of the cache key.
+  @lru_cache
+  def get_price(base, rate):
+      return base * (1 + rate)
+
+  print(get_price(100, 0.1))
+  print(get_price(100, 0.2))
+  # 110.0
+  # 120.0 -- correctly recomputed, since rate is now genuinely part of the input
+starter_code: |
+  from functools import lru_cache
+
+  config = {"rate": 0.1}
+
+  @lru_cache
+  def get_price(base):
+      return base * (1 + config["rate"])
+
+  print(get_price(100))
+  config["rate"] = 0.2
+  print(get_price(100))
+challenge: |
+  Fix `get_price` so it takes `rate` as an explicit second parameter
+  instead of reading `config["rate"]` internally, calling it as
+  `get_price(100, 0.1)` then `get_price(100, 0.2)`. It should print
+  `110.0` then `120.0`, not `110.0` twice.
+expected_output: |
+  110.0
+  120.0
+hints:
+  - "def get_price(base, rate): return base * (1 + rate), then call get_price(100, 0.1) and get_price(100, 0.2)."
+  - "lru_cache only ever looks at a call's ARGUMENTS to decide if it has a cached answer -- anything read from outside those arguments can change without the cache ever noticing."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 16
+difficulty: deep_dive
+contains_patterns:
+  - "def get_price\\(base, rate\\):"
+concept_tags: [functional_programming, memoization, purity, gotchas]

@@ -1,0 +1,69 @@
+id: stdlib_deep_dive_37
+title: "A Logger's Level Filters Out Anything Below It -- DEBUG Messages Vanish at WARNING"
+language: python
+level: 238
+objective: "Fix code that logs at DEBUG level but never sees output, because the logger's configured level (WARNING) filters out anything below it -- setting the logger's level to DEBUG (or lower) is what actually lets DEBUG messages through."
+explanation: |
+  A `logging.Logger`'s level acts as a minimum severity threshold --
+  `logger.debug(...)` calls are silently dropped entirely unless the
+  logger's own level is set to `DEBUG` or lower. The default root
+  logger level is `WARNING`, so `logger.debug(...)`/`logger.info(...)`
+  calls against an unconfigured logger produce no output at all, which
+  looks like the calls did nothing rather than were correctly filtered
+  by severity.
+
+  The bug this exercise fixes calls `logger.debug(...)` without ever
+  lowering the logger's level below the default `WARNING`, so nothing
+  is emitted. The fix sets `logger.setLevel(logging.DEBUG)` first.
+example_code: |
+  # The trap: logger stays at the default WARNING level -- DEBUG is filtered out.
+  import logging
+
+  def make_logger_trap(name):
+      logger = logging.getLogger(name)
+      handler = logging.StreamHandler()
+      logger.addHandler(handler)
+      return logger
+
+  logger_trap = make_logger_trap("trap_demo")
+  print(logger_trap.isEnabledFor(logging.DEBUG))
+  # False -- WRONG, DEBUG messages are silently filtered at the default level
+
+  # The fix: explicitly lower the logger's level to DEBUG.
+  def make_logger(name):
+      logger = logging.getLogger(name)
+      logger.setLevel(logging.DEBUG)
+      handler = logging.StreamHandler()
+      logger.addHandler(handler)
+      return logger
+
+  logger = make_logger("fixed_demo")
+  print(logger.isEnabledFor(logging.DEBUG))
+  # True -- correctly allows DEBUG messages through
+starter_code: |
+  import logging
+
+  def make_logger(name):
+      logger = logging.getLogger(name)
+      handler = logging.StreamHandler()
+      logger.addHandler(handler)
+      return logger
+
+  logger = make_logger("demo")
+  print(logger.isEnabledFor(logging.DEBUG))
+challenge: |
+  Fix `make_logger` by calling `logger.setLevel(logging.DEBUG)` before
+  returning it. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "logger.setLevel(logging.DEBUG), added right after logging.getLogger(name)."
+  - "A logger's default level is WARNING -- DEBUG and INFO calls are silently dropped until the level is explicitly lowered."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "logger\\.setLevel\\(logging\\.DEBUG\\)"
+concept_tags: [logging, log_level]

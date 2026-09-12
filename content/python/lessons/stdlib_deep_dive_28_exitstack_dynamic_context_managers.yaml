@@ -1,0 +1,93 @@
+id: stdlib_deep_dive_28
+title: "ExitStack Manages a Dynamic Number of Context Managers -- Hardcoded Nesting Can't"
+language: python
+level: 229
+objective: "Fix code that nests a fixed number of 'with' statements by hand, when the actual number of resources needing to be opened isn't known ahead of time -- contextlib.ExitStack enters however many context managers a runtime loop produces, all cleaned up correctly."
+explanation: |
+  Nesting `with` blocks by hand only works when the number of context
+  managers is fixed and known at the time the code is written -- two
+  resources means two nested `with` statements, and a third resource
+  needs the code itself rewritten to add another level of nesting.
+  `contextlib.ExitStack` handles a genuinely dynamic count: calling
+  `stack.enter_context(...)` inside an ordinary loop enters as many
+  context managers as the loop produces, and exiting the `with
+  ExitStack() as stack:` block closes every single one of them, in
+  reverse order, exactly like nested `with` blocks would -- without
+  the nesting needing to be written out by hand at all.
+
+  The bug this exercise fixes hardcodes exactly two nested `with`
+  blocks, silently ignoring any additional resources. The fix uses
+  `ExitStack` to handle however many there actually are.
+example_code: |
+  # The trap: hardcoded to EXACTLY two resources -- a third one is
+  # silently never opened at all.
+  class Resource:
+      def __init__(self, name, log):
+          self.name = name
+          self.log = log
+      def __enter__(self):
+          self.log.append(f"open:{self.name}")
+          return self
+      def __exit__(self, *args):
+          self.log.append(f"close:{self.name}")
+
+  def open_all_trap(names, log):
+      with Resource(names[0], log):
+          with Resource(names[1], log):
+              pass
+      return log
+
+  names = ["a", "b", "c"]
+  log_trap = []
+  print(len(open_all_trap(names, log_trap)))
+  # 4 -- only opened/closed 2 resources; "c" was completely ignored
+
+  # The fix: ExitStack enters however many context managers a loop produces.
+  from contextlib import ExitStack
+
+  def open_all(names, log):
+      with ExitStack() as stack:
+          for name in names:
+              stack.enter_context(Resource(name, log))
+      return log
+
+  log = []
+  print(len(open_all(names, log)))
+  # 6 -- correctly opened and closed all 3 resources, regardless of how many there are
+starter_code: |
+  class Resource:
+      def __init__(self, name, log):
+          self.name = name
+          self.log = log
+      def __enter__(self):
+          self.log.append(f"open:{self.name}")
+          return self
+      def __exit__(self, *args):
+          self.log.append(f"close:{self.name}")
+
+  def open_all(names, log):
+      with Resource(names[0], log):
+          with Resource(names[1], log):
+              pass
+      return log
+
+  names = ["a", "b", "c"]
+  log = []
+  print(len(open_all(names, log)))
+challenge: |
+  Fix `open_all` so it uses `ExitStack` and a loop calling `stack.
+  enter_context(Resource(name, log))` for every name, instead of two
+  hardcoded nested `with` blocks. It should print `6`, not `4`.
+expected_output: |
+  6
+hints:
+  - "from contextlib import ExitStack, then: with ExitStack() as stack: for name in names: stack.enter_context(Resource(name, log))."
+  - "ExitStack closes every entered context manager in reverse order when its own with block ends -- exactly like nested with blocks would, but for a count decided at runtime."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 28
+difficulty: core
+contains_patterns:
+  - "stack\\.enter_context\\(Resource\\(name, log\\)\\)"
+concept_tags: [contextlib, exitstack]

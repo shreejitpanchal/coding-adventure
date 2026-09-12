@@ -1,0 +1,55 @@
+id: core_refresher_37
+title: "Mixing in str Lets an Enum Member Compare Equal to a Plain String"
+language: python
+level: 150
+objective: "Fix an Enum whose members never compare equal to a raw string, when mixing in str (class Color(str, Enum)) makes each member directly comparable to (and usable as) an ordinary string."
+explanation: |
+  A plain `Enum` member is genuinely its own type -- `Color.RED == "red"`
+  is `False`, even though `Color.RED.value` is exactly `"red"`, because
+  an `Enum` member is never automatically equal to its own underlying
+  value. Mixing `str` into the class bases (`class Color(str, Enum)`)
+  makes each member *also* be a real string, inheriting `str`'s own
+  `__eq__` -- so `Color.RED == "red"` becomes `True`, and the member can
+  be used anywhere a plain string is expected (as a dict key matching a
+  raw string, in string formatting, and so on) without needing `.value`
+  everywhere.
+
+  The bug this exercise fixes uses a plain `Enum`. The fix mixes in
+  `str` as well.
+example_code: |
+  # A plain Enum -- never automatically equal to its own raw value.
+  from enum import Enum
+
+  class ColorLoop(Enum):
+      RED = "red"
+
+  print(ColorLoop.RED == "red")            # False -- even though .value IS "red"
+
+  # Mixing in str makes the member directly comparable to a raw string.
+  class Color(str, Enum):
+      RED = "red"
+
+  print(Color.RED == "red")                # True -- correctly comparable, since it's genuinely also a str
+starter_code: |
+  from enum import Enum
+
+  class Color(Enum):
+      RED = "red"
+
+  print(Color.RED == "red")
+challenge: |
+  Fix `Color` so it inherits from both `str` and `Enum`
+  (`class Color(str, Enum):`). It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change class Color(Enum): to class Color(str, Enum):."
+  - "Mixing in str means each member genuinely IS a string too, inheriting str's own __eq__ -- that's what makes the direct comparison work."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 37
+difficulty: core
+contains_patterns:
+  - "class Color\\(str, Enum\\):"
+concept_tags: [enums, mixin_classes]

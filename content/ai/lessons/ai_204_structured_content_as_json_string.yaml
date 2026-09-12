@@ -1,0 +1,57 @@
+id: ai_204
+title: "Structured Tool Output Should Be a Real Object, Not a JSON String"
+language: ai
+level: 204
+objective: "Fix a tool-result builder that serializes its structured output to a JSON string, when MCP's structured content is meant to be an actual object a client can navigate directly, not text it has to reparse first."
+explanation: |
+  MCP tool results can carry `structuredContent` -- data meant to be a
+  real object (dict/list/number/etc.) the client can read fields off of
+  directly, as opposed to the human-readable `text` content block that's
+  just a string. Serializing structured output to a JSON string instead
+  defeats the entire point: the client would have to detect that the
+  "structured" content is actually text and parse it itself, exactly
+  the extra step structured content exists to avoid.
+
+  The bug this exercise fixes runs the data through `json.dumps` before
+  returning it, turning a real object into a plain string. The fix
+  returns the object itself, unserialized.
+example_code: |
+  import json
+
+  # The trap: serializes to a STRING, not the actual structured object.
+  def build_structured_result_trap(data):
+      return json.dumps(data)
+
+  trap = build_structured_result_trap({"count": 3})
+  print(isinstance(trap, dict))   # False -- client expects a real object it can navigate, not text to reparse
+
+  # The fix: return the object itself, unserialized.
+  def build_structured_result(data):
+      return data
+
+  result = build_structured_result({"count": 3})
+  print(isinstance(result, dict))   # True -- a client can read result["count"] directly
+starter_code: |
+  import json
+
+  def build_structured_result(data):
+      return json.dumps(data)
+
+  result = build_structured_result({"count": 3})
+  print(isinstance(result, dict))
+challenge: |
+  Fix `build_structured_result` so it returns `data` itself, instead of
+  `json.dumps(data)`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Just return data directly -- drop the json.dumps() call entirely."
+  - "Structured content is supposed to save the client a parse step, not require an extra one."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 29
+difficulty: warmup
+contains_patterns:
+  - "return data"
+concept_tags: [mcp, structured_content, tool_results]

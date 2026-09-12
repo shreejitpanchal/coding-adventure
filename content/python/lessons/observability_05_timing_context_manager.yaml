@@ -87,7 +87,7 @@ hints:
   - "self.start was already recorded in __enter__ -- __exit__ just needs to compute the difference."
   - "self.duration = time.monotonic() - self.start"
 xp_reward: 15
-achievement: observability_master
+achievement: null
 category: observability
 category_level: 5
 difficulty: deep_dive

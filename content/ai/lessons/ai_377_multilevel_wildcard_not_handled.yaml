@@ -1,0 +1,59 @@
+id: ai_377
+title: "A Multi-Level Wildcard Should Match Any Depth Beneath It"
+language: ai
+level: 377
+objective: "Fix a topic-matching function that treats a multi-level wildcard ('>') as a literal segment, when it's supposed to match everything underneath the prefix it follows, regardless of how many additional segments come after it."
+explanation: |
+  A multi-level wildcard (commonly written `>`) subscribes to an entire
+  subtree of a topic hierarchy at once -- `"orders/>"` matches
+  `"orders/electronics"`, `"orders/electronics/laptops"`,
+  `"orders/electronics/laptops/gaming"`, any depth at all beneath
+  `orders`. This category's earlier single-level wildcard lesson covers
+  matching exactly one segment; `>` is the broader relative that covers
+  everything remaining, however many segments that turns out to be.
+
+  The bug this exercise fixes compares with plain `==`, never
+  recognizing `>` as special at all. The fix checks whether the
+  published topic falls anywhere underneath the wildcard's prefix.
+example_code: |
+  # The trap: exact match only -- a multi-level wildcard ("orders/>")
+  # is never actually treated as matching anything underneath it.
+  def matches_trap(published_topic, sub_topic):
+      return published_topic == sub_topic
+
+  print(matches_trap("orders/electronics/laptops/gaming", "orders/>"))
+  # False -- ">" should match everything under "orders", at any depth
+
+  # The fix: check whether the published topic falls under the
+  # wildcard's prefix.
+  def matches(published_topic, sub_topic):
+      if sub_topic.endswith("/>"):
+          prefix = sub_topic[:-2]
+          return published_topic == prefix or published_topic.startswith(prefix + "/")
+      return published_topic == sub_topic
+
+  print(matches("orders/electronics/laptops/gaming", "orders/>"))
+  # True -- correctly matched, regardless of depth
+starter_code: |
+  def matches(published_topic, sub_topic):
+      return published_topic == sub_topic
+
+  print(matches("orders/electronics/laptops/gaming", "orders/>"))
+challenge: |
+  Fix `matches` so it checks `sub_topic.endswith("/>")` and, if so,
+  matches anything starting with the prefix before it, instead of
+  comparing the two topics with `==` directly. It should print `True`,
+  not `False`.
+expected_output: |
+  True
+hints:
+  - "if sub_topic.endswith(\"/>\"): prefix = sub_topic[:-2]; return published_topic == prefix or published_topic.startswith(prefix + \"/\")."
+  - "Unlike \"+\" (exactly one segment), \">\" matches every remaining segment, however many there turn out to be."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 22
+difficulty: core
+contains_patterns:
+  - "sub_topic\\.endswith\\(\"/>\"\\)"
+concept_tags: [solace_agent_mesh, event_broker, wildcard_topics]

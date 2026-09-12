@@ -1,0 +1,49 @@
+id: data_structures_17
+title: "heapq.merge Combines Already-Sorted Iterables Without Re-Sorting Everything"
+language: python
+level: 174
+objective: "Use heapq.merge to combine two already-sorted lists into one sorted sequence, instead of concatenating and sorting from scratch."
+explanation: |
+  Combining two lists that are *already* sorted by concatenating them
+  and calling `sorted()` again throws away the fact that each one was
+  already in order -- `sorted()` has no way to know that and just
+  resorts everything from scratch, O((n+m) log(n+m)). `heapq.merge`
+  is built specifically for this case: it merges any number of
+  already-sorted inputs lazily, in O(n+m) overall, by always picking
+  the smallest available "next" element across all the inputs it's
+  given -- the same core idea merge sort's merge step uses.
+example_code: |
+  # Concatenate and re-sort from scratch -- ignores that both were
+  # already sorted.
+  a_sorted = [1, 3, 5]
+  b_sorted = [2, 4, 6]
+  merged_loop = sorted(a_sorted + b_sorted)
+  print(merged_loop)                        # [1, 2, 3, 4, 5, 6]
+
+  # heapq.merge combines already-sorted inputs directly.
+  import heapq
+
+  merged = list(heapq.merge(a_sorted, b_sorted))
+  print(merged)                             # [1, 2, 3, 4, 5, 6]
+starter_code: |
+  a_sorted = [1, 3, 5]
+  b_sorted = [2, 4, 6]
+  merged = sorted(a_sorted + b_sorted)
+  print(merged)
+challenge: |
+  Rewrite this using `heapq.merge(a_sorted, b_sorted)` (wrapped in
+  `list(...)`), instead of concatenating and re-sorting. Keep the same
+  output: [1, 2, 3, 4, 5, 6].
+expected_output: |
+  [1, 2, 3, 4, 5, 6]
+hints:
+  - "import heapq, then: merged = list(heapq.merge(a_sorted, b_sorted))."
+  - "heapq.merge assumes its inputs are ALREADY sorted -- it merges them without ever re-sorting either one from scratch."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 17
+difficulty: core
+contains_patterns:
+  - "heapq\\.merge\\(a_sorted, b_sorted\\)"
+concept_tags: [heapq, merging]

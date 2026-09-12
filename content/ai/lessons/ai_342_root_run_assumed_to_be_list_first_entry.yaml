@@ -1,0 +1,59 @@
+id: ai_342
+title: "Finding the Root Run Means Checking for No Parent, Not Assuming It's Listed First"
+language: ai
+level: 342
+objective: "Fix a root-finding function that assumes the first entry in a run list is always the root, when a flat list of runs isn't guaranteed to be ordered that way -- the root is whichever run genuinely has no parent, wherever it happens to sit in the list."
+explanation: |
+  A trace's flat storage format doesn't guarantee any particular
+  ordering -- runs might be listed in whatever order they were written
+  to storage, which has no necessary relationship to the tree's actual
+  structure. The only reliable way to identify the root run is by its
+  own defining property: it's the one run whose `parent_run_id` is
+  `None`. Assuming it's simply first in the list works by coincidence
+  when storage happens to preserve creation order, and silently
+  returns the wrong run the moment it doesn't.
+
+  The bug this exercise fixes returns `runs[0]` unconditionally. The
+  fix searches for the run whose `parent_run_id` is actually `None`.
+example_code: |
+  # The trap: assumes the root is always FIRST in the list -- but
+  # a run tree isn't guaranteed to be listed in that order.
+  def find_root_trap(runs):
+      return runs[0]
+
+  runs = [{"id": "child-1", "parent_run_id": "root-1"}, {"id": "root-1", "parent_run_id": None}]
+  print(find_root_trap(runs)["id"])
+  # "child-1" -- wrong, this isn't the root at all
+
+  # The fix: search for the run whose parent_run_id is actually None.
+  def find_root(runs):
+      for run in runs:
+          if run["parent_run_id"] is None:
+              return run
+      return None
+
+  print(find_root(runs)["id"])
+  # "root-1" -- correctly identified by its own defining property
+starter_code: |
+  def find_root(runs):
+      return runs[0]
+
+  runs = [{"id": "child-1", "parent_run_id": "root-1"}, {"id": "root-1", "parent_run_id": None}]
+  print(find_root(runs)["id"])
+challenge: |
+  Fix `find_root` so it loops over `runs` and returns the first one
+  whose `parent_run_id` is `None`, instead of always `runs[0]`. It
+  should print `root-1`, not `child-1`.
+expected_output: |
+  root-1
+hints:
+  - "for run in runs: if run[\"parent_run_id\"] is None: return run -- then return None if the loop finds nothing."
+  - "A run's position in a flat list carries no guarantee about its role in the tree -- only its own parent_run_id field does."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 32
+difficulty: gotcha
+contains_patterns:
+  - "run\\[\"parent_run_id\"\\] is None"
+concept_tags: [langsmith, run_tree, root_identification]

@@ -1,0 +1,61 @@
+id: ai_376
+title: "A Single-Level Wildcard Segment Needs to Actually Be Treated as a Wildcard"
+language: ai
+level: 376
+objective: "Fix a topic-matching function that only does exact string equality, when a subscription topic using a single-level wildcard segment ('+') is supposed to match any value in that specific position, not just an identical string."
+explanation: |
+  Real event brokers support a single-level wildcard segment (often
+  written `+`) that matches exactly one topic segment, whatever its
+  value -- a subscription to `"orders/+/laptops"` should match
+  `"orders/electronics/laptops"`, `"orders/refurbished/laptops"`, or
+  any other single middle segment, without the subscriber needing to
+  know every possible category ahead of time. Comparing topics with
+  plain equality never recognizes `+` as anything special, treating it
+  as a literal, unmatchable segment instead.
+
+  The bug this exercise fixes compares the two topics directly with
+  `==`. The fix compares segment by segment, treating a `+` segment as
+  matching anything in that position.
+example_code: |
+  # The trap: exact match only -- a single-level wildcard segment
+  # ("+") is never actually treated as a wildcard.
+  def matches_trap(published_topic, sub_topic):
+      return published_topic == sub_topic
+
+  print(matches_trap("orders/electronics/laptops", "orders/+/laptops"))
+  # False -- the "+" wildcard should have matched "electronics" here
+
+  # The fix: compare segment by segment, treating "+" as matching
+  # anything.
+  def matches(published_topic, sub_topic):
+      pub_parts = published_topic.split("/")
+      sub_parts = sub_topic.split("/")
+      if len(pub_parts) != len(sub_parts):
+          return False
+      return all(s == "+" or s == p for s, p in zip(sub_parts, pub_parts))
+
+  print(matches("orders/electronics/laptops", "orders/+/laptops"))
+  # True -- correctly matched via the wildcard segment
+starter_code: |
+  def matches(published_topic, sub_topic):
+      return published_topic == sub_topic
+
+  print(matches("orders/electronics/laptops", "orders/+/laptops"))
+challenge: |
+  Fix `matches` so it splits both topics into segments and checks
+  `all(s == "+" or s == p for s, p in zip(sub_parts, pub_parts))`,
+  instead of comparing the two full topic strings with `==` directly.
+  It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Split both topics on \"/\" first, and require the same number of segments before comparing them position by position."
+  - "A \"+\" segment should match ANY value in that position -- everywhere else, the segments still need to match exactly."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 21
+difficulty: core
+contains_patterns:
+  - "s == \"\\+\" or s == p"
+concept_tags: [solace_agent_mesh, event_broker, wildcard_topics]

@@ -1,0 +1,72 @@
+id: idioms_gotchas_34
+title: "Zero-Argument super() Only Works Inside a Method Defined in a Class Body"
+language: python
+level: 103
+objective: "Fix code that calls the zero-argument form of super() from a plain standalone function, when that shorthand relies on compiler-inserted context that only exists for a method textually defined inside a class body -- calling it from anywhere else raises RuntimeError."
+explanation: |
+  `super()` with no arguments works via a small piece of compiler
+  magic: when a method is defined directly inside a `class` body,
+  Python automatically stores a reference to that class in a hidden
+  `__class__` cell that `super()` reads from. A plain function defined
+  outside any class -- even one that's *called* from inside a method --
+  never gets that hidden cell, so `super()` inside it has nothing to
+  resolve against and raises `RuntimeError: super(): no arguments`.
+
+  The bug this exercise fixes calls `super()` from a standalone helper
+  function. The fix defines the overriding method directly inside the
+  subclass, where zero-argument `super()` is actually valid.
+example_code: |
+  # The trap: super() called from a standalone function -- it was
+  # never defined inside a class body, so there's no hidden context
+  # for super() to resolve against.
+  class Animal:
+      def speak(self):
+          return "generic sound"
+
+  def helper_speak():
+      return super()
+
+  try:
+      helper_speak()
+      print("ok")
+  except RuntimeError:
+      print("failed")
+  # "failed" -- super() has no meaning here at all
+
+  # The fix: define the overriding method directly inside the subclass.
+  class Dog(Animal):
+      def speak(self):
+          return super().speak() + " -> woof"
+
+  print(Dog().speak())
+  # "generic sound -> woof" -- correctly resolves, since this method IS defined inside the class body
+starter_code: |
+  class Animal:
+      def speak(self):
+          return "generic sound"
+
+  def helper_speak():
+      return super()
+
+  try:
+      print(helper_speak())
+  except RuntimeError:
+      print("failed")
+challenge: |
+  Fix this by defining `class Dog(Animal)` with a `speak` method that
+  calls `super().speak() + " -> woof"`, instead of trying to call
+  `super()` from a standalone function outside any class. It should
+  print `generic sound -> woof`, not `failed`.
+expected_output: |
+  generic sound -> woof
+hints:
+  - "Define class Dog(Animal): def speak(self): return super().speak() + \" -> woof\", then call Dog().speak()."
+  - "Zero-argument super() only works inside a method textually defined in a class body -- it can never work inside a plain standalone function, no matter what calls that function."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 34
+difficulty: gotcha
+contains_patterns:
+  - "super\\(\\)\\.speak\\(\\) \\+ \" -> woof\""
+concept_tags: [idioms, super, inheritance]

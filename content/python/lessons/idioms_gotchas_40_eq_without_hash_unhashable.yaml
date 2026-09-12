@@ -1,0 +1,79 @@
+id: idioms_gotchas_40
+title: "Defining __eq__ Without __hash__ Makes Your Objects Unhashable"
+language: python
+level: 109
+objective: "Fix a class that defines __eq__ but not __hash__, when Python automatically sets __hash__ to None the moment __eq__ is overridden -- making every instance of that class unusable in a set or as a dict key, with no warning until something actually tries."
+explanation: |
+  Python's default `object.__eq__` and `object.__hash__` are
+  consistent with each other by construction (identity-based equality,
+  identity-based hash). The moment a class overrides `__eq__` with its
+  own value-based comparison, Python can no longer assume the
+  inherited `__hash__` is still consistent with it -- two objects that
+  now compare equal under the new `__eq__` might have had different
+  identity-based hashes -- so Python automatically sets `__hash__` to
+  `None` on that class, making every instance of it unhashable, unless
+  a matching `__hash__` is defined explicitly alongside `__eq__`.
+
+  The bug this exercise fixes defines `__eq__` with no accompanying
+  `__hash__`. The fix adds one, consistent with the fields `__eq__`
+  actually compares.
+example_code: |
+  # The trap: defines __eq__ but not __hash__ -- Python automatically
+  # makes instances of this class UNHASHABLE as a result.
+  class PointTrap:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def __eq__(self, other):
+          return self.x == other.x and self.y == other.y
+
+  try:
+      {PointTrap(1, 2)}
+      print("hashable")
+  except TypeError:
+      print("unhashable")
+  # "unhashable" -- defining __eq__ alone silently disabled hashing entirely
+
+  # The fix: define __hash__ explicitly, consistent with __eq__.
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def __eq__(self, other):
+          return self.x == other.x and self.y == other.y
+      def __hash__(self):
+          return hash((self.x, self.y))
+
+  {Point(1, 2)}
+  print("hashable")
+  # "hashable" -- correctly hashable again
+starter_code: |
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def __eq__(self, other):
+          return self.x == other.x and self.y == other.y
+
+  try:
+      {Point(1, 2)}
+      print("hashable")
+  except TypeError:
+      print("unhashable")
+challenge: |
+  Fix `Point` by adding a `__hash__` method returning `hash((self.x,
+  self.y))`, consistent with what `__eq__` actually compares. It should
+  print `hashable`, not `unhashable`.
+expected_output: |
+  hashable
+hints:
+  - "Add: def __hash__(self): return hash((self.x, self.y)), as another method on the class."
+  - "The hash needs to be based on the SAME fields __eq__ compares -- two objects that are == to each other must always have the same hash."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 40
+difficulty: gotcha
+contains_patterns:
+  - "def __hash__\\(self\\):"
+concept_tags: [idioms, hashability, eq_and_hash]

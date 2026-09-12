@@ -1,0 +1,64 @@
+id: stdlib_deep_dive_38
+title: "argparse Converts an Argument to the Declared Type -- Manual sys.argv Parsing Leaves It a String"
+language: python
+level: 239
+objective: "Fix code that reads a numeric command-line argument from sys.argv as a raw string (so arithmetic on it concatenates instead of adding), when argparse's type=int converts it to an actual int during parsing."
+explanation: |
+  Every entry in `sys.argv` is a plain string, with no automatic type
+  conversion -- `sys.argv[1] + sys.argv[1]` on `"5"` concatenates to
+  `"55"`, not `10`, since there's never been any int involved at all.
+  `argparse.ArgumentParser.add_argument(..., type=int)` declares that
+  an argument should be converted to `int` as part of parsing, so the
+  resulting namespace attribute is a genuine `int`, ready for
+  arithmetic.
+
+  The bug this exercise fixes reads an argument as a raw string and
+  doubles it via string concatenation. The fix declares `type=int` so
+  the parsed value is already a real integer.
+example_code: |
+  # The trap: manual argv access leaves the value as a string -- "+" concatenates.
+  import argparse
+
+  def parse_args_trap(argv):
+      return argv[0]
+
+  count_trap = parse_args_trap(["5"])
+  print(count_trap + count_trap)
+  # "55" -- WRONG, string concatenation instead of numeric addition
+
+  # The fix: argparse's type=int converts during parsing.
+  def build_parser():
+      parser = argparse.ArgumentParser()
+      parser.add_argument("count", type=int)
+      return parser
+
+  args = build_parser().parse_args(["5"])
+  print(args.count + args.count)
+  # 10 -- correctly parsed as an int, so "+" does real addition
+starter_code: |
+  import argparse
+
+  def build_parser():
+      parser = argparse.ArgumentParser()
+      parser.add_argument("count")
+      return parser
+
+  args = build_parser().parse_args(["5"])
+  print(args.count + args.count)
+challenge: |
+  Fix `build_parser` so `add_argument("count", type=int)` declares the
+  argument's type, instead of leaving it as an unconverted string. It
+  should print `10`, not `55`.
+expected_output: |
+  10
+hints:
+  - "parser.add_argument(\"count\", type=int)."
+  - "Every sys.argv / parsed argument starts life as a string -- type=int is what actually converts it to a real int during parsing."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 38
+difficulty: gotcha
+contains_patterns:
+  - "add_argument\\(\"count\", type=int\\)"
+concept_tags: [argparse, cli]

@@ -1,0 +1,105 @@
+id: gotcha_gauntlet_48
+title: "The Second Transaction That Accidentally Committed the First One's Leftovers"
+language: python
+level: 293
+objective: "Fix a reusable context manager that forgets to reset its internal state on re-entry, so using the same instance across two separate with-blocks leaks the first block's data into the second."
+explanation: |
+  A context manager instance isn't automatically "fresh" just because
+  a `with` block ended -- whatever state it accumulated during the
+  first block is still sitting on the object afterward, unless
+  `__enter__` (or `__exit__`) explicitly clears it. Reusing the same
+  instance for a second, separate `with` block silently starts from
+  wherever the first block left off, not from a clean slate -- a
+  "transaction" object that collects pending operations between enter
+  and exit, meant to represent one isolated unit of work per `with`
+  block, ends up including the previous transaction's leftover
+  operations in the new one's commit if nothing ever resets the list
+  in between.
+
+  The fix is resetting the accumulating state inside `__enter__`, so
+  every new `with` block genuinely starts from empty, regardless of
+  what a previous use of the same instance left behind.
+example_code: |
+  # The trap: pending never resets on re-entry -- the first block's data
+  # leaks into the second.
+  class TransactionTrap:
+      def __init__(self):
+          self.pending = []
+
+      def __enter__(self):
+          return self
+
+      def add(self, op):
+          self.pending.append(op)
+
+      def __exit__(self, *args):
+          print("committed:", self.pending)
+
+  tx_trap = TransactionTrap()
+  with tx_trap:
+      tx_trap.add("insert A")
+  with tx_trap:
+      tx_trap.add("insert B")
+  # committed: ['insert A']
+  # committed: ['insert A', 'insert B']  -- WRONG, "insert A" leaked into this commit
+
+  # The fix: __enter__ resets the state, so every block starts clean.
+  class Transaction:
+      def __init__(self):
+          self.pending = []
+
+      def __enter__(self):
+          self.pending = []
+          return self
+
+      def add(self, op):
+          self.pending.append(op)
+
+      def __exit__(self, *args):
+          print("committed:", self.pending)
+
+  tx = Transaction()
+  with tx:
+      tx.add("insert A")
+  with tx:
+      tx.add("insert B")
+  # committed: ['insert A']
+  # committed: ['insert B']  -- correctly isolated, no leftover from before
+starter_code: |
+  class Transaction:
+      def __init__(self):
+          self.pending = []
+
+      def __enter__(self):
+          return self
+
+      def add(self, op):
+          self.pending.append(op)
+
+      def __exit__(self, *args):
+          print("committed:", self.pending)
+
+  tx = Transaction()
+  with tx:
+      tx.add("insert A")
+  with tx:
+      tx.add("insert B")
+challenge: |
+  Fix `Transaction` by resetting `self.pending = []` inside
+  `__enter__`, so each `with` block starts from a clean slate. It
+  should print `committed: ['insert A']` then `committed: ['insert B']`,
+  not `committed: ['insert A', 'insert B']` on the second line.
+expected_output: |
+  committed: ['insert A']
+  committed: ['insert B']
+hints:
+  - "Add self.pending = [] as the first line inside __enter__, right before return self."
+  - "A with block ending doesn't automatically reset anything on the context manager instance -- whatever __enter__ doesn't explicitly clear is still there the next time the same instance is reused."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 48
+difficulty: deep_dive
+contains_patterns:
+  - "def __enter__\\(self\\):\\s*self\\.pending = \\[\\]"
+concept_tags: [context_managers, state, gotchas]

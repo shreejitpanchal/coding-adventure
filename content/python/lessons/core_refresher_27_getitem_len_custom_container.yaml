@@ -1,0 +1,59 @@
+id: core_refresher_27
+title: "__len__ and __getitem__ Let Your Class Act Like a Built-In Container"
+language: python
+level: 140
+objective: "Add __len__ and __getitem__ to a wrapper class so len() and indexing work directly on instances, instead of reaching into an internal attribute first."
+explanation: |
+  A class that wraps a list in an attribute (`self.items`) can already
+  be used with `len(obj.items)` and `obj.items[0]` -- but that forces
+  every caller to know about the internal `items` attribute at all.
+  Implementing `__len__(self)` and `__getitem__(self, i)` makes `len
+  (obj)` and `obj[0]` work directly on the wrapper itself, hiding the
+  internal representation entirely and letting the class behave like a
+  genuine, built-in-style container from the outside.
+example_code: |
+  # Callers have to know about the internal `items` attribute directly.
+  class BasketAttr:
+      def __init__(self, items):
+          self.items = items
+
+  b_loop = BasketAttr(["apple", "bread"])
+  print(len(b_loop.items), b_loop.items[0])
+  # 2 apple
+
+  # __len__ and __getitem__ make the wrapper itself act like a container.
+  class Basket:
+      def __init__(self, items):
+          self.items = items
+      def __len__(self):
+          return len(self.items)
+      def __getitem__(self, i):
+          return self.items[i]
+
+  b = Basket(["apple", "bread"])
+  print(len(b), b[0])
+  # 2 apple
+starter_code: |
+  class Basket:
+      def __init__(self, items):
+          self.items = items
+
+  b = Basket(["apple", "bread"])
+  print(len(b.items), b.items[0])
+challenge: |
+  Fix `Basket` by adding `__len__` and `__getitem__`, then call
+  `len(b)` and `b[0]` directly on the instance instead of reaching into
+  `b.items`. Keep the same output: 2 apple.
+expected_output: |
+  2 apple
+hints:
+  - "def __len__(self): return len(self.items), and def __getitem__(self, i): return self.items[i]."
+  - "Once both dunder methods exist, len(b) and b[0] work directly, with no need to reference b.items from outside the class at all."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 27
+difficulty: core
+contains_patterns:
+  - "def __getitem__\\(self, i\\):"
+concept_tags: [dunder_methods, custom_containers]

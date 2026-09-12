@@ -1,0 +1,64 @@
+id: observability_14
+title: "The Password That Ended Up in Plaintext in the Logs"
+language: python
+level: 414
+objective: "Fix a log-formatting function that includes a whole request dict verbatim, leaking a plaintext password field straight into the logs, when masking known-sensitive keys BEFORE formatting keeps them out of log output entirely."
+explanation: |
+  Logging an entire request dict directly is convenient -- it captures
+  everything about the request in one line -- but it captures
+  *everything*, including any sensitive fields the dict happens to
+  contain, with no distinction made between a harmless `username` and
+  a `password` that should never end up in plaintext anywhere logs get
+  stored, searched, or forwarded to a third-party log aggregator.
+  Masking known-sensitive keys (replacing their values with a
+  placeholder like `"***"`) *before* the data is ever formatted into a
+  log line is what actually prevents the leak -- logging has no way to
+  "un-know" a value once it's already been written out.
+
+  The fix masks sensitive keys in a copy of the data before it's
+  formatted into the log line.
+example_code: |
+  # The trap: logs the WHOLE dict verbatim -- the plaintext password leaks straight in.
+  def format_log_trap(data):
+      return f"request: {data}"
+
+  leaked = format_log_trap({"username": "ada", "password": "hunter2"})
+  print("hunter2" in leaked)
+  # True -- WRONG, the real password ended up in plaintext in the log line
+
+  # The fix: mask sensitive keys BEFORE formatting anything into a log line.
+  def mask_sensitive(data, sensitive_keys):
+      return {k: ("***" if k in sensitive_keys else v) for k, v in data.items()}
+
+  def format_log(data, sensitive_keys):
+      masked = mask_sensitive(data, sensitive_keys)
+      return f"request: {masked}"
+
+  safe = format_log({"username": "ada", "password": "hunter2"}, {"password"})
+  print("hunter2" in safe)
+  # False -- correctly masked before the log line was ever formatted
+starter_code: |
+  def format_log(data):
+      return f"request: {data}"
+
+  leaked = format_log({"username": "ada", "password": "hunter2"})
+  print("hunter2" in leaked)
+challenge: |
+  Fix this by adding `mask_sensitive(data, sensitive_keys)` (replacing
+  any key in `sensitive_keys` with `"***"`), calling
+  `format_log({"username": "ada", "password": "hunter2"},
+  {"password"})` with the masked data before formatting. It should
+  print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "def mask_sensitive(data, sensitive_keys): return {k: (\"***\" if k in sensitive_keys else v) for k, v in data.items()}."
+  - "def format_log(data, sensitive_keys): masked = mask_sensitive(data, sensitive_keys); return f\"request: {masked}\"."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "def mask_sensitive\\(data, sensitive_keys\\):"
+concept_tags: [observability, logging, security]

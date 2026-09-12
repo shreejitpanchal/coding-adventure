@@ -1,0 +1,52 @@
+id: data_structures_16
+title: "heapq.heapreplace Swaps in One Step Instead of Pop-Then-Push"
+language: python
+level: 173
+objective: "Use heapq.heapreplace to pop the smallest item and push a new one in a single call, instead of two separate heap operations."
+explanation: |
+  Maintaining a fixed-size heap (a running top-k as new items arrive)
+  often means popping the current smallest and pushing a new candidate
+  in its place -- `heapq.heappop(heap)` followed by `heapq.heappush
+  (heap, x)` does this in two separate operations, each independently
+  re-heapifying. `heapq.heapreplace(heap, x)` does the same logical
+  swap in one call, more efficiently, since it only needs to restore
+  the heap invariant once instead of twice.
+example_code: |
+  import heapq
+
+  # pop then push -- two separate heap operations.
+  heap_loop = [3, 5, 8]
+  heapq.heapify(heap_loop)
+  heapq.heappop(heap_loop)
+  heapq.heappush(heap_loop, 4)
+  print(sorted(heap_loop))                  # [4, 5, 8]
+
+  # heapreplace does both in one call.
+  heap = [3, 5, 8]
+  heapq.heapify(heap)
+  heapq.heapreplace(heap, 4)
+  print(sorted(heap))                       # [4, 5, 8]
+starter_code: |
+  import heapq
+
+  heap = [3, 5, 8]
+  heapq.heapify(heap)
+  heapq.heappop(heap)
+  heapq.heappush(heap, 4)
+  print(sorted(heap))
+challenge: |
+  Rewrite the pop-then-push as a single `heapq.heapreplace(heap, 4)`
+  call. Keep the same output: [4, 5, 8].
+expected_output: |
+  [4, 5, 8]
+hints:
+  - "Replace heapq.heappop(heap) and heapq.heappush(heap, 4) with a single: heapq.heapreplace(heap, 4)."
+  - "heapreplace pops the smallest item AND pushes the new one, restoring the heap invariant only once instead of twice."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "heapq\\.heapreplace\\(heap, 4\\)"
+concept_tags: [heapq, algorithms]

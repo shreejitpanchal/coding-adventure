@@ -1,0 +1,71 @@
+id: ai_136
+title: "ReAct Needs the Observation Fed Back Before the Next Thought"
+language: ai
+level: 136
+objective: "Fix a ReAct-style loop that generates a thought and takes an action, but never feeds the resulting observation back into the next round's reasoning -- breaking the interleaved thought-action-observation cycle the pattern depends on."
+explanation: |
+  **ReAct** (Reason + Act) interleaves three steps in a loop: the agent
+  reasons about what to do next (a "thought"), takes an action (usually
+  a tool call), and then observes the result -- and critically, that
+  observation has to feed back into the *next* thought, so each
+  reasoning step is grounded in what actually happened, not just what
+  was originally planned. Skipping that feedback turns the loop into a
+  series of disconnected, blind actions instead of a genuinely
+  reasoning agent that adapts based on what it learns along the way.
+
+  The bug this exercise fixes runs the thought-action-observation steps
+  but never appends the observation to the trace the next thought reads
+  from -- so every thought reasons from the same starting information,
+  regardless of what earlier actions actually returned. The fix appends
+  each observation to the trace immediately, so the next thought has
+  access to everything learned so far.
+example_code: |
+  # The trap: the observation is computed but never fed back into the
+  # trace -- every thought reasons from the SAME starting information.
+  def run_react_trap(steps, trace):
+      for thought, action_fn in steps:
+          observation = action_fn()
+          # bug: observation is computed but never appended to `trace`
+      return trace
+
+  trace = ["Goal: find the account balance"]
+  steps = [("check balance", lambda: "Balance: $42.50")]
+  print(len(run_react_trap(steps, trace)))   # 1 -- the observation never made it into the trace at all
+
+  # The fix: append each observation to the trace immediately.
+  def run_react(steps, trace):
+      for thought, action_fn in steps:
+          trace.append(f"Thought: {thought}")
+          observation = action_fn()
+          trace.append(f"Observation: {observation}")
+      return trace
+
+  trace2 = ["Goal: find the account balance"]
+  print(len(run_react(steps, trace2)))   # 3 -- the thought AND observation are both preserved for the next round
+starter_code: |
+  def run_react(steps, trace):
+      for thought, action_fn in steps:
+          trace.append(f"Thought: {thought}")
+          observation = action_fn()
+      return trace
+
+  trace = ["Goal: find the account balance"]
+  steps = [("check balance", lambda: "Balance: $42.50")]
+  print(len(run_react(steps, trace)))
+challenge: |
+  Fix `run_react` so it appends each `observation` to `trace` (in
+  addition to the thought), instead of computing it and discarding it.
+  It should print `3`, not `2`.
+expected_output: |
+  3
+hints:
+  - "Add trace.append(f\"Observation: {observation}\") right after computing observation = action_fn()."
+  - "The trace should end up with the goal, the thought, AND the observation -- three entries, not two."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 6
+difficulty: warmup
+contains_patterns:
+  - "trace\\.append\\(f.Observation:"
+concept_tags: [agentic_frameworks, react_pattern, agent_loop]

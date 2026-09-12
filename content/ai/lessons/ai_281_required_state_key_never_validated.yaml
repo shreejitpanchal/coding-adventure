@@ -1,0 +1,72 @@
+id: ai_281
+title: "A Node's Required State Keys Should Be Checked Before It Runs, Not After It Crashes"
+language: ai
+level: 281
+objective: "Fix a node runner that calls straight into the node with no check at all, letting a missing required state key surface as a confusing raw KeyError deep inside the node's own logic instead of a clear, specific error naming what's actually missing."
+explanation: |
+  A node declares (even if only informally, in its own code) which
+  state keys it needs to do its job -- and checking for them up front,
+  at the runner level, turns a missing key into an immediate, clearly
+  worded error instead of whatever confusing exception the node's own
+  internals happen to raise once they try to use data that was never
+  there. `state['name']` failing with a bare `KeyError: 'name'` doesn't
+  say *which node* needed it or *why* -- a runner-level check is
+  exactly where that context still exists.
+
+  The bug this exercise fixes calls `node_fn(state)` directly, with no
+  check at all. The fix validates every entry in `required_keys` is
+  present first, raising a clear, specific error if anything's missing.
+example_code: |
+  # The trap: no check at all -- a missing key crashes confusingly
+  # deep inside the node's own logic.
+  def run_node_trap(node_fn, state, required_keys):
+      return node_fn(state)
+
+  def greet(state):
+      return f"Hello, {state['name']}!"
+
+  # run_node_trap(greet, {}, ["name"])  # KeyError: 'name' -- no context about which node or requirement failed
+
+  # The fix: validate required keys up front, with a clear, specific error.
+  def run_node(node_fn, state, required_keys):
+      missing = [k for k in required_keys if k not in state]
+      if missing:
+          raise ValueError(f"missing required state key(s): {missing}")
+      return node_fn(state)
+
+  try:
+      run_node(greet, {}, ["name"])
+  except ValueError as e:
+      print(str(e))   # "missing required state key(s): ['name']" -- immediately clear
+starter_code: |
+  def greet(state):
+      return f"Hello, {state['name']}!"
+
+  def run_node(node_fn, state, required_keys):
+      return node_fn(state)
+
+  try:
+      print(run_node(greet, {}, ["name"]))
+  except KeyError:
+      print("unhandled")
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `run_node` so it computes `missing = [k for k in required_keys if
+  k not in state]` and raises `ValueError(f"missing required state
+  key(s): {missing}")` when anything's missing, instead of calling
+  `node_fn(state)` unconditionally. It should print
+  `missing required state key(s): ['name']`, not `unhandled`.
+expected_output: |
+  missing required state key(s): ['name']
+hints:
+  - "missing = [k for k in required_keys if k not in state], then: if missing: raise ValueError(f\"missing required state key(s): {missing}\")."
+  - "This check needs to happen BEFORE node_fn(state) is ever called -- once the node runs on incomplete state, whatever it raises has lost the original context."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "missing = \\[k for k in required_keys if k not in state\\]"
+concept_tags: [langgraph, state_validation, error_handling]

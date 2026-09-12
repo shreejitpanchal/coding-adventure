@@ -1,0 +1,67 @@
+id: gotcha_gauntlet_44
+title: "The 'Just Update One Field' Assignment That Crashed on a namedtuple"
+language: python
+level: 289
+objective: "Fix code that tries to assign directly to a namedtuple field (which raises AttributeError, since namedtuples are immutable), when _replace() is the correct way to get an updated copy with one field changed."
+explanation: |
+  A `namedtuple` is immutable, exactly like the plain `tuple` it's
+  built on top of -- there's no way to reassign one of its fields in
+  place, the same way `some_tuple[0] = x` isn't allowed on a regular
+  tuple. Trying `point.x = 5` raises `AttributeError: can't set
+  attribute`, since namedtuple fields are exposed as read-only
+  properties specifically to preserve that immutability, not as
+  regular settable attributes.
+
+  Updating a namedtuple "in place" isn't actually possible -- the
+  correct pattern is `_replace()`, which returns a *new* namedtuple
+  with the given field(s) changed and everything else copied over
+  unchanged, leaving the original completely untouched.
+example_code: |
+  # The trap: direct attribute assignment crashes -- namedtuples are immutable.
+  from collections import namedtuple
+
+  PointTrap = namedtuple("PointTrap", ["x", "y"])
+  p_trap = PointTrap(1, 2)
+
+  try:
+      p_trap.x = 5
+      print("ok")
+  except AttributeError:
+      print("crashed")
+  # "crashed" -- can't set attribute, namedtuple fields are read-only
+
+  # The fix: _replace() returns a NEW namedtuple with the field changed.
+  Point = namedtuple("Point", ["x", "y"])
+  p = Point(1, 2)
+  updated = p._replace(x=5)
+  print(p, updated)
+  # Point(x=1, y=2) Point(x=5, y=2) -- original untouched, new copy updated
+starter_code: |
+  from collections import namedtuple
+
+  Point = namedtuple("Point", ["x", "y"])
+  p = Point(1, 2)
+
+  try:
+      p.x = 5
+      print(p)
+  except AttributeError:
+      print("crashed")
+challenge: |
+  Fix this so it uses `updated = p._replace(x=5)` to get a new,
+  updated `Point`, instead of assigning `p.x = 5` directly. Print both
+  `p` and `updated`. It should print
+  `Point(x=1, y=2) Point(x=5, y=2)`, not `crashed`.
+expected_output: |
+  Point(x=1, y=2) Point(x=5, y=2)
+hints:
+  - "updated = p._replace(x=5), then print(p, updated)."
+  - "namedtuple fields are read-only properties, exactly like a regular tuple's immutability -- _replace() is the way to get an updated COPY, never an in-place change."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "p\\._replace\\(x=5\\)"
+concept_tags: [namedtuple, immutability, gotchas]

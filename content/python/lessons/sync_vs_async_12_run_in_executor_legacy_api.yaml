@@ -1,0 +1,72 @@
+id: sync_vs_async_12
+title: "loop.run_in_executor Is the Lower-Level Predecessor to to_thread"
+language: python
+level: 442
+objective: "Replace a direct, blocking call inside a coroutine with loop.run_in_executor(None, func) -- the original, lower-level API for offloading blocking work to a thread pool, predating the simpler asyncio.to_thread convenience wrapper this category covers elsewhere."
+explanation: |
+  `asyncio.to_thread(func, *args)` (this category's own lesson on it)
+  is a newer, simpler convenience wrapper -- underneath, it's built on
+  top of the original, lower-level API: `loop.run_in_executor(executor,
+  func, *args)`. Getting the currently running loop with `asyncio.
+  get_running_loop()` and calling `run_in_executor` on it, passing
+  `None` as the executor (meaning "use the default thread pool"),
+  achieves the exact same effect `to_thread` does -- running `func` in
+  a background thread and awaiting its result without blocking the
+  event loop. Recognizing this older shape matters for reading
+  existing/legacy async codebases written before `to_thread` existed
+  (Python 3.9+).
+
+  The fix replaces the direct blocking call with `run_in_executor`.
+example_code: |
+  # The trap: calling the blocking function directly -- freezes the event loop.
+  import asyncio
+
+  def blocking_call_trap():
+      return "done"
+
+  async def main_trap():
+      result = blocking_call_trap()
+      print(result)
+
+  asyncio.run(main_trap())
+  # "done" -- correct result, but computed by blocking the WHOLE event loop directly
+
+  # The fix: run_in_executor offloads it to a thread pool, the original API.
+  def blocking_call():
+      return "done"
+
+  async def main():
+      loop = asyncio.get_running_loop()
+      result = await loop.run_in_executor(None, blocking_call)
+      print(result)
+
+  asyncio.run(main())
+  # "done" -- same result, but correctly offloaded to a background thread
+starter_code: |
+  import asyncio
+
+  def blocking_call():
+      return "done"
+
+  async def main():
+      result = blocking_call()
+      print(result)
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it gets `loop = asyncio.get_running_loop()` and awaits
+  `loop.run_in_executor(None, blocking_call)`, instead of calling
+  `blocking_call()` directly. Keep the same output: done.
+expected_output: |
+  done
+hints:
+  - "loop = asyncio.get_running_loop(), then: result = await loop.run_in_executor(None, blocking_call)."
+  - "run_in_executor is the original, lower-level API asyncio.to_thread is built on top of -- passing None means \"use the default thread pool\"."
+xp_reward: 15
+achievement: null
+category: sync_vs_async
+category_level: 12
+difficulty: deep_dive
+contains_patterns:
+  - "run_in_executor\\(None, blocking_call\\)"
+concept_tags: [asyncio, run_in_executor, sync_vs_async]

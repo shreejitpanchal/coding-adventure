@@ -1,0 +1,73 @@
+id: ai_86
+title: "Chaining Many Sigmoid Derivatives Vanishes the Gradient to Nearly Zero"
+language: ai
+level: 86
+objective: "Fix a function meant to report whether a chained gradient is still large enough to be useful, which currently just returns the raw product with no threshold check at all -- demonstrating why stacking many sigmoid layers vanishes gradients toward zero."
+explanation: |
+  Backpropagation through a deep network multiplies gradients together
+  layer by layer, and the sigmoid activation function's own derivative
+  is *always* at most `0.25` (it peaks there at its midpoint and is
+  smaller everywhere else). Multiplying several numbers that are each
+  at most `0.25` together shrinks the product fast: even just four
+  layers' worth of sigmoid derivatives multiplied together caps out
+  around `0.25^4 = 0.0039`, and it only gets smaller with more layers --
+  by the time a gradient has propagated back through many sigmoid
+  layers, it can become too tiny to meaningfully update the earliest
+  layers' weights at all. This **vanishing gradient** problem is
+  exactly why deep networks generally favor activation functions like
+  ReLU (whose derivative is a flat `1` for positive inputs, not capped
+  at `0.25`) instead of sigmoid throughout.
+
+  The bug this exercise fixes computes the chained product correctly
+  but returns that raw number directly, with no check against a
+  meaningful "still large enough to matter" threshold -- leaving the
+  caller to interpret an unexplained tiny float on their own. The fix
+  returns an explicit boolean comparison against a usefulness
+  threshold, making the vanishing effect concrete: `False` means the
+  gradient has, for practical purposes, vanished.
+example_code: |
+  # The trap: returns the raw chained product -- no threshold check,
+  # just an unexplained tiny number the caller has to interpret themselves.
+  def gradient_is_still_useful_trap(sigmoid_derivatives, min_useful=0.01):
+      product = 1.0
+      for d in sigmoid_derivatives:
+          product *= d
+      return product
+
+  four_layers = [0.25, 0.25, 0.25, 0.25]
+  print(gradient_is_still_useful_trap(four_layers))   # 0.00390625 -- an unexplained tiny float
+
+  # The fix: explicitly compare the product against a usefulness threshold.
+  def gradient_is_still_useful(sigmoid_derivatives, min_useful=0.01):
+      product = 1.0
+      for d in sigmoid_derivatives:
+          product *= d
+      return product > min_useful
+
+  print(gradient_is_still_useful(four_layers))   # False -- clearly flags the gradient as vanished
+starter_code: |
+  def gradient_is_still_useful(sigmoid_derivatives, min_useful=0.01):
+      product = 1.0
+      for d in sigmoid_derivatives:
+          product *= d
+      return product
+
+  four_layers = [0.25, 0.25, 0.25, 0.25]
+  print(gradient_is_still_useful(four_layers))
+challenge: |
+  Fix `gradient_is_still_useful` so it returns `product > min_useful`
+  (a boolean), instead of the raw `product` value. It should print
+  `False`, not `0.00390625`.
+expected_output: |
+  False
+hints:
+  - "Change the final return statement from `return product` to `return product > min_useful`."
+  - "0.25 ** 4 = 0.00390625, which is below the 0.01 threshold -- the chained gradient has effectively vanished by the fourth layer."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 46
+difficulty: core
+contains_patterns:
+  - "return product > min_useful"
+concept_tags: [ml_fundamentals, vanishing_gradient, activation_functions, neural_networks]

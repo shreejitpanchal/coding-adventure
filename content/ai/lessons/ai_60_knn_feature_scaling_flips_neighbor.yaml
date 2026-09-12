@@ -1,0 +1,72 @@
+id: ai_60
+title: "Unscaled Features Let One Feature's Raw Range Dominate a Distance Calculation"
+language: ai
+level: 60
+objective: "Fix a nearest-neighbor lookup that computes distance on raw, unscaled feature values, letting a feature with a naturally larger numeric range (income in dollars) completely swamp a feature with a smaller range (age in years)."
+explanation: |
+  Distance-based methods like K-Nearest-Neighbors treat every feature's
+  raw numbers as directly comparable -- but "age" (ranging over maybe
+  60 units) and "income" (ranging over tens of thousands of units) live
+  on wildly different scales, so a Euclidean distance computed on their
+  raw values is overwhelmingly dominated by whichever feature happens
+  to have bigger numbers, regardless of which feature is actually more
+  meaningfully different between two people. A 45-year age gap can end
+  up looking "closer" than a $10,000 income gap purely because dollars
+  happen to be counted in bigger raw numbers than years.
+
+  The bug this exercise fixes computes nearest-neighbor distance
+  directly on raw feature values. The fix scales each feature into a
+  comparable range first (dividing age by 100, income by 100,000, so
+  both roughly land between 0 and 1) before computing distance --
+  and on this exercise's example, that scaling actually *flips* which
+  candidate counts as nearest, since the unscaled version was
+  dominated entirely by the income feature.
+example_code: |
+  # The trap: distance on RAW feature values -- income's large numeric
+  # range completely swamps age's much smaller range.
+  def euclidean(p1, p2):
+      return sum((a - b) ** 2 for a, b in zip(p1, p2)) ** 0.5
+
+  def nearest_trap(query, candidates):
+      return min(candidates, key=lambda name: euclidean(query, candidates[name]))
+
+  query = [25, 50000]                                  # [age, income]
+  candidates = {"A": [70, 50001], "B": [26, 60000]}     # A: huge age gap, tiny income gap
+                                                          # B: tiny age gap, huge income gap
+  print(nearest_trap(query, candidates))   # "A" -- WRONG-feeling: a 45-year age gap "wins"?
+
+  # The fix: scale each feature into a comparable range BEFORE computing distance.
+  def nearest_scaled(query, candidates):
+      def scale(p):
+          return [p[0] / 100, p[1] / 100000]
+      q = scale(query)
+      return min(candidates, key=lambda name: euclidean(q, scale(candidates[name])))
+
+  print(nearest_scaled(query, candidates))   # "B" -- scaling flips the answer entirely
+starter_code: |
+  def euclidean(p1, p2):
+      return sum((a - b) ** 2 for a, b in zip(p1, p2)) ** 0.5
+
+  def nearest(query, candidates):
+      return min(candidates, key=lambda name: euclidean(query, candidates[name]))
+
+  query = [25, 50000]
+  candidates = {"A": [70, 50001], "B": [26, 60000]}
+  print(nearest(query, candidates))
+challenge: |
+  Fix `nearest` so it scales each point's features (age / 100, income /
+  100000) before computing distance, instead of comparing raw values.
+  It should print `B`, not `A`.
+expected_output: |
+  B
+hints:
+  - "Write a small scale(p) helper: return [p[0] / 100, p[1] / 100000], and apply it to both the query and every candidate before calling euclidean."
+  - "Once both features are scaled into a comparable 0-1-ish range, candidate B's much smaller age gap combined with its scaled income gap ends up closer to the query than candidate A's huge age gap does."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 20
+difficulty: deep_dive
+contains_patterns:
+  - "def scale\\(p\\)"
+concept_tags: [ml_fundamentals, feature_scaling, knn, distance_metrics]

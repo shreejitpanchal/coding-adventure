@@ -1,0 +1,76 @@
+id: ai_266
+title: "A Prompt Template's Declared Defaults Should Actually Be Used"
+language: ai
+level: 266
+objective: "Fix a prompt template that requires every variable to be supplied every time, even ones with a declared default, when a variable with a default should fall back to it whenever the caller doesn't explicitly override it."
+explanation: |
+  A prompt template can declare sensible defaults for variables that
+  usually don't change (`tone: "formal"`), so most callers don't have
+  to repeat them on every single call -- only the variables that
+  genuinely vary per call need to be supplied. A template that never
+  consults its own declared defaults, requiring every variable to be
+  passed explicitly regardless, throws away the entire convenience
+  defaults are meant to provide, and fails outright the moment a caller
+  reasonably assumes the default will apply.
+
+  The bug this exercise fixes calls `.format(**variables)` directly,
+  never touching `self.defaults`. The fix merges the defaults in first,
+  letting explicitly-passed variables override them.
+example_code: |
+  # The trap: never consults self.defaults at all -- every variable
+  # must be supplied explicitly, even ones with a declared default.
+  class PromptTemplateTrap:
+      def __init__(self, template, defaults):
+          self.template = template
+          self.defaults = defaults
+      def format(self, **variables):
+          return self.template.format(**variables)
+
+  t = PromptTemplateTrap("Reply in a {tone} tone about {topic}.", {"tone": "formal"})
+  # t.format(topic="pricing")  # KeyError: 'tone' -- the declared default was never actually used
+
+  # The fix: merge the defaults in first, letting explicit values override them.
+  class PromptTemplate:
+      def __init__(self, template, defaults):
+          self.template = template
+          self.defaults = defaults
+      def format(self, **variables):
+          merged = dict(self.defaults)
+          merged.update(variables)
+          return self.template.format(**merged)
+
+  t2 = PromptTemplate("Reply in a {tone} tone about {topic}.", {"tone": "formal"})
+  print(t2.format(topic="pricing"))
+  # "Reply in a formal tone about pricing." -- correctly fell back to the declared default
+starter_code: |
+  class PromptTemplate:
+      def __init__(self, template, defaults):
+          self.template = template
+          self.defaults = defaults
+      def format(self, **variables):
+          return self.template.format(**variables)
+
+  t = PromptTemplate("Reply in a {tone} tone about {topic}.", {"tone": "formal"})
+  try:
+      print(t.format(topic="pricing"))
+  except KeyError as e:
+      print("unhandled")
+challenge: |
+  Fix `PromptTemplate.format` so it starts from `merged = dict
+  (self.defaults)`, updates it with the passed-in `variables`, and
+  formats using `merged`, instead of formatting `variables` directly.
+  It should print `Reply in a formal tone about pricing.`, not
+  `unhandled`.
+expected_output: |
+  Reply in a formal tone about pricing.
+hints:
+  - "merged = dict(self.defaults); merged.update(variables); return self.template.format(**merged)."
+  - "update() lets any explicitly-passed variable override its corresponding default, while variables that were never passed just keep the default's value."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 46
+difficulty: core
+contains_patterns:
+  - "merged = dict\\(self\\.defaults\\)"
+concept_tags: [langchain, prompt_template, default_variables]

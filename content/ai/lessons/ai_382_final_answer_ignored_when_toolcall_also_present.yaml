@@ -1,0 +1,62 @@
+id: ai_382
+title: "A Response Already Containing a Final Answer Shouldn't Still Trigger a Tool Call"
+language: ai
+level: 382
+objective: "Fix a response processor that checks for a tool call before checking for a final answer, when a response carrying both should prioritize the final answer that's already there -- running an unnecessary extra tool call instead of just using what was already produced wastes a step for nothing."
+explanation: |
+  A response that includes both a `final_answer` and a `tool_call`
+  already has everything needed to finish -- checking for the tool call
+  first means the loop runs an unnecessary extra step, ignoring an
+  answer that was sitting right there in the very same response.
+  Whatever order a processor checks these two fields in decides which
+  one wins when both happen to be present, and final answers should
+  always take priority.
+
+  The bug this exercise fixes checks for `"tool_call"` first. The fix
+  checks for `"final_answer"` first instead.
+example_code: |
+  # The trap: checks for tool_call FIRST -- a response containing BOTH
+  # gets treated as a tool call, ignoring the final answer already there.
+  def process_response_trap(response):
+      if "tool_call" in response:
+          return "run_tool"
+      return response.get("final_answer")
+
+  response = {"tool_call": "redundant_check", "final_answer": "the total is 42"}
+  print(process_response_trap(response))
+  # "run_tool" -- wrongly ran an unnecessary tool despite already having the final answer
+
+  # The fix: check for final_answer FIRST, since it should always win.
+  def process_response(response):
+      if "final_answer" in response:
+          return response["final_answer"]
+      return "run_tool"
+
+  print(process_response(response))
+  # "the total is 42" -- correctly used the answer that was already there
+starter_code: |
+  def process_response(response):
+      if "tool_call" in response:
+          return "run_tool"
+      return response.get("final_answer")
+
+  response = {"tool_call": "redundant_check", "final_answer": "the total is 42"}
+  print(process_response(response))
+challenge: |
+  Fix `process_response` so it checks `if "final_answer" in response:`
+  first, returning that immediately, instead of checking for
+  `"tool_call"` first. It should print `the total is 42`, not
+  `run_tool`.
+expected_output: |
+  the total is 42
+hints:
+  - "Swap the check order: if \"final_answer\" in response: return response[\"final_answer\"] should come first."
+  - "A final answer already present in the response means the loop is genuinely done -- there's nothing left for an extra tool call to accomplish."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "if \"final_answer\" in response:"
+concept_tags: [solace_agent_mesh, agent_reasoning_loop, response_priority]

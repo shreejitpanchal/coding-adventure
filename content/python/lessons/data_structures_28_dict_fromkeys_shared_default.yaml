@@ -1,0 +1,46 @@
+id: data_structures_28
+title: "dict.fromkeys() Builds a Dict From a List of Keys in One Call"
+language: python
+level: 185
+objective: "Replace a loop that assigns the same starting value to every key with dict.fromkeys(), which builds the whole dict from a list of keys in one call."
+explanation: |
+  Initializing a dict where every key starts out with the exact same
+  value (a score of `0`, a flag of `False`) by looping and assigning
+  one key at a time works, but `dict.fromkeys(keys, value)` builds the
+  entire dict in a single call -- one argument for the keys, one for
+  the shared starting value, with no loop needed at all. This is
+  purely about building the *initial* dict this way; each key's value
+  can of course still be updated independently afterward.
+example_code: |
+  # A loop assigning the same starting value to every key.
+  names = ["ada", "bo", "cy"]
+  scores_loop = {}
+  for name in names:
+      scores_loop[name] = 0
+  print(scores_loop)                        # {'ada': 0, 'bo': 0, 'cy': 0}
+
+  # dict.fromkeys() builds the whole dict in one call.
+  scores = dict.fromkeys(names, 0)
+  print(scores)                             # {'ada': 0, 'bo': 0, 'cy': 0}
+starter_code: |
+  names = ["ada", "bo", "cy"]
+  scores = {}
+  for name in names:
+      scores[name] = 0
+  print(scores)
+challenge: |
+  Rewrite this using `dict.fromkeys(names, 0)` instead of a loop. Keep
+  the same output: {'ada': 0, 'bo': 0, 'cy': 0}.
+expected_output: |
+  {'ada': 0, 'bo': 0, 'cy': 0}
+hints:
+  - "Replace the whole loop with: scores = dict.fromkeys(names, 0)."
+  - "The keys keep the same order they had in the original names list -- dict.fromkeys() doesn't reorder anything."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 28
+difficulty: warmup
+contains_patterns:
+  - "dict\\.fromkeys\\(names, 0\\)"
+concept_tags: [dicts, dict_fromkeys]

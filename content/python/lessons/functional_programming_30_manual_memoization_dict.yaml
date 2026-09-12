@@ -1,0 +1,72 @@
+id: functional_programming_30
+title: "Memoization Is Really Just a Dict Cache Underneath"
+language: python
+level: 365
+objective: "Implement memoization by hand with a plain dict cache, seeing the actual mechanic @lru_cache/@cache hide behind a decorator -- check if an input's already been computed, and only compute (and store) it if not."
+explanation: |
+  `@lru_cache` and `@cache` are convenient, but the underlying idea is
+  simple enough to write by hand: keep a dict mapping each input
+  already seen to its computed result, check it before doing any real
+  work, and only actually call the expensive function (storing the
+  result afterward) when the input genuinely hasn't been seen before.
+  Seeing the mechanic spelled out once makes clear exactly what the
+  decorator versions are doing automatically -- and explains why
+  memoization only makes sense for a pure function: the cache assumes
+  a given input always produces the same output, forever.
+
+  This exercise implements manual memoization with a plain dict,
+  matching what a decorator-based cache would do internally.
+example_code: |
+  # No caching at all -- every call recomputes, even for a repeated input.
+  call_count_trap = [0]
+
+  def slow_square_trap(n):
+      call_count_trap[0] += 1
+      return n * n
+
+  for n in [2, 3, 2, 3]:
+      slow_square_trap(n)
+  print(call_count_trap[0])
+  # 4 -- WRONG if repeated inputs should reuse a cached result
+
+  # The fix: a plain dict cache, checked before computing.
+  cache = {}
+  call_count = [0]
+
+  def slow_square(n):
+      if n not in cache:
+          call_count[0] += 1
+          cache[n] = n * n
+      return cache[n]
+
+  for n in [2, 3, 2, 3]:
+      slow_square(n)
+  print(call_count[0])
+  # 2 -- correctly computed each distinct input only once
+starter_code: |
+  call_count = [0]
+
+  def slow_square(n):
+      call_count[0] += 1
+      return n * n
+
+  for n in [2, 3, 2, 3]:
+      slow_square(n)
+  print(call_count[0])
+challenge: |
+  Fix `slow_square` by adding a `cache = {}` dict, checking `if n not
+  in cache:` before incrementing `call_count` and computing, then
+  always returning `cache[n]`. It should print `2`, not `4`.
+expected_output: |
+  2
+hints:
+  - "cache = {}, then: def slow_square(n): if n not in cache: call_count[0] += 1; cache[n] = n * n; return cache[n]."
+  - "This is exactly what @lru_cache/@cache do automatically -- a dict mapping each seen input to its already-computed result."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 30
+difficulty: core
+contains_patterns:
+  - "if n not in cache:"
+concept_tags: [functional_programming, memoization]

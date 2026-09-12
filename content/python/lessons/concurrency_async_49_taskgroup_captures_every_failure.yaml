@@ -1,0 +1,99 @@
+id: concurrency_async_49
+title: "gather() Shows You the FIRST Failure -- TaskGroup Captures Every One"
+language: python
+level: 339
+objective: "Fix code using gather() to run two coroutines that can both fail, which only ever surfaces the FIRST exception and silently loses any other one, when asyncio.TaskGroup (Python 3.11+) bundles every child task's failure into one ExceptionGroup, handled cleanly with except*."
+explanation: |
+  `asyncio.gather(*coros)` (without `return_exceptions=True`, this
+  category's earlier lesson) propagates only the *first* exception it
+  encounters and cancels the rest -- if two coroutines both fail with
+  genuinely different problems, the second failure is simply never
+  seen at all, discarded along with the cancelled task. `asyncio.
+  TaskGroup` (new in Python 3.11) is built specifically to manage a
+  group of child tasks together: if more than one fails, it collects
+  *all* of their exceptions into a single `ExceptionGroup`, raised
+  once every child task has settled -- handled cleanly with the
+  `except*` syntax this category's previous lesson covers, splitting
+  the group back out by exception type.
+
+  The fix replaces manual `create_task` + `gather` with `async with
+  asyncio.TaskGroup() as tg:`, handling the resulting `ExceptionGroup`
+  with `except*`.
+example_code: |
+  # The trap: gather() only ever surfaces the FIRST failure.
+  import asyncio
+
+  async def fail_a_trap():
+      raise ValueError("a bad")
+
+  async def fail_b_trap():
+      raise TypeError("b bad")
+
+  async def main_trap():
+      try:
+          await asyncio.gather(fail_a_trap(), fail_b_trap())
+      except Exception as e:
+          print(type(e).__name__)
+
+  asyncio.run(main_trap())
+  # "ValueError" -- WRONG if fail_b's TypeError should have been seen too
+
+  # The fix: TaskGroup bundles EVERY child failure into one ExceptionGroup.
+  async def fail_a():
+      raise ValueError("a bad")
+
+  async def fail_b():
+      raise TypeError("b bad")
+
+  async def main():
+      try:
+          async with asyncio.TaskGroup() as tg:
+              tg.create_task(fail_a())
+              tg.create_task(fail_b())
+      except* ValueError as eg:
+          print("ValueError count:", len(eg.exceptions))
+      except* TypeError as eg:
+          print("TypeError count:", len(eg.exceptions))
+
+  asyncio.run(main())
+  # ValueError count: 1
+  # TypeError count: 1
+  # -- correctly captured BOTH failures, not just whichever one came first
+starter_code: |
+  import asyncio
+
+  async def fail_a():
+      raise ValueError("a bad")
+
+  async def fail_b():
+      raise TypeError("b bad")
+
+  async def main():
+      try:
+          await asyncio.gather(fail_a(), fail_b())
+      except Exception as e:
+          print(type(e).__name__)
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it uses `async with asyncio.TaskGroup() as tg:`
+  (creating both tasks with `tg.create_task(...)`), handled with
+  `except* ValueError as eg:` and `except* TypeError as eg:`, each
+  printing their count via `len(eg.exceptions)`, instead of `gather`.
+  It should print `ValueError count: 1` then `TypeError count: 1`, not
+  just `ValueError`.
+expected_output: |
+  ValueError count: 1
+  TypeError count: 1
+hints:
+  - "async with asyncio.TaskGroup() as tg: tg.create_task(fail_a()); tg.create_task(fail_b())."
+  - "gather() (without return_exceptions=True) only ever surfaces the first exception -- TaskGroup collects every child task's failure into one ExceptionGroup, splittable with except*."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 49
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.TaskGroup\\(\\) as tg"
+  - "tg\\.create_task\\(fail_a\\(\\)\\)"
+concept_tags: [asyncio, taskgroup, exception_groups, python311]

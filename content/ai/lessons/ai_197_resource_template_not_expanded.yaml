@@ -1,0 +1,59 @@
+id: ai_197
+title: "A Resource Template's Placeholders Need to Be Filled In, Not Left Literal"
+language: ai
+level: 197
+objective: "Fix a resource-template expansion function that returns the template URI unchanged, leaving its placeholder literally in the string instead of substituting the actual parameter value -- the same substitution mechanic this category's prompt-template lesson covers, applied here to a parameterized resource URI."
+explanation: |
+  MCP supports **resource templates** -- a URI pattern like
+  `file:///logs/{date}.log` that represents a whole family of
+  resources, with the actual resource addressed by substituting a real
+  value for `{date}`. This is the same substitution idea this
+  category's prompt-argument lesson covers, applied to resource
+  addressing instead of prompt text: the template itself is never a
+  real, readable resource on its own, only the specific URI produced by
+  filling in its placeholder is.
+
+  The bug this exercise fixes returns the template URI with its
+  placeholder still literally present, unexpanded. The fix substitutes
+  the actual parameter value into the template before returning it.
+example_code: |
+  # The trap: returns the template URI UNCHANGED -- the placeholder is
+  # never actually substituted with a real value.
+  def expand_template_trap(template_uri, params):
+      return template_uri
+
+  template_uri = "file:///logs/{date}.log"
+  print(expand_template_trap(template_uri, {"date": "2026-01-15"}))   # "file:///logs/{date}.log" -- still a template, not a real URI
+
+  # The fix: substitute the actual parameter value into the template.
+  def expand_template(template_uri, params):
+      result = template_uri
+      for key, value in params.items():
+          result = result.replace("{" + key + "}", value)
+      return result
+
+  print(expand_template(template_uri, {"date": "2026-01-15"}))   # "file:///logs/2026-01-15.log" -- a real, addressable resource URI
+starter_code: |
+  def expand_template(template_uri, params):
+      return template_uri
+
+  template_uri = "file:///logs/{date}.log"
+  print(expand_template(template_uri, {"date": "2026-01-15"}))
+challenge: |
+  Fix `expand_template` so it substitutes each parameter's value into
+  the template's matching `{key}` placeholder, instead of returning the
+  template unchanged. It should print
+  `file:///logs/2026-01-15.log`, not `file:///logs/{date}.log`.
+expected_output: |
+  file:///logs/2026-01-15.log
+hints:
+  - "Loop over params.items(), doing result = result.replace(\"{\" + key + \"}\", value) for each one."
+  - "The literal placeholder text is \"{date}\" (with the curly braces) -- replace() needs to match that exact substring to substitute it."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 22
+difficulty: warmup
+contains_patterns:
+  - "result\\.replace\\(.\\{. \\+ key \\+ .\\}.,"
+concept_tags: [mcp, resource_templates, uri_expansion]

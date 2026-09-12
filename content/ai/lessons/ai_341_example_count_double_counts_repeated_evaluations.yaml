@@ -1,0 +1,56 @@
+id: ai_341
+title: "Counting Dataset Examples Means Counting Unique Examples, Not Every Evaluation Run"
+language: ai
+level: 341
+objective: "Fix an example counter that counts every evaluation record, when the same dataset example evaluated more than once (a retried run, a second evaluator pass) should still count as one example, not multiply the reported dataset size."
+explanation: |
+  An experiment summary reporting "how many examples were evaluated" is
+  meaningful as a measure of the dataset's actual size -- but only if
+  it counts unique examples, not evaluation records. If a single
+  example gets evaluated twice for any reason (a flaky run that was
+  retried and both attempts got logged, two different evaluators each
+  producing their own record against the same example), counting every
+  record inflates the reported dataset size without the dataset itself
+  having grown at all.
+
+  The bug this exercise fixes returns `len(evaluation_results)`
+  directly. The fix counts the number of distinct `example_id` values.
+example_code: |
+  # The trap: counts every evaluation RUN, even if the same example
+  # was evaluated more than once.
+  def count_examples_trap(evaluation_results):
+      return len(evaluation_results)
+
+  evaluation_results = [{"example_id": "e1"}, {"example_id": "e1"}, {"example_id": "e2"}]
+  print(count_examples_trap(evaluation_results))
+  # 3 -- "e1" was counted twice, once for each evaluation run against it
+
+  # The fix: count the number of distinct example ids.
+  def count_examples(evaluation_results):
+      return len(set(r["example_id"] for r in evaluation_results))
+
+  print(count_examples(evaluation_results))
+  # 2 -- correctly reflects the actual number of distinct examples
+starter_code: |
+  def count_examples(evaluation_results):
+      return len(evaluation_results)
+
+  evaluation_results = [{"example_id": "e1"}, {"example_id": "e1"}, {"example_id": "e2"}]
+  print(count_examples(evaluation_results))
+challenge: |
+  Fix `count_examples` so it returns `len(set(r["example_id"] for r in
+  evaluation_results))`, counting distinct example ids, instead of
+  `len(evaluation_results)` directly. It should print `2`, not `3`.
+expected_output: |
+  2
+hints:
+  - "Wrap a generator expression pulling r[\"example_id\"] from each result inside set(...), then take len() of that."
+  - "The dataset's real size doesn't change just because one of its examples happened to get evaluated more than once."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 31
+difficulty: core
+contains_patterns:
+  - "set\\(r\\[\"example_id\"\\] for r in evaluation_results\\)"
+concept_tags: [langsmith, experiments, dataset_evaluation]

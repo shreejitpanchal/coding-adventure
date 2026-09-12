@@ -1,0 +1,117 @@
+id: gotcha_gauntlet_14
+title: "The Diamond That Ran Grandpa's Setup Twice"
+language: python
+level: 259
+objective: "Fix a diamond-shaped inheritance hierarchy where each subclass calls its parent's __init__ directly by name, causing the shared common ancestor's __init__ to run twice -- super() cooperatively follows the MRO instead, running each __init__ exactly once."
+explanation: |
+  In a diamond hierarchy -- `B` and `C` both inherit from `A`, and `D`
+  inherits from both `B` and `C` -- calling a parent's `__init__`
+  *directly by name* (`A.__init__(self, ...)`) inside both `B.__init__`
+  and `C.__init__` means `A.__init__` runs once from each path, twice
+  in total, whenever a `D` instance is constructed. `super()` doesn't
+  call "my immediate parent" the way a direct name call does -- it
+  calls "whatever comes *next* in the Method Resolution Order," a
+  single linearized chain Python computes for the whole hierarchy
+  (`D, B, C, A, object` here). Every class in that chain calling
+  `super().__init__(...)` cooperatively hands off to the next link
+  without any of them needing to know the full shape of the hierarchy
+  they're part of, and each `__init__` runs exactly once.
+
+  The bug this exercise fixes calls each parent directly by name,
+  running `A.__init__` twice. The fix uses `super().__init__(...)`
+  everywhere, cooperatively following the MRO instead.
+example_code: |
+  # The trap: direct-by-name parent calls run the shared ancestor TWICE.
+  class A:
+      def __init__(self, log):
+          self.log = log
+          self.log.append("A")
+
+  class B(A):
+      def __init__(self, log):
+          A.__init__(self, log)
+          self.log.append("B")
+
+  class C(A):
+      def __init__(self, log):
+          A.__init__(self, log)
+          self.log.append("C")
+
+  class D(B, C):
+      def __init__(self, log):
+          B.__init__(self, log)
+          C.__init__(self, log)
+          self.log.append("D")
+
+  log_trap = []
+  D(log_trap)
+  print(log_trap)
+  # ['A', 'B', 'A', 'C', 'D'] -- WRONG, A's setup ran TWICE
+
+  # The fix: super().__init__() cooperatively follows the MRO.
+  class A2:
+      def __init__(self, log):
+          self.log = log
+          self.log.append("A")
+
+  class B2(A2):
+      def __init__(self, log):
+          super().__init__(log)
+          self.log.append("B")
+
+  class C2(A2):
+      def __init__(self, log):
+          super().__init__(log)
+          self.log.append("C")
+
+  class D2(B2, C2):
+      def __init__(self, log):
+          super().__init__(log)
+          self.log.append("D")
+
+  log = []
+  D2(log)
+  print(log)
+  # ['A', 'C', 'B', 'D'] -- correctly runs each __init__ exactly once
+starter_code: |
+  class A:
+      def __init__(self, log):
+          self.log = log
+          self.log.append("A")
+
+  class B(A):
+      def __init__(self, log):
+          A.__init__(self, log)
+          self.log.append("B")
+
+  class C(A):
+      def __init__(self, log):
+          A.__init__(self, log)
+          self.log.append("C")
+
+  class D(B, C):
+      def __init__(self, log):
+          B.__init__(self, log)
+          C.__init__(self, log)
+          self.log.append("D")
+
+  log = []
+  D(log)
+  print(log)
+challenge: |
+  Fix every `__init__` in `A`, `B`, `C`, and `D` so each calls
+  `super().__init__(log)` instead of a parent by name directly. It
+  should print `['A', 'C', 'B', 'D']`, not `['A', 'B', 'A', 'C', 'D']`.
+expected_output: |
+  ['A', 'C', 'B', 'D']
+hints:
+  - "Replace every A.__init__(self, log) / B.__init__(self, log) / C.__init__(self, log) with super().__init__(log)."
+  - "super() doesn't call \"my direct parent\" -- it calls whatever comes next in the whole hierarchy's single linearized MRO, so each __init__ along the chain runs exactly once."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "super\\(\\)\\.__init__\\(log\\)"
+concept_tags: [inheritance, mro, super, gotchas]

@@ -1,0 +1,88 @@
+id: concurrency_async_34
+title: "asyncio.Lock Has No Reentrant Version -- Nesting the Same Lock Deadlocks It"
+language: python
+level: 324
+objective: "Fix a coroutine that acquires the same asyncio.Lock twice, nested, within one call -- asyncio has no RLock equivalent, so the second acquire waits forever for a release that can never come from inside the same coroutine. The fix restructures the code to acquire the lock only once."
+explanation: |
+  This category covers `threading.RLock` as the reentrant alternative
+  to a plain `threading.Lock`, letting the same thread reacquire it
+  without deadlocking itself. `asyncio` has no equivalent
+  `asyncio.RLock` in the standard library at all -- `asyncio.Lock` is
+  never reentrant, so a coroutine that acquires it, then (directly or
+  through a nested call) tries to acquire it *again* before releasing
+  it the first time, deadlocks itself: the second `async with lock:`
+  waits for a release that can only come from code that hasn't run yet,
+  because it's still waiting on that very same acquire.
+
+  Since there's no reentrant lock to reach for, the real fix is
+  structural: restructure the code so the lock is only ever acquired
+  *once* per logical operation, rather than nesting a second
+  acquisition inside the first.
+example_code: |
+  # The trap: nested acquisition of the SAME lock -- deadlocks, since
+  # asyncio.Lock is never reentrant.
+  import asyncio
+
+  lock = asyncio.Lock()
+
+  async def do_work_trap():
+      async with lock:
+          async with lock:      # deadlock -- waiting on itself
+              return "ok"
+
+  async def main_trap():
+      try:
+          result = await asyncio.wait_for(do_work_trap(), timeout=0.05)
+          print(result)
+      except asyncio.TimeoutError:
+          print("deadlocked")
+
+  asyncio.run(main_trap())
+  # "deadlocked" -- the inner acquire waits forever for a release from the outer one
+
+  # The fix: acquire the lock only ONCE -- restructure, don't nest it.
+  async def do_work():
+      async with lock:
+          return "ok"
+
+  async def main():
+      result = await asyncio.wait_for(do_work(), timeout=0.05)
+      print(result)
+
+  asyncio.run(main())
+  # "ok" -- correctly acquired just once, no nested reacquisition at all
+starter_code: |
+  import asyncio
+
+  lock = asyncio.Lock()
+
+  async def do_work():
+      async with lock:
+          async with lock:
+              return "ok"
+
+  async def main():
+      try:
+          result = await asyncio.wait_for(do_work(), timeout=0.05)
+          print(result)
+      except asyncio.TimeoutError:
+          print("deadlocked")
+
+  asyncio.run(main())
+challenge: |
+  Fix `do_work` so it acquires `lock` only once -- a single `async
+  with lock:` block -- instead of nesting a second acquisition of the
+  same lock inside the first. It should print `ok`, not `deadlocked`.
+expected_output: |
+  ok
+hints:
+  - "Remove the inner \"async with lock:\" entirely, keeping just one: async def do_work(): async with lock: return \"ok\"."
+  - "asyncio has no RLock equivalent -- asyncio.Lock is never reentrant, so nesting the same lock inside itself always deadlocks, regardless of which coroutine does it."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 34
+difficulty: deep_dive
+contains_patterns:
+  - "async def do_work\\(\\):\\s*async with lock:\\s*return \"ok\""
+concept_tags: [asyncio, lock, deadlock, concurrency]

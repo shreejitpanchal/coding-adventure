@@ -1,0 +1,63 @@
+id: ai_279
+title: "Checkpoints From Different Threads Must Never Collide"
+language: ai
+level: 279
+objective: "Fix a checkpoint saver that keys every checkpoint only by node name, when separate conversation threads running the same graph need their checkpoints kept fully independent -- one thread's saved state should never silently overwrite another's."
+explanation: |
+  A single compiled graph is typically reused across many separate
+  conversations (threads), each with its own independent progress
+  through the same node structure -- and a checkpoint store keyed only
+  by node name has no way to tell those threads apart. Two different
+  threads both reaching the `"greet"` node end up writing to the exact
+  same slot, so whichever one checkpoints last silently overwrites
+  whatever the other thread had saved there.
+
+  The bug this exercise fixes keys `all_checkpoints` only by
+  `node_name`. The fix includes `thread_id` in the key itself, keeping
+  every thread's saved state genuinely separate.
+example_code: |
+  # The trap: keyed only by node_name -- different threads collide
+  # on the exact same key.
+  def save_checkpoint_trap(all_checkpoints, thread_id, node_name, state):
+      all_checkpoints[node_name] = state
+
+  all_checkpoints = {}
+  save_checkpoint_trap(all_checkpoints, "thread_a", "greet", {"who": "Ada"})
+  save_checkpoint_trap(all_checkpoints, "thread_b", "greet", {"who": "Bo"})
+  print(len(all_checkpoints))
+  # 1 -- thread_a's checkpoint was silently overwritten by thread_b's
+
+  # The fix: include thread_id in the key itself.
+  def save_checkpoint(all_checkpoints, thread_id, node_name, state):
+      all_checkpoints[f"{thread_id}:{node_name}"] = state
+
+  all_checkpoints2 = {}
+  save_checkpoint(all_checkpoints2, "thread_a", "greet", {"who": "Ada"})
+  save_checkpoint(all_checkpoints2, "thread_b", "greet", {"who": "Bo"})
+  print(len(all_checkpoints2))
+  # 2 -- correctly isolated per thread
+starter_code: |
+  def save_checkpoint(all_checkpoints, thread_id, node_name, state):
+      all_checkpoints[node_name] = state
+
+  all_checkpoints = {}
+  save_checkpoint(all_checkpoints, "thread_a", "greet", {"who": "Ada"})
+  save_checkpoint(all_checkpoints, "thread_b", "greet", {"who": "Bo"})
+  print(len(all_checkpoints))
+challenge: |
+  Fix `save_checkpoint` so it keys `all_checkpoints` by
+  `f"{thread_id}:{node_name}"` instead of `node_name` alone. It should
+  print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Replace all_checkpoints[node_name] = state with all_checkpoints[f\"{thread_id}:{node_name}\"] = state."
+  - "Two threads both reaching the same node name need two distinct keys -- combining thread_id into the key is the simplest way to guarantee that."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "f\"\\{thread_id\\}:\\{node_name\\}\""
+concept_tags: [langgraph, checkpointing, thread_isolation]

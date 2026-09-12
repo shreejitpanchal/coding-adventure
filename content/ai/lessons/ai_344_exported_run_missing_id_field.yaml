@@ -1,0 +1,57 @@
+id: ai_344
+title: "An Exported Run Record Needs Its Own ID, or It Can't Be Cross-Referenced"
+language: ai
+level: 344
+objective: "Fix a trace-export function that drops a run's own id, when an exported record missing its id can't be re-imported, linked back to feedback recorded against it, or matched up with the original trace at all."
+explanation: |
+  Exporting a run for external storage or analysis is only useful if
+  the exported record can still be connected back to everything else
+  that references it -- feedback scores keyed by run id, a parent/child
+  relationship recorded elsewhere, a later re-import. Dropping the
+  run's own `id` field during export produces a record that reads
+  fine in isolation but has severed every link that depended on that
+  id.
+
+  The bug this exercise fixes builds the exported dict with `name` and
+  `output` only. The fix includes the run's own `id` too.
+example_code: |
+  # The trap: drops the run's own "id" entirely -- an exported record
+  # with no id can't be re-imported or cross-referenced.
+  def export_run_trap(run):
+      return {"name": run["name"], "output": run["output"]}
+
+  run = {"id": "run-1", "name": "classify", "output": "positive"}
+  exported_trap = export_run_trap(run)
+  print("id" in exported_trap)
+  # False -- the exported record has no way to be linked back to anything
+
+  # The fix: include the run's own id in the export.
+  def export_run(run):
+      return {"id": run["id"], "name": run["name"], "output": run["output"]}
+
+  exported = export_run(run)
+  print("id" in exported)
+  # True -- correctly preserved, so the export can be cross-referenced
+starter_code: |
+  def export_run(run):
+      return {"name": run["name"], "output": run["output"]}
+
+  run = {"id": "run-1", "name": "classify", "output": "positive"}
+  exported = export_run(run)
+  print("id" in exported)
+challenge: |
+  Fix `export_run` so it also includes `"id": run["id"]` in the
+  returned dict. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"id\": run[\"id\"] as an additional key in the returned dict."
+  - "Without the id, feedback and parent/child relationships recorded elsewhere have nothing left to link this exported record back to."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 34
+difficulty: warmup
+contains_patterns:
+  - "\"id\": run\\[\"id\"\\]"
+concept_tags: [langsmith, trace_export, run_identity]

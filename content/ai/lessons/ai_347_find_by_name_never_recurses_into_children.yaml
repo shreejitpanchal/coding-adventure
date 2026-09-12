@@ -1,0 +1,70 @@
+id: ai_347
+title: "Finding a Run by Name Needs to Search the Whole Tree, Not Just the Top Level"
+language: ai
+level: 347
+objective: "Fix a run-search function that only checks immediate children, when a named run that's nested two or more levels deep needs the search to recurse into every level, not stop at the first."
+explanation: |
+  Searching a trace tree for a run by name (finding the specific tool
+  call that failed, say) only works if the search actually recurses
+  into every level of nesting -- a search that checks immediate
+  children and gives up finds nothing at all for anything nested
+  deeper than one level down, even though the run genuinely exists
+  somewhere in the tree.
+
+  The bug this exercise fixes only loops over `tree["children"]`
+  directly, with no recursive call. The fix also recurses into each
+  child, searching its own descendants too.
+example_code: |
+  # The trap: only checks IMMEDIATE children, never recurses into
+  # grandchildren.
+  def find_run_by_name_trap(tree, name):
+      for child in tree["children"]:
+          if child["name"] == name:
+              return child
+      return None
+
+  tree = {"name": "root", "children": [{"name": "step1", "children": [{"name": "tool_call", "children": []}]}]}
+  print(find_run_by_name_trap(tree, "tool_call"))
+  # None -- never found it, since it only exists two levels deep
+
+  # The fix: recurse into each child, searching its own descendants too.
+  def find_run_by_name(tree, name):
+      for child in tree["children"]:
+          if child["name"] == name:
+              return child
+          found = find_run_by_name(child, name)
+          if found is not None:
+              return found
+      return None
+
+  result = find_run_by_name(tree, "tool_call")
+  print(result["name"] if result else None)
+  # "tool_call" -- correctly found by searching the whole tree
+starter_code: |
+  def find_run_by_name(tree, name):
+      for child in tree["children"]:
+          if child["name"] == name:
+              return child
+      return None
+
+  tree = {"name": "root", "children": [{"name": "step1", "children": [{"name": "tool_call", "children": []}]}]}
+  result = find_run_by_name(tree, "tool_call")
+  print(result["name"] if result else None)
+challenge: |
+  Fix `find_run_by_name` so, after checking each `child` itself, it
+  also recurses with `find_run_by_name(child, name)` and returns that
+  if it finds something, instead of only checking the immediate
+  children level. It should print `tool_call`, not `None`.
+expected_output: |
+  tool_call
+hints:
+  - "Inside the loop, after the direct name check, add: found = find_run_by_name(child, name); if found is not None: return found."
+  - "Without the recursive call, the search has no way to look further than one level of nesting deep."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 37
+difficulty: core
+contains_patterns:
+  - "found = find_run_by_name\\(child, name\\)"
+concept_tags: [langsmith, run_tree, recursive_search]

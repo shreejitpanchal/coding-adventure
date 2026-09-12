@@ -1,0 +1,66 @@
+id: idioms_gotchas_43
+title: "list.copy() Is Shallow -- Nested Lists Are Still the Same Shared Objects"
+language: python
+level: 112
+objective: "Fix a duplication function that uses list.copy(), when a shallow copy only duplicates the outer list -- every nested inner list inside it is still the exact same shared object, so mutating a 'copy' can silently mutate the original too."
+explanation: |
+  `list.copy()` (and slicing, `list(x)`, `[*x]`) all perform a
+  *shallow* copy -- a genuinely new outer list, but every element
+  inside it is still the identical object it was in the original. For
+  a list of plain numbers or strings, that distinction is invisible,
+  since those are immutable anyway. The moment the elements are
+  themselves mutable (nested lists, say), the shallow copy shares them
+  directly: mutating a "duplicated" inner row also mutates the
+  original's corresponding row, since there was never a second inner
+  list to begin with.
+
+  The bug this exercise fixes uses `matrix.copy()`, a shallow copy. The
+  fix uses `copy.deepcopy(matrix)`, which duplicates every level.
+example_code: |
+  # The trap: list.copy() is a SHALLOW copy -- nested lists (rows) are
+  # still the SAME shared objects.
+  def duplicate_matrix_trap(matrix):
+      return matrix.copy()
+
+  matrix = [[1, 2], [3, 4]]
+  dup_trap = duplicate_matrix_trap(matrix)
+  dup_trap[0][0] = 999
+  print(matrix[0][0])
+  # 999 -- the "copy" mutated the original's inner row too!
+
+  # The fix: copy.deepcopy() duplicates every level, not just the outer list.
+  import copy
+
+  def duplicate_matrix(matrix):
+      return copy.deepcopy(matrix)
+
+  matrix2 = [[1, 2], [3, 4]]
+  dup = duplicate_matrix(matrix2)
+  dup[0][0] = 999
+  print(matrix2[0][0])
+  # 1 -- correctly independent, unaffected by the mutation
+starter_code: |
+  def duplicate_matrix(matrix):
+      return matrix.copy()
+
+  matrix = [[1, 2], [3, 4]]
+  dup = duplicate_matrix(matrix)
+  dup[0][0] = 999
+  print(matrix[0][0])
+challenge: |
+  Fix `duplicate_matrix` so it returns `copy.deepcopy(matrix)`
+  (importing `copy` first), instead of the shallow `matrix.copy()`. It
+  should print `1`, not `999`.
+expected_output: |
+  1
+hints:
+  - "import copy at the top, then replace matrix.copy() with copy.deepcopy(matrix)."
+  - "A shallow copy only duplicates the OUTER list -- every nested inner list is still shared with the original, unchanged."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 43
+difficulty: gotcha
+contains_patterns:
+  - "copy\\.deepcopy\\(matrix\\)"
+concept_tags: [idioms, shallow_copy, deep_copy]

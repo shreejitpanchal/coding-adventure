@@ -72,7 +72,7 @@ hints:
   - "Use a list comprehension with enumerate(zip(baseline_results, candidate_results)) to walk both lists together, keeping each index."
   - "A regression is: baseline[i] is True AND candidate[i] is False -- collect those indices `i` into a list and return it."
 xp_reward: 15
-achievement: langsmith_master
+achievement: null
 category: langsmith
 category_level: 5
 difficulty: deep_dive

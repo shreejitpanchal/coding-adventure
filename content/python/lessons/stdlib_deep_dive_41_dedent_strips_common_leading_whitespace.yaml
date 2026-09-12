@@ -1,0 +1,61 @@
+id: stdlib_deep_dive_41
+title: "textwrap.dedent Strips Common Leading Whitespace -- strip() Only Trims the Ends"
+language: python
+level: 242
+objective: "Fix code using str.strip() on a multi-line indented string literal (which only removes whitespace from the very start and end, leaving every interior line's indentation untouched), when textwrap.dedent removes the common leading whitespace from every line."
+explanation: |
+  `str.strip()` only removes whitespace from the very beginning and
+  very end of the whole string -- it has no notion of "per-line"
+  anything, so an indented multi-line string literal (common when
+  written inside an indented function body) keeps every interior
+  line's leading spaces exactly as they were. `textwrap.dedent`
+  specifically looks at every line, finds the common leading whitespace
+  shared by all of them, and removes exactly that much from each line
+  -- correctly un-indenting the whole block uniformly.
+
+  The bug this exercise fixes uses `strip()`, which leaves interior
+  lines indented. The fix uses `textwrap.dedent`, which doesn't.
+example_code: |
+  # The trap: strip() only trims the very start/end, not each line.
+  import textwrap
+
+  def clean_trap(text):
+      return text.strip()
+
+  block = "    line one\n    line two\n"
+  result_trap = clean_trap(block)
+  print(result_trap.splitlines()[-1].startswith(" "))
+  # True -- WRONG, "    line two" still has its leading spaces
+
+  # The fix: dedent removes the common leading whitespace from every line.
+  def clean(text):
+      return textwrap.dedent(text).strip()
+
+  result = clean(block)
+  print(result.splitlines()[-1].startswith(" "))
+  # False -- correctly un-indented on every line, not just the ends
+starter_code: |
+  block = "    line one\n    line two\n"
+
+  def clean(text):
+      return text.strip()
+
+  result = clean(block)
+  print(result.splitlines()[-1].startswith(" "))
+challenge: |
+  Fix `clean` so it applies `textwrap.dedent(text)` before `.strip()`,
+  instead of only calling `.strip()`. It should print `False`, not
+  `True`.
+expected_output: |
+  False
+hints:
+  - "import textwrap, then: return textwrap.dedent(text).strip()."
+  - "strip() only trims the very ends of the whole string -- dedent looks at every line's leading whitespace and removes what's common to all of them."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 41
+difficulty: gotcha
+contains_patterns:
+  - "textwrap\\.dedent\\(text\\)"
+concept_tags: [textwrap, dedent]

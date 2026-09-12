@@ -1,0 +1,80 @@
+id: ai_153
+title: "Calling an Expensive Tool Twice With the Same Arguments Wastes Work"
+language: ai
+level: 153
+objective: "Fix a tool wrapper that re-runs an expensive tool every time it's called, even with identical arguments to a call already made earlier in the same agent run -- caching the result would avoid the repeated cost entirely."
+explanation: |
+  If an agent calls the same expensive tool (a slow database query, a
+  costly external API) with the exact same arguments more than once
+  during a single run -- which happens more often than it might seem,
+  especially across a multi-step reasoning process that revisits
+  earlier information -- there's no reason to actually pay that cost
+  twice. Caching a tool's result by its arguments, the same idea this
+  category's rag-adjacent caching lessons apply to embeddings, avoids
+  the repeated work entirely for an identical call.
+
+  The bug this exercise fixes calls the expensive tool fresh every
+  single time, with no cache at all. The fix checks a cache keyed by
+  the call's arguments first, only actually invoking the tool on a
+  genuine cache miss.
+example_code: |
+  # The trap: NO cache at all -- the exact same call, with the exact
+  # same arguments, pays the full cost every single time.
+  call_count = 0
+  def expensive_tool(query):
+      global call_count
+      call_count += 1
+      return f"result_for({query})"
+
+  def call_tool_trap(query, cache):
+      return expensive_tool(query)
+
+  cache = {}
+  call_tool_trap("revenue Q3", cache)
+  call_tool_trap("revenue Q3", cache)   # the EXACT SAME call, again
+  print(call_count)   # 2 -- paid the full cost twice for an identical call
+
+  # The fix: check the cache first, only call the tool on a genuine miss.
+  call_count = 0
+  def call_tool(query, cache):
+      if query in cache:
+          return cache[query]
+      result = expensive_tool(query)
+      cache[query] = result
+      return result
+
+  cache2 = {}
+  call_tool("revenue Q3", cache2)
+  call_tool("revenue Q3", cache2)
+  print(call_count)   # 1 -- the second call correctly reused the cached result
+starter_code: |
+  call_count = 0
+  def expensive_tool(query):
+      global call_count
+      call_count += 1
+      return f"result_for({query})"
+
+  def call_tool(query, cache):
+      return expensive_tool(query)
+
+  cache = {}
+  call_tool("revenue Q3", cache)
+  call_tool("revenue Q3", cache)
+  print(call_count)
+challenge: |
+  Fix `call_tool` so it checks `cache` first (returning the cached
+  value on a hit) and only calls `expensive_tool` (storing the result
+  into `cache`) on a genuine miss. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Add: if query in cache: return cache[query], as the first line of the function."
+  - "On a miss, compute result = expensive_tool(query), store it with cache[query] = result, then return result."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 23
+difficulty: warmup
+contains_patterns:
+  - "if query in cache"
+concept_tags: [agentic_frameworks, caching, tool_calling]

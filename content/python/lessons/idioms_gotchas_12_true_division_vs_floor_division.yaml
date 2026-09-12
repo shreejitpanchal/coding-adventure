@@ -1,0 +1,54 @@
+id: idioms_gotchas_12
+title: "/ Always Gives a Float -- // Is What You Want for a Whole Count"
+language: python
+level: 81
+objective: "Fix a function computing how many full groups fit into a count, when '/' always produces a float (even when the numbers divide evenly), so a function meant to return a whole number of groups needs '//' instead."
+explanation: |
+  Python 3's `/` is *true division* -- it always returns a `float`,
+  even when both operands are integers and the division comes out
+  even (`10 / 2` is `5.0`, not `5`). For code that's counting something
+  genuinely discrete (how many full boxes of 6 fit into 20 items), a
+  float result is the wrong type entirely, not just a formatting
+  detail -- `//` (floor division) is what actually answers "how many
+  whole groups fit," discarding the remainder instead of representing
+  it as a fractional float.
+
+  The bug this exercise fixes uses `/`, producing a float. The fix uses
+  `//` for a genuine integer count.
+example_code: |
+  # The trap: "/" is true division -- always a float, even for a
+  # whole-number count.
+  def full_boxes_trap(items, box_size):
+      return items / box_size
+
+  print(isinstance(full_boxes_trap(20, 6), int))
+  # False -- this is 3.333..., a float, not a whole count of full boxes
+
+  # The fix: "//" is floor division -- discards the remainder,
+  # producing a genuine integer count.
+  def full_boxes(items, box_size):
+      return items // box_size
+
+  print(isinstance(full_boxes(20, 6), int))
+  # True -- correctly an integer count of full boxes
+starter_code: |
+  def full_boxes(items, box_size):
+      return items / box_size
+
+  print(isinstance(full_boxes(20, 6), int))
+challenge: |
+  Fix `full_boxes` so it uses `//` (floor division) instead of `/`
+  (true division). It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace the / operator with //."
+  - "\"/\" always returns a float in Python 3, even for numbers that divide evenly -- \"//\" is what actually gives a whole count."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 12
+difficulty: warmup
+contains_patterns:
+  - "items // box_size"
+concept_tags: [idioms, division, operators]

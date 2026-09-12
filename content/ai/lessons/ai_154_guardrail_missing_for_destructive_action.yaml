@@ -1,0 +1,61 @@
+id: ai_154
+title: "A Destructive Action Needs a Guardrail Check Before It Runs, Not After"
+language: ai
+level: 154
+objective: "Fix an action executor that runs every tool call unconditionally, with no policy check at all, letting a genuinely destructive action (deleting all records) execute exactly as easily as a harmless read-only one."
+explanation: |
+  Not every tool an agent can call carries the same risk -- reading
+  data and permanently deleting it are not remotely equivalent actions,
+  even though both might just look like "a tool call" to code with no
+  awareness of the difference. A **guardrail** is a policy check that
+  runs *before* a tool call is allowed to execute, specifically to
+  catch actions that match a defined risk pattern (deleting everything,
+  modifying a protected resource) and block them outright, rather than
+  discovering the consequences only after the action already ran.
+
+  The bug this exercise fixes executes every tool call with no policy
+  check at all. The fix checks the action against a list of blocked
+  patterns *before* executing, refusing to run anything that matches
+  one.
+example_code: |
+  # The trap: NO guardrail at all -- a genuinely destructive action
+  # runs exactly as easily as any harmless one.
+  def execute_trap(action, blocked_patterns):
+      return f"EXECUTED: {action}"
+
+  blocked_patterns = ["delete_all", "drop_table"]
+  print(execute_trap("delete_all_customer_records", blocked_patterns))   # "EXECUTED: ..." -- ran with NO check at all
+
+  # The fix: check the action against blocked patterns BEFORE executing.
+  def execute(action, blocked_patterns):
+      if any(pattern in action for pattern in blocked_patterns):
+          return f"BLOCKED: {action}"
+      return f"EXECUTED: {action}"
+
+  print(execute("delete_all_customer_records", blocked_patterns))   # "BLOCKED: ..." -- correctly refused
+starter_code: |
+  def execute(action, blocked_patterns):
+      return f"EXECUTED: {action}"
+
+  blocked_patterns = ["delete_all", "drop_table"]
+  print(execute("delete_all_customer_records", blocked_patterns))
+challenge: |
+  Fix `execute` so it checks whether any pattern in `blocked_patterns`
+  appears in `action` before running it, returning
+  `f"BLOCKED: {action}"` if so, instead of always executing
+  unconditionally. It should print
+  `BLOCKED: delete_all_customer_records`, not
+  `EXECUTED: delete_all_customer_records`.
+expected_output: |
+  BLOCKED: delete_all_customer_records
+hints:
+  - "Add: if any(pattern in action for pattern in blocked_patterns): return f\"BLOCKED: {action}\", as the first check in the function."
+  - "\"delete_all\" is a substring of \"delete_all_customer_records\", so the any() check correctly catches it."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 24
+difficulty: gotcha
+contains_patterns:
+  - "BLOCKED"
+concept_tags: [agentic_frameworks, guardrails, safety]

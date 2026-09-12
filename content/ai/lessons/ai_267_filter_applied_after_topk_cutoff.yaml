@@ -1,0 +1,69 @@
+id: ai_267
+title: "A Metadata Filter Must Run Before the Top-K Cutoff, Not After"
+language: ai
+level: 267
+objective: "Fix a filtered search function that ranks and cuts to the top-k results before applying the metadata filter, when filtering first (then ranking what's left) is the only order that doesn't lose a genuinely matching document to an early cutoff it never should have faced."
+explanation: |
+  Combining a metadata filter with similarity ranking has exactly one
+  order that works: filter down to the documents that actually match
+  the metadata criteria *first*, then rank and cut to the top-k among
+  *those*. Doing it the other way around -- ranking and cutting to the
+  top-k first, then filtering -- can permanently lose a document that
+  would have matched the filter, just because its raw similarity score
+  happened to place it outside the initial, unfiltered cutoff. Once
+  it's cut, it's gone; filtering afterward has nothing left to recover.
+
+  The bug this exercise fixes ranks and slices to `k` before ever
+  checking the metadata filter. The fix filters first, then ranks and
+  slices what remains.
+example_code: |
+  # The trap: ranks and cuts to top-k BEFORE filtering -- a matching
+  # doc past the cutoff is lost forever, before its metadata even matters.
+  def search_trap(results, metadata_filter, k):
+      ranked = sorted(results, key=lambda r: r["score"], reverse=True)[:k]
+      return [r for r in ranked if r["metadata"].get("category") == metadata_filter]
+
+  results = [
+      {"doc": "a", "score": 0.9, "metadata": {"category": "other"}},
+      {"doc": "b", "score": 0.8, "metadata": {"category": "other"}},
+      {"doc": "c", "score": 0.5, "metadata": {"category": "target"}},
+  ]
+  print(len(search_trap(results, "target", 2)))
+  # 0 -- "c" was cut off by the top-2 BEFORE its category was ever even checked
+
+  # The fix: filter first, then rank and slice what remains.
+  def search(results, metadata_filter, k):
+      filtered = [r for r in results if r["metadata"].get("category") == metadata_filter]
+      return sorted(filtered, key=lambda r: r["score"], reverse=True)[:k]
+
+  print(len(search(results, "target", 2)))
+  # 1 -- correctly found, since filtering happened before any cutoff
+starter_code: |
+  def search(results, metadata_filter, k):
+      ranked = sorted(results, key=lambda r: r["score"], reverse=True)[:k]
+      return [r for r in ranked if r["metadata"].get("category") == metadata_filter]
+
+  results = [
+      {"doc": "a", "score": 0.9, "metadata": {"category": "other"}},
+      {"doc": "b", "score": 0.8, "metadata": {"category": "other"}},
+      {"doc": "c", "score": 0.5, "metadata": {"category": "target"}},
+  ]
+  print(len(search(results, "target", 2)))
+challenge: |
+  Fix `search` so it filters `results` by `metadata_filter` FIRST, then
+  sorts and slices to `k` among what remains -- instead of ranking and
+  slicing to `k` before ever checking the filter. It should print `1`,
+  not `0`.
+expected_output: |
+  1
+hints:
+  - "filtered = [r for r in results if r[\"metadata\"].get(\"category\") == metadata_filter], THEN sort and slice that."
+  - "Once the top-k cutoff has already discarded a document, no later filtering step can bring it back -- the order these two operations happen in is the entire bug."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 47
+difficulty: gotcha
+contains_patterns:
+  - "filtered = \\[r for r in results if r\\[\"metadata\"\\]\\.get\\(\"category\"\\) == metadata_filter\\]"
+concept_tags: [langchain, vector_store, metadata_filtering]

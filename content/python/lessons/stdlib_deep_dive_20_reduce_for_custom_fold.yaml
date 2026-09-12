@@ -1,0 +1,60 @@
+id: stdlib_deep_dive_20
+title: "reduce Expresses a Custom Fold Directly -- Even One a Built-In Doesn't Cover"
+language: python
+level: 221
+objective: "Replace a manual loop tracking the running maximum with functools.reduce and a custom comparison function, expressing the fold directly instead of managing an accumulator variable by hand."
+explanation: |
+  Python already has `max()` for the common case, but a manual
+  loop tracking a running "best so far" value is a fold in the exact
+  shape `functools.reduce` names directly -- the same idea this
+  category's earlier `reduce` lesson covers for multiplication, applied
+  here with a comparison function instead. `reduce(lambda a, b: a if a
+  > b else b, nums)` carries the larger of each pair forward as the
+  accumulator, exactly mirroring what a hand-written running-maximum
+  loop does with an explicit `biggest` variable.
+example_code: |
+  # A manual loop, tracking the running maximum in a separate variable.
+  def find_max_loop(nums):
+      biggest = nums[0]
+      for n in nums[1:]:
+          if n > biggest:
+              biggest = n
+      return biggest
+
+  print(find_max_loop([3, 7, 2, 9, 4]))
+  # 9
+
+  # reduce expresses the same fold directly.
+  from functools import reduce
+
+  def find_max(nums):
+      return reduce(lambda a, b: a if a > b else b, nums)
+
+  print(find_max([3, 7, 2, 9, 4]))
+  # 9
+starter_code: |
+  def find_max(nums):
+      biggest = nums[0]
+      for n in nums[1:]:
+          if n > biggest:
+              biggest = n
+      return biggest
+
+  print(find_max([3, 7, 2, 9, 4]))
+challenge: |
+  Rewrite `find_max` using `functools.reduce(lambda a, b: a if a > b
+  else b, nums)`, instead of a manual loop with an accumulator
+  variable. Keep the same output: 9.
+expected_output: |
+  9
+hints:
+  - "from functools import reduce, then: return reduce(lambda a, b: a if a > b else b, nums)."
+  - "The lambda carries the LARGER of each pair forward as the running accumulator -- exactly what the hand-written biggest variable was doing."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 20
+difficulty: core
+contains_patterns:
+  - "reduce\\(lambda a, b: a if a > b else b, nums\\)"
+concept_tags: [functools, reduce]

@@ -1,0 +1,66 @@
+id: ai_307
+title: "Invoking an Uncompiled Graph Should Say So Clearly, Not Crash With a Bare KeyError"
+language: ai
+level: 307
+objective: "Fix an invoke function that assumes a graph is always compiled, crashing with a raw KeyError when it isn't, instead of raising a clear, specific error explaining that compile() needs to be called first."
+explanation: |
+  A graph object typically isn't runnable until it's been compiled --
+  compilation is what validates the structure and builds whatever
+  internal representation `invoke()` actually needs. Calling `invoke()`
+  on a graph that skipped that step should say exactly that, rather
+  than crashing with a `KeyError` on some internal key the caller has
+  no reason to know or care about.
+
+  The bug this exercise fixes indexes `graph["run"]` directly, with no
+  check. The fix checks whether the graph has actually been compiled
+  first, raising a clear, actionable error if not.
+example_code: |
+  # The trap: assumes graph is always compiled -- crashes with a raw
+  # KeyError if "run" was never set.
+  def invoke_trap(graph, state):
+      return graph["run"](state)
+
+  graph = {}   # never compiled -- no "run" entry at all
+  # invoke_trap(graph, {})  # KeyError: 'run' -- no hint that compile() was ever needed
+
+  # The fix: check whether the graph has actually been compiled first.
+  def invoke(graph, state):
+      if "run" not in graph:
+          raise ValueError("graph has not been compiled yet -- call compile() first")
+      return graph["run"](state)
+
+  try:
+      invoke(graph, {})
+  except ValueError as e:
+      print(str(e))
+  # "graph has not been compiled yet -- call compile() first" -- immediately actionable
+starter_code: |
+  def invoke(graph, state):
+      return graph["run"](state)
+
+  graph = {}
+  try:
+      print(invoke(graph, {}))
+  except KeyError:
+      print("unhandled")
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `invoke` so it checks `if "run" not in graph: raise
+  ValueError("graph has not been compiled yet -- call compile()
+  first")` before indexing `graph["run"]` directly. It should print
+  `graph has not been compiled yet -- call compile() first`, not
+  `unhandled`.
+expected_output: |
+  graph has not been compiled yet -- call compile() first
+hints:
+  - "Add the check as the first line of the function, before graph[\"run\"] is ever indexed into."
+  - "A bare KeyError on an internal key like \"run\" tells the caller nothing actionable -- the fix is about naming the actual required step (compile()) instead."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 42
+difficulty: warmup
+contains_patterns:
+  - "\"run\" not in graph"
+concept_tags: [langgraph, graph_compilation, error_handling]

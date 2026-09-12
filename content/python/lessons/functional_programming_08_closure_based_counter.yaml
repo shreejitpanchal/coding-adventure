@@ -1,0 +1,74 @@
+id: functional_programming_08
+title: "A Closure Remembers State Between Calls, Without a Class"
+language: python
+level: 343
+objective: "Build a counter using a closure that remembers its running total between calls (via nonlocal), instead of reaching for a full class with an instance attribute just to hold one piece of state."
+explanation: |
+  A closure -- an inner function that references a variable from its
+  enclosing function's scope -- keeps that variable alive for as long
+  as the closure itself exists, even after the enclosing function has
+  already returned. That's enough to hold simple running state between
+  calls without needing a full class: `make_counter()` creates a
+  `count` variable in its own scope, and the returned inner function
+  uses `nonlocal count` to *rebind* that outer variable (not create a
+  new local one) every time it's called, correctly remembering the
+  running total across separate calls.
+
+  `nonlocal` is required here specifically because `count += 1` would
+  otherwise be treated as creating a brand-new *local* variable inside
+  the inner function (the same rule this app's core-language lessons
+  cover for `UnboundLocalError`), shadowing the outer `count` instead
+  of updating it.
+example_code: |
+  # Without nonlocal: count += 1 creates a LOCAL variable, raising an error.
+  def make_counter_broken():
+      count = 0
+      def increment():
+          count += 1          # UnboundLocalError: count referenced before assignment
+          return count
+      return increment
+
+  # counter = make_counter_broken(); counter()  # would raise UnboundLocalError
+
+  # The fix: nonlocal rebinds the OUTER count, instead of shadowing it.
+  def make_counter():
+      count = 0
+      def increment():
+          nonlocal count
+          count += 1
+          return count
+      return increment
+
+  counter = make_counter()
+  print(counter())                   # 1
+  print(counter())                   # 2
+  print(counter())                   # 3 -- correctly remembered between calls
+starter_code: |
+  def make_counter():
+      count = 0
+      def increment():
+          count += 1
+          return count
+      return increment
+
+  counter = make_counter()
+  try:
+      print(counter())
+  except UnboundLocalError:
+      print("crashed")
+challenge: |
+  Fix `increment` by adding `nonlocal count` as its first line. It
+  should print `1`, not `crashed`.
+expected_output: |
+  1
+hints:
+  - "Add nonlocal count as the first line inside increment()."
+  - "count += 1 without nonlocal creates a new LOCAL variable inside increment -- nonlocal is what tells Python to rebind the OUTER count instead."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "nonlocal count"
+concept_tags: [functional_programming, closures, nonlocal]

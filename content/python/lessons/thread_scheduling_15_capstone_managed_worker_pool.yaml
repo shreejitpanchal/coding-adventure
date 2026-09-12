@@ -1,0 +1,95 @@
+id: thread_scheduling_15
+title: "Capstone: A Worker Pool With Proper Lifecycle Management"
+language: python
+level: 435
+objective: "Combine this category's Thread subclassing, exception hook, and join(timeout)/is_alive() lessons into one small worker-pool helper: workers run via an overridden run(), failures are captured through a custom excepthook instead of silently printing to stderr, and completion is checked with a bounded join instead of blocking forever."
+explanation: |
+  This category has built up several separate pieces of proper thread
+  lifecycle management: subclassing `Thread` with an overridden
+  `run()` for the actual work, capturing a worker's exception via a
+  custom `threading.excepthook` instead of relying on its silent
+  default, and using `join(timeout)` plus `is_alive()` to check
+  completion without blocking forever. A small, well-managed worker
+  pool combines all three: each worker is a `Thread` subclass, any
+  failure is captured centrally instead of just printing to stderr,
+  and the pool waits for every worker with a bounded timeout,
+  reporting which ones actually finished.
+
+  The bug this exercise fixes has none of these -- a bare `Thread`
+  with `target=`, no exception capture, and an unbounded `join()`. The
+  fix adds all three pieces together.
+example_code: |
+  # The trap: bare threads, no exception capture, unbounded joins.
+  import threading
+
+  def run_pool_trap(worker_count):
+      threads = [threading.Thread(target=lambda: None) for _ in range(worker_count)]
+      for t in threads:
+          t.start()
+      for t in threads:
+          t.join()
+      return "done"
+
+  print(run_pool_trap(3))
+  # "done" -- no visibility into failures, no bounded waiting at all
+
+  # The fix: subclassed workers, a captured excepthook, bounded joins.
+  failures = []
+
+  def custom_excepthook(args):
+      failures.append(args.exc_value)
+
+  threading.excepthook = custom_excepthook
+
+  class Worker(threading.Thread):
+      def __init__(self, should_fail):
+          super().__init__()
+          self.should_fail = should_fail
+      def run(self):
+          if self.should_fail:
+              raise ValueError("worker failed")
+
+  def run_pool(flags):
+      workers = [Worker(flag) for flag in flags]
+      for w in workers:
+          w.start()
+      for w in workers:
+          w.join(1.0)
+      return sum(1 for w in workers if not w.is_alive()), len(failures)
+
+  print(run_pool([False, True, False]))
+  # (3, 1) -- correctly: all 3 finished within the timeout, and 1 failure was captured
+starter_code: |
+  import threading
+
+  def run_pool(flags):
+      threads = [threading.Thread(target=lambda: None) for _ in flags]
+      for t in threads:
+          t.start()
+      for t in threads:
+          t.join()
+      return "done"
+
+  print(run_pool([False, True, False]))
+challenge: |
+  Rewrite this combining a `Worker(threading.Thread)` subclass (raising
+  in `run()` when told to fail), a `custom_excepthook` capturing
+  failures into a `failures` list, and `run_pool` joining each worker
+  with a `1.0` second timeout, returning
+  `(finished_count, len(failures))`. It should print `(3, 1)`, not
+  `done`.
+expected_output: |
+  (3, 1)
+hints:
+  - "class Worker(threading.Thread): def __init__(self, should_fail): super().__init__(); self.should_fail = should_fail; def run(self): if self.should_fail: raise ValueError(\"worker failed\")."
+  - "threading.excepthook = custom_excepthook (appending args.exc_value to failures), then join each worker with w.join(1.0), returning (sum(1 for w in workers if not w.is_alive()), len(failures))."
+xp_reward: 20
+achievement: thread_scheduling_master
+category: thread_scheduling
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "class Worker\\(threading\\.Thread\\):"
+  - "threading\\.excepthook = custom_excepthook"
+  - "w\\.join\\(1\\.0\\)"
+concept_tags: [threading, worker_pool, lifecycle, capstone]

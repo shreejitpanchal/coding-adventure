@@ -1,0 +1,73 @@
+id: stdlib_deep_dive_18
+title: "cmp_to_key Adapts an Old-Style Two-Argument Comparator Into a Sort Key"
+language: python
+level: 219
+objective: "Fix a sorted() call that passes a two-argument comparator function directly as 'key', when 'key' expects a function taking exactly ONE argument -- functools.cmp_to_key is what adapts a comparator into something sorted() can actually use."
+explanation: |
+  `sorted()`'s `key` argument expects a function that takes *one*
+  element and returns a value to compare it by -- passing a two-
+  argument comparator function (the older style, returning negative,
+  zero, or positive depending on which of two elements should sort
+  first) directly as `key` is a type mismatch: `key` will call it with
+  only one argument, and the function needs two. `functools.cmp_to_key`
+  is built specifically to bridge this gap, wrapping a comparator
+  function into something `sorted()`'s `key` parameter can actually
+  use.
+
+  The bug this exercise fixes passes the raw comparator directly as
+  `key`. The fix wraps it with `cmp_to_key` first.
+example_code: |
+  # The trap: passes a two-argument comparator directly as key -- but
+  # key expects a function taking exactly ONE argument.
+  def compare(a, b):
+      return len(b) - len(a)
+
+  words = ["a", "ccc", "bb"]
+
+  def sort_by_length_trap(words):
+      return sorted(words, key=compare)
+
+  try:
+      sort_by_length_trap(words)
+  except TypeError:
+      print("crashed")
+  # "crashed" -- TypeError: compare() missing 1 required positional argument
+
+  # The fix: cmp_to_key adapts the comparator into a real key function.
+  from functools import cmp_to_key
+
+  def sort_by_length(words):
+      return sorted(words, key=cmp_to_key(compare))
+
+  print(sort_by_length(words))
+  # ['ccc', 'bb', 'a'] -- correctly sorted using the comparator
+starter_code: |
+  def compare(a, b):
+      return len(b) - len(a)
+
+  words = ["a", "ccc", "bb"]
+
+  def sort_by_length(words):
+      return sorted(words, key=compare)
+
+  try:
+      print(sort_by_length(words))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `sort_by_length` so it uses `key=cmp_to_key(compare)` (imported
+  from `functools`), instead of passing `compare` directly as `key`.
+  It should print `['ccc', 'bb', 'a']`, not `crashed`.
+expected_output: |
+  ['ccc', 'bb', 'a']
+hints:
+  - "from functools import cmp_to_key, then: sorted(words, key=cmp_to_key(compare))."
+  - "key needs a one-argument function; compare takes two -- cmp_to_key is the adapter that bridges that gap."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "cmp_to_key\\(compare\\)"
+concept_tags: [functools, cmp_to_key, sorting]

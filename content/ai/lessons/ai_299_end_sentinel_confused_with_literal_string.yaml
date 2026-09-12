@@ -1,0 +1,60 @@
+id: ai_299
+title: "The Real END Sentinel Is an Object, Not the Coincidental String 'END'"
+language: ai
+level: 299
+objective: "Fix a finished-check that compares against the literal string 'END', when the graph's real sentinel is a distinct object -- so a value that merely equals the string 'END' should never be mistaken for the actual termination marker, and the genuine sentinel should never go unrecognized just because it isn't that string."
+explanation: |
+  A dedicated sentinel object (`END = object()`) is sometimes used
+  specifically *because* it can't be confused with an ordinary piece of
+  data that happens to look similar -- unlike the string `"END"`, which
+  a node's own state could plausibly contain as real, meaningful data
+  (a status field genuinely valued `"END"` for unrelated reasons) with
+  no connection to the graph's actual termination logic at all. A check
+  comparing against the string misses the real sentinel object entirely
+  and risks false-triggering on a coincidental piece of unrelated data.
+
+  The bug this exercise fixes compares `current == "END"` -- the
+  string. The fix uses `is` to check identity against the actual
+  sentinel object.
+example_code: |
+  # The trap: compares against the STRING "END" -- but the real
+  # sentinel is a distinct object, not that string.
+  END = object()
+
+  def is_finished_trap(current):
+      return current == "END"
+
+  print(is_finished_trap(END))
+  # False -- the actual END sentinel was never recognized, because it isn't the string "END" at all
+
+  # The fix: check identity against the actual sentinel object.
+  def is_finished(current):
+      return current is END
+
+  print(is_finished(END))
+  # True -- correctly recognizes the actual sentinel object
+starter_code: |
+  END = object()
+
+  def is_finished(current):
+      return current == "END"
+
+  print(is_finished(END))
+challenge: |
+  Fix `is_finished` so it returns `current is END`, checking identity
+  against the real sentinel object, instead of `current == "END"`,
+  which compares against an unrelated string. It should print `True`,
+  not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace current == \"END\" with current is END."
+  - "END = object() creates a value that's equal to nothing else in the entire program except itself -- the string \"END\" was never it, no matter how similar it looks."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 34
+difficulty: gotcha
+contains_patterns:
+  - "current is END"
+concept_tags: [langgraph, end_sentinel, identity_vs_equality]

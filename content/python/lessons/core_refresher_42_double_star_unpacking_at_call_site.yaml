@@ -1,0 +1,48 @@
+id: core_refresher_42
+title: "** at a Call Site Unpacks a Dict Into Separate Keyword Arguments"
+language: python
+level: 155
+objective: "Replace manually pulling each value out of a dict to pass as a keyword argument with '**' unpacking at the call site."
+explanation: |
+  Manually reading each value out of a dict to pass it as its own
+  keyword argument (`greet(data["name"], data["greeting"])`) works, but
+  it duplicates the dict's own keys as separate lookups and breaks the
+  moment a key is renamed on one side but not the other. `**` at a call
+  site unpacks a dict directly into keyword arguments matched by key
+  name -- `greet(**data)` passes `name=data["name"],
+  greeting=data["greeting"]` automatically, matching each dict key
+  against the function's actual parameter names.
+example_code: |
+  # Manually reading each value out of the dict by key.
+  def greet(name, greeting):
+      return f"{greeting}, {name}!"
+
+  data = {"name": "Ada", "greeting": "Hi"}
+  print(greet(data["name"], data["greeting"]))
+  # Hi, Ada!
+
+  # ** unpacks the dict directly into matching keyword arguments.
+  print(greet(**data))
+  # Hi, Ada!
+starter_code: |
+  def greet(name, greeting):
+      return f"{greeting}, {name}!"
+
+  data = {"name": "Ada", "greeting": "Hi"}
+  print(greet(data["name"], data["greeting"]))
+challenge: |
+  Rewrite the call as `greet(**data)`, unpacking the dict directly
+  into keyword arguments. Keep the same output: Hi, Ada!.
+expected_output: |
+  Hi, Ada!
+hints:
+  - "Replace greet(data[\"name\"], data[\"greeting\"]) with greet(**data)."
+  - "** matches each dict key against the function's parameter names -- \"name\" and \"greeting\" here line up exactly with greet's own parameters."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 42
+difficulty: core
+contains_patterns:
+  - "greet\\(\\*\\*data\\)"
+concept_tags: [unpacking, function_calls]

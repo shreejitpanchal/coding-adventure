@@ -1,0 +1,87 @@
+id: core_refresher_25
+title: "ABC + @abstractmethod Refuses to Let a Subclass Forget an Override"
+language: python
+level: 138
+objective: "Fix a base class using ABC and @abstractmethod, when a plain placeholder method silently lets a subclass forget to override it -- an abstract method instead refuses to let that subclass be instantiated at all."
+explanation: |
+  A base class with a placeholder method that just `pass`es provides
+  no actual protection -- a subclass that forgets to override it
+  silently inherits the useless placeholder, and the bug (wrong or
+  missing behavior) doesn't surface until something actually calls the
+  method and gets back garbage. `abc.ABC` combined with
+  `@abstractmethod` makes the omission impossible to miss: a subclass
+  that doesn't override *every* abstract method can't be instantiated
+  at all, raising `TypeError` the moment someone tries, at the exact
+  point the mistake was made rather than somewhere downstream.
+
+  The bug this exercise fixes has a plain placeholder `area()` that
+  silently returns `None` if a subclass forgets to override it. The
+  fix makes `Shape` an ABC with an abstract `area()`.
+example_code: |
+  # A placeholder method -- silently inherited if a subclass forgets
+  # to override it, with no error at all.
+  class ShapeLoop:
+      def area(self):
+          pass
+
+  class TriangleLoop(ShapeLoop):
+      def __init__(self, base, height):
+          self.base = base
+          self.height = height
+      # forgot to override area() -- silently inherits the useless placeholder
+
+  t_loop = TriangleLoop(4, 3)
+  print(t_loop.area())
+  # None -- silently wrong, no error at all
+
+  # ABC + @abstractmethod refuses to let this happen.
+  from abc import ABC, abstractmethod
+
+  class Shape(ABC):
+      @abstractmethod
+      def area(self):
+          pass
+
+  class Triangle(Shape):
+      def __init__(self, base, height):
+          self.base = base
+          self.height = height
+
+  try:
+      t = Triangle(4, 3)
+      print(t.area())
+  except TypeError:
+      print("cannot instantiate")
+  # "cannot instantiate" -- correctly refused, since area() was never overridden
+starter_code: |
+  class Shape:
+      def area(self):
+          pass
+
+  class Triangle(Shape):
+      def __init__(self, base, height):
+          self.base = base
+          self.height = height
+
+  try:
+      t = Triangle(4, 3)
+      print(t.area())
+  except TypeError:
+      print("cannot instantiate")
+challenge: |
+  Fix `Shape` so it's an `ABC` with an `@abstractmethod` `area()`,
+  instead of a plain placeholder method. It should print
+  `cannot instantiate`, not `None`.
+expected_output: |
+  cannot instantiate
+hints:
+  - "from abc import ABC, abstractmethod, then: class Shape(ABC): with @abstractmethod above def area(self): pass."
+  - "A subclass that doesn't override every abstract method can't be instantiated at all -- the check happens right when the object is constructed."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "class Shape\\(ABC\\):"
+concept_tags: [abstract_base_classes, abstractmethod]

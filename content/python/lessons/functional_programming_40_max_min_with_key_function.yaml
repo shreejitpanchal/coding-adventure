@@ -1,0 +1,61 @@
+id: functional_programming_40
+title: "max()'s key Parameter Is Itself a Higher-Order Function"
+language: python
+level: 375
+objective: "Replace a manual loop tracking 'the best one so far' by comparing a computed property with max(items, key=...), passing the property-computing function directly as the comparison key."
+explanation: |
+  A loop tracking the "best so far" item by some derived property
+  (the longest string, by its length) needs a manual comparison and a
+  mutable `best` variable, updated whenever something better is
+  found. `max(items, key=func)` expresses exactly this directly:
+  `func` is itself passed as an ordinary higher-order function
+  argument, telling `max` *what property to compare by* without it
+  needing to know anything else about what the items actually are --
+  `max(words, key=len)` reads as "the item with the largest length,"
+  with no manual comparison loop written out at all.
+
+  The fix replaces the manual comparison loop with `max(words,
+  key=len)`.
+example_code: |
+  # The manual loop: tracks the "best so far" with an explicit comparison.
+  def longest_loop(words):
+      best = words[0]
+      for w in words[1:]:
+          if len(w) > len(best):
+              best = w
+      return best
+
+  print(longest_loop(["cat", "elephant", "dog"]))
+  # "elephant"
+
+  # The fix: max()'s key parameter IS the comparison function, passed directly.
+  def longest(words):
+      return max(words, key=len)
+
+  print(longest(["cat", "elephant", "dog"]))
+  # "elephant" -- same result, with no manual comparison loop at all
+starter_code: |
+  def longest(words):
+      best = words[0]
+      for w in words[1:]:
+          if len(w) > len(best):
+              best = w
+      return best
+
+  print(longest(["cat", "elephant", "dog"]))
+challenge: |
+  Rewrite `longest` using `max(words, key=len)`, instead of a manual
+  comparison loop. Keep the same output: elephant.
+expected_output: |
+  elephant
+hints:
+  - "return max(words, key=len)."
+  - "key=len is itself a higher-order function argument -- it tells max() what property to compare by, without max() needing to know anything else about the items."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 40
+difficulty: core
+contains_patterns:
+  - "max\\(words, key=len\\)"
+concept_tags: [functional_programming, higher_order_functions, max]

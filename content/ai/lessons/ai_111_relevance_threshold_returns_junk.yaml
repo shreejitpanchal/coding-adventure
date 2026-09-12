@@ -1,0 +1,61 @@
+id: ai_111
+title: "Top-K Without a Relevance Floor Returns Junk When Nothing Is Actually Relevant"
+language: ai
+level: 111
+objective: "Fix a retrieval function that always returns k results regardless of how low their similarity score is, instead of applying a minimum relevance threshold and returning fewer (or zero) results when nothing genuinely relevant exists."
+explanation: |
+  Top-k retrieval, by construction, always returns exactly k results --
+  even when the true best match barely relates to the query at all.
+  Feeding a barely-relevant chunk into a prompt is worse than feeding
+  nothing (see this category's own empty-results lesson on handling a
+  genuine miss gracefully): it actively misleads a model into
+  generating an answer grounded in content that doesn't really answer
+  the question, rather than honestly reporting that nothing relevant
+  was found.
+
+  The bug this exercise fixes returns the top-k candidates unconditionally,
+  regardless of how low their similarity score actually is. The fix
+  filters out any candidate below a minimum relevance threshold *before*
+  taking the top-k, so a query with nothing genuinely relevant correctly
+  returns fewer results (or none), rather than padding out to k with junk.
+example_code: |
+  # The trap: always returns exactly k results, even when NOTHING
+  # actually clears a reasonable bar for relevance.
+  def retrieve_trap(candidates, k):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      return ranked[:k]
+
+  candidates = [{"text": "unrelated content", "score": 0.12}, {"text": "also unrelated", "score": 0.08}]
+  print(len(retrieve_trap(candidates, k=3)))   # 2 -- returns junk, since nothing was actually relevant
+
+  # The fix: filter by a minimum relevance threshold BEFORE taking top-k.
+  def retrieve(candidates, k, min_score=0.5):
+      relevant = [c for c in candidates if c["score"] >= min_score]
+      ranked = sorted(relevant, key=lambda c: c["score"], reverse=True)
+      return ranked[:k]
+
+  print(len(retrieve(candidates, k=3)))   # 0 -- correctly reports nothing genuinely relevant was found
+starter_code: |
+  def retrieve(candidates, k, min_score=0.5):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      return ranked[:k]
+
+  candidates = [{"text": "unrelated content", "score": 0.12}, {"text": "also unrelated", "score": 0.08}]
+  print(len(retrieve(candidates, k=3)))
+challenge: |
+  Fix `retrieve` so it filters candidates by `min_score` before ranking
+  and taking the top-k, instead of returning the top-k unconditionally.
+  It should print `0`, not `2`.
+expected_output: |
+  0
+hints:
+  - "Build a `relevant` list first: [c for c in candidates if c[\"score\"] >= min_score]."
+  - "Sort and slice `relevant`, not the original unfiltered `candidates` -- neither candidate here clears the 0.5 threshold, so the result is correctly empty."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "c\\[.score.\\] >= min_score"
+concept_tags: [rag, relevance_threshold, retrieval]

@@ -1,0 +1,75 @@
+id: concurrency_async_11
+title: "A Worker Thread's Exception Vanishes Silently Unless .result() Is Called"
+language: python
+level: 301
+objective: "Fix code that submits a failing task to a ThreadPoolExecutor but never calls .result() on the returned Future, silently losing the exception entirely -- calling .result() is what actually re-raises it in the calling thread."
+explanation: |
+  A `Future` returned by `pool.submit(func)` doesn't raise an
+  exception the instant the worker function fails -- the exception is
+  simply *stored* on the `Future` object, waiting to be retrieved.
+  Nothing about a failing background task shows up as visible output,
+  a crash, or even a warning unless something actually asks for the
+  result: calling `future.result()` is what re-raises the stored
+  exception in the calling thread, at the point `.result()` is
+  called. Code that submits a task and never calls `.result()` (or
+  checks `.exception()`) on the returned `Future` silently loses any
+  failure that happened inside it -- the program just continues as if
+  nothing went wrong.
+
+  The fix is calling `.result()` on the `Future`, inside a `try/
+  except`, so a worker's exception is actually surfaced instead of
+  disappearing unnoticed.
+example_code: |
+  # The trap: never calls .result() -- the exception is silently lost.
+  from concurrent.futures import ThreadPoolExecutor
+
+  def risky_trap():
+      raise ValueError("bad input")
+
+  with ThreadPoolExecutor() as pool:
+      future_trap = pool.submit(risky_trap)
+
+  print("finished without ever seeing the error")
+  # This prints normally -- the ValueError inside risky_trap() never surfaced at all
+
+  # The fix: .result() re-raises the stored exception in the calling thread.
+  def risky():
+      raise ValueError("bad input")
+
+  with ThreadPoolExecutor() as pool:
+      future = pool.submit(risky)
+      try:
+          future.result()
+          print("ok")
+      except ValueError:
+          print("caught the worker's exception")
+  # "caught the worker's exception" -- correctly surfaced, instead of silently lost
+starter_code: |
+  from concurrent.futures import ThreadPoolExecutor
+
+  def risky():
+      raise ValueError("bad input")
+
+  with ThreadPoolExecutor() as pool:
+      future = pool.submit(risky)
+
+  print("finished without ever seeing the error")
+challenge: |
+  Fix this by calling `future.result()` inside a `try/except
+  ValueError:`, printing `"caught the worker's exception"` when it
+  fires. It should print `caught the worker's exception`, not
+  `finished without ever seeing the error`.
+expected_output: |
+  caught the worker's exception
+hints:
+  - "try: future.result() except ValueError: print(\"caught the worker's exception\")."
+  - "A Future just STORES a worker's exception -- nothing surfaces it automatically until something actually calls .result() (or .exception()) on it."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "future\\.result\\(\\)"
+  - "caught the worker's exception"
+concept_tags: [threading, futures, exceptions, concurrency]

@@ -1,0 +1,87 @@
+id: concurrency_async_14
+title: "Creating a Coroutine Object Doesn't Run Anything -- create_task Does"
+language: python
+level: 304
+objective: "Fix code that expects calling a coroutine function to already start running it, when calling it only creates a coroutine OBJECT that does nothing at all until it's awaited or scheduled -- asyncio.create_task actually schedules it to start running in the background right away."
+explanation: |
+  Calling an `async def` function doesn't execute any of its body --
+  it just constructs a coroutine *object*, the same way calling a
+  generator function doesn't run any of its code until something
+  actually iterates it. `worker(log, 1)` on its own does nothing at
+  all; the code inside `worker` only starts executing once that
+  coroutine object is `await`-ed directly, or handed to
+  `asyncio.create_task(...)`, which schedules it to start running on
+  the event loop as an independent background task -- genuinely
+  starting soon, before the caller ever gets around to awaiting it
+  itself.
+
+  The bug this exercise fixes creates two coroutine objects and checks
+  whether they've started, expecting them to already be running --
+  they aren't, since nothing has driven them yet. The fix wraps each
+  in `asyncio.create_task(...)`, which schedules them to actually
+  start.
+example_code: |
+  # The trap: creating a coroutine OBJECT runs nothing at all yet.
+  import asyncio
+
+  async def worker(log, n):
+      log.append(f"start-{n}")
+      await asyncio.sleep(0.01)
+      log.append(f"end-{n}")
+
+  async def main_trap():
+      log = []
+      coro1 = worker(log, 1)      # just an object -- nothing has run
+      coro2 = worker(log, 2)
+      print(log)                  # [] -- WRONG if expecting them to have started
+      await coro1
+      await coro2
+
+  asyncio.run(main_trap())
+
+  # The fix: create_task SCHEDULES the coroutine to start running right away.
+  async def main():
+      log = []
+      task1 = asyncio.create_task(worker(log, 1))
+      task2 = asyncio.create_task(worker(log, 2))
+      await asyncio.sleep(0)       # yield control so the tasks get a chance to run
+      print(log)                   # ['start-1', 'start-2'] -- both already started
+      await task1
+      await task2
+
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  async def worker(log, n):
+      log.append(f"start-{n}")
+      await asyncio.sleep(0.01)
+      log.append(f"end-{n}")
+
+  async def main():
+      log = []
+      coro1 = worker(log, 1)
+      coro2 = worker(log, 2)
+      print(log)
+      await coro1
+      await coro2
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it wraps each `worker(...)` call in
+  `asyncio.create_task(...)`, then `await asyncio.sleep(0)` to let
+  them actually start, before printing `log`. It should print
+  `['start-1', 'start-2']`, not `[]`.
+expected_output: |
+  ['start-1', 'start-2']
+hints:
+  - "task1 = asyncio.create_task(worker(log, 1)), task2 = asyncio.create_task(worker(log, 2)), then await asyncio.sleep(0) before printing log."
+  - "Calling an async function only builds a coroutine OBJECT -- nothing runs until it's awaited directly or handed to create_task, which schedules it to actually start."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 14
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.create_task\\(worker\\(log, 1\\)\\)"
+concept_tags: [asyncio, tasks, concurrency]

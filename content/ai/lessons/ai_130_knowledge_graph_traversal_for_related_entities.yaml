@@ -1,0 +1,61 @@
+id: ai_130
+title: "Vector Search Alone Misses Explicitly Linked Related Entities"
+language: ai
+level: 130
+objective: "Fix a retrieval function that returns only the directly matched document, when a knowledge graph explicitly links it to related entities that pure text similarity would never surface on its own."
+explanation: |
+  Pure vector similarity retrieves documents that read as textually
+  similar to the query -- but some genuinely relevant connections
+  aren't expressed through similar wording at all. A **knowledge
+  graph** encodes explicit relationships (`"Product X" -[requires]->
+  "Component Y"`) that vector similarity has no way to discover, since
+  the two documents might use completely different vocabulary while
+  still being directly, explicitly related. Combining a direct text
+  match with a graph traversal one hop out can surface genuinely
+  relevant related entities that similarity search alone would never
+  find.
+
+  The bug this exercise fixes returns only the single directly matched
+  document, never traversing the knowledge graph for related entities
+  at all. The fix looks up the matched entity's direct graph
+  neighbors and includes them in the result, surfacing explicitly
+  linked information the text match alone would have missed.
+example_code: |
+  # The trap: returns ONLY the directly matched document -- never
+  # traverses the graph for explicitly related entities at all.
+  def retrieve_trap(matched_entity, knowledge_graph):
+      return [matched_entity]
+
+  knowledge_graph = {"Product X": ["Component Y", "Component Z"]}
+  print(retrieve_trap("Product X", knowledge_graph))   # ['Product X'] -- misses the explicitly linked components
+
+  # The fix: also include the matched entity's direct graph neighbors.
+  def retrieve_with_graph(matched_entity, knowledge_graph):
+      related = knowledge_graph.get(matched_entity, [])
+      return [matched_entity] + related
+
+  print(retrieve_with_graph("Product X", knowledge_graph))   # ['Product X', 'Component Y', 'Component Z']
+starter_code: |
+  def retrieve_with_graph(matched_entity, knowledge_graph):
+      return [matched_entity]
+
+  knowledge_graph = {"Product X": ["Component Y", "Component Z"]}
+  print(retrieve_with_graph("Product X", knowledge_graph))
+challenge: |
+  Fix `retrieve_with_graph` so it includes the matched entity's direct
+  neighbors from `knowledge_graph`, in addition to the entity itself.
+  It should print `['Product X', 'Component Y', 'Component Z']`, not
+  `['Product X']`.
+expected_output: |
+  ['Product X', 'Component Y', 'Component Z']
+hints:
+  - "Look up related = knowledge_graph.get(matched_entity, []) -- defaulting to an empty list if the entity has no graph entry."
+  - "Return [matched_entity] + related, combining the direct match with its graph neighbors into one list."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "knowledge_graph\\.get\\(matched_entity"
+concept_tags: [rag, knowledge_graph, graph_traversal]

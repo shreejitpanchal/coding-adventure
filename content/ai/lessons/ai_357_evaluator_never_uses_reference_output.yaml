@@ -1,0 +1,53 @@
+id: ai_357
+title: "A Similarity Evaluator Needs the Reference Output, Not Just the Actual One"
+language: ai
+level: 357
+objective: "Fix an evaluator that never actually looks at the reference output it was given, when comparing an actual response's quality genuinely requires comparing it against something -- an evaluator that only inspects the actual output in isolation can't tell correct from wrong at all."
+explanation: |
+  Some evaluation criteria are only meaningful relative to a reference
+  -- how similar is this answer to the expected one? -- and an
+  evaluator that accepts a `reference` parameter but never actually
+  reads it can't measure that at all, no matter how sophisticated its
+  logic on the `actual` value alone looks. A property like "length of
+  the actual output" tells you nothing about whether it's correct;
+  only comparing it against the reference can.
+
+  The bug this exercise fixes computes `len(actual)`, never touching
+  `reference`. The fix actually compares `actual` against `reference`.
+example_code: |
+  # The trap: never actually uses reference at all -- can't tell
+  # "correct" from "wrong but coincidentally the same length."
+  def evaluate_similarity_trap(actual, reference):
+      return len(actual)
+
+  print(evaluate_similarity_trap("wrong answer", reference="right answer"))
+  # 12 -- meaningless without ever comparing to the reference
+
+  # The fix: actually compare actual against reference.
+  def evaluate_similarity(actual, reference):
+      return actual == reference
+
+  print(evaluate_similarity("wrong answer", reference="right answer"))
+  # False -- correctly reflects that these are actually different
+starter_code: |
+  def evaluate_similarity(actual, reference):
+      return len(actual)
+
+  print(evaluate_similarity("wrong answer", reference="right answer"))
+challenge: |
+  Fix `evaluate_similarity` so it returns `actual == reference`,
+  instead of `len(actual)`, which never even looks at `reference`. It
+  should print `False`, not `12`.
+expected_output: |
+  False
+hints:
+  - "Replace return len(actual) with return actual == reference."
+  - "A parameter accepted by a function but never read inside it can't possibly influence the function's result -- that's the whole bug here."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 47
+difficulty: warmup
+contains_patterns:
+  - "return actual == reference"
+concept_tags: [langsmith, evaluators, reference_comparison]

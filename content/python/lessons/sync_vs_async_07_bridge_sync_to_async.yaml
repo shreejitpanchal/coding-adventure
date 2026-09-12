@@ -1,0 +1,70 @@
+id: sync_vs_async_07
+title: "Calling an Async Function From Genuinely Synchronous Code"
+language: python
+level: 437
+objective: "Fix synchronous code calling an async function directly (getting back an unawaited coroutine object instead of the real result), when asyncio.run() is exactly the right bridge for calling async code from code that ISN'T already inside an event loop -- a thin, synchronous-looking wrapper around it."
+explanation: |
+  Plain synchronous code -- a regular function, a script's top-level
+  code, anything that isn't itself a coroutine running inside an
+  already-active event loop -- has no way to `await` anything directly,
+  since `await` is only legal inside an `async def` function. Calling
+  an async function from there directly just produces an unawaited
+  coroutine object, exactly like this category's earlier
+  never-awaited lesson covers. `asyncio.run(coro)` is the correct
+  bridge specifically for this situation: it creates a brand-new event
+  loop, runs the coroutine to completion on it, and returns the real
+  result -- letting genuinely synchronous code call into async code
+  cleanly, as long as it's not itself already running inside another
+  event loop (which would need a different approach, covered
+  elsewhere).
+
+  The fix wraps the async call in `asyncio.run(...)`.
+example_code: |
+  # The trap: calling an async function directly from sync code.
+  async def fetch_data_trap(x):
+      return x * 2
+
+  def call_from_sync_trap(x):
+      return fetch_data_trap(x)
+
+  result_trap = call_from_sync_trap(21)
+  print(type(result_trap).__name__)
+  # "coroutine" -- WRONG, this is an unawaited coroutine object, not 42
+
+  # The fix: asyncio.run() bridges genuinely synchronous code into async.
+  import asyncio
+
+  async def fetch_data(x):
+      return x * 2
+
+  def call_from_sync(x):
+      return asyncio.run(fetch_data(x))
+
+  print(call_from_sync(21))
+  # 42 -- correctly bridged from sync code into the async function and back
+starter_code: |
+  async def fetch_data(x):
+      return x * 2
+
+  def call_from_sync(x):
+      return fetch_data(x)
+
+  result = call_from_sync(21)
+  print(result)
+challenge: |
+  Fix `call_from_sync` so it returns `asyncio.run(fetch_data(x))`
+  (importing `asyncio`), instead of calling `fetch_data` directly. It
+  should print `42`, not a coroutine object.
+expected_output: |
+  42
+hints:
+  - "import asyncio, then: return asyncio.run(fetch_data(x))."
+  - "asyncio.run() is the correct bridge for calling async code from genuinely synchronous code that isn't already inside a running event loop."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "asyncio\\.run\\(fetch_data\\(x\\)\\)"
+concept_tags: [asyncio, sync_vs_async]

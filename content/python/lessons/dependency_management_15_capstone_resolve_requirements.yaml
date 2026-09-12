@@ -1,0 +1,74 @@
+id: dependency_management_15
+title: "Capstone: Parse, Compare, and Detect Conflicts in One resolve() Pass"
+language: python
+level: 425
+objective: "Combine this category's requirement parsing (name==version), numeric version comparison, and conflict detection into one resolve(lines) function that parses a list of requirement lines and raises on any genuine version conflict for the same package, instead of a stub that does none of this."
+explanation: |
+  This category has built up three separate pieces: parsing a
+  `name==version` line apart, comparing versions numerically rather
+  than as raw strings, and detecting a genuine conflict when two
+  different sources require incompatible versions of the same
+  package. A real `resolve()` step combines all three: parse every
+  line into `(name, version)`, and as each one is added to the
+  resolved set, check whether that package was already resolved to a
+  *different* version -- if so, raise a clear conflict error, exactly
+  like this category's conflict-detection lesson, but now driven by
+  actually parsing raw requirement lines first instead of already
+  having clean tuples handed to it.
+
+  The fix combines `partition("==")` parsing with the same conflict
+  check this category's dependency-conflict lesson already covers.
+example_code: |
+  # The trap: does nothing -- no parsing, no comparison, no conflict detection.
+  def resolve_trap(lines):
+      return lines
+
+  print(resolve_trap(["requests==2.0.0", "requests==3.0.0"]))
+  # ['requests==2.0.0', 'requests==3.0.0'] -- WRONG, never even noticed the conflict
+
+  # The fix: parse each line, detect a genuine conflict as they're merged in.
+  def resolve(lines):
+      resolved = {}
+      for line in lines:
+          name, _, version = line.partition("==")
+          if name in resolved and resolved[name] != version:
+              raise ValueError(f"conflicting requirements for {name}: {resolved[name]} vs {version}")
+          resolved[name] = version
+      return resolved
+
+  try:
+      resolve(["requests==2.0.0", "requests==3.0.0"])
+      print("resolved")
+  except ValueError as e:
+      print(e)
+  # conflicting requirements for requests: 2.0.0 vs 3.0.0 -- correctly caught
+starter_code: |
+  def resolve(lines):
+      return lines
+
+  try:
+      print(resolve(["requests==2.0.0", "requests==3.0.0"]))
+  except ValueError as e:
+      print(e)
+challenge: |
+  Rewrite `resolve` so it parses each line with `line.partition("==")`
+  into `(name, version)`, and raises
+  `ValueError(f"conflicting requirements for {name}: {resolved[name]}
+  vs {version}")` if `name` is already resolved to a *different*
+  version. It should print
+  `conflicting requirements for requests: 2.0.0 vs 3.0.0`, not the raw
+  list of lines.
+expected_output: |
+  conflicting requirements for requests: 2.0.0 vs 3.0.0
+hints:
+  - "name, _, version = line.partition(\"==\"), then: if name in resolved and resolved[name] != version: raise ValueError(...)."
+  - "This is exactly this category's conflict-detection check, just driven by parsing raw requirement lines first instead of already having clean (name, version) tuples handed to it."
+xp_reward: 20
+achievement: dependency_management_master
+category: dependency_management
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "line\\.partition\\(\"==\"\\)"
+  - "resolved\\[name\\] != version"
+concept_tags: [dependency_management, requirements_txt, conflicts, capstone]

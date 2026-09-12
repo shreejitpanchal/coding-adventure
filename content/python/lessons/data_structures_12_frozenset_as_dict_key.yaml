@@ -1,0 +1,67 @@
+id: data_structures_12
+title: "frozenset Is Immutable and Hashable -- a Plain set Is Neither"
+language: python
+level: 169
+objective: "Fix a lookup that tries to use a plain set as a dict key, when a plain set is mutable and therefore unhashable, exactly like the list-as-dict-key gotcha this category's idioms lesson covers -- frozenset is the immutable, hashable counterpart."
+explanation: |
+  A plain `set` is mutable (you can `.add()`/`.remove()` from it after
+  creation), which makes it unhashable for the exact same reason a
+  `list` is: Python refuses to let a mutable object be a dict key,
+  since its contents (and therefore its hash) could change while it's
+  in use as one. `frozenset` is a genuinely immutable version of the
+  same idea -- once built, it can never be modified, so it's safe to
+  hash and safe to use as a dict key or as an element of another set.
+
+  The bug this exercise fixes tries to use a plain `set` as a dict key.
+  The fix uses `frozenset` instead.
+example_code: |
+  # The trap: a plain set is mutable, so it's unhashable -- can't be
+  # used as a dict key at all.
+  def tag_lookup_trap():
+      key = {"a", "b"}
+      lookup = {}
+      try:
+          lookup[key] = "value"
+      except TypeError:
+          return "failed"
+      return "ok"
+
+  print(tag_lookup_trap())
+  # "failed" -- sets can't be dict keys at all
+
+  # The fix: frozenset is immutable and hashable.
+  def tag_lookup():
+      key = frozenset({"a", "b"})
+      lookup = {}
+      lookup[key] = "value"
+      return "ok"
+
+  print(tag_lookup())
+  # "ok" -- frozensets are safe to use as dict keys
+starter_code: |
+  def tag_lookup():
+      key = {"a", "b"}
+      lookup = {}
+      try:
+          lookup[key] = "value"
+      except TypeError:
+          return "failed"
+      return "ok"
+
+  print(tag_lookup())
+challenge: |
+  Fix `tag_lookup` so `key = frozenset({"a", "b"})`, instead of a plain
+  mutable set. It should print `ok`, not `failed`.
+expected_output: |
+  ok
+hints:
+  - "Wrap the set literal in frozenset(...): key = frozenset({\"a\", \"b\"})."
+  - "This is the exact same hashability rule as lists vs tuples -- a mutable collection can never be a dict key, only an immutable one can."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 12
+difficulty: warmup
+contains_patterns:
+  - "key = frozenset\\(\\{\"a\", \"b\"\\}\\)"
+concept_tags: [frozenset, hashability]

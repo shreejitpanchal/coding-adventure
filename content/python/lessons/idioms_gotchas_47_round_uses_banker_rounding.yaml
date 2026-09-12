@@ -1,0 +1,58 @@
+id: idioms_gotchas_47
+title: "round() Uses Banker's Rounding -- 2.5 Rounds to 2, Not 3"
+language: python
+level: 116
+objective: "Fix a rounding function that assumes round() always rounds a .5 value up, when Python's round() actually uses 'round half to even' (banker's rounding) for exact halfway cases -- round(2.5) gives 2, not 3, surprising anyone expecting the everyday-school-rules convention."
+explanation: |
+  Python's built-in `round()` follows IEEE 754's "round half to even"
+  rule for values exactly halfway between two integers: it rounds to
+  whichever neighbor is even, not always upward. `round(2.5)` gives
+  `2` (the nearest even number), while `round(3.5)` gives `4` -- also
+  the nearest even number. This deliberately reduces cumulative bias
+  when rounding many values, but it directly contradicts the "always
+  round halfway values up" convention most people learned in school,
+  which is exactly what code expecting the everyday convention needs
+  to account for.
+
+  The bug this exercise fixes calls `round(score)` directly, expecting
+  halfway values to round up. The fix uses `math.floor(score + 0.5)`,
+  which always rounds a halfway value up.
+example_code: |
+  # The trap: assumes round() always rounds .5 UP -- but Python's
+  # round() rounds halfway values to the nearest EVEN number instead.
+  def round_score_trap(score):
+      return round(score)
+
+  print(round_score_trap(2.5))
+  # 2 -- NOT 3! rounds to the nearest even number when exactly halfway
+
+  # The fix: math.floor(score + 0.5) always rounds halfway values up.
+  import math
+
+  def round_score(score):
+      return math.floor(score + 0.5)
+
+  print(round_score(2.5))
+  # 3 -- correctly rounded up, matching the everyday convention
+starter_code: |
+  def round_score(score):
+      return round(score)
+
+  print(round_score(2.5))
+challenge: |
+  Fix `round_score` so it returns `math.floor(score + 0.5)` (importing
+  `math` first), instead of `round(score)` directly. It should print
+  `3`, not `2`.
+expected_output: |
+  3
+hints:
+  - "import math, then: return math.floor(score + 0.5)."
+  - "round(2.5) gives 2 because Python rounds exact halfway values to the nearest EVEN integer, not always upward -- this is deliberate, documented behavior, not a bug in round() itself."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 47
+difficulty: gotcha
+contains_patterns:
+  - "math\\.floor\\(score \\+ 0\\.5\\)"
+concept_tags: [idioms, rounding, banker_rounding]

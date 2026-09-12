@@ -1,0 +1,67 @@
+id: ai_276
+title: "A Subgraph's Result Must Actually Merge Back Into the Outer State"
+language: ai
+level: 276
+objective: "Fix an outer runner that invokes a subgraph but discards whatever it returns, when using a whole graph as a single node in a larger graph only works if that nested graph's final state actually flows back into the outer one."
+explanation: |
+  A subgraph -- a whole separate graph used as one node inside a
+  larger graph -- lets a complex, reusable piece of logic (a full
+  research-and-summarize flow, say) be composed into a bigger pipeline
+  without flattening everything into one giant graph. That only works
+  end to end if the subgraph's own final state actually becomes part
+  of the outer graph's state once it finishes; running the subgraph and
+  throwing its result away defeats the entire reason to nest it in the
+  first place.
+
+  The bug this exercise fixes calls the subgraph function but returns
+  the outer state unchanged, discarding the subgraph's own result. The
+  fix returns what the subgraph actually produced.
+example_code: |
+  # The trap: runs the subgraph, but never merges its result back
+  # into the outer state at all.
+  def run_outer_trap(state, subgraph_fn):
+      subgraph_fn(state)
+      return state
+
+  def subgraph_fn(state):
+      new_state = dict(state)
+      new_state["sub_result"] = "computed"
+      return new_state
+
+  print("sub_result" in run_outer_trap({"input": "data"}, subgraph_fn))
+  # False -- the subgraph's result was computed but never merged back
+
+  # The fix: return what the subgraph actually produced.
+  def run_outer(state, subgraph_fn):
+      return subgraph_fn(state)
+
+  print("sub_result" in run_outer({"input": "data"}, subgraph_fn))
+  # True -- correctly merged back into the outer state
+starter_code: |
+  def subgraph_fn(state):
+      new_state = dict(state)
+      new_state["sub_result"] = "computed"
+      return new_state
+
+  def run_outer(state, subgraph_fn):
+      subgraph_fn(state)
+      return state
+
+  print("sub_result" in run_outer({"input": "data"}, subgraph_fn))
+challenge: |
+  Fix `run_outer` so it returns `subgraph_fn(state)` directly, instead
+  of calling it and then returning the original, unmerged `state`. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace the two lines (subgraph_fn(state); return state) with a single: return subgraph_fn(state)."
+  - "Calling a function for its side effect and discarding its return value is exactly what loses the subgraph's own contribution here."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 11
+difficulty: warmup
+contains_patterns:
+  - "return subgraph_fn\\(state\\)"
+concept_tags: [langgraph, subgraphs, state_merging]

@@ -1,0 +1,64 @@
+id: core_refresher_21
+title: "match/case Reads More Clearly Than a Long if/elif Chain"
+language: python
+level: 134
+objective: "Rewrite an if/elif chain comparing one value against several literal cases as a match statement."
+explanation: |
+  Python 3.10 added structural pattern matching via `match`/`case`,
+  which for the simple "compare one value against several possible
+  literals" case reads as a cleaner, more visually distinct alternative
+  to a long `if`/`elif`/`elif`/`else` chain -- each `case` lines up
+  visually as its own branch, and `case _:` is the idiomatic
+  catch-all, playing the same role `else` does in an if-chain. `match`
+  can do much more than literal comparison (destructuring, type
+  patterns, guards), but even at this simplest level it's a genuine,
+  common alternative worth recognizing.
+example_code: |
+  # A chain of if/elif comparing against literal string values.
+  def handle_loop(command):
+      if command == "start":
+          return "starting"
+      elif command == "stop":
+          return "stopping"
+      else:
+          return "unknown"
+
+  print(handle_loop("stop"))               # stopping
+
+  # The same logic as a match statement.
+  def handle(command):
+      match command:
+          case "start":
+              return "starting"
+          case "stop":
+              return "stopping"
+          case _:
+              return "unknown"
+
+  print(handle("stop"))                    # stopping
+starter_code: |
+  def handle(command):
+      if command == "start":
+          return "starting"
+      elif command == "stop":
+          return "stopping"
+      else:
+          return "unknown"
+
+  print(handle("stop"))
+challenge: |
+  Rewrite `handle` as a `match` statement with `case "start":`, `case
+  "stop":`, and a catch-all `case _:`. Keep the same output: stopping.
+expected_output: |
+  stopping
+hints:
+  - "match command: case \"start\": return \"starting\" ... case _: return \"unknown\"."
+  - "case _: is the idiomatic catch-all, playing the same role a final else does in an if-chain."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 21
+difficulty: core
+contains_patterns:
+  - "match command:"
+concept_tags: [match_statement, pattern_matching]

@@ -1,0 +1,75 @@
+id: dependency_management_06
+title: "A requirements.txt Parser That Choked on Its Own Comments"
+language: python
+level: 416
+objective: "Fix a requirements.txt parser that tries to parse every line literally, crashing on comment lines and blank lines, when real requirements files always have comments (starting with '#') and blank lines that need to be skipped before parsing anything."
+explanation: |
+  A real `requirements.txt` file is rarely just a clean list of
+  `name==version` lines -- it typically has comment lines (starting
+  with `#`, explaining why a particular pin exists) and blank lines
+  for readability between logical groups of dependencies. A parser
+  that tries to `partition("==")` every single line without
+  distinguishing these produces garbage for a comment line (there's no
+  `==` in a comment, so the whole comment text ends up as the "name")
+  and an empty, meaningless entry for a blank line. Real parsing needs
+  to filter both out first: skip any line that's empty once stripped,
+  and skip any line starting with `#`, before attempting to parse what
+  remains.
+
+  The fix filters out blank and comment lines before parsing the rest.
+example_code: |
+  # The trap: tries to parse EVERY line, including comments and blanks.
+  def parse_requirements_trap(lines):
+      result = []
+      for line in lines:
+          name, _, version = line.partition("==")
+          result.append((name, version))
+      return result
+
+  lines = ["# core deps", "", "flet==0.86.5", "pyyaml==6.0"]
+  print(parse_requirements_trap(lines))
+  # [('# core deps', ''), ('', ''), ('flet', '0.86.5'), ('pyyaml', '6.0')] -- WRONG,
+  # the comment and blank line produced garbage entries
+
+  # The fix: skip blank lines and comments BEFORE parsing anything.
+  def parse_requirements(lines):
+      result = []
+      for line in lines:
+          stripped = line.strip()
+          if not stripped or stripped.startswith("#"):
+              continue
+          name, _, version = stripped.partition("==")
+          result.append((name, version))
+      return result
+
+  print(parse_requirements(lines))
+  # [('flet', '0.86.5'), ('pyyaml', '6.0')] -- correctly skipped the comment and blank line
+starter_code: |
+  def parse_requirements(lines):
+      result = []
+      for line in lines:
+          name, _, version = line.partition("==")
+          result.append((name, version))
+      return result
+
+  lines = ["# core deps", "", "flet==0.86.5", "pyyaml==6.0"]
+  print(parse_requirements(lines))
+challenge: |
+  Fix `parse_requirements` so it strips each line and skips it
+  (`continue`) when it's empty or starts with `"#"`, before parsing
+  the rest. It should print
+  `[('flet', '0.86.5'), ('pyyaml', '6.0')]`, not a list including
+  garbage entries for the comment and blank line.
+expected_output: |
+  [('flet', '0.86.5'), ('pyyaml', '6.0')]
+hints:
+  - "stripped = line.strip(), then: if not stripped or stripped.startswith(\"#\"): continue."
+  - "Real requirements files always mix comments and blank lines in with actual dependencies -- both need to be filtered out before any '==' parsing happens."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "stripped\\.startswith\\(\"#\"\\)"
+concept_tags: [dependency_management, requirements_txt, parsing]

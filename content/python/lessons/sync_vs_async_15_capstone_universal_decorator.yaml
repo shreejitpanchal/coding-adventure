@@ -1,0 +1,109 @@
+id: sync_vs_async_15
+title: "Capstone: One Decorator That Correctly Wraps Both Sync AND Async Functions"
+language: python
+level: 445
+objective: "Combine this category's iscoroutinefunction detection and async-wrapper-must-await lessons into one @timed decorator that works correctly whether it's applied to a plain synchronous function or an async one -- returning a plain wrapper for one, an async wrapper for the other, instead of a single wrapper shape that only works for one kind."
+explanation: |
+  This category has covered two pieces separately: `inspect.
+  iscoroutinefunction(func)` detects which kind of function is being
+  wrapped, and a wrapper meant to sit around an async function must
+  itself be `async def` and actually `await` the call, or its
+  before/after logic runs at the wrong time relative to the real work.
+  A genuinely reusable decorator -- one that needs to work whether
+  it's applied to a sync function or an async one -- has to check
+  which kind it's wrapping *once*, at decoration time, and return a
+  *differently-shaped* wrapper for each: a plain synchronous wrapper
+  for a sync function, an `async def` wrapper (that actually awaits
+  the call) for an async one.
+
+  The bug this exercise fixes always returns a plain, non-async
+  wrapper, which breaks the moment it's applied to an async function.
+  The fix branches on `iscoroutinefunction` and returns the correct
+  shape for each case.
+example_code: |
+  # The trap: always a plain wrapper -- breaks when applied to an async function.
+  import time, inspect, asyncio
+
+  def timed_trap(func):
+      def wrapper(*args, **kwargs):
+          start = time.monotonic()
+          result = func(*args, **kwargs)
+          return result
+      return wrapper
+
+  @timed_trap
+  async def fetch_trap():
+      return 42
+
+  result_trap = fetch_trap()
+  print(type(result_trap).__name__)
+  # "coroutine" -- WRONG, the plain wrapper never awaited the async call at all
+
+  # The fix: branch on iscoroutinefunction, return the CORRECT wrapper shape.
+  def timed(func):
+      if inspect.iscoroutinefunction(func):
+          async def async_wrapper(*args, **kwargs):
+              start = time.monotonic()
+              result = await func(*args, **kwargs)
+              return result
+          return async_wrapper
+      else:
+          def sync_wrapper(*args, **kwargs):
+              start = time.monotonic()
+              result = func(*args, **kwargs)
+              return result
+          return sync_wrapper
+
+  @timed
+  def add(a, b):
+      return a + b
+
+  @timed
+  async def fetch():
+      return 42
+
+  print(add(2, 3))
+  print(asyncio.run(fetch()))
+  # 5
+  # 42 -- correctly worked for BOTH the sync and the async function
+starter_code: |
+  import time, asyncio
+
+  def timed(func):
+      def wrapper(*args, **kwargs):
+          start = time.monotonic()
+          result = func(*args, **kwargs)
+          return result
+      return wrapper
+
+  @timed
+  def add(a, b):
+      return a + b
+
+  @timed
+  async def fetch():
+      return 42
+
+  print(add(2, 3))
+  print(asyncio.run(fetch()))
+challenge: |
+  Fix `timed` so it checks `inspect.iscoroutinefunction(func)`,
+  returning an `async def async_wrapper` that `await`s the call when
+  it's `True`, and the existing plain `sync_wrapper` otherwise. It
+  should print `5` then `42`, not crash or return a coroutine object
+  for `fetch`.
+expected_output: |
+  5
+  42
+hints:
+  - "import inspect, then: if inspect.iscoroutinefunction(func): async def async_wrapper(*args, **kwargs): ...; result = await func(*args, **kwargs); return async_wrapper."
+  - "else: return the existing plain sync_wrapper unchanged -- the decorator has to pick the correct wrapper SHAPE once, at decoration time, based on what kind of function it's wrapping."
+xp_reward: 20
+achievement: sync_vs_async_master
+category: sync_vs_async
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "inspect\\.iscoroutinefunction\\(func\\)"
+  - "async def async_wrapper\\(\\*args, \\*\\*kwargs\\):"
+concept_tags: [asyncio, decorators, sync_vs_async, capstone]

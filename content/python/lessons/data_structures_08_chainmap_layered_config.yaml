@@ -1,0 +1,55 @@
+id: data_structures_08
+title: "ChainMap Layers Several Dicts Without Merging Them Into a New One"
+language: python
+level: 165
+objective: "Use collections.ChainMap to search several dicts in priority order, instead of building a brand-new merged dict just to look things up."
+explanation: |
+  Merging several config dicts into one brand-new dict (`{**defaults,
+  **overrides}`) works for a one-time lookup, but it copies every key
+  from every source into a new structure, and updating any of the
+  original dicts afterward has no effect on the already-merged copy.
+  `collections.ChainMap(overrides, defaults)` instead keeps the
+  original dicts as separate, live layers, searched in order --
+  looking up a key checks `overrides` first, falling through to
+  `defaults` only if it's missing there, with no copying and no new
+  dict built at all. A later change to either original dict is
+  reflected immediately, since `ChainMap` is just a live view over
+  them.
+example_code: |
+  # Merges into a brand-new dict -- a full copy, disconnected from the
+  # originals afterward.
+  defaults_loop = {"timeout": 30, "retries": 3}
+  overrides_loop = {"timeout": 5}
+  merged_loop = {**defaults_loop, **overrides_loop}
+  print(merged_loop["timeout"], merged_loop["retries"])
+  # 5 3
+
+  # ChainMap searches the layers directly, with no copy at all.
+  from collections import ChainMap
+
+  defaults = {"timeout": 30, "retries": 3}
+  overrides = {"timeout": 5}
+  config = ChainMap(overrides, defaults)
+  print(config["timeout"], config["retries"])
+  # 5 3
+starter_code: |
+  defaults = {"timeout": 30, "retries": 3}
+  overrides = {"timeout": 5}
+  config = {**defaults, **overrides}
+  print(config["timeout"], config["retries"])
+challenge: |
+  Rewrite this using `collections.ChainMap(overrides, defaults)`
+  instead of merging into a new dict. Keep the same output: 5 3.
+expected_output: |
+  5 3
+hints:
+  - "from collections import ChainMap, then: config = ChainMap(overrides, defaults)."
+  - "ChainMap checks its FIRST argument first -- overrides needs to come before defaults so it actually takes priority."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "ChainMap\\(overrides, defaults\\)"
+concept_tags: [chainmap, collections]

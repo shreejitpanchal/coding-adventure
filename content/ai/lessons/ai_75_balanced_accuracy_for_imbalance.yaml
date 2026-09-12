@@ -1,0 +1,70 @@
+id: ai_75
+title: "Plain Accuracy Hides How Badly a Model Handles the Minority Class"
+language: ai
+level: 75
+objective: "Fix an accuracy calculation used on imbalanced data, replacing it with balanced accuracy -- the average of per-class recall -- so a model that ignores the minority class entirely can no longer hide behind a high overall score."
+explanation: |
+  On heavily imbalanced data, plain accuracy can look excellent while
+  the model is doing something close to useless: predicting the
+  majority class for everything scores high accuracy purely because
+  the majority class dominates the dataset, even with zero ability to
+  identify the minority class at all. **Balanced accuracy** -- the
+  average of each class's own recall, rather than one pooled
+  correct-over-total ratio -- fixes this by weighing the minority
+  class's performance exactly as heavily as the majority class's,
+  regardless of how few examples of it exist.
+
+  The bug this exercise fixes reports plain pooled accuracy on data
+  where the model gets every majority-class example right but every
+  minority-class example wrong -- a genuinely useless model for
+  detecting the minority class, but one plain accuracy still rates
+  highly since minority examples are rare. The fix computes each
+  class's own recall separately and averages those, correctly exposing
+  the model's complete failure on the minority class.
+example_code: |
+  # The trap: plain pooled accuracy -- a rare minority class's failures
+  # get drowned out by the majority class's dominance in the total.
+  def accuracy_trap(y_true, y_pred):
+      correct = sum(t == p for t, p in zip(y_true, y_pred))
+      return correct / len(y_true)
+
+  y_true = [0]*8 + [1]*2       # 8 majority, 2 minority
+  y_pred = [0]*8 + [0]*2       # majority ALWAYS correct; minority ALWAYS wrong
+  print(accuracy_trap(y_true, y_pred))   # 0.8 -- looks pretty good, hides total minority failure
+
+  # The fix: balanced accuracy -- the AVERAGE of each class's own recall.
+  def balanced_accuracy(y_true, y_pred):
+      classes = set(y_true)
+      recalls = []
+      for cls in classes:
+          actual_positive = [i for i, t in enumerate(y_true) if t == cls]
+          correct = sum(1 for i in actual_positive if y_pred[i] == cls)
+          recalls.append(correct / len(actual_positive))
+      return sum(recalls) / len(recalls)
+
+  print(balanced_accuracy(y_true, y_pred))   # 0.5 -- correctly exposes: 100% on majority, 0% on minority, averaged
+starter_code: |
+  def balanced_accuracy(y_true, y_pred):
+      correct = sum(t == p for t, p in zip(y_true, y_pred))
+      return correct / len(y_true)
+
+  y_true = [0]*8 + [1]*2
+  y_pred = [0]*8 + [0]*2
+  print(balanced_accuracy(y_true, y_pred))
+challenge: |
+  Fix `balanced_accuracy` so it computes each class's own recall
+  separately and averages those, instead of computing plain pooled
+  accuracy. It should print `0.5`, not `0.8`.
+expected_output: |
+  0.5
+hints:
+  - "For each unique class, find the indices where y_true equals that class, then compute what fraction of those had y_pred also equal to that class -- that's the class's recall."
+  - "Average the per-class recalls (0/2=0.0 for minority, 8/8=1.0 for majority) to get (0.0 + 1.0) / 2 = 0.5."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 35
+difficulty: gotcha
+contains_patterns:
+  - "for cls in classes"
+concept_tags: [ml_fundamentals, balanced_accuracy, class_imbalance]

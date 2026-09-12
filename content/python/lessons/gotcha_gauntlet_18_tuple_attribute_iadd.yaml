@@ -1,0 +1,71 @@
+id: gotcha_gauntlet_18
+title: "The Attribute Update That Crashed Because Tuples Can't Be Changed in Place"
+language: python
+level: 263
+objective: "Fix a TypeError raised by using += on a tuple-valued attribute, when a tuple is immutable and can't be appended to in place -- reassigning with tuple concatenation, or switching to a list, both work."
+explanation: |
+  `+=` on a mutable sequence like a list mutates it in place. On a
+  tuple, there's no in-place mutation to fall back to at all -- tuples
+  are immutable, so `some_tuple += (x,)` isn't actually an in-place
+  append; it's shorthand for `some_tuple = some_tuple + (x,)`, which
+  only works if `some_tuple` is genuinely a tuple being concatenated
+  with another tuple. Attempting `self.tags += "urgent"` when `tags`
+  is a tuple and `"urgent"` is a bare string (not wrapped in a
+  one-element tuple) raises `TypeError: can only concatenate tuple
+  (not "str") to tuple`, since a string isn't a tuple no matter how
+  it's being added.
+
+  The fix wraps the new value in a one-element tuple (`("urgent",)`)
+  so the concatenation is tuple-plus-tuple, which is what `+=` on a
+  tuple actually requires.
+example_code: |
+  # The trap: adding a bare string to a tuple attribute via += crashes.
+  class TicketTrap:
+      def __init__(self):
+          self.tags = ("bug",)
+
+  t_trap = TicketTrap()
+  try:
+      t_trap.tags += "urgent"
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- can only concatenate tuple (not "str") to tuple
+
+  # The fix: wrap the new value in a one-element tuple first.
+  class Ticket:
+      def __init__(self):
+          self.tags = ("bug",)
+
+  t = Ticket()
+  t.tags += ("urgent",)
+  print(t.tags)
+  # ('bug', 'urgent') -- correctly concatenated, tuple plus tuple
+starter_code: |
+  class Ticket:
+      def __init__(self):
+          self.tags = ("bug",)
+
+  t = Ticket()
+  try:
+      t.tags += "urgent"
+      print(t.tags)
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix this so `t.tags += ("urgent",)` adds a one-element tuple, instead
+  of the bare string `"urgent"`. It should print `('bug', 'urgent')`,
+  not `crashed`.
+expected_output: |
+  ('bug', 'urgent')
+hints:
+  - "Change t.tags += \"urgent\" to t.tags += (\"urgent\",)."
+  - "+= on a tuple is really tuple concatenation -- the right-hand side has to be a tuple too, not a bare string."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "t\\.tags \\+= \\(\"urgent\",\\)"
+concept_tags: [tuples, immutability, gotchas]

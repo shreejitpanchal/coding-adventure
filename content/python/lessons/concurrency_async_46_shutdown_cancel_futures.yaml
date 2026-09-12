@@ -1,0 +1,77 @@
+id: concurrency_async_46
+title: "shutdown() Still Runs Every Queued Task -- cancel_futures=True Actually Abandons Them"
+language: python
+level: 336
+objective: "Fix code that calls pool.shutdown() expecting it to abandon tasks still waiting in the queue, when plain shutdown() still lets every queued task run to completion -- shutdown(cancel_futures=True) is what actually cancels the ones that haven't started yet."
+explanation: |
+  `pool.shutdown(wait=True)` (the same thing exiting a `with
+  ThreadPoolExecutor(...) as pool:` block does automatically) waits
+  for *every* task ever submitted to the pool to finish, including
+  ones still sitting in the queue that haven't even started running
+  yet -- shutting down doesn't mean "stop accepting new work and
+  abandon what's queued," it just means "stop accepting *new*
+  submissions," while everything already submitted still runs to
+  completion. `pool.shutdown(wait=True, cancel_futures=True)` (Python
+  3.9+) is what actually cancels every task that hasn't started
+  running yet -- only whatever's already actively executing is left to
+  finish; the rest are abandoned.
+
+  The fix adds `cancel_futures=True` to the `shutdown()` call.
+example_code: |
+  # The trap: shutdown() alone still runs EVERY queued task to completion.
+  from concurrent.futures import ThreadPoolExecutor
+  import time
+
+  def slow_task(n, log):
+      time.sleep(0.05)
+      log.append(n)
+
+  pool_trap = ThreadPoolExecutor(max_workers=1)
+  log_trap = []
+  for i in range(5):
+      pool_trap.submit(slow_task, i, log_trap)
+  time.sleep(0.02)
+  pool_trap.shutdown(wait=True)
+  print(len(log_trap))
+  # 5 -- WRONG if the intent was abandoning tasks still queued, not yet started
+
+  # The fix: cancel_futures=True actually abandons the still-queued tasks.
+  pool = ThreadPoolExecutor(max_workers=1)
+  log = []
+  for i in range(5):
+      pool.submit(slow_task, i, log)
+  time.sleep(0.02)
+  pool.shutdown(wait=True, cancel_futures=True)
+  print(len(log) < 5)
+  # True -- correctly abandoned whichever tasks hadn't started running yet
+starter_code: |
+  from concurrent.futures import ThreadPoolExecutor
+  import time
+
+  def slow_task(n, log):
+      time.sleep(0.05)
+      log.append(n)
+
+  pool = ThreadPoolExecutor(max_workers=1)
+  log = []
+  for i in range(5):
+      pool.submit(slow_task, i, log)
+  time.sleep(0.02)
+  pool.shutdown(wait=True)
+  print(len(log) < 5)
+challenge: |
+  Fix this by adding `cancel_futures=True` to the `shutdown()` call. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "pool.shutdown(wait=True, cancel_futures=True)."
+  - "shutdown() alone only stops accepting NEW submissions -- everything already submitted still runs to completion. cancel_futures=True is what actually abandons the still-queued ones."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 46
+difficulty: deep_dive
+contains_patterns:
+  - "cancel_futures=True"
+concept_tags: [threading, executors, concurrency]

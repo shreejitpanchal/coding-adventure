@@ -1,0 +1,60 @@
+id: packaging_06
+title: "Parsing a Requirement's Extras Out of Its Brackets"
+language: python
+level: 386
+objective: "Fix code that treats a whole 'requests[socks]' string as the plain package name, when the bracketed part is actually a list of optional 'extras' that need to be parsed out separately from the base name."
+explanation: |
+  A requirement like `requests[socks]` isn't just a package named
+  `"requests[socks]"` -- the square brackets declare "extras," optional
+  extra dependency groups a package can define (`socks` here pulls in
+  the additional packages `requests` needs for SOCKS proxy support,
+  which aren't installed by default). Treating the whole bracketed
+  string as the package name breaks any lookup keyed by the real name
+  -- `"requests[socks]"` is never actually the name `pip` or
+  `importlib.metadata` know the package by; only `"requests"` is.
+
+  The fix splits the name from its extras before the closing bracket,
+  parsing the extras into their own list.
+example_code: |
+  # The trap: treats the WHOLE bracketed string as the package name.
+  def parse_name_trap(requirement):
+      return requirement
+
+  print(parse_name_trap("requests[socks]"))
+  # "requests[socks]" -- WRONG, this isn't a real installable package name
+
+  # The fix: split the name from its bracketed extras.
+  def parse_name(requirement):
+      if "[" in requirement:
+          name, rest = requirement.split("[", 1)
+          extras = rest.rstrip("]").split(",")
+          return name, extras
+      return requirement, []
+
+  print(parse_name("requests[socks]"))
+  # ('requests', ['socks']) -- correctly separated
+  print(parse_name("requests[socks,security]"))
+  # ('requests', ['socks', 'security']) -- multiple extras, comma-separated
+starter_code: |
+  def parse_name(requirement):
+      return requirement
+
+  print(parse_name("requests[socks]"))
+challenge: |
+  Fix `parse_name` so it splits on `"["` when present, returning
+  `(name, extras)` where `extras` is the comma-separated list inside
+  the brackets (with the trailing `]` stripped). It should print
+  `('requests', ['socks'])`, not `requests[socks]`.
+expected_output: |
+  ('requests', ['socks'])
+hints:
+  - "name, rest = requirement.split(\"[\", 1), then extras = rest.rstrip(\"]\").split(\",\")."
+  - "The brackets declare optional extra dependency groups -- they're never part of the actual installable package name itself."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "rstrip\\(\"\\]\"\\)\\.split\\(\",\"\\)"
+concept_tags: [packaging, requirements, extras]

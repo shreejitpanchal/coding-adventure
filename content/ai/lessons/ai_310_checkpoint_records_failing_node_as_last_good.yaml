@@ -1,0 +1,100 @@
+id: ai_310
+title: "A Checkpoint Must Only Record a Node That Actually Finished, Not One That Crashed"
+language: ai
+level: 310
+objective: "Fix an interruptible runner that records the currently-failing node as 'last good' before it actually raises, when a checkpoint is only trustworthy if it reflects the last node that genuinely completed -- not the one that was in progress when the crash happened."
+explanation: |
+  If a node crashes partway through, the checkpoint that a later resume
+  will trust needs to point at the last node that *actually finished
+  successfully* -- not the one that was running when things went wrong.
+  Recording the failing node as "last good" before the exception is
+  even raised means a subsequent resume believes work was completed
+  that never actually was, and skips a node that genuinely still needs
+  to run.
+
+  The bug this exercise fixes records `checkpoints["last_good"] =
+  current` even on the failing node, right before raising. The fix only
+  ever records a node's completion after it has actually finished
+  without error.
+example_code: |
+  # The trap: records the FAILING node as "last good," even though it
+  # never actually completed.
+  def run_interruptible_trap(nodes, edges, start, end, checkpoints, fail_at):
+      current = start
+      state = None
+      while current != end:
+          if current == fail_at:
+              checkpoints["last_good"] = current
+              raise RuntimeError(f"crashed at {current}")
+          state = nodes[current](state)
+          checkpoints["last_good"] = current
+          current = edges[current]
+      return state
+
+  nodes = {"a": lambda s: "a-done", "b": lambda s: "b-done"}
+  edges = {"a": "b", "b": "END"}
+  checkpoints = {}
+  try:
+      run_interruptible_trap(nodes, edges, "a", "END", checkpoints, fail_at="b")
+  except RuntimeError:
+      pass
+  print(checkpoints["last_good"])
+  # "b" -- WRONG, "b" never actually finished; "a" was the true last completed node
+
+  # The fix: only record a node's completion once it has actually finished.
+  def run_interruptible(nodes, edges, start, end, checkpoints, fail_at):
+      current = start
+      state = None
+      while current != end:
+          if current == fail_at:
+              raise RuntimeError(f"crashed at {current}")
+          state = nodes[current](state)
+          checkpoints["last_good"] = current
+          current = edges[current]
+      return state
+
+  checkpoints2 = {}
+  try:
+      run_interruptible(nodes, edges, "a", "END", checkpoints2, fail_at="b")
+  except RuntimeError:
+      pass
+  print(checkpoints2["last_good"])
+  # "a" -- correctly reflects the last node that actually completed
+starter_code: |
+  def run_interruptible(nodes, edges, start, end, checkpoints, fail_at):
+      current = start
+      state = None
+      while current != end:
+          if current == fail_at:
+              checkpoints["last_good"] = current
+              raise RuntimeError(f"crashed at {current}")
+          state = nodes[current](state)
+          checkpoints["last_good"] = current
+          current = edges[current]
+      return state
+
+  nodes = {"a": lambda s: "a-done", "b": lambda s: "b-done"}
+  edges = {"a": "b", "b": "END"}
+  checkpoints = {}
+  try:
+      run_interruptible(nodes, edges, "a", "END", checkpoints, fail_at="b")
+  except RuntimeError:
+      pass
+  print(checkpoints["last_good"])
+challenge: |
+  Fix `run_interruptible` so the failing branch just raises, without
+  ever setting `checkpoints["last_good"]` for a node that hasn't
+  actually completed. It should print `a`, not `b`.
+expected_output: |
+  a
+hints:
+  - "Remove the checkpoints[\"last_good\"] = current line from inside the if current == fail_at: branch -- only the line after a node actually runs should set it."
+  - "\"last_good\" should only ever be updated once a node's own work (state = nodes[current](state)) has genuinely completed without raising."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 45
+difficulty: gotcha
+contains_patterns:
+  - "raise RuntimeError\\(f\"crashed at \\{current\\}\"\\)"
+concept_tags: [langgraph, checkpointing, fault_tolerance]

@@ -1,0 +1,58 @@
+id: data_structures_38
+title: "Merging Two Sorted Lists by Hand Is the Core Step Behind Merge Sort"
+language: python
+level: 195
+objective: "Replace concatenating two sorted lists and re-sorting with the manual two-pointer merge algorithm, which walks both lists once instead of resorting everything from scratch."
+explanation: |
+  This category's earlier `heapq.merge` lesson covered the standard-
+  library tool for merging sorted iterables -- writing the same logic
+  by hand is worth doing once, since it's the exact merge step merge
+  sort itself is built around: walk both lists with one pointer each,
+  always taking whichever current element is smaller, advancing that
+  list's pointer, and once one list runs out, the rest of the other
+  one is already in order and can just be appended directly.
+example_code: |
+  # Concatenate and re-sort -- ignores that both were already sorted.
+  a = [1, 3, 5]
+  b = [2, 4, 6]
+  merged_loop = sorted(a + b)
+  print(merged_loop)                        # [1, 2, 3, 4, 5, 6]
+
+  # A manual two-pointer merge -- the core step behind merge sort.
+  def merge_sorted(a, b):
+      result = []
+      i = j = 0
+      while i < len(a) and j < len(b):
+          if a[i] <= b[j]:
+              result.append(a[i])
+              i += 1
+          else:
+              result.append(b[j])
+              j += 1
+      result.extend(a[i:])
+      result.extend(b[j:])
+      return result
+
+  print(merge_sorted(a, b))                 # [1, 2, 3, 4, 5, 6]
+starter_code: |
+  a = [1, 3, 5]
+  b = [2, 4, 6]
+  merged = sorted(a + b)
+  print(merged)
+challenge: |
+  Rewrite this as a `merge_sorted(a, b)` function using the manual
+  two-pointer merge algorithm, instead of concatenating and re-sorting.
+  Keep the same output: [1, 2, 3, 4, 5, 6].
+expected_output: |
+  [1, 2, 3, 4, 5, 6]
+hints:
+  - "i = j = 0, then while i < len(a) and j < len(b): compare a[i] and b[j], appending the smaller and advancing that pointer -- then extend with whatever's left of either list."
+  - "Once one list runs out, the remainder of the OTHER list is already fully sorted -- it can just be appended directly with .extend()."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "while i < len\\(a\\) and j < len\\(b\\):"
+concept_tags: [merging, two_pointers, algorithms]

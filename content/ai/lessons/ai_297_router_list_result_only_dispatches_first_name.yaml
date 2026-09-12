@@ -1,0 +1,56 @@
+id: ai_297
+title: "A Router Returning a List of Names Means Dispatching to All of Them"
+language: ai
+level: 297
+objective: "Fix a dispatcher that only calls the first node named in a router's returned list, when a router naming several nodes at once is asking for all of them to run, not just whichever one happens to be listed first."
+explanation: |
+  A conditional edge doesn't always have to name a single next node --
+  it can return a list of several node names at once, meaning "fan out
+  to all of these." Dispatching only to the first entry of that list
+  silently drops every other node the router explicitly named, the
+  same failure shape as this category's earlier fan-out-edge lesson,
+  just triggered by a router's own dynamic decision instead of a fixed
+  edge list declared ahead of time.
+
+  The bug this exercise fixes indexes `router_result[0]`, dispatching
+  to just one name. The fix dispatches to every name in the list.
+example_code: |
+  # The trap: takes only the FIRST name from a router's returned
+  # LIST, ignoring the rest of the fan-out.
+  def dispatch_trap(router_result, nodes):
+      return nodes[router_result[0]](None)
+
+  nodes = {"email": lambda s: "emailed", "sms": lambda s: "texted"}
+  print([dispatch_trap(["email", "sms"], nodes)])
+  # ['emailed'] -- "sms" never ran, even though the router named both
+
+  # The fix: dispatch to every name in the router's returned list.
+  def dispatch(router_result, nodes):
+      return [nodes[name](None) for name in router_result]
+
+  print(dispatch(["email", "sms"], nodes))
+  # ['emailed', 'texted'] -- correctly ran every node the router named
+starter_code: |
+  def dispatch(router_result, nodes):
+      return [nodes[router_result[0]](None)]
+
+  nodes = {"email": lambda s: "emailed", "sms": lambda s: "texted"}
+  print(dispatch(["email", "sms"], nodes))
+challenge: |
+  Fix `dispatch` so it returns `[nodes[name](None) for name in
+  router_result]`, running every name in the router's returned list,
+  instead of only `router_result[0]`. It should print
+  `['emailed', 'texted']`, not `['emailed']`.
+expected_output: |
+  ['emailed', 'texted']
+hints:
+  - "Replace the single-item list with a comprehension over router_result: [nodes[name](None) for name in router_result]."
+  - "A router returning a list is deliberately signaling a fan-out to all of them -- indexing [0] only picks the first one, silently dropping the rest."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "\\[nodes\\[name\\]\\(None\\) for name in router_result\\]"
+concept_tags: [langgraph, conditional_edges, fan_out]

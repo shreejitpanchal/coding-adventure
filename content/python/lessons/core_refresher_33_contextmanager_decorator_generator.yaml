@@ -1,0 +1,77 @@
+id: core_refresher_33
+title: "@contextmanager Turns a Generator Function Into a Context Manager"
+language: python
+level: 146
+objective: "Replace a full __enter__/__exit__ class with a single generator function decorated with @contextlib.contextmanager."
+explanation: |
+  Writing a whole class with `__enter__` and `__exit__` for a simple
+  "do this, run the block, then do that" context manager is more
+  ceremony than the logic usually needs. `contextlib.contextmanager`
+  turns an ordinary generator function into a context manager directly:
+  everything before the `yield` runs as `__enter__`, execution pauses
+  at the `yield` for the `with` block's body to run, and everything
+  after the `yield` runs as `__exit__` -- one function, no class
+  needed, for the common case.
+
+  The bug this exercise fixes writes a full class. The fix uses
+  `@contextmanager` on a single generator function instead.
+example_code: |
+  # A full class just for "log begin, run the block, log commit."
+  log_loop = []
+
+  class TransactionClass:
+      def __enter__(self):
+          log_loop.append("begin")
+          return self
+      def __exit__(self, *args):
+          log_loop.append("commit")
+
+  with TransactionClass():
+      log_loop.append("work")
+  print(log_loop)                          # ['begin', 'work', 'commit']
+
+  # @contextmanager does the same thing with one generator function.
+  from contextlib import contextmanager
+
+  log = []
+
+  @contextmanager
+  def transaction():
+      log.append("begin")
+      yield
+      log.append("commit")
+
+  with transaction():
+      log.append("work")
+  print(log)                               # ['begin', 'work', 'commit']
+starter_code: |
+  log = []
+
+  class Transaction:
+      def __enter__(self):
+          log.append("begin")
+          return self
+      def __exit__(self, *args):
+          log.append("commit")
+
+  with Transaction():
+      log.append("work")
+  print(log)
+challenge: |
+  Replace the `Transaction` class with a `transaction()` generator
+  function decorated with `@contextmanager` (append "begin" before the
+  yield, "commit" after it). Keep the same output:
+  ['begin', 'work', 'commit'].
+expected_output: |
+  ['begin', 'work', 'commit']
+hints:
+  - "from contextlib import contextmanager, then @contextmanager above def transaction(): log.append(\"begin\"); yield; log.append(\"commit\")."
+  - "Everything before yield runs as __enter__; everything after it runs as __exit__ -- one function replaces the whole class."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 33
+difficulty: core
+contains_patterns:
+  - "@contextmanager"
+concept_tags: [context_managers, contextlib]

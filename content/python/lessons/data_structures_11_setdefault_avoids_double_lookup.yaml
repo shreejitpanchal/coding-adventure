@@ -1,0 +1,50 @@
+id: data_structures_11
+title: "dict.setdefault() Avoids Checking a Key and Then Looking It Up Again"
+language: python
+level: 168
+objective: "Replace an 'if key not in d' check followed by a separate lookup with dict.setdefault(), which does both in a single call."
+explanation: |
+  Checking whether a key exists and then, in a separate step, reading
+  or initializing it, is two dict operations where one would do.
+  `d.setdefault(key, default)` returns the existing value if `key` is
+  already present, or inserts `default` for that key (and returns it)
+  if it wasn't -- one call, one internal lookup, instead of an `if key
+  not in d` check followed by a second access to actually use the
+  value.
+example_code: |
+  # A separate check, then a separate lookup/initialization.
+  groups_loop = {}
+  key = "even"
+  if key not in groups_loop:
+      groups_loop[key] = []
+  groups_loop[key].append(2)
+  print(groups_loop)                        # {'even': [2]}
+
+  # setdefault() does both in a single call.
+  groups = {}
+  groups.setdefault("even", []).append(2)
+  print(groups)                             # {'even': [2]}
+starter_code: |
+  groups = {}
+  key = "even"
+  if key not in groups:
+      groups[key] = []
+  groups[key].append(2)
+  print(groups)
+challenge: |
+  Rewrite this using `groups.setdefault("even", []).append(2)`,
+  instead of a separate existence check. Keep the same output:
+  {'even': [2]}.
+expected_output: |
+  {'even': [2]}
+hints:
+  - "Replace the if-check and the two-step access with: groups.setdefault(\"even\", []).append(2)."
+  - "setdefault() returns the (possibly newly-inserted) value directly -- .append(2) then chains right onto that returned list."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "groups\\.setdefault\\(\"even\", \\[\\]\\)\\.append\\(2\\)"
+concept_tags: [dicts, setdefault]

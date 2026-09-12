@@ -1,0 +1,71 @@
+id: data_structures_42
+title: "Combining Two Inventories Means Adding Matching Counts, Not Overwriting Them"
+language: python
+level: 199
+objective: "Fix an inventory-combining function that overwrites matching keys instead of adding their counts together, when combining two stock counts for the same item should sum them, not let one replace the other."
+explanation: |
+  Combining two inventories that might both stock the same item needs
+  to *add* their counts together for anything they share -- writing
+  `combined[k] = b[k]` for every key in `b` overwrites whatever `a`
+  already contributed for that same key, silently discarding real
+  stock instead of accounting for it. `Counter` addition (`Counter(a)
+  + Counter(b)`) does the sum correctly for every shared key in one
+  expression, the same way this category's earlier lesson covers
+  `Counter` subtraction for the opposite operation.
+
+  The bug this exercise fixes overwrites `a`'s count for any key also
+  present in `b`. The fix adds the two `Counter`s together.
+example_code: |
+  # The trap: OVERWRITES a's count for any key shared with b, instead
+  # of adding them together.
+  def combine_inventory_trap(a, b):
+      combined = {}
+      for k in a:
+          combined[k] = a[k]
+      for k in b:
+          combined[k] = b[k]
+      return combined
+
+  a = {"apple": 3, "banana": 2}
+  b = {"apple": 2, "cherry": 5}
+  print(combine_inventory_trap(a, b))
+  # {'apple': 2, 'banana': 2, 'cherry': 5} -- WRONG, apple should be 3 + 2 = 5, not just overwritten to 2
+
+  # The fix: Counter addition sums matching keys correctly.
+  from collections import Counter
+
+  def combine_inventory(a, b):
+      return dict(Counter(a) + Counter(b))
+
+  print(combine_inventory(a, b))
+  # {'apple': 5, 'banana': 2, 'cherry': 5} -- correctly summed
+starter_code: |
+  def combine_inventory(a, b):
+      combined = {}
+      for k in a:
+          combined[k] = a[k]
+      for k in b:
+          combined[k] = b[k]
+      return combined
+
+  a = {"apple": 3, "banana": 2}
+  b = {"apple": 2, "cherry": 5}
+  print(combine_inventory(a, b))
+challenge: |
+  Fix `combine_inventory` so it returns `dict(Counter(a) +
+  Counter(b))`, instead of manually overwriting matching keys. Keep
+  the same shape but correct values: {'apple': 5, 'banana': 2,
+  'cherry': 5}.
+expected_output: |
+  {'apple': 5, 'banana': 2, 'cherry': 5}
+hints:
+  - "from collections import Counter, then: return dict(Counter(a) + Counter(b))."
+  - "Counter addition sums matching keys correctly -- \"apple\" appearing in both a and b becomes 3 + 2 = 5, not whichever was assigned last."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "Counter\\(a\\) \\+ Counter\\(b\\)"
+concept_tags: [counter, multiset]

@@ -1,0 +1,62 @@
+id: deployment_12
+title: "Stopping the Old Instance First Leaves a Gap With Nothing Serving At All"
+language: python
+level: 402
+objective: "Fix a restart sequence that stops the old instance BEFORE starting the new one, leaving a window where nothing is actually serving traffic, when starting the new instance first -- only stopping the old one once the new one is confirmed up -- eliminates that gap entirely."
+explanation: |
+  A restart that stops the old instance and only then starts the new
+  one has a real gap between those two steps where *neither* instance
+  is serving traffic at all -- however brief, that's a genuine window
+  of full downtime, not just reduced capacity. Reversing the order --
+  start the new instance first, wait until it's confirmed healthy, and
+  only *then* stop the old one -- means there's always at least one
+  instance serving throughout the whole restart, with old and new
+  briefly overlapping instead of neither running at all.
+
+  The fix swaps the order: start the new instance before stopping the
+  old one.
+example_code: |
+  # The trap: stops the OLD instance first -- a real gap with nothing serving.
+  def restart_trap(log):
+      log.append("old_stopped")
+      log.append("new_started")
+
+  log_trap = []
+  restart_trap(log_trap)
+  print(log_trap.index("new_started") < log_trap.index("old_stopped"))
+  # False -- WRONG, there was a genuine window where NOTHING was serving traffic
+
+  # The fix: start the NEW instance first, only THEN stop the old one.
+  def restart(log):
+      log.append("new_started")
+      log.append("old_stopped")
+
+  log = []
+  restart(log)
+  print(log.index("new_started") < log.index("old_stopped"))
+  # True -- correctly overlapped, so at least one instance is always serving
+starter_code: |
+  def restart(log):
+      log.append("old_stopped")
+      log.append("new_started")
+
+  log = []
+  restart(log)
+  print(log.index("new_started") < log.index("old_stopped"))
+challenge: |
+  Fix `restart` so it appends `"new_started"` before `"old_stopped"`,
+  instead of the other way around. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Swap the two log.append(...) lines so \"new_started\" is appended first."
+  - "Stopping the old instance before the new one is confirmed up leaves a genuine gap where nothing at all is serving traffic -- overlapping them instead eliminates that gap."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "log\\.append\\(\"new_started\"\\)\\s*\\n\\s*log\\.append\\(\"old_stopped\"\\)"
+concept_tags: [deployment, zero_downtime, restart]

@@ -1,0 +1,64 @@
+id: ai_57
+title: "L1's Soft-Threshold Must Clamp to Zero, Not Overshoot Past It"
+language: ai
+level: 57
+objective: "Fix an L1 (lasso) weight update that overshoots past zero into the opposite sign when the shrinkage step is larger than the weight itself, instead of clamping exactly to zero."
+explanation: |
+  L1 regularization's defining behavior -- the reason it's used
+  specifically to produce **sparse** models with many weights at
+  exactly zero, unlike L2's weights that shrink but rarely land exactly
+  on zero -- comes from how its update handles a weight that's already
+  small. The correct **soft-thresholding** rule: if the shrinkage
+  amount (`lr * lam`) is larger than the weight's own magnitude, the
+  weight goes to exactly `0.0`, full stop -- it doesn't continue past
+  zero into negative territory just because the raw arithmetic would
+  say so.
+
+  The bug this exercise fixes applies the shrinkage unconditionally,
+  with no check for this crossing-zero case -- a small positive weight
+  (`0.03`) shrunk by a larger step (`0.1`) overshoots to `-0.07`,
+  flipping its sign entirely, which is nonsensical (regularization
+  should never make a weight *more* different from zero than it
+  started, only closer). The fix adds the missing clamp: when the
+  shrinkage would overshoot, the weight lands on exactly `0.0` instead.
+example_code: |
+  # The trap: no clamp -- shrinkage can overshoot past zero into the
+  # OPPOSITE sign, which regularization should never do.
+  def l1_step_trap(weight, lr, lam):
+      sign = 1 if weight > 0 else -1
+      return weight - lr * lam * sign
+
+  print(l1_step_trap(0.03, 0.1, 1.0))   # -0.07 -- WRONG, flipped sign entirely
+
+  # The fix: clamp to exactly 0.0 when the shrinkage would overshoot.
+  def l1_step(weight, lr, lam):
+      shrink = lr * lam
+      if abs(weight) <= shrink:
+          return 0.0
+      sign = 1 if weight > 0 else -1
+      return weight - shrink * sign
+
+  print(l1_step(0.03, 0.1, 1.0))   # 0.0 -- correctly clamped, exactly sparse
+starter_code: |
+  def l1_step(weight, lr, lam):
+      sign = 1 if weight > 0 else -1
+      return weight - lr * lam * sign
+
+  print(l1_step(0.03, 0.1, 1.0))
+challenge: |
+  Fix `l1_step` so it clamps to exactly `0.0` when the shrinkage amount
+  (`lr * lam`) is at least as large as `abs(weight)`, instead of letting
+  the update overshoot past zero. It should print `0.0`, not `-0.07`.
+expected_output: |
+  0.0
+hints:
+  - "Compute shrink = lr * lam first, then check: if abs(weight) <= shrink: return 0.0."
+  - "Only fall through to the sign-based shrink (weight - shrink * sign) when the weight's magnitude is actually larger than the shrink amount."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 17
+difficulty: gotcha
+contains_patterns:
+  - "abs\\(weight\\) <= shrink"
+concept_tags: [ml_fundamentals, l1_regularization, sparsity]

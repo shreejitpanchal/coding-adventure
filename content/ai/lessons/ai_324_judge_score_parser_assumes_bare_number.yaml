@@ -1,0 +1,61 @@
+id: ai_324
+title: "An LLM-as-Judge Score Needs to Be Extracted From Surrounding Prose"
+language: ai
+level: 324
+objective: "Fix a judge-score parser that assumes the judge's response is nothing but a bare number, crashing the moment it's wrapped in even a few words of explanation -- which is how judge models actually tend to respond, even when asked for just a number."
+explanation: |
+  A model asked to act as a judge and return "just a number" often
+  still wraps that number in a little explanatory text (`"Score: 8"`,
+  `"I'd rate this an 8 out of 10"`), the same realistic gap between
+  "what was asked for" and "what a model actually produces" that this
+  app's LangChain category covers for JSON output. Calling `int()`
+  directly on the raw response works only for the rare case where the
+  model returns literally nothing but digits, and crashes on the far
+  more common case of a number embedded in a sentence.
+
+  The bug this exercise fixes calls `int(judge_response)` directly.
+  The fix searches for the first run of digits in the response and
+  parses just that substring.
+example_code: |
+  # The trap: assumes the response is JUST a bare number -- crashes
+  # on any surrounding text at all.
+  def parse_judge_score_trap(judge_response):
+      return int(judge_response)
+
+  # parse_judge_score_trap("Score: 8")  # ValueError: invalid literal for int()
+
+  # The fix: search for the first run of digits, parse just that.
+  import re
+
+  def parse_judge_score(judge_response):
+      match = re.search(r"\d+", judge_response)
+      return int(match.group())
+
+  print(parse_judge_score("Score: 8"))
+  # 8 -- correctly extracted despite the surrounding text
+starter_code: |
+  def parse_judge_score(judge_response):
+      return int(judge_response)
+
+  try:
+      print(parse_judge_score("Score: 8"))
+  except ValueError:
+      print("unhandled")
+challenge: |
+  Fix `parse_judge_score` so it uses `re.search(r"\d+",
+  judge_response)` to find the first run of digits and parses just
+  that substring with `int()`, instead of calling `int()` on the whole
+  response directly. It should print `8`, not `unhandled`.
+expected_output: |
+  8
+hints:
+  - "import re, then: match = re.search(r\"\\d+\", judge_response); return int(match.group())."
+  - "A judge model asked for \"just a number\" still routinely wraps it in a little explanatory text -- the parser has to expect that."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 14
+difficulty: core
+contains_patterns:
+  - "re\\.search\\(r\"\\\\d\\+\", judge_response\\)"
+concept_tags: [langsmith, llm_as_judge, evaluators]

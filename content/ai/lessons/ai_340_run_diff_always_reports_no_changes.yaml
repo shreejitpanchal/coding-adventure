@@ -1,0 +1,57 @@
+id: ai_340
+title: "A Run Diff Needs to Actually Compare Fields, Not Always Report Nothing Changed"
+language: ai
+level: 340
+objective: "Fix a run-comparison function that always returns an empty diff regardless of what actually differs between two runs, when comparing a baseline and a candidate run should genuinely surface which fields changed between them."
+explanation: |
+  Comparing two runs to understand what actually changed (a different
+  temperature setting, a swapped model) is only useful if the
+  comparison genuinely inspects each field -- a function that always
+  reports "no differences" looks superficially fine (it never crashes,
+  it returns a real list) while providing zero actual diagnostic value
+  no matter how different the two runs actually were.
+
+  The bug this exercise fixes always returns `[]`. The fix compares
+  every field the two runs share and reports which ones actually
+  differ.
+example_code: |
+  # The trap: never actually compares anything -- always reports no
+  # differences at all.
+  def diff_runs_trap(run_a, run_b):
+      return []
+
+  run_a = {"model": "gpt-4", "temperature": 0}
+  run_b = {"model": "gpt-4", "temperature": 1}
+  print(diff_runs_trap(run_a, run_b))
+  # [] -- wrongly reports no differences despite "temperature" actually changing
+
+  # The fix: compare every shared field, report which ones differ.
+  def diff_runs(run_a, run_b):
+      return sorted(k for k in run_a if run_a.get(k) != run_b.get(k))
+
+  print(diff_runs(run_a, run_b))
+  # ['temperature'] -- correctly identified the actual difference
+starter_code: |
+  def diff_runs(run_a, run_b):
+      return []
+
+  run_a = {"model": "gpt-4", "temperature": 0}
+  run_b = {"model": "gpt-4", "temperature": 1}
+  print(diff_runs(run_a, run_b))
+challenge: |
+  Fix `diff_runs` so it returns `sorted(k for k in run_a if
+  run_a.get(k) != run_b.get(k))`, instead of always returning `[]`. It
+  should print `['temperature']`, not `[]`.
+expected_output: |
+  ['temperature']
+hints:
+  - "Replace return [] with a generator expression comparing run_a.get(k) against run_b.get(k) for each key k in run_a."
+  - "A run diff needs to actually inspect the two run dicts field by field -- there's no way around comparing something."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 30
+difficulty: core
+contains_patterns:
+  - "run_a\\.get\\(k\\) != run_b\\.get\\(k\\)"
+concept_tags: [langsmith, run_comparison, diffing]

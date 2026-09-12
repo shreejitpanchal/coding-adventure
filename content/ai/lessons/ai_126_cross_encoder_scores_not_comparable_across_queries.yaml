@@ -1,0 +1,74 @@
+id: ai_126
+title: "Cross-Encoder Scores From Different Queries Aren't Comparable to Each Other"
+language: ai
+level: 126
+objective: "Fix a function that sorts re-ranked results from multiple different queries together by their raw cross-encoder scores, when those scores are only meaningful for RANKING candidates within the SAME query -- comparing them across different queries is a category error."
+explanation: |
+  A cross-encoder's score reflects how well one specific candidate
+  matches one specific query -- it's a *relative* ranking signal within
+  that single query's candidate set, not an absolute, universal measure
+  of quality that means the same thing across different queries. A
+  score of `0.7` for query A's best candidate and a score of `0.6` for
+  query B's best candidate doesn't mean query A's result is "better" in
+  any meaningful sense -- it might just mean query B's candidates were
+  all somewhat weaker matches to begin with, or that the two queries
+  simply produce systematically different score distributions.
+
+  The bug this exercise fixes pools cross-encoder-scored results from
+  several different queries and sorts them all together by raw score,
+  implicitly treating the scores as globally comparable. The fix keeps
+  each query's own results ranked independently (via each query's own
+  local top-1, top-2, etc.), never comparing raw scores *across*
+  different queries at all.
+example_code: |
+  # The trap: pools results from DIFFERENT queries and sorts by raw
+  # score together -- treats scores as globally comparable, which they aren't.
+  def combined_ranking_trap(results_by_query):
+      all_results = []
+      for query, results in results_by_query.items():
+          all_results.extend(results)
+      return sorted(all_results, key=lambda r: r["score"], reverse=True)
+
+  results_by_query = {
+      "query_a": [{"doc": "a1", "score": 0.65}, {"doc": "a2", "score": 0.40}],
+      "query_b": [{"doc": "b1", "score": 0.55}, {"doc": "b2", "score": 0.50}],
+  }
+  combined = combined_ranking_trap(results_by_query)
+  print([r["doc"] for r in combined])   # ['a1', 'b1', 'b2', 'a2'] -- mixes rankings ACROSS unrelated queries
+
+  # The fix: keep each query's OWN top result separate -- never compare across queries.
+  def top_result_per_query(results_by_query):
+      return {query: max(results, key=lambda r: r["score"])["doc"] for query, results in results_by_query.items()}
+
+  print(top_result_per_query(results_by_query))   # {'query_a': 'a1', 'query_b': 'b1'} -- each query's own best, independently
+starter_code: |
+  def top_result_per_query(results_by_query):
+      all_results = []
+      for query, results in results_by_query.items():
+          all_results.extend(results)
+      return sorted(all_results, key=lambda r: r["score"], reverse=True)[0]["doc"]
+
+  results_by_query = {
+      "query_a": [{"doc": "a1", "score": 0.65}, {"doc": "a2", "score": 0.40}],
+      "query_b": [{"doc": "b1", "score": 0.55}, {"doc": "b2", "score": 0.50}],
+  }
+  print(top_result_per_query(results_by_query))
+challenge: |
+  Replace `top_result_per_query` so it returns a dict mapping each
+  query to its OWN top-scoring result (`max` within that query's own
+  results only), instead of pooling every query's results together and
+  picking one global top result. It should print
+  `{'query_a': 'a1', 'query_b': 'b1'}`.
+expected_output: |
+  {'query_a': 'a1', 'query_b': 'b1'}
+hints:
+  - "Use a dict comprehension: {query: max(results, key=lambda r: r[\"score\"])[\"doc\"] for query, results in results_by_query.items()}."
+  - "Each query's max() is computed independently, within its OWN results list -- never against another query's scores."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 41
+difficulty: deep_dive
+contains_patterns:
+  - "for query, results in results_by_query\\.items\\(\\)"
+concept_tags: [rag, cross_encoder, reranking, score_comparability]

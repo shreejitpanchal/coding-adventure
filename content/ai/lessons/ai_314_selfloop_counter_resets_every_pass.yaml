@@ -1,0 +1,73 @@
+id: ai_314
+title: "A Self-Loop's Counter Must Persist Across Passes, Not Reset on Every One"
+language: ai
+level: 314
+objective: "Fix a self-looping node that resets its own counter to zero on every pass through the loop, when the counter is supposed to keep accumulating across every visit -- resetting it defeats the entire purpose of counting passes at all."
+explanation: |
+  A node that's part of a self-loop -- retried, revisited, incremented
+  each time around -- needs its counter to actually persist from one
+  pass to the next, reading the value state already carries in rather
+  than starting over from a local zero every single time. Resetting a
+  local variable to `0` inside the node function itself means the
+  counter can never climb past `1`, no matter how many times the loop
+  actually runs, because each pass starts fresh with no memory of the
+  ones before it.
+
+  The bug this exercise fixes initializes `count = 0` locally on every
+  call. The fix reads the persisted count out of `state` and increments
+  from there.
+example_code: |
+  # The trap: resets the counter to 0 on EVERY pass through the
+  # self-loop, instead of continuing from where it left off.
+  def loop_node_trap(state):
+      new_state = dict(state)
+      count = 0
+      new_state["count"] = count + 1
+      return new_state
+
+  state = {"count": 5}
+  state = loop_node_trap(state)
+  state = loop_node_trap(state)
+  print(state["count"])
+  # 1 -- stuck at 1 forever, the counter never actually accumulates across passes
+
+  # The fix: read the persisted count out of state, increment from there.
+  def loop_node(state):
+      new_state = dict(state)
+      new_state["count"] = state.get("count", 0) + 1
+      return new_state
+
+  state2 = {"count": 5}
+  state2 = loop_node(state2)
+  state2 = loop_node(state2)
+  print(state2["count"])
+  # 7 -- correctly continued incrementing from the persisted count
+starter_code: |
+  def loop_node(state):
+      new_state = dict(state)
+      count = 0
+      new_state["count"] = count + 1
+      return new_state
+
+  state = {"count": 5}
+  state = loop_node(state)
+  state = loop_node(state)
+  print(state["count"])
+challenge: |
+  Fix `loop_node` so it computes `new_state["count"]` from
+  `state.get("count", 0) + 1`, reading the persisted value out of
+  `state`, instead of resetting a local `count = 0` on every call. It
+  should print `7`, not `1`.
+expected_output: |
+  7
+hints:
+  - "Replace the local count = 0 with directly using state.get(\"count\", 0) + 1 in the assignment."
+  - "The counter needs to read FROM state (what persisted from the previous pass), not start from a fresh local variable every time the function runs."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 49
+difficulty: gotcha
+contains_patterns:
+  - "state\\.get\\(\"count\", 0\\) \\+ 1"
+concept_tags: [langgraph, cycles, state_persistence]

@@ -1,0 +1,53 @@
+id: ai_268
+title: "An Output Length Limit Only Works If the Text Is Actually Truncated"
+language: ai
+level: 268
+objective: "Fix a generation wrapper that returns the full, untruncated text regardless of the requested character cap, when a caller asking for output bounded to a specific length needs the text actually cut to fit, not just a parameter that's silently ignored."
+explanation: |
+  A length limit on generated output exists to keep a response within
+  whatever budget the caller actually has -- a fixed-width display, a
+  downstream field with its own size constraint. A wrapper that accepts
+  a `max_chars` parameter but returns the text completely untouched
+  provides no such guarantee at all: the caller has no way to know, just
+  from the wrapper's own contract, that the response might exceed
+  whatever limit was supposedly requested.
+
+  The bug this exercise fixes returns `text` unchanged, ignoring
+  `max_chars` entirely. The fix truncates to the requested character
+  cap.
+example_code: |
+  # The trap: ignores max_chars entirely -- returns the FULL,
+  # untruncated text regardless of the requested cap.
+  def generate_trap(text, max_chars):
+      return text
+
+  text = "This is a much longer response than the caller actually asked for."
+  print(len(generate_trap(text, 20)) == 20)   # False -- the length limit was never enforced at all
+
+  # The fix: truncate to the requested character cap.
+  def generate(text, max_chars):
+      return text[:max_chars]
+
+  print(len(generate(text, 20)) == 20)   # True -- correctly bounded to the requested length
+starter_code: |
+  def generate(text, max_chars):
+      return text
+
+  text = "This is a much longer response than the caller actually asked for."
+  print(len(generate(text, 20)) == 20)
+challenge: |
+  Fix `generate` so it returns `text[:max_chars]` instead of `text`
+  unchanged. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace return text with return text[:max_chars]."
+  - "A slice up to max_chars is the entire fix here -- there's no need for anything more elaborate than that."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 48
+difficulty: warmup
+contains_patterns:
+  - "return text\\[:max_chars\\]"
+concept_tags: [langchain, output_length, truncation]

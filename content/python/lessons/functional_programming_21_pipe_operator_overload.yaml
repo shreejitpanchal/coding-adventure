@@ -1,0 +1,67 @@
+id: functional_programming_21
+title: "Overloading __or__ to Build a Readable Left-to-Right Pipe"
+language: python
+level: 356
+objective: "Wrap a value in a small Pipe class that overloads __or__ (the | operator), letting a sequence of transformations read left-to-right as value | step1 | step2, instead of nested function calls that read inside-out."
+explanation: |
+  Nested function calls -- `step3(step2(step1(value)))` -- read
+  inside-out: the *first* transformation applied is the one written
+  *innermost*, buried in the middle of the expression. Some functional
+  libraries build a "pipe" operator instead, letting a value flow
+  left-to-right through a sequence of steps the same way shell
+  pipelines chain commands with `|`. Python doesn't have a built-in
+  pipe operator, but `|` is just the `__or__` dunder method under the
+  hood -- a small wrapper class can overload it to mean "apply this
+  function to my wrapped value" instead of its default bitwise-or
+  meaning, turning `value | step1 | step2` into a genuinely readable
+  left-to-right pipeline.
+
+  This exercise builds a `Pipe` class with `__or__` and `.value`.
+example_code: |
+  # Nested calls -- read INSIDE-OUT: step1 runs first, but is innermost.
+  def step1(x):
+      return x + 1
+
+  def step2(x):
+      return x * 2
+
+  print(step2(step1(5)))
+  # 12 -- correct, but the call written FIRST (step2) is applied LAST
+
+  # The fix: a Pipe class overloading __or__ reads LEFT-TO-RIGHT.
+  class Pipe:
+      def __init__(self, value):
+          self.value = value
+
+      def __or__(self, func):
+          return Pipe(func(self.value))
+
+  result = (Pipe(5) | step1 | step2).value
+  print(result)
+  # 12 -- same result, but reads in the actual order the steps are applied
+starter_code: |
+  def step1(x):
+      return x + 1
+
+  def step2(x):
+      return x * 2
+
+  print(step2(step1(5)))
+challenge: |
+  Build a `Pipe` class with `__init__(self, value)` storing `.value`,
+  and `__or__(self, func)` returning `Pipe(func(self.value))`. Use it
+  as `(Pipe(5) | step1 | step2).value` instead of nested calls. Keep
+  the same output: 12.
+expected_output: |
+  12
+hints:
+  - "class Pipe: def __init__(self, value): self.value = value; def __or__(self, func): return Pipe(func(self.value))."
+  - "(Pipe(5) | step1 | step2).value -- each | applies the next function and wraps the result in a new Pipe."
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 21
+difficulty: deep_dive
+contains_patterns:
+  - "def __or__\\(self, func\\):"
+concept_tags: [functional_programming, operator_overloading, pipelines]

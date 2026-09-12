@@ -1,0 +1,58 @@
+id: ai_189
+title: "get_prompt Must Actually Fill In the Provided Arguments"
+language: ai
+level: 189
+objective: "Fix a prompt-retrieval function that returns a prompt's raw template unfilled, ignoring the arguments the caller actually provided -- the whole point of MCP's prompt arguments is substituting them into the template before returning it."
+explanation: |
+  MCP's `prompts/get` request accepts arguments meant to be substituted
+  into a stored prompt template before it's returned -- a
+  `"summarize_document"` prompt might take a `style` argument
+  (`"formal"` or `"casual"`) that changes the returned prompt's actual
+  wording. Returning the raw, unfilled template regardless of what
+  arguments were passed defeats the entire purpose of the prompt having
+  parameters in the first place -- the caller asked for one specific
+  variant and got the generic template back instead.
+
+  The bug this exercise fixes returns the prompt's raw template
+  unfilled, ignoring whatever arguments were provided. The fix
+  substitutes the provided arguments into the template before
+  returning it.
+example_code: |
+  # The trap: returns the RAW, UNFILLED template -- ignores the
+  # arguments the caller actually provided entirely.
+  def get_prompt_trap(template, arguments):
+      return template
+
+  template = "Summarize this document in a {style} tone."
+  print(get_prompt_trap(template, {"style": "formal"}))   # "Summarize this document in a {style} tone." -- unfilled!
+
+  # The fix: substitute the provided arguments into the template.
+  def get_prompt(template, arguments):
+      return template.format(**arguments)
+
+  print(get_prompt(template, {"style": "formal"}))   # "Summarize this document in a formal tone." -- correctly filled in
+starter_code: |
+  def get_prompt(template, arguments):
+      return template
+
+  template = "Summarize this document in a {style} tone."
+  print(get_prompt(template, {"style": "formal"}))
+challenge: |
+  Fix `get_prompt` so it substitutes `arguments` into `template` (via
+  `.format(**arguments)`), instead of returning the raw, unfilled
+  template. It should print
+  `Summarize this document in a formal tone.`, not
+  `Summarize this document in a {style} tone.`.
+expected_output: |
+  Summarize this document in a formal tone.
+hints:
+  - "Change the return statement to: return template.format(**arguments)."
+  - "The template's {style} placeholder needs the arguments dict unpacked as keyword arguments into str.format()."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 14
+difficulty: warmup
+contains_patterns:
+  - "template\\.format\\(\\*\\*arguments\\)"
+concept_tags: [mcp, prompts, template_substitution]

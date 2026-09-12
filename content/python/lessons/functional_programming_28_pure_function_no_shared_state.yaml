@@ -1,0 +1,67 @@
+id: functional_programming_28
+title: "Two Calls That Silently Shared One Global Rate Instead of Each Getting Its Own"
+language: python
+level: 363
+objective: "Fix a function reading a shared global 'current rate' instead of taking it as a parameter, so two calls meant to use different rates silently both use whichever rate was set last -- passing the rate explicitly makes each call self-contained and independently correct."
+explanation: |
+  A function that reads a module-level 'current' variable instead of
+  taking that value as a parameter is impure in a very concrete,
+  costly way: every call depends on whatever that global happens to
+  be set to *at the moment it's called*, not on anything the call
+  site itself controls. Two calls meant to use genuinely different
+  rates -- a 10% discount for one price, 20% for another -- silently
+  both use whatever the global was last set to, if nothing updates it
+  in between; there's no way to tell from the call site alone what
+  rate was actually applied. A pure version takes the rate as an
+  explicit parameter, so each call is fully self-contained, correct
+  regardless of what any other call did before or after it.
+
+  The fix adds `rate` as an explicit parameter to `get_discount`,
+  removing the dependency on the shared global entirely.
+example_code: |
+  # The trap: reads a shared global -- both calls silently use the SAME rate.
+  CURRENT_RATE_TRAP = 0.1
+
+  def get_discount_trap(price):
+      return price * (1 - CURRENT_RATE_TRAP)
+
+  print(get_discount_trap(100))
+  print(get_discount_trap(200))
+  # 90.0
+  # 180.0 -- WRONG if the second price was meant to get a 20% rate, not 10%
+
+  # The fix: rate is an explicit parameter -- each call is self-contained.
+  def get_discount(price, rate):
+      return price * (1 - rate)
+
+  print(get_discount(100, 0.1))
+  print(get_discount(200, 0.2))
+  # 90.0
+  # 160.0 -- correctly used each call's own explicit rate
+starter_code: |
+  CURRENT_RATE = 0.1
+
+  def get_discount(price):
+      return price * (1 - CURRENT_RATE)
+
+  print(get_discount(100))
+  print(get_discount(200))
+challenge: |
+  Fix `get_discount` so it takes `rate` as an explicit second
+  parameter instead of reading the `CURRENT_RATE` global. Call it as
+  `get_discount(100, 0.1)` then `get_discount(200, 0.2)`. It should
+  print `90.0` then `160.0`, not `90.0` then `180.0`.
+expected_output: |
+  90.0
+  160.0
+hints:
+  - "def get_discount(price, rate): return price * (1 - rate), then call get_discount(100, 0.1) and get_discount(200, 0.2)."
+  - "A function reading a shared global has every call depend on whatever that global happens to be at that moment -- an explicit parameter makes each call self-contained and independently correct."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 28
+difficulty: gotcha
+contains_patterns:
+  - "def get_discount\\(price, rate\\):"
+concept_tags: [functional_programming, purity, side_effects, gotchas]

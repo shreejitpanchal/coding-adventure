@@ -1,0 +1,52 @@
+id: ai_337
+title: "A Combined Score Needs to Actually Combine Both Criteria"
+language: ai
+level: 337
+objective: "Fix a combined scoring function that only checks correctness, when a response that's technically correct but genuinely irrelevant to the question asked shouldn't score as fully correct -- both criteria need to hold for the combined score to be positive."
+explanation: |
+  Evaluating a response often needs more than one criterion at once --
+  correctness alone doesn't catch a response that happens to contain a
+  factually accurate statement about something the user never actually
+  asked about. A combined score that only ever checks one of the two
+  criteria silently drops the other one from consideration entirely,
+  no matter how the scoring function's own name or signature might
+  suggest it accounts for both.
+
+  The bug this exercise fixes returns based on `is_correct` alone. The
+  fix requires both `is_correct` and `is_relevant` to be true.
+example_code: |
+  # The trap: ignores is_relevant entirely -- only checks is_correct.
+  def combined_score_trap(is_correct, is_relevant):
+      return 1 if is_correct else 0
+
+  print(combined_score_trap(is_correct=True, is_relevant=False))
+  # 1 -- wrongly scored as fully correct despite being irrelevant
+
+  # The fix: require BOTH criteria to hold.
+  def combined_score(is_correct, is_relevant):
+      return 1 if (is_correct and is_relevant) else 0
+
+  print(combined_score(is_correct=True, is_relevant=False))
+  # 0 -- correctly scored as not fully correct, since it wasn't relevant
+starter_code: |
+  def combined_score(is_correct, is_relevant):
+      return 1 if is_correct else 0
+
+  print(combined_score(is_correct=True, is_relevant=False))
+challenge: |
+  Fix `combined_score` so it returns `1 if (is_correct and
+  is_relevant) else 0`, instead of checking `is_correct` alone. It
+  should print `0`, not `1`.
+expected_output: |
+  0
+hints:
+  - "Change the condition from is_correct alone to (is_correct and is_relevant)."
+  - "A technically-correct-but-irrelevant answer is still, practically speaking, a bad answer -- both criteria genuinely need to hold."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 27
+difficulty: warmup
+contains_patterns:
+  - "is_correct and is_relevant"
+concept_tags: [langsmith, evaluators, multi_criteria_scoring]

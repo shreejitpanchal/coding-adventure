@@ -1,0 +1,72 @@
+id: ai_262
+title: "A Chain Step Should Check Its Input Type Before Running, Not After It Crashes"
+language: ai
+level: 262
+objective: "Fix a step runner that calls straight into the function with no type check at all, letting a wrong-typed input surface as a confusing, unrelated crash deep inside the function instead of a clear, immediate error naming the actual problem."
+explanation: |
+  A chain step declares what type of input it expects, and checking
+  that upfront turns a wrong-typed input into a clear, immediate,
+  named error -- instead of whatever confusing internal exception the
+  function itself happens to raise once it tries to operate on data of
+  a type it was never designed to handle. `42.upper()` failing with
+  `AttributeError: 'int' object has no attribute 'upper'` tells you
+  *what* broke, technically, but not *why* it was even attempted in the
+  first place -- a step boundary is exactly the place that context
+  exists to check.
+
+  The bug this exercise fixes calls `fn(x)` directly, with no type
+  check. The fix validates `x` against `expected_type` first, raising a
+  clear, specific `TypeError` before ever calling `fn`.
+example_code: |
+  # The trap: no type check at all -- a wrong-typed input just crashes
+  # confusingly deep inside the function itself.
+  def run_step_trap(fn, x, expected_type):
+      return fn(x)
+
+  def to_upper(x):
+      return x.upper()
+
+  # run_step_trap(to_upper, 42, str)  # AttributeError: 'int' object has no attribute 'upper'
+
+  # The fix: validate the input type FIRST, with a clear, specific error.
+  def run_step(fn, x, expected_type):
+      if not isinstance(x, expected_type):
+          raise TypeError(f"expected {expected_type.__name__}, got {type(x).__name__}")
+      return fn(x)
+
+  try:
+      run_step(to_upper, 42, str)
+  except TypeError as e:
+      print(str(e))   # "expected str, got int" -- immediately clear what actually went wrong
+starter_code: |
+  def run_step(fn, x, expected_type):
+      return fn(x)
+
+  def to_upper(x):
+      return x.upper()
+
+  try:
+      print(run_step(to_upper, 42, str))
+  except AttributeError:
+      print("unhandled")
+  except TypeError as e:
+      print(str(e))
+challenge: |
+  Fix `run_step` so it checks `isinstance(x, expected_type)` first and
+  raises `TypeError(f"expected {expected_type.__name__}, got
+  {type(x).__name__}")` when it doesn't match, instead of calling
+  `fn(x)` unconditionally. It should print `expected str, got int`, not
+  `unhandled`.
+expected_output: |
+  expected str, got int
+hints:
+  - "if not isinstance(x, expected_type): raise TypeError(f\"expected {expected_type.__name__}, got {type(x).__name__}\") -- as the very first check in the function."
+  - "This check has to run BEFORE fn(x) is ever called -- once fn runs on the wrong type, whatever it raises has nothing to do with the real, upstream problem."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 42
+difficulty: core
+contains_patterns:
+  - "isinstance\\(x, expected_type\\)"
+concept_tags: [langchain, type_validation, error_handling]

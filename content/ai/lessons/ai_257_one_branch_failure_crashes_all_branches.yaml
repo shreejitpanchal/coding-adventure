@@ -1,0 +1,74 @@
+id: ai_257
+title: "One Failing Branch in a RunnableParallel Shouldn't Take Down Every Other Branch"
+language: ai
+level: 257
+objective: "Fix a parallel-branch runner that lets one branch's exception crash the entire call, losing every other branch's result too, when a single branch's failure should be isolated instead of destroying the whole parallel run."
+explanation: |
+  Running several independent branches in parallel only delivers real
+  value if a failure in one branch doesn't take the others down with
+  it -- if the sentiment branch happens to fail, the summary branch's
+  perfectly good result shouldn't be thrown away too. A runner with no
+  per-branch error isolation means a single flaky branch turns an
+  otherwise-successful parallel run into a total loss.
+
+  The bug this exercise fixes has no exception handling around each
+  branch call at all, so one failure propagates and destroys the whole
+  result. The fix catches each branch's failure individually, letting
+  the other branches' results survive.
+example_code: |
+  # The trap: no per-branch error isolation -- ONE failing branch
+  # crashes the entire parallel call.
+  def run_parallel_trap(branches, x):
+      return {name: fn(x) for name, fn in branches.items()}
+
+  def ok_branch(x): return x * 2
+  def bad_branch(x): raise RuntimeError("branch failed")
+  branches = {"good": ok_branch, "bad": bad_branch}
+
+  # run_parallel_trap(branches, 5)  # RuntimeError -- "good" branch's result is lost too
+
+  # The fix: catch each branch's failure individually.
+  def run_parallel(branches, x):
+      results = {}
+      for name, fn in branches.items():
+          try:
+              results[name] = fn(x)
+          except RuntimeError:
+              results[name] = None
+      return results
+
+  print(run_parallel(branches, 5)["good"])   # 10 -- "good" branch's result survived, isolated from "bad"'s failure
+starter_code: |
+  def run_parallel(branches, x):
+      return {name: fn(x) for name, fn in branches.items()}
+
+  def ok_branch(x):
+      return x * 2
+  def bad_branch(x):
+      raise RuntimeError("branch failed")
+
+  branches = {"good": ok_branch, "bad": bad_branch}
+
+  try:
+      result = run_parallel(branches, 5)
+      print(result["good"])
+  except RuntimeError:
+      print("crashed")
+challenge: |
+  Fix `run_parallel` so it wraps each branch call in its own
+  `try/except RuntimeError` (storing `None` on failure), instead of
+  letting one branch's exception propagate and destroy the whole
+  result. It should print `10`, not `crashed`.
+expected_output: |
+  10
+hints:
+  - "Loop over branches.items() manually, wrapping results[name] = fn(x) in try/except RuntimeError: results[name] = None."
+  - "The dict comprehension version has no way to catch a per-item failure -- it has to become an explicit loop with its own try/except inside."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "results\\[name\\] = None"
+concept_tags: [langchain, runnable_parallel, error_isolation]

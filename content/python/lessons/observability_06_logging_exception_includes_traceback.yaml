@@ -1,0 +1,73 @@
+id: observability_06
+title: "logging.error() Logs the Message -- logging.exception() Also Logs the Traceback"
+language: python
+level: 406
+objective: "Fix an except block using logging.error() to report a caught exception, which logs only the message text with no traceback at all, when logging.exception() (called from inside an except block) automatically includes the full traceback -- exactly the detail needed to debug what actually happened."
+explanation: |
+  `logging.error(message)` logs whatever string it's given, at ERROR
+  severity -- nothing more. Called from inside an `except` block with
+  just the exception's message text, it tells you *that* something
+  failed and roughly what the message said, but throws away the
+  traceback entirely -- the exact chain of calls that led to the
+  failure, which is usually the single most useful piece of
+  information for actually debugging it. `logging.exception(message)`
+  is specifically designed to be called from inside an `except` block:
+  it logs at ERROR severity just like `logging.error()`, but
+  automatically appends the *full traceback* of the exception
+  currently being handled, with no extra work needed to capture or
+  format it.
+
+  The fix replaces `logging.error(str(e))` with
+  `logging.exception("failed")`, called from inside the `except`
+  block.
+example_code: |
+  # The trap: logs only the message text -- the traceback is gone entirely.
+  import logging
+
+  def risky_trap():
+      raise ValueError("bad input")
+
+  try:
+      risky_trap()
+  except ValueError as e:
+      logging.error(str(e))
+  # Only "bad input" is logged -- no traceback, no indication of WHERE this happened
+
+  # The fix: logging.exception() automatically includes the full traceback.
+  def risky():
+      raise ValueError("bad input")
+
+  try:
+      risky()
+  except ValueError:
+      logging.exception("failed")
+  # Logs "failed" PLUS the complete traceback, including risky()'s own frame --
+  # everything needed to actually debug what happened, captured automatically
+starter_code: |
+  import logging
+
+  def risky():
+      raise ValueError("bad input")
+
+  try:
+      risky()
+  except ValueError as e:
+      logging.error(str(e))
+      print("logged")
+challenge: |
+  Fix this so the `except` block calls `logging.exception("failed")`
+  instead of `logging.error(str(e))`, so the full traceback is
+  captured automatically. Keep printing `logged` afterward.
+expected_output: |
+  logged
+hints:
+  - "except ValueError: logging.exception(\"failed\")."
+  - "logging.exception() is meant to be called from inside an except block -- it automatically appends the full traceback of the exception currently being handled, with no extra formatting needed."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "logging\\.exception\\(\"failed\"\\)"
+concept_tags: [observability, logging, exceptions]

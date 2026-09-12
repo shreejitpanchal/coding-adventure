@@ -1,0 +1,78 @@
+id: ai_173
+title: "A Tool Call That Needs Another's Result Can't Run Before It"
+language: ai
+level: 173
+objective: "Fix a batch tool-call executor that runs calls in whatever order they were listed, even when one call genuinely depends on another's result -- unlike this category's earlier lesson on running INDEPENDENT calls concurrently, dependent calls have a real ordering requirement that can't be skipped."
+explanation: |
+  This category's parallel-tool-calls lesson covered running
+  *independent* calls concurrently for speed -- but not every batch of
+  tool calls is independent. Looking up a customer's account, then
+  looking up that specific account's order history, has a genuine
+  dependency: the second call needs the first call's result (the
+  account ID) as its own input, and running it first (or at the same
+  time) means it simply doesn't have what it needs yet.
+
+  The bug this exercise fixes executes calls in whatever order they
+  happen to be listed, without checking whether a call's declared
+  dependency has actually been resolved first. The fix sorts calls so
+  that any call with a dependency only runs after that dependency has
+  already produced its result.
+example_code: |
+  # The trap: executes calls in LISTED order -- if a dependent call
+  # happens to be listed BEFORE what it depends on, it runs with no input at all.
+  def run_calls_trap(calls, results):
+      for name, fn, depends_on in calls:
+          input_value = results.get(depends_on) if depends_on else None
+          results[name] = fn(input_value)
+      return results
+
+  calls = [
+      ("order_history", lambda acc_id: f"orders for {acc_id}", "account_lookup"),   # listed FIRST, but DEPENDS on the next one
+      ("account_lookup", lambda _: "ACC-42", None),
+  ]
+  result_trap = run_calls_trap(calls, {})
+  print(result_trap["order_history"])   # "orders for None" -- ran before its dependency was ever resolved
+
+  # The fix: sort so a call only runs AFTER whatever it depends on.
+  def run_calls(calls, results):
+      remaining = list(calls)
+      while remaining:
+          for name, fn, depends_on in list(remaining):
+              if depends_on is None or depends_on in results:
+                  input_value = results.get(depends_on) if depends_on else None
+                  results[name] = fn(input_value)
+                  remaining.remove((name, fn, depends_on))
+      return results
+
+  print(run_calls(calls, {})["order_history"])   # "orders for ACC-42" -- correctly ran only after its dependency resolved
+starter_code: |
+  def run_calls(calls, results):
+      for name, fn, depends_on in calls:
+          input_value = results.get(depends_on) if depends_on else None
+          results[name] = fn(input_value)
+      return results
+
+  calls = [
+      ("order_history", lambda acc_id: f"orders for {acc_id}", "account_lookup"),
+      ("account_lookup", lambda _: "ACC-42", None),
+  ]
+  print(run_calls(calls, {})["order_history"])
+challenge: |
+  Fix `run_calls` so it only executes a call once its `depends_on`
+  dependency (if any) is already present in `results`, retrying
+  remaining calls in a loop until every dependency has been resolved in
+  the right order. It should print `orders for ACC-42`, not
+  `orders for None`.
+expected_output: |
+  orders for ACC-42
+hints:
+  - "Track a `remaining` list of calls not yet executed, looping until it's empty."
+  - "For each call still in `remaining`, only execute it (and remove it from `remaining`) if `depends_on is None or depends_on in results` -- otherwise leave it for a later pass through the loop."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 43
+difficulty: deep_dive
+contains_patterns:
+  - "depends_on is None or depends_on in results"
+concept_tags: [agentic_frameworks, tool_calling, dependency_ordering]

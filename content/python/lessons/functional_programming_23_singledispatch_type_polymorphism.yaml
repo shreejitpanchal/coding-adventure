@@ -1,0 +1,78 @@
+id: functional_programming_23
+title: "singledispatch Replaces an isinstance Chain With Per-Type Functions"
+language: python
+level: 358
+objective: "Replace an isinstance()-chain choosing behavior by type with functools.singledispatch, registering a separate small function per type instead of branching inside one growing function body."
+explanation: |
+  An `isinstance(x, int)` / `isinstance(x, str)` chain works, but
+  every new type that needs its own behavior means editing the same
+  growing function body -- the functional-style alternative is
+  `functools.singledispatch`, which lets each type's behavior live in
+  its *own* separate, independently-registered function instead.
+  `@singledispatch` marks the *default* implementation; `@describe.
+  register` (using the parameter's type annotation to know which type
+  it handles) adds a specialized version for that specific type --
+  calling `describe(x)` automatically picks whichever registered
+  function matches `x`'s actual type, with no branching logic anywhere
+  in the calling code at all.
+
+  The fix replaces the isinstance chain with `@singledispatch` plus
+  `@describe.register` for each type.
+example_code: |
+  # The trap: an isinstance chain -- every new type edits the SAME function.
+  def describe_trap(x):
+      if isinstance(x, int):
+          return f"int: {x}"
+      elif isinstance(x, str):
+          return f"str: {x}"
+      else:
+          return "unknown"
+
+  print(describe_trap(5), describe_trap("hi"))
+  # int: 5 str: hi -- correct, but every new type grows this one function
+
+  # The fix: singledispatch -- each type's behavior is its OWN function.
+  from functools import singledispatch
+
+  @singledispatch
+  def describe(x):
+      return "unknown"
+
+  @describe.register
+  def _(x: int):
+      return f"int: {x}"
+
+  @describe.register
+  def _(x: str):
+      return f"str: {x}"
+
+  print(describe(5), describe("hi"))
+  # int: 5 str: hi -- same result, dispatched automatically by type
+starter_code: |
+  def describe(x):
+      if isinstance(x, int):
+          return f"int: {x}"
+      elif isinstance(x, str):
+          return f"str: {x}"
+      else:
+          return "unknown"
+
+  print(describe(5), describe("hi"))
+challenge: |
+  Rewrite `describe` using `@functools.singledispatch` with a
+  `@describe.register` function for `int` and one for `str`, instead
+  of an `isinstance` chain. Keep the same output: int: 5 str: hi.
+expected_output: |
+  int: 5 str: hi
+hints:
+  - "from functools import singledispatch, then: @singledispatch def describe(x): return \"unknown\"."
+  - "@describe.register def _(x: int): return f\"int: {x}\", and the same shape for str -- the type annotation is what tells singledispatch which type each one handles."
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 23
+difficulty: deep_dive
+contains_patterns:
+  - "@singledispatch"
+  - "@describe\\.register"
+concept_tags: [functional_programming, singledispatch, polymorphism]

@@ -76,7 +76,7 @@ hints:
   - "results[resp[\"id\"]] = resp[\"result\"] -- drop enumerate() and pending_request_ids[i] entirely."
   - "The pending_request_ids parameter becomes unused once correlation is done purely by the response's own id field."
 xp_reward: 15
-achievement: mcp_master
+achievement: null
 category: mcp
 category_level: 5
 difficulty: deep_dive

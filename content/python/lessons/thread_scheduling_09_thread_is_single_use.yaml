@@ -1,0 +1,71 @@
+id: thread_scheduling_09
+title: "A Thread Object Can Only Ever Be Started Once"
+language: python
+level: 429
+objective: "Fix code trying to call .start() again on a Thread object that's already finished, which raises RuntimeError ('threads can only be started once'), when 'restarting' a worker actually means creating a brand-new Thread object each time, not reusing the old one."
+explanation: |
+  A `threading.Thread` instance is genuinely single-use -- once
+  `.start()` has been called on it, calling `.start()` again (whether
+  it's still running or has already finished) raises `RuntimeError:
+  threads can only be started once`. There's no way to "reset" a
+  `Thread` object back to a startable state; the only way to run the
+  same target function again on a new thread is to construct a
+  completely new `Thread` instance for it.
+
+  The fix creates a fresh `Thread` object for each run, instead of
+  trying to reuse the same one.
+example_code: |
+  # The trap: reuses the SAME Thread object -- can't be started twice.
+  import threading
+
+  t_trap = threading.Thread(target=lambda: None)
+  t_trap.start()
+  t_trap.join()
+  try:
+      t_trap.start()
+      print("restarted")
+  except RuntimeError:
+      print("crashed")
+  # "crashed" -- threads can only be started once, ever
+
+  # The fix: build a NEW Thread object each time.
+  def run_worker(target):
+      t = threading.Thread(target=target)
+      t.start()
+      return t
+
+  t1 = run_worker(lambda: None)
+  t1.join()
+  t2 = run_worker(lambda: None)     # a genuinely fresh Thread object
+  t2.join()
+  print("restarted")
+  # "restarted" -- correctly ran again, via a brand-new Thread instance each time
+starter_code: |
+  import threading
+
+  t = threading.Thread(target=lambda: None)
+  t.start()
+  t.join()
+  try:
+      t.start()
+      print("restarted")
+  except RuntimeError:
+      print("crashed")
+challenge: |
+  Fix this by writing a `run_worker(target)` helper that creates a
+  brand-new `threading.Thread(target=target)` each time it's called,
+  and calling it twice instead of reusing the same `Thread` object. It
+  should print `restarted`, not `crashed`.
+expected_output: |
+  restarted
+hints:
+  - "def run_worker(target): t = threading.Thread(target=target); t.start(); return t, called twice, each joined before printing."
+  - "A Thread object can only ever be started once, whether it already finished or is still running -- \"restarting\" always means a brand-new Thread instance."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 9
+difficulty: gotcha
+contains_patterns:
+  - "def run_worker\\(target\\):"
+concept_tags: [threading, lifecycle, gotchas]

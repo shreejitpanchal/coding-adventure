@@ -1,0 +1,54 @@
+id: gotcha_gauntlet_09
+title: "The Login Check That Rejected a Perfectly Valid Answer"
+language: python
+level: 254
+objective: "Fix a string equality check that's unintentionally case-sensitive, rejecting valid user input like 'Yes' when only the exact lowercase 'yes' was ever accepted."
+explanation: |
+  `==` on strings compares them exactly, character for character,
+  including case -- `"Yes" == "yes"` is `False`, since `Y` and `y` are
+  genuinely different characters as far as string equality is
+  concerned. Code that checks user-typed confirmation input against a
+  single hardcoded lowercase string quietly rejects every capitalized
+  or all-caps variant a real person might type, with no error and no
+  obvious sign anything's wrong -- it just looks like the user's
+  answer was "no" when they clearly meant "yes."
+
+  The fix is to normalize both sides of the comparison the same way
+  before comparing -- `.lower()` on the input (and, for safety, on the
+  literal being compared against too) makes the check accept any
+  capitalization consistently.
+example_code: |
+  # The trap: exact-case comparison rejects any capitalized variant.
+  def confirmed_trap(answer):
+      return answer == "yes"
+
+  print(confirmed_trap("Yes"))
+  # False -- WRONG, a real user very plausibly typed it this way
+
+  # The fix: normalize case before comparing.
+  def confirmed(answer):
+      return answer.lower() == "yes"
+
+  print(confirmed("Yes"))
+  # True -- correctly accepted regardless of capitalization
+starter_code: |
+  def confirmed(answer):
+      return answer == "yes"
+
+  print(confirmed("Yes"))
+challenge: |
+  Fix `confirmed` so it compares `answer.lower() == "yes"` instead of
+  `answer == "yes"` directly. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "return answer.lower() == \"yes\"."
+  - "== on strings is always exact-case -- normalizing with .lower() on the input is what makes the comparison case-insensitive."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 9
+difficulty: gotcha
+contains_patterns:
+  - "answer\\.lower\\(\\) == \"yes\""
+concept_tags: [strings, comparison, gotchas]

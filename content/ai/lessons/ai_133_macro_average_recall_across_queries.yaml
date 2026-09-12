@@ -1,0 +1,66 @@
+id: ai_133
+title: "Averaging Recall@K Across Queries Needs Query-Level Averaging, Not Pooled Counts"
+language: ai
+level: 133
+objective: "Fix a multi-query recall evaluation that pools hits and totals across every test query before dividing, letting a query with many relevant documents dominate the aggregate score -- instead of averaging each query's own recall equally."
+explanation: |
+  Evaluating retrieval across many test queries needs the same
+  macro-vs-micro averaging distinction this app's ML-fundamentals
+  category covers for classification metrics: pooling every query's
+  hit count and relevant-document count together before dividing lets
+  a query with unusually many relevant documents dominate the final
+  number, the same way a large class can dominate a pooled accuracy
+  score. **Macro-averaging** instead computes each query's own
+  Recall@K independently, then averages those per-query scores with
+  equal weight, so a query with just one relevant document counts
+  exactly as much as a query with ten.
+
+  The bug this exercise fixes pools hits and totals across every query
+  before dividing once at the end. The fix computes each query's own
+  recall first, then averages those individual scores -- giving every
+  test query, regardless of how many relevant documents it has, an
+  equal voice in the final aggregate.
+example_code: |
+  # The trap: pools hits and totals across ALL queries before dividing
+  # ONCE -- a query with many relevant docs dominates the result.
+  def macro_recall_trap(per_query_results):
+      total_hits = sum(hits for hits, total in per_query_results)
+      total_relevant = sum(total for hits, total in per_query_results)
+      return total_hits / total_relevant
+
+  # (hits, total_relevant) per query
+  per_query_results = [(1, 1), (8, 10)]   # query 1: perfect recall; query 2: 80% recall
+  print(round(macro_recall_trap(per_query_results), 3))   # 0.818 -- dominated by query 2's larger totals
+
+  # The fix: compute EACH query's own recall first, THEN average those scores.
+  def macro_recall(per_query_results):
+      per_query_recall = [hits / total for hits, total in per_query_results]
+      return sum(per_query_recall) / len(per_query_recall)
+
+  print(round(macro_recall(per_query_results), 3))   # 0.9 -- correctly averages 1.0 and 0.8 with EQUAL weight
+starter_code: |
+  def macro_recall(per_query_results):
+      total_hits = sum(hits for hits, total in per_query_results)
+      total_relevant = sum(total for hits, total in per_query_results)
+      return total_hits / total_relevant
+
+  per_query_results = [(1, 1), (8, 10)]
+  print(round(macro_recall(per_query_results), 3))
+challenge: |
+  Fix `macro_recall` so it computes each query's own recall (`hits /
+  total`) first, then averages those per-query scores, instead of
+  pooling hits and totals across every query before a single division.
+  It should print `0.9`, not `0.818`.
+expected_output: |
+  0.9
+hints:
+  - "Build per_query_recall = [hits / total for hits, total in per_query_results] first."
+  - "Return sum(per_query_recall) / len(per_query_recall) -- averaging the two per-query scores (1.0 and 0.8) directly, giving each query equal weight."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 48
+difficulty: deep_dive
+contains_patterns:
+  - "hits / total for hits, total in per_query_results"
+concept_tags: [rag, macro_averaging, retrieval_evaluation]

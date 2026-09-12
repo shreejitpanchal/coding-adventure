@@ -1,0 +1,51 @@
+id: core_refresher_10
+title: "Returning a Tuple Lets a Caller Unpack Two Values at Once"
+language: python
+level: 123
+objective: "Replace a function that returns a list of two values with one that returns a tuple, unpacked directly at the call site."
+explanation: |
+  A function that conceptually returns "two related values" (a minimum
+  and a maximum, a name split into first/last) can just return them as
+  a tuple -- `return min(nums), max(nums)` is really `return (min(nums),
+  max(nums))`, since a bare comma already builds a tuple, parentheses
+  or not. The caller then unpacks both values directly into separate
+  names in one line (`lo, hi = min_max(nums)`), which reads far more
+  clearly than indexing into a returned list (`result[0]`, `result[1]`)
+  to pull the same two values back out.
+example_code: |
+  # Returns a list -- the caller has to index into it.
+  def min_max_list(nums):
+      return [min(nums), max(nums)]
+
+  result = min_max_list([3, 1, 4, 1, 5])
+  print(result[0], result[1])              # 1 5
+
+  # Returns a tuple -- the caller unpacks it directly.
+  def min_max(nums):
+      return min(nums), max(nums)
+
+  lo, hi = min_max([3, 1, 4, 1, 5])
+  print(lo, hi)                            # 1 5
+starter_code: |
+  def min_max(nums):
+      return [min(nums), max(nums)]
+
+  result = min_max([3, 1, 4, 1, 5])
+  print(result[0], result[1])
+challenge: |
+  Fix `min_max` so it returns a tuple (`min(nums), max(nums)`), and
+  unpack it directly at the call site as `lo, hi = min_max(...)`.
+  Keep the same output: 1 5.
+expected_output: |
+  1 5
+hints:
+  - "Change the return statement to: return min(nums), max(nums)."
+  - "Unpack directly: lo, hi = min_max([3, 1, 4, 1, 5]), then print(lo, hi)."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "return min\\(nums\\), max\\(nums\\)"
+concept_tags: [tuples, unpacking, functions]

@@ -1,0 +1,58 @@
+id: ai_127
+title: "A Cold Cache's First Request Pays the Full Cost -- Design for It"
+language: ai
+level: 127
+objective: "Fix a latency-budget check that assumes every request benefits from a warm cache, when the very first request after a cache is cleared (a deploy, a restart) is guaranteed to be a cold miss and needs its own, more generous timeout."
+explanation: |
+  This category's caching lesson showed how a cache turns a repeated
+  query into a cheap lookup -- but that benefit only exists once
+  something has actually been cached. Immediately after a deploy, a
+  service restart, or any event that clears the cache, every single
+  request starts **cold**: the very first request for any given query
+  is guaranteed to be a full cache miss, paying the full embedding-plus-
+  retrieval cost with none of the caching benefit the system was
+  designed around. Code that assumes a warm cache unconditionally
+  (using a tight timeout tuned for the cached-hit case) will spuriously
+  fail exactly the requests that arrive right after a deploy, when the
+  cache is at its coldest.
+
+  The bug this exercise fixes uses the same tight timeout regardless of
+  whether the cache is known to be cold or warm. The fix uses a more
+  generous timeout specifically when the cache is flagged as cold,
+  correctly accounting for the extra, unavoidable cost of a guaranteed
+  first miss.
+example_code: |
+  # The trap: the SAME tight timeout regardless of whether the cache is
+  # cold -- spuriously fails requests right after a deploy or restart.
+  def get_timeout_trap(cache_is_cold, warm_timeout=200):
+      return warm_timeout
+
+  print(get_timeout_trap(cache_is_cold=True))   # 200ms -- too tight for a guaranteed-cold first request
+
+  # The fix: use a more generous timeout when the cache is known to be cold.
+  def get_timeout(cache_is_cold, warm_timeout=200, cold_timeout=1000):
+      return cold_timeout if cache_is_cold else warm_timeout
+
+  print(get_timeout(cache_is_cold=True))   # 1000ms -- correctly accounts for the guaranteed cold-cache cost
+starter_code: |
+  def get_timeout(cache_is_cold, warm_timeout=200, cold_timeout=1000):
+      return warm_timeout
+
+  print(get_timeout(cache_is_cold=True))
+challenge: |
+  Fix `get_timeout` so it returns `cold_timeout` when `cache_is_cold` is
+  `True`, and `warm_timeout` otherwise, instead of always returning
+  `warm_timeout`. It should print `1000`, not `200`.
+expected_output: |
+  1000
+hints:
+  - "Change the return statement to: return cold_timeout if cache_is_cold else warm_timeout."
+  - "A conditional expression, not just returning one fixed value regardless of the cache_is_cold flag."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 42
+difficulty: warmup
+contains_patterns:
+  - "cold_timeout if cache_is_cold else warm_timeout"
+concept_tags: [rag, caching, latency]

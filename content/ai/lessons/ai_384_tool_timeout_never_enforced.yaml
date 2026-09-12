@@ -1,0 +1,58 @@
+id: ai_384
+title: "A Tool That's Already Blown Past Its Time Budget Shouldn't Have Its Result Accepted"
+language: ai
+level: 384
+objective: "Fix a tool-execution wrapper that accepts a tool's result regardless of how long it actually took, when the Secure Tool Runtime's whole reason for enforcing a timeout is refusing results from a tool that's already run far past its allotted budget."
+explanation: |
+  A tool call that's still running well past its allotted time budget
+  is exactly the kind of misbehaving tool the Secure Tool Runtime
+  exists to contain -- accepting whatever it eventually returns anyway,
+  no matter how long it actually took, defeats the entire purpose of
+  having a timeout in the first place. The check has to compare the
+  tool's actual elapsed time against the budget and refuse the result
+  once that budget has genuinely been exceeded.
+
+  The bug this exercise fixes calls the tool and returns its result
+  unconditionally. The fix checks `elapsed_ticks` against `max_ticks`
+  first, refusing the result if the tool ran too long.
+example_code: |
+  # The trap: never checks elapsed_ticks against max_ticks at all -- a
+  # tool that's already run far past its allotted time still gets its
+  # result accepted.
+  def run_tool_with_timeout_trap(tool_fn, elapsed_ticks, max_ticks):
+      return tool_fn()
+
+  print(run_tool_with_timeout_trap(lambda: "finally done", elapsed_ticks=50, max_ticks=10))
+  # "finally done" -- accepted despite blowing way past the timeout
+
+  # The fix: check elapsed_ticks against max_ticks first.
+  def run_tool_with_timeout(tool_fn, elapsed_ticks, max_ticks):
+      if elapsed_ticks > max_ticks:
+          return "TIMEOUT"
+      return tool_fn()
+
+  print(run_tool_with_timeout(lambda: "finally done", elapsed_ticks=50, max_ticks=10))
+  # "TIMEOUT" -- correctly refused a result from a tool that ran too long
+starter_code: |
+  def run_tool_with_timeout(tool_fn, elapsed_ticks, max_ticks):
+      return tool_fn()
+
+  print(run_tool_with_timeout(lambda: "finally done", elapsed_ticks=50, max_ticks=10))
+challenge: |
+  Fix `run_tool_with_timeout` so it returns `"TIMEOUT"` when
+  `elapsed_ticks > max_ticks`, instead of always calling `tool_fn()`
+  and returning its result. It should print `TIMEOUT`, not
+  `finally done`.
+expected_output: |
+  TIMEOUT
+hints:
+  - "Add: if elapsed_ticks > max_ticks: return \"TIMEOUT\", before ever calling tool_fn()."
+  - "A misbehaving tool is exactly the kind of risk the Secure Tool Runtime's timeout exists to contain -- accepting its result anyway defeats the whole point."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 29
+difficulty: warmup
+contains_patterns:
+  - "elapsed_ticks > max_ticks"
+concept_tags: [solace_agent_mesh, secure_tool_runtime, timeouts]

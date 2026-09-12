@@ -1,0 +1,59 @@
+id: ai_84
+title: "Too High a Learning Rate Makes Gradient Descent Diverge, Not Converge"
+language: ai
+level: 84
+objective: "Fix a convergence check that only looks at whether loss changed, missing that a learning rate set too high makes loss grow without bound instead of settling down -- 'it changed' isn't the same as 'it's converging.'"
+explanation: |
+  The **learning rate** controls how big a step gradient descent takes
+  on each update. Too small, and progress crawls; too large, and each
+  step can overshoot the minimum so badly that the next step starts
+  from an even worse position than before, compounding step after
+  step into runaway **divergence** -- loss doesn't shrink toward some
+  minimum, it grows without bound. A convergence check that only asks
+  "did the loss change between steps" can't tell the difference between
+  healthy progress and this kind of runaway divergence -- both produce
+  a changing loss value, just in opposite directions.
+
+  The bug this exercise fixes checks only whether consecutive loss
+  values differ, which is true whether loss is decreasing (healthy) or
+  increasing without bound (diverging). The fix specifically checks
+  that loss is *decreasing* across the whole sequence, correctly
+  distinguishing genuine convergence from the runaway growth a too-high
+  learning rate produces.
+example_code: |
+  # The trap: only checks that loss CHANGED -- can't distinguish healthy
+  # descent from runaway divergence, since both produce changing values.
+  def looks_healthy_trap(loss_history):
+      return loss_history[0] != loss_history[-1]
+
+  diverging_losses = [1.0, 5.0, 40.0, 600.0]   # learning rate set way too high
+  print(looks_healthy_trap(diverging_losses))   # True -- WRONG, this is diverging, not improving
+
+  # The fix: check that loss is actually DECREASING across the sequence.
+  def looks_healthy(loss_history):
+      return all(loss_history[i] > loss_history[i + 1] for i in range(len(loss_history) - 1))
+
+  print(looks_healthy(diverging_losses))   # False -- correctly identifies runaway divergence
+starter_code: |
+  def looks_healthy(loss_history):
+      return loss_history[0] != loss_history[-1]
+
+  diverging_losses = [1.0, 5.0, 40.0, 600.0]
+  print(looks_healthy(diverging_losses))
+challenge: |
+  Fix `looks_healthy` so it checks that every consecutive pair of
+  losses is actually decreasing, instead of just checking that the
+  first and last values differ. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Use all(loss_history[i] > loss_history[i + 1] for i in range(len(loss_history) - 1)) to require EVERY consecutive step to decrease."
+  - "This diverging sequence is increasing at every step, so the corrected check correctly returns False."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "loss_history\\[i\\] > loss_history\\[i \\+ 1\\]"
+concept_tags: [ml_fundamentals, learning_rate, gradient_descent, divergence]

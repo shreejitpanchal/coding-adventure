@@ -1,0 +1,58 @@
+id: core_refresher_15
+title: "The Walrus Operator Combines Assignment and a Loop Condition"
+language: python
+level: 128
+objective: "Rewrite a while loop that reads a value and separately checks it as one line using the walrus operator (':=')."
+explanation: |
+  A common pattern -- read a value, check it, use it, repeat -- often
+  ends up computing the same expression twice: once to check the loop
+  condition, once more to actually get the value used inside the loop
+  body. The walrus operator (`:=`) assigns and produces a value in the
+  same expression, letting a `while` condition both compute *and* bind
+  a name in one step: `while (val := next(data)) != 0:` reads the next
+  value, checks it against the stop condition, and makes it available
+  as `val` inside the loop body, all without a separate assignment line
+  before the check.
+example_code: |
+  # Reads the value on its own line, then checks it separately.
+  data_loop = iter([1, 2, 3, 0, 4])
+  results_loop = []
+  while True:
+      val = next(data_loop)
+      if val == 0:
+          break
+      results_loop.append(val)
+  print(results_loop)                      # [1, 2, 3]
+
+  # The walrus operator combines the read and the check in one line.
+  data = iter([1, 2, 3, 0, 4])
+  results = []
+  while (val := next(data)) != 0:
+      results.append(val)
+  print(results)                           # [1, 2, 3]
+starter_code: |
+  data = iter([1, 2, 3, 0, 4])
+  results = []
+  while True:
+      val = next(data)
+      if val == 0:
+          break
+      results.append(val)
+  print(results)
+challenge: |
+  Rewrite this using the walrus operator so the read and the stop
+  check happen in a single while condition, instead of a separate
+  assignment plus an if/break. Keep the same output: [1, 2, 3].
+expected_output: |
+  [1, 2, 3]
+hints:
+  - "while (val := next(data)) != 0: results.append(val)"
+  - "The walrus operator's value is the value being assigned -- (val := next(data)) both assigns val AND is the value compared against 0."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "while \\(val := next\\(data\\)\\) != 0:"
+concept_tags: [walrus_operator, while_loops]

@@ -1,0 +1,100 @@
+id: concurrency_async_17
+title: "asyncio.Queue Awaits Naturally -- No Manual Polling Loop Needed Either"
+language: python
+level: 307
+objective: "Fix async code that busy-waits on a plain list with an await asyncio.sleep() loop, when asyncio.Queue provides the exact same 'await until an item is ready' behavior this category's threading.Queue lesson covers, for coroutines instead of threads."
+explanation: |
+  The same "don't hand-roll what the standard library already
+  provides" lesson that applies to `threading.Queue` applies here too:
+  a plain list, checked with `while not shared: await asyncio.sleep
+  (...)`, works, but it's a manual re-implementation of exactly what
+  `asyncio.Queue` already does correctly. `await q.put(item)` and
+  `await q.get()` are the coroutine-native equivalents of a thread-safe
+  queue's `put`/`get` -- `q.get()` suspends the calling coroutine
+  until an item is actually available, cooperatively yielding control
+  back to the event loop in the meantime, with no manual sleep-and-
+  recheck loop needed anywhere.
+
+  The fix replaces the plain list and polling loop with an
+  `asyncio.Queue`.
+example_code: |
+  # The trap: hand-rolled busy-wait polling, using asyncio.sleep as the delay.
+  import asyncio
+
+  async def producer_trap(shared, items):
+      for item in items:
+          shared.append(item)
+
+  async def consume_trap(shared, count):
+      results = []
+      while len(results) < count:
+          while not shared:
+              await asyncio.sleep(0.001)
+          results.append(shared.pop(0))
+      return results
+
+  async def main_trap():
+      shared = []
+      await producer_trap(shared, [1, 2, 3])
+      results = await consume_trap(shared, 3)
+      print(sum(results))
+
+  asyncio.run(main_trap())
+  # 6 -- works, but via a clumsy manual polling loop
+
+  # The fix: asyncio.Queue awaits naturally until an item is ready.
+  async def producer(q, items):
+      for item in items:
+          await q.put(item)
+
+  async def consume(q, count):
+      return [await q.get() for _ in range(count)]
+
+  async def main():
+      q = asyncio.Queue()
+      await producer(q, [1, 2, 3])
+      results = await consume(q, 3)
+      print(sum(results))
+
+  asyncio.run(main())
+  # 6 -- correctly awaits until each item is ready, no polling loop at all
+starter_code: |
+  import asyncio
+
+  async def producer(shared, items):
+      for item in items:
+          shared.append(item)
+
+  async def consume(shared, count):
+      results = []
+      while len(results) < count:
+          while not shared:
+              await asyncio.sleep(0.001)
+          results.append(shared.pop(0))
+      return results
+
+  async def main():
+      shared = []
+      await producer(shared, [1, 2, 3])
+      results = await consume(shared, 3)
+      print(sum(results))
+
+  asyncio.run(main())
+challenge: |
+  Rewrite this using `asyncio.Queue` -- `await q.put(item)` in the
+  producer, `await q.get()` in the consumer -- instead of a plain list
+  with a manual polling loop. Keep the same output: `6`.
+expected_output: |
+  6
+hints:
+  - "q = asyncio.Queue(); producer calls await q.put(item); consumer calls [await q.get() for _ in range(count)]."
+  - "await q.get() already suspends the coroutine until an item is actually available -- no manual asyncio.sleep-and-recheck loop needed."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 17
+difficulty: core
+contains_patterns:
+  - "asyncio\\.Queue\\(\\)"
+  - "await q\\.get\\(\\)"
+concept_tags: [asyncio, queue, concurrency]

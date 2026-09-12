@@ -1,0 +1,77 @@
+id: ai_93
+title: "Metadata Filtering Must Happen Before Top-K, Not After"
+language: ai
+level: 93
+objective: "Fix a retrieval pipeline that takes the top-k most similar chunks first and only then filters by metadata (e.g. document access permissions), which can throw away every allowed result if the top-k happened to be dominated by disallowed ones."
+explanation: |
+  When a retrieval needs to respect a metadata constraint -- only
+  documents a specific user is allowed to see, only documents from a
+  specific date range -- the *order* in which filtering and ranking
+  happen matters enormously. Taking the top-k most similar chunks
+  first and filtering *afterward* means the filter can only ever
+  remove from whatever small set top-k already picked -- if the
+  highest-similarity chunks all happen to belong to documents the user
+  isn't allowed to see, filtering afterward leaves nothing at all, even
+  though plenty of allowed, still-relevant documents exist further down
+  the ranking that top-k never even considered.
+
+  The bug this exercise fixes ranks by similarity first, takes the top
+  2, and only then filters by permission -- if neither of those top 2
+  happens to be allowed, the result is empty, regardless of how many
+  allowed documents exist further down. The fix filters by permission
+  *first*, then ranks and takes the top-k from what's actually allowed,
+  guaranteeing the k best *allowed* results are returned.
+example_code: |
+  # The trap: ranks and takes top-k FIRST, filters by permission AFTER --
+  # can throw away every allowed result if top-k was dominated by disallowed ones.
+  def retrieve_trap(candidates, user_allowed_docs, k=2):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      top_k = ranked[:k]
+      return [c for c in top_k if c["doc_id"] in user_allowed_docs]
+
+  candidates = [
+      {"doc_id": "secret1", "score": 0.9},
+      {"doc_id": "secret2", "score": 0.85},
+      {"doc_id": "public1", "score": 0.7},
+  ]
+  user_allowed_docs = {"public1"}
+  print(len(retrieve_trap(candidates, user_allowed_docs, k=2)))   # 0 -- "public1" never even made it into top-2!
+
+  # The fix: filter by permission FIRST, then rank and take top-k from what's allowed.
+  def retrieve(candidates, user_allowed_docs, k=2):
+      allowed = [c for c in candidates if c["doc_id"] in user_allowed_docs]
+      ranked = sorted(allowed, key=lambda c: c["score"], reverse=True)
+      return ranked[:k]
+
+  print(len(retrieve(candidates, user_allowed_docs, k=2)))   # 1 -- correctly finds the one allowed, relevant result
+starter_code: |
+  def retrieve(candidates, user_allowed_docs, k=2):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      top_k = ranked[:k]
+      return [c for c in top_k if c["doc_id"] in user_allowed_docs]
+
+  candidates = [
+      {"doc_id": "secret1", "score": 0.9},
+      {"doc_id": "secret2", "score": 0.85},
+      {"doc_id": "public1", "score": 0.7},
+  ]
+  user_allowed_docs = {"public1"}
+  print(len(retrieve(candidates, user_allowed_docs, k=2)))
+challenge: |
+  Fix `retrieve` so it filters `candidates` by `user_allowed_docs`
+  first, then ranks and takes the top `k` from the allowed set --
+  instead of ranking and truncating to top-k before filtering. It
+  should print `1`, not `0`.
+expected_output: |
+  1
+hints:
+  - "Build `allowed` first: [c for c in candidates if c[\"doc_id\"] in user_allowed_docs]."
+  - "Only THEN sort `allowed` by score and slice to [:k] -- filtering must happen before the top-k truncation, not after."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "allowed = \\[c for c in candidates"
+concept_tags: [rag, metadata_filtering, access_control, retrieval]

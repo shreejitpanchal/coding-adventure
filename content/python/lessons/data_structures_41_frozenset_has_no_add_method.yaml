@@ -1,0 +1,65 @@
+id: data_structures_41
+title: "A frozenset Has No add() Method at All -- Convert to a Set to Mutate It"
+language: python
+level: 198
+objective: "Fix code that calls .add() on a frozenset, when a frozenset is genuinely immutable and defines no mutating methods at all -- converting it to a plain set first is what makes mutation possible."
+explanation: |
+  A `frozenset` being immutable isn't just a convention -- it doesn't
+  even define `.add()`, `.remove()`, or any other mutating method at
+  all, so calling one raises `AttributeError` immediately, the same
+  way calling a genuinely nonexistent method would. When a frozenset's
+  contents actually need to change, the fix isn't to find some special
+  mutating operation on it (there isn't one) -- it's to convert it to a
+  plain, mutable `set` first with `set(frozen)`, and continue working
+  with that instead.
+
+  The bug this exercise fixes calls `.add()` directly on a frozenset.
+  The fix converts it to a plain set first.
+example_code: |
+  # The trap: frozensets have no .add() method at all -- this raises
+  # AttributeError immediately.
+  def add_tag_trap(tags):
+      tags.add("new")
+      return tags
+
+  try:
+      add_tag_trap(frozenset({"a", "b"}))
+      print("added")
+  except AttributeError:
+      print("immutable")
+  # "immutable" -- frozensets simply don't define a mutating .add() method
+
+  # The fix: convert to a plain set first, then mutate that.
+  def add_tag(tags):
+      tags = set(tags)
+      tags.add("new")
+      return tags
+
+  print(sorted(add_tag(frozenset({"a", "b"}))))
+  # ['a', 'b', 'new'] -- correctly mutated, since it's now a plain set
+starter_code: |
+  def add_tag(tags):
+      tags.add("new")
+      return tags
+
+  try:
+      print(sorted(add_tag(frozenset({"a", "b"}))))
+  except AttributeError:
+      print("immutable")
+challenge: |
+  Fix `add_tag` so it converts `tags` to a plain `set` first
+  (`tags = set(tags)`) before calling `.add()`. It should print
+  `['a', 'b', 'new']`, not `immutable`.
+expected_output: |
+  ['a', 'b', 'new']
+hints:
+  - "Add tags = set(tags) as the first line inside the function, before .add() is ever called."
+  - "A frozenset doesn't just refuse mutation -- it doesn't define a mutating method to refuse in the first place, which is why the error is AttributeError, not something else."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 41
+difficulty: warmup
+contains_patterns:
+  - "tags = set\\(tags\\)"
+concept_tags: [frozenset, immutability]

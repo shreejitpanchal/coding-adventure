@@ -1,0 +1,57 @@
+id: observability_09
+title: "Sampling Every Event Isn't Sampling At All"
+language: python
+level: 409
+objective: "Fix a sampling check that always returns True regardless of the sample rate, logging EVERY event, when checking the event's own counter against the rate (count % rate == 0) actually reduces log volume by only sampling every Nth event."
+explanation: |
+  A high-volume event (every single request, every cache lookup) is
+  often too frequent to log in full without drowning everything else
+  out and burning through log storage -- sampling addresses this by
+  logging only a fraction of occurrences, say one in every ten, while
+  still giving a representative picture of what's happening overall.
+  A sampling check that always returns `True` regardless of the actual
+  rate isn't sampling at all -- it logs every single event, exactly
+  the volume sampling was introduced to reduce. `count % rate == 0`
+  correctly logs only every `rate`-th occurrence, using the event's own
+  running counter.
+
+  The fix checks `count % rate == 0` instead of always returning
+  `True`.
+example_code: |
+  # The trap: always samples -- logs every single event, no reduction at all.
+  def should_sample_trap(count, rate):
+      return True
+
+  sampled_trap = [i for i in range(30) if should_sample_trap(i, 10)]
+  print(len(sampled_trap))
+  # 30 -- WRONG, every single event was "sampled" -- no volume reduction happened
+
+  # The fix: only every Nth event, based on the running counter.
+  def should_sample(count, rate):
+      return count % rate == 0
+
+  sampled = [i for i in range(30) if should_sample(i, 10)]
+  print(len(sampled))
+  # 3 -- correctly sampled only every 10th event (0, 10, 20)
+starter_code: |
+  def should_sample(count, rate):
+      return True
+
+  sampled = [i for i in range(30) if should_sample(i, 10)]
+  print(len(sampled))
+challenge: |
+  Fix `should_sample` so it returns `count % rate == 0`, instead of
+  always `True`. It should print `3`, not `30`.
+expected_output: |
+  3
+hints:
+  - "return count % rate == 0."
+  - "Always returning True logs every single occurrence -- the whole point of sampling is reducing volume by only logging every Nth one."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "return count % rate == 0"
+concept_tags: [observability, sampling, logging]

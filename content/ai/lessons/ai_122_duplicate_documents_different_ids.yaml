@@ -1,0 +1,83 @@
+id: ai_122
+title: "The Same Document Indexed Twice Under Different IDs Isn't Caught by ID Deduplication"
+language: ai
+level: 122
+objective: "Fix a duplicate-detection function that only compares document IDs, missing that the exact same content can be accidentally indexed twice under two completely different IDs (re-uploaded, exported from two different systems, etc.)."
+explanation: |
+  Deduplicating by ID alone only catches the case where the identical
+  ID was somehow used twice -- it says nothing about whether the exact
+  same *content* got indexed under two different IDs entirely, which
+  happens easily in practice: a document re-uploaded after a system
+  migration, the same report exported from two different tools with
+  different filenames, or a sync job that ran twice and generated a new
+  ID both times. Content-level deduplication (comparing the actual
+  text, or a hash of it) catches this in a way ID-based deduplication
+  fundamentally cannot.
+
+  The bug this exercise fixes deduplicates by checking for repeated IDs
+  only, missing a case where the exact same content appears under two
+  different IDs. The fix compares document *content* instead, so
+  identical content is caught as a duplicate regardless of what ID each
+  copy happens to carry.
+example_code: |
+  # The trap: deduplicates by ID only -- the SAME content under
+  # different IDs is completely invisible to this check.
+  def find_duplicates_trap(documents):
+      seen_ids = set()
+      duplicates = []
+      for doc in documents:
+          if doc["id"] in seen_ids:
+              duplicates.append(doc["id"])
+          seen_ids.add(doc["id"])
+      return duplicates
+
+  documents = [
+      {"id": "doc-001", "content": "Q3 revenue report: 12% growth."},
+      {"id": "doc-migrated-047", "content": "Q3 revenue report: 12% growth."},   # SAME content, different id
+  ]
+  print(find_duplicates_trap(documents))   # [] -- misses the content-level duplicate entirely
+
+  # The fix: deduplicate by CONTENT, not by id.
+  def find_duplicates(documents):
+      seen_content = set()
+      duplicates = []
+      for doc in documents:
+          if doc["content"] in seen_content:
+              duplicates.append(doc["id"])
+          seen_content.add(doc["content"])
+      return duplicates
+
+  print(find_duplicates(documents))   # ['doc-migrated-047'] -- correctly caught as a content duplicate
+starter_code: |
+  def find_duplicates(documents):
+      seen_ids = set()
+      duplicates = []
+      for doc in documents:
+          if doc["id"] in seen_ids:
+              duplicates.append(doc["id"])
+          seen_ids.add(doc["id"])
+      return duplicates
+
+  documents = [
+      {"id": "doc-001", "content": "Q3 revenue report: 12% growth."},
+      {"id": "doc-migrated-047", "content": "Q3 revenue report: 12% growth."},
+  ]
+  print(find_duplicates(documents))
+challenge: |
+  Fix `find_duplicates` so it tracks seen *content* instead of seen
+  *IDs*, catching a document whose content matches an already-seen
+  document even if its ID is different. It should print
+  `['doc-migrated-047']`, not `[]`.
+expected_output: |
+  ['doc-migrated-047']
+hints:
+  - "Track a `seen_content` set instead of `seen_ids`, checking `if doc[\"content\"] in seen_content:`."
+  - "Still append doc[\"id\"] to the duplicates list (so the report names WHICH id was the duplicate) -- just base the detection itself on content, not id."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 37
+difficulty: core
+contains_patterns:
+  - "seen_content"
+concept_tags: [rag, deduplication, index_consistency]

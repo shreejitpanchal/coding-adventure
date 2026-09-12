@@ -1,0 +1,62 @@
+id: ai_211
+title: "Reading a Resource Shouldn't Change What Reading It Returns"
+language: ai
+level: 211
+objective: "Fix a resource-read function that mutates shared state on every call, so reading the exact same URI twice in a row returns two different results -- when a resource read should be idempotent."
+explanation: |
+  Reading a resource is meant to be a safe, repeatable operation: asking
+  for the same URI twice should return the same content both times
+  (until the underlying resource genuinely changes), the same way an
+  HTTP GET is expected to be idempotent. A read handler with a side
+  effect baked into it -- incrementing a counter, mutating some shared
+  state on every call -- breaks that expectation silently: nothing
+  about the request looks unusual, but the response quietly changes out
+  from under repeated identical reads.
+
+  The bug this exercise fixes bumps a shared counter inside the read
+  function and bakes that counter into the returned content. The fix
+  reads without mutating anything, so identical reads produce identical
+  results.
+example_code: |
+  # The trap: reading has a SIDE EFFECT -- the result changes with
+  # every call, even for the exact same URI.
+  _read_count_trap = {"n": 0}
+  def read_resource_trap(uri):
+      _read_count_trap["n"] += 1
+      return "content-" + str(_read_count_trap["n"])
+
+  print(read_resource_trap("file:///a.txt") == read_resource_trap("file:///a.txt"))
+  # False -- two reads of the SAME uri produced different content!
+
+  # The fix: reading has no side effects -- same uri, same content.
+  def read_resource(uri):
+      return "content-fixed"
+
+  print(read_resource("file:///a.txt") == read_resource("file:///a.txt"))
+  # True -- reading is idempotent, same URI always returns the same content
+starter_code: |
+  _read_count = {"n": 0}
+
+  def read_resource(uri):
+      _read_count["n"] += 1
+      return "content-" + str(_read_count["n"])
+
+  print(read_resource("file:///a.txt") == read_resource("file:///a.txt"))
+challenge: |
+  Fix `read_resource` so it always returns `"content-fixed"` with no
+  side effect on `_read_count`, instead of bumping a counter that
+  changes the result on every call. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Drop the counter entirely -- just return the literal string \"content-fixed\" every time."
+  - "A resource read that mutates shared state on every call means two identical requests can get two different answers."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 36
+difficulty: core
+contains_patterns:
+  - "return \"content-fixed\""
+concept_tags: [mcp, resources, idempotency]

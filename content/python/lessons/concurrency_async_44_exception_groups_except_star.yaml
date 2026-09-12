@@ -1,0 +1,75 @@
+id: concurrency_async_44
+title: "except* Splits an ExceptionGroup By Type -- a Plain except Can't"
+language: python
+level: 334
+objective: "Fix code catching an ExceptionGroup (as raised by things like asyncio.TaskGroup when several child tasks fail at once) with a plain except, which can't distinguish which underlying exception types are actually inside it -- except* (Python 3.11+) handles each matching type separately."
+explanation: |
+  An `ExceptionGroup` bundles several unrelated exceptions raised
+  together into one object -- exactly what `asyncio.TaskGroup` (this
+  category's next lesson) raises when more than one of its child tasks
+  fails. A plain `except Exception:` catches the group itself just
+  fine, but only as one undifferentiated blob -- there's no
+  straightforward way from there to say "handle the `ValueError`s one
+  way and the `TypeError`s another." `except*` (new in Python 3.11) is
+  built specifically for this: each `except* SomeType:` clause matches
+  and handles only the exceptions inside the group that are actually
+  that type, binding the matching subset as its own smaller
+  `ExceptionGroup`, and multiple `except*` clauses can each handle a
+  different type from the same original group.
+
+  The fix replaces the single generic `except Exception:` with
+  separate `except* ValueError:` and `except* TypeError:` clauses.
+example_code: |
+  # The trap: a plain except can't distinguish the types bundled inside.
+  def process_all_trap(errors):
+      try:
+          raise ExceptionGroup("failures", errors)
+      except Exception:
+          print("caught something")
+
+  process_all_trap([ValueError("a"), TypeError("b"), ValueError("c")])
+  # "caught something" -- WRONG if the ValueErrors and TypeError needed
+  # genuinely different handling
+
+  # The fix: except* handles each matching type separately.
+  def process_all(errors):
+      try:
+          raise ExceptionGroup("failures", errors)
+      except* ValueError as eg:
+          print(f"value errors: {len(eg.exceptions)}")
+      except* TypeError as eg:
+          print(f"type errors: {len(eg.exceptions)}")
+
+  process_all([ValueError("a"), TypeError("b"), ValueError("c")])
+  # value errors: 2
+  # type errors: 1
+  # -- correctly split the bundled exceptions by their actual type
+starter_code: |
+  def process_all(errors):
+      try:
+          raise ExceptionGroup("failures", errors)
+      except Exception:
+          print("caught something")
+
+  process_all([ValueError("a"), TypeError("b"), ValueError("c")])
+challenge: |
+  Fix `process_all` so it uses `except* ValueError as eg:` and
+  `except* TypeError as eg:` (each printing the count via
+  `len(eg.exceptions)`), instead of one generic `except Exception:`.
+  It should print `value errors: 2` then `type errors: 1`, not
+  `caught something`.
+expected_output: |
+  value errors: 2
+  type errors: 1
+hints:
+  - "except* ValueError as eg: print(f\"value errors: {len(eg.exceptions)}\"), then except* TypeError as eg: print(f\"type errors: {len(eg.exceptions)}\")."
+  - "except* matches only the exceptions inside the group that are actually that type -- a plain except only ever catches the whole undifferentiated group at once."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 44
+difficulty: deep_dive
+contains_patterns:
+  - "except\\* ValueError as eg:"
+  - "except\\* TypeError as eg:"
+concept_tags: [exceptions, exception_groups, python311]

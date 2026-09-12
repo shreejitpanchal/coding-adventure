@@ -1,0 +1,59 @@
+id: functional_programming_46
+title: "Factorial as a Fold Instead of Recursion"
+language: python
+level: 381
+objective: "Rewrite a recursive factorial function as a single functools.reduce fold over range(1, n + 1), showing that a classic 'obviously recursive' problem is equally expressible as an iterative fold -- and doesn't risk this category's earlier no-tail-call-optimization RecursionError for a large n."
+explanation: |
+  Factorial is the textbook example used to introduce recursion, but
+  it's just as naturally expressed as a fold: multiply every number
+  from 1 to `n` together, which is exactly what `reduce(lambda acc, x:
+  acc * x, range(1, n + 1), 1)` does directly. Unlike the recursive
+  version, this never grows the call stack at all -- it sidesteps this
+  category's earlier lesson on Python having no tail-call optimization
+  entirely, since there's no recursion here to hit a `RecursionError`
+  from in the first place, regardless of how large `n` gets.
+
+  The fix replaces the recursive factorial with a single `reduce`
+  fold.
+example_code: |
+  # The recursive version: works, but adds a real stack frame per call.
+  def factorial_recursive(n):
+      if n <= 1:
+          return 1
+      return n * factorial_recursive(n - 1)
+
+  print(factorial_recursive(10))
+  # 3628800
+
+  # The fold: no recursion, no growing call stack, at any n.
+  from functools import reduce
+
+  def factorial(n):
+      return reduce(lambda acc, x: acc * x, range(1, n + 1), 1)
+
+  print(factorial(10))
+  # 3628800 -- same result, expressed as a single fold instead of recursion
+starter_code: |
+  def factorial(n):
+      if n <= 1:
+          return 1
+      return n * factorial(n - 1)
+
+  print(factorial(10))
+challenge: |
+  Rewrite `factorial` using
+  `reduce(lambda acc, x: acc * x, range(1, n + 1), 1)`, instead of
+  recursion. Keep the same output: 3628800.
+expected_output: |
+  3628800
+hints:
+  - "from functools import reduce, then: return reduce(lambda acc, x: acc * x, range(1, n + 1), 1)."
+  - "range(1, n + 1) gives every number from 1 to n inclusive -- reduce multiplies them all together in one fold, with no recursion at all."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 46
+difficulty: core
+contains_patterns:
+  - "reduce\\(lambda acc, x: acc \\* x, range\\(1, n \\+ 1\\), 1\\)"
+concept_tags: [functional_programming, reduce, recursion, fold]

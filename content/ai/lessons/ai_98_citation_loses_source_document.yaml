@@ -1,0 +1,68 @@
+id: ai_98
+title: "Returning Chunk Text Without Its Source Loses Citation Ability Entirely"
+language: ai
+level: 98
+objective: "Fix a retrieval function that returns only the raw chunk text, discarding which document each chunk came from -- making it impossible to cite a source for anything the generated answer claims."
+explanation: |
+  A RAG answer is only as trustworthy as its ability to be checked
+  against where its information actually came from. If retrieval
+  returns bare chunk text with no record of which document (and
+  ideally which section or page) each chunk was pulled from, there's
+  no way to cite a source afterward -- the generation step can produce
+  a fluent-sounding answer, but neither the user nor any automated
+  grounding check (see this category's own faithfulness-checking
+  lesson) has any way to verify which claims trace back to which real
+  document.
+
+  The bug this exercise fixes strips chunks down to plain text,
+  discarding the document metadata entirely. The fix keeps each
+  chunk's text bundled together with its source document ID, so
+  citation information survives all the way through to wherever the
+  final answer gets constructed.
+example_code: |
+  # The trap: returns bare chunk TEXT ONLY -- source information is
+  # discarded, making citation impossible afterward.
+  def retrieve_trap(matches):
+      return [m["text"] for m in matches]
+
+  matches = [
+      {"text": "Revenue grew 12% year over year.", "doc_id": "Q3-report.pdf"},
+      {"text": "The CEO announced a new product line.", "doc_id": "press-release.pdf"},
+  ]
+  result_trap = retrieve_trap(matches)
+  print(result_trap[0])   # "Revenue grew 12% year over year." -- no way to know which document this came from
+
+  # The fix: keep text bundled together with its source document ID.
+  def retrieve(matches):
+      return [{"text": m["text"], "source": m["doc_id"]} for m in matches]
+
+  result = retrieve(matches)
+  print(result[0]["source"])   # "Q3-report.pdf" -- citation information survives
+starter_code: |
+  def retrieve(matches):
+      return [m["text"] for m in matches]
+
+  matches = [
+      {"text": "Revenue grew 12% year over year.", "doc_id": "Q3-report.pdf"},
+      {"text": "The CEO announced a new product line.", "doc_id": "press-release.pdf"},
+  ]
+  result = retrieve(matches)
+  print(result[0]["source"])
+challenge: |
+  Fix `retrieve` so each returned item is a dict bundling both `"text"`
+  and `"source"` (the original `doc_id`), instead of returning bare
+  text strings with no source information. It should print
+  `Q3-report.pdf`, not crash with a `TypeError`.
+expected_output: |
+  Q3-report.pdf
+hints:
+  - "Return [{\"text\": m[\"text\"], \"source\": m[\"doc_id\"]} for m in matches] -- a list of dicts, not a list of bare strings."
+  - "result[0][\"source\"] only works once each item is a dict carrying both the text AND the doc_id it came from."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 13
+difficulty: warmup
+contains_patterns:
+  - "\"source\": m\\[.doc_id.\\]"
+concept_tags: [rag, citation, source_attribution]

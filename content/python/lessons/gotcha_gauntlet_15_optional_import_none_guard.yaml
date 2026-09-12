@@ -1,0 +1,80 @@
+id: gotcha_gauntlet_15
+title: "The Optional Dependency That Crashed Far From Where It Went Missing"
+language: python
+level: 260
+objective: "Fix code that falls back to None when an optional dependency fails to import, but then calls a method on it without checking for None first -- crashing far from the actual missing-import site."
+explanation: |
+  The `try: import optional_lib / except ImportError: optional_lib =
+  None` pattern is a legitimate way to make a dependency genuinely
+  optional -- but it only handles *half* the problem. Every place that
+  later uses `optional_lib` still needs to check whether it's actually
+  `None` before calling anything on it; skipping that check means the
+  code runs fine when the library happens to be installed, and crashes
+  with `AttributeError: 'NoneType' object has no attribute ...` when it
+  isn't -- an error that, on its own, gives no hint at all that the
+  real cause was a missing import several lines (or files) earlier.
+
+  The fix is to guard every actual use with an explicit `if
+  optional_lib is not None:` check, falling back to different behavior
+  when the dependency isn't available, instead of assuming it always
+  is.
+example_code: |
+  # The trap: fallback to None handled, but never actually CHECKED before use.
+  try:
+      import definitely_missing_module as optional_lib_trap
+  except ImportError:
+      optional_lib_trap = None
+
+  def format_value_trap(x):
+      return optional_lib_trap.format(x)      # crashes if the import failed
+
+  try:
+      format_value_trap(42)
+      print("ok")
+  except AttributeError:
+      print("crashed")
+  # "crashed" -- 'NoneType' object has no attribute 'format', far from the real cause
+
+  # The fix: guard every use with an explicit None check.
+  try:
+      import definitely_missing_module as optional_lib
+  except ImportError:
+      optional_lib = None
+
+  def format_value(x):
+      if optional_lib is not None:
+          return optional_lib.format(x)
+      return str(x)
+
+  print(format_value(42))
+  # "42" -- correctly falls back instead of crashing on a missing dependency
+starter_code: |
+  try:
+      import definitely_missing_module as optional_lib
+  except ImportError:
+      optional_lib = None
+
+  def format_value(x):
+      return optional_lib.format(x)
+
+  try:
+      print(format_value(42))
+  except AttributeError:
+      print("crashed")
+challenge: |
+  Fix `format_value` so it checks `if optional_lib is not None:`
+  before calling `.format(x)` on it, falling back to `str(x)`
+  otherwise. It should print `42`, not `crashed`.
+expected_output: |
+  42
+hints:
+  - "if optional_lib is not None: return optional_lib.format(x), then return str(x) as the fallback."
+  - "Handling ImportError only solves half the problem -- every actual USE of the optional dependency still needs its own None check."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 15
+difficulty: gotcha
+contains_patterns:
+  - "if optional_lib is not None:"
+concept_tags: [imports, none_guard, gotchas]

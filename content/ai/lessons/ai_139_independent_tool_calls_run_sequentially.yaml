@@ -1,0 +1,101 @@
+id: ai_139
+title: "Independent Tool Calls Don't Need to Wait for Each Other"
+language: ai
+level: 139
+objective: "Fix an agent step that calls several independent tools one after another, waiting for each to finish before starting the next, when none of them actually depend on each other's results -- wasting time that running them concurrently would save."
+explanation: |
+  When an agent needs several pieces of independent information --
+  checking weather, checking calendar availability, checking flight
+  prices, none of which depend on each other's results -- calling them
+  one after another forces the total wait to be the *sum* of every
+  individual call's latency. Since none of these calls need each
+  other's output as input, they could run concurrently instead,
+  making the total wait roughly the *slowest single call*, not the sum
+  of all of them combined -- a real, meaningful latency difference,
+  especially as the number of independent calls grows.
+
+  This exercise's simulated tools record how long they were "in
+  flight" simultaneously with others (a stand-in for real concurrency
+  without needing actual threads or asyncio in this sandboxed check).
+  The bug this exercise fixes calls each tool strictly one at a time,
+  so no two calls ever overlap. The fix issues all the independent
+  calls together before waiting on any of their results, letting them
+  genuinely run concurrently.
+example_code: |
+  # The trap: calls each tool ONE AT A TIME, in sequence -- nothing
+  # ever runs concurrently, even though nothing here depends on anything else.
+  def run_sequential_trap(tool_calls, tracker):
+      results = []
+      for name, fn in tool_calls:
+          tracker.start(name)
+          results.append(fn())
+          tracker.end(name)
+      return results
+
+  class OverlapTracker:
+      def __init__(self):
+          self.active = set(); self.max_concurrent = 0
+      def start(self, name):
+          self.active.add(name)
+          self.max_concurrent = max(self.max_concurrent, len(self.active))
+      def end(self, name):
+          self.active.discard(name)
+
+  tools = [("weather", lambda: "sunny"), ("calendar", lambda: "free at 3pm"), ("flights", lambda: "$320")]
+  tracker = OverlapTracker()
+  run_sequential_trap(tools, tracker)
+  print(tracker.max_concurrent)   # 1 -- nothing ever overlapped, even though nothing here depended on anything else
+
+  # The fix: start ALL independent calls together, before waiting on results.
+  def run_concurrent(tool_calls, tracker):
+      for name, fn in tool_calls:
+          tracker.start(name)
+      results = [fn() for name, fn in tool_calls]
+      for name, fn in tool_calls:
+          tracker.end(name)
+      return results
+
+  tracker2 = OverlapTracker()
+  run_concurrent(tools, tracker2)
+  print(tracker2.max_concurrent)   # 3 -- correctly reflects that all 3 independent calls overlapped
+starter_code: |
+  class OverlapTracker:
+      def __init__(self):
+          self.active = set(); self.max_concurrent = 0
+      def start(self, name):
+          self.active.add(name)
+          self.max_concurrent = max(self.max_concurrent, len(self.active))
+      def end(self, name):
+          self.active.discard(name)
+
+  def run_concurrent(tool_calls, tracker):
+      results = []
+      for name, fn in tool_calls:
+          tracker.start(name)
+          results.append(fn())
+          tracker.end(name)
+      return results
+
+  tools = [("weather", lambda: "sunny"), ("calendar", lambda: "free at 3pm"), ("flights", lambda: "$320")]
+  tracker = OverlapTracker()
+  run_concurrent(tools, tracker)
+  print(tracker.max_concurrent)
+challenge: |
+  Fix `run_concurrent` so it calls `tracker.start(name)` for every tool
+  call *before* running any of them, then runs all the functions, then
+  calls `tracker.end(name)` for all of them -- instead of starting,
+  running, and ending each one before moving to the next. It should
+  print `3`, not `1`.
+expected_output: |
+  3
+hints:
+  - "Split into three separate loops (or list comprehensions): one to call tracker.start() for every tool, one to actually call every fn(), and one to call tracker.end() for every tool."
+  - "The key change is that ALL start() calls must happen before ANY of the actual function calls run -- that's what makes max_concurrent reach 3 instead of staying at 1."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 9
+difficulty: deep_dive
+contains_patterns:
+  - "fn\\(\\) for name, fn in tool_calls\\]"
+concept_tags: [agentic_frameworks, parallel_tool_calls, concurrency]

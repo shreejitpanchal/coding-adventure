@@ -1,0 +1,88 @@
+id: concurrency_async_24
+title: "An Async Generator Needs 'async for' -- a Plain 'for' Can't Drive It"
+language: python
+level: 314
+objective: "Fix code trying to iterate an async generator with a plain 'for' loop (which raises TypeError, since a plain for loop has no way to await anything), when 'async for' correctly awaits each item as the async generator produces it."
+explanation: |
+  An `async def` function containing `yield` is an *async* generator --
+  each value it produces might depend on an `await` internally (like
+  fetching the next page of results from something I/O-bound), and
+  consuming it needs to `await` for the next value too. A plain `for`
+  loop has no concept of awaiting anything; it can only iterate a
+  regular (synchronous) iterable, and trying it on an async generator
+  raises `TypeError: 'async_generator' object is not iterable`
+  immediately. `async for` is the loop construct built specifically
+  for this: it awaits each next value from the async generator
+  automatically, the same way a plain `for` loop calls `next()`
+  automatically for a regular iterator.
+
+  The fix replaces the plain `for` loop with `async for`.
+example_code: |
+  # The trap: a plain "for" can't drive an async generator at all.
+  import asyncio
+
+  async def numbers_trap():
+      for n in range(3):
+          await asyncio.sleep(0)
+          yield n
+
+  async def main_trap():
+      results = []
+      try:
+          for n in numbers_trap():
+              results.append(n)
+          print(results)
+      except TypeError:
+          print("crashed")
+
+  asyncio.run(main_trap())
+  # "crashed" -- 'async_generator' object is not iterable
+
+  # The fix: async for correctly drives an async generator.
+  async def numbers():
+      for n in range(3):
+          await asyncio.sleep(0)
+          yield n
+
+  async def main():
+      results = []
+      async for n in numbers():
+          results.append(n)
+      print(results)
+
+  asyncio.run(main())
+  # [0, 1, 2] -- correctly consumed the async generator
+starter_code: |
+  import asyncio
+
+  async def numbers():
+      for n in range(3):
+          await asyncio.sleep(0)
+          yield n
+
+  async def main():
+      results = []
+      try:
+          for n in numbers():
+              results.append(n)
+          print(results)
+      except TypeError:
+          print("crashed")
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it uses `async for n in numbers():`, instead of a
+  plain `for` loop. It should print `[0, 1, 2]`, not `crashed`.
+expected_output: |
+  [0, 1, 2]
+hints:
+  - "async for n in numbers(): results.append(n)."
+  - "A plain for loop can only drive a regular synchronous iterable -- an async generator needs async for, which awaits each next value automatically."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 24
+difficulty: deep_dive
+contains_patterns:
+  - "async for n in numbers\\(\\):"
+concept_tags: [asyncio, async_generators, concurrency]

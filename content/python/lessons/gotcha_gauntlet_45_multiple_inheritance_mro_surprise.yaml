@@ -1,0 +1,82 @@
+id: gotcha_gauntlet_45
+title: "The Method Call That Picked the 'Wrong' Parent's Version"
+language: python
+level: 290
+objective: "Fix code that assumes a method call on a multiply-inherited class runs the FIRST base class listed in its own bases, when the actual method resolution order can put a different class's version first -- checking Class.__mro__ shows the real order Python actually uses."
+explanation: |
+  For a class with multiple bases, `class Combined(Left, Right):`,
+  it's tempting to assume any method neither `Left` nor `Right`
+  overrides differently resolves in the order they're listed --
+  `Left` first, `Right` second. That's usually true for a *direct*
+  method lookup, but once inheritance chains get deeper (a base
+  itself inheriting from another shared ancestor), Python's actual
+  Method Resolution Order -- computed by the C3 linearization
+  algorithm, not simply "left to right through the immediate bases" --
+  can put a different class earlier in the chain than a naive reading
+  of the class statement suggests. Assuming a specific resolution
+  order instead of checking `Class.__mro__` risks a subtly wrong
+  assumption about which parent's method actually runs.
+
+  The fix is checking `Combined.__mro__` directly instead of assuming
+  the order from the class statement alone, and calling the method
+  through the resolved class explicitly if the wrong one runs.
+example_code: |
+  # The trap: assumes the FIRST listed base's greet() always wins outright.
+  class Base:
+      def greet(self):
+          return "base"
+
+  class Left(Base):
+      pass
+
+  class Right(Base):
+      def greet(self):
+          return "right"
+
+  class CombinedTrap(Left, Right):
+      pass
+
+  print(CombinedTrap().greet())
+  # "right" -- SURPRISING if you assumed "Left is listed first, so Left wins";
+  # Left has no OWN greet(), so the MRO actually resolves through Right's
+
+  # The fix: check __mro__ directly instead of assuming from the class statement.
+  print([cls.__name__ for cls in CombinedTrap.__mro__])
+  # ['CombinedTrap', 'Left', 'Right', 'Base', 'object'] -- the REAL resolution
+  # order, confirming greet() correctly comes from Right, not a guess
+starter_code: |
+  class Base:
+      def greet(self):
+          return "base"
+
+  class Left(Base):
+      pass
+
+  class Right(Base):
+      def greet(self):
+          return "right"
+
+  class Combined(Left, Right):
+      pass
+
+  print(Combined().greet())
+challenge: |
+  This already prints the MRO-correct answer -- but add a line
+  confirming it via `[cls.__name__ for cls in Combined.__mro__]`,
+  printed on its own line right after, so the actual resolution order
+  is checked directly instead of assumed. It should print `right`
+  followed by `['Combined', 'Left', 'Right', 'Base', 'object']`.
+expected_output: |
+  right
+  ['Combined', 'Left', 'Right', 'Base', 'object']
+hints:
+  - "Add: print([cls.__name__ for cls in Combined.__mro__]) as a new line after the existing print."
+  - "Left has no greet() of its own, so the MRO resolves the call through Right -- never assume method resolution order from the class statement alone; check __mro__ directly."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 45
+difficulty: deep_dive
+contains_patterns:
+  - "Combined\\.__mro__"
+concept_tags: [inheritance, mro, gotchas]

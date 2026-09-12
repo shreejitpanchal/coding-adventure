@@ -1,0 +1,51 @@
+id: data_structures_18
+title: "bisect's key Parameter Searches by a Derived Value, Not the Raw Element"
+language: python
+level: 175
+objective: "Use bisect's key parameter (Python 3.10+) to binary search a list of dicts by one field, instead of building a separate plain list of just that field first."
+explanation: |
+  Binary searching a list of *records* (dicts, objects) by one of
+  their fields used to require extracting that field into a separate
+  plain list first, purely so `bisect` had something directly
+  comparable to search against. Python 3.10 added a `key` parameter to
+  `bisect`'s functions, letting them search the original list of
+  records directly -- `bisect.bisect_left(people, 30, key=lambda p:
+  p["age"])` searches by each record's `"age"` field without ever
+  building a separate flat list of ages first.
+example_code: |
+  import bisect
+
+  people = [{"name": "Ada", "age": 25}, {"name": "Bo", "age": 30}, {"name": "Cy", "age": 40}]
+
+  # Build a separate plain list of ages, just to search it.
+  ages_loop = [p["age"] for p in people]
+  index_loop = bisect.bisect_left(ages_loop, 30)
+  print(index_loop)                         # 1
+
+  # bisect's key parameter searches the records directly.
+  index = bisect.bisect_left(people, 30, key=lambda p: p["age"])
+  print(index)                              # 1
+starter_code: |
+  import bisect
+
+  people = [{"name": "Ada", "age": 25}, {"name": "Bo", "age": 30}, {"name": "Cy", "age": 40}]
+  ages = [p["age"] for p in people]
+  index = bisect.bisect_left(ages, 30)
+  print(index)
+challenge: |
+  Rewrite this using `bisect.bisect_left(people, 30, key=lambda p:
+  p["age"])`, searching the records directly instead of a separately
+  built list of ages. Keep the same output: 1.
+expected_output: |
+  1
+hints:
+  - "bisect.bisect_left(people, 30, key=lambda p: p[\"age\"]) -- no separate ages list needed."
+  - "The key function tells bisect what to compare each record against, without ever materializing a separate flat list first."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 18
+difficulty: core
+contains_patterns:
+  - "key=lambda p: p\\[\"age\"\\]"
+concept_tags: [bisect, binary_search]

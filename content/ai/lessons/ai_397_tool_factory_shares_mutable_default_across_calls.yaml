@@ -1,0 +1,72 @@
+id: ai_397
+title: "Each Tool Call Needs Its Own Fresh State, Not a Shared Mutable Default"
+language: ai
+level: 397
+objective: "Fix a tool factory whose mutable default argument gets shared across every call to the returned tool, when the Secure Tool Runtime's isolation guarantee only holds if each individual call genuinely starts fresh, with no leftover state carried over from a previous, unrelated invocation."
+explanation: |
+  This is the same classic Python trap this app's LangChain category
+  covers for a `ConversationMemory` class -- a mutable default argument
+  (`def tool(log=[])`) is created exactly once, at function-definition
+  time, and every call that doesn't explicitly pass its own value
+  shares that identical object. For a tool meant to run in isolation on
+  each invocation, this quietly reintroduces cross-call contamination:
+  one call's leftover state silently carries into the next, completely
+  unrelated call.
+
+  The bug this exercise fixes gives the inner `tool` function a
+  mutable default list. The fix defaults to `None` and creates a
+  genuinely new list per call when nothing was explicitly passed.
+example_code: |
+  # The trap: a mutable default argument is created ONCE -- every call
+  # that doesn't pass its own log shares the exact same list.
+  def make_tool_trap():
+      def tool(log=[]):
+          log.append("ran")
+          return len(log)
+      return tool
+
+  tool_trap = make_tool_trap()
+  tool_trap()
+  print(tool_trap())
+  # 2 -- the SECOND call inherited the first call's leftover state
+
+  # The fix: default to None, create a genuinely new list per call.
+  def make_tool():
+      def tool(log=None):
+          log = log if log is not None else []
+          log.append("ran")
+          return len(log)
+      return tool
+
+  tool = make_tool()
+  tool()
+  print(tool())
+  # 1 -- each call starts fresh, correctly isolated from every other call
+starter_code: |
+  def make_tool():
+      def tool(log=[]):
+          log.append("ran")
+          return len(log)
+      return tool
+
+  tool = make_tool()
+  tool()
+  print(tool())
+challenge: |
+  Fix the inner `tool` function so it defaults `log` to `None` and
+  does `log = log if log is not None else []` inside the function,
+  instead of using the mutable default `log=[]`. It should print `1`,
+  not `2`.
+expected_output: |
+  1
+hints:
+  - "Change def tool(log=[]): to def tool(log=None):, then add log = log if log is not None else [] as the first line inside the function."
+  - "This is the exact same mutable-default-argument trap that shows up with class __init__ methods -- it's not specific to classes at all."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "log = log if log is not None else \\[\\]"
+concept_tags: [solace_agent_mesh, secure_tool_runtime, mutable_default_argument]

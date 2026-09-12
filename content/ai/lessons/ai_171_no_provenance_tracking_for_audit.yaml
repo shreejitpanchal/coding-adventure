@@ -1,0 +1,56 @@
+id: ai_171
+title: "An Auditable Action Needs to Record Which Tool Call Actually Caused It"
+language: ai
+level: 171
+objective: "Fix an action-logging function that records only the final action taken, with no link back to which specific tool call or reasoning step actually led to it -- making a later audit unable to trace WHY the agent did what it did."
+explanation: |
+  Auditing an agent's past behavior -- especially for a high-stakes
+  action -- needs more than a record of *what* happened; it needs a
+  record of *why*, specifically which tool call or reasoning step
+  actually produced that action. A log entry that only says "refunded
+  $50" gives an auditor no way to trace back and confirm the refund was
+  actually justified by what the agent observed, unlike a log entry
+  that also records which tool call (and its result) led to that
+  decision.
+
+  The bug this exercise fixes logs only the final action, with no
+  reference to its source. The fix records the action *together with*
+  the specific tool call and result that produced it, preserving the
+  provenance an audit would actually need.
+example_code: |
+  # The trap: logs only the FINAL action -- no link back to WHY it happened.
+  def log_action_trap(action, source_tool_call, source_result):
+      return {"action": action}
+
+  entry_trap = log_action_trap("refunded $50", "check_order_status", "order was never delivered")
+  print("source_tool_call" in entry_trap)   # False -- an auditor has no way to trace why this refund happened
+
+  # The fix: record the action TOGETHER WITH its source tool call and result.
+  def log_action(action, source_tool_call, source_result):
+      return {"action": action, "source_tool_call": source_tool_call, "source_result": source_result}
+
+  entry = log_action("refunded $50", "check_order_status", "order was never delivered")
+  print("source_tool_call" in entry)   # True -- correctly preserves the provenance an audit needs
+starter_code: |
+  def log_action(action, source_tool_call, source_result):
+      return {"action": action}
+
+  entry = log_action("refunded $50", "check_order_status", "order was never delivered")
+  print("source_tool_call" in entry)
+challenge: |
+  Fix `log_action` so it includes `source_tool_call` and
+  `source_result` in the returned dict, alongside `action`, instead of
+  discarding them entirely. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Return {\"action\": action, \"source_tool_call\": source_tool_call, \"source_result\": source_result} -- all three fields, not just action."
+  - "The provenance fields need to actually be part of the returned dict for an audit to be able to trace back to them later."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 41
+difficulty: warmup
+contains_patterns:
+  - "source_tool_call.: source_tool_call"
+concept_tags: [agentic_frameworks, observability, audit_trail]

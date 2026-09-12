@@ -1,0 +1,87 @@
+id: gotcha_gauntlet_33
+title: "The Re-Raise That Erased Its Own Traceback"
+language: python
+level: 278
+objective: "Fix an except block that re-raises a caught exception with 'raise e', which resets the traceback to start at the re-raise point, when a bare 'raise' preserves the exception's original traceback all the way back to where it actually happened."
+explanation: |
+  Inside an `except` block, `raise e` (re-raising the caught exception
+  by name) and a bare `raise` (no name at all) both re-raise the same
+  exception object -- but they don't produce the same traceback. `raise
+  e` is technically re-raising the exception fresh from that line,
+  which can shorten or reset the traceback so it looks like the
+  exception originated at the re-raise, not at its actual, original
+  failure site. A bare `raise`, with no arguments, specifically means
+  "re-raise whatever exception is currently being handled, with its
+  *original* traceback intact" -- correctly preserving the full chain
+  back to where the problem genuinely started, which matters a great
+  deal when debugging from a logged traceback later.
+
+  The fix is using a bare `raise` (no exception name after it) inside
+  the `except` block, instead of `raise e`.
+example_code: |
+  # The trap: "raise e" can reset the traceback to the re-raise point.
+  def risky_trap():
+      raise ValueError("bad input")
+
+  def wrapper_trap():
+      try:
+          risky_trap()
+      except ValueError as e:
+          print("logging and re-raising")
+          raise e              # traceback can now start HERE, not at risky_trap()
+
+  try:
+      wrapper_trap()
+  except ValueError:
+      pass
+
+  # The fix: a bare "raise" preserves the ORIGINAL traceback.
+  def risky():
+      raise ValueError("bad input")
+
+  def wrapper():
+      try:
+          risky()
+      except ValueError:
+          print("logging and re-raising")
+          raise             # correctly preserves the traceback back to risky()
+
+  try:
+      wrapper()
+  except ValueError:
+      pass
+starter_code: |
+  def risky():
+      raise ValueError("bad input")
+
+  def wrapper():
+      try:
+          risky()
+      except ValueError as e:
+          print("logging and re-raising")
+          raise e
+
+  try:
+      wrapper()
+  except ValueError:
+      print("caught, traceback may point at the wrong line")
+challenge: |
+  Fix `wrapper` so its `except` block uses a bare `raise` (no exception
+  name after it), instead of `raise e`, so the original traceback all
+  the way back to `risky()` is preserved. Keep the rest of the flow
+  the same, still printing `logging and re-raising` then the final
+  caught message.
+expected_output: |
+  logging and re-raising
+  caught, traceback may point at the wrong line
+hints:
+  - "Change raise e to a bare raise (no exception name after it)."
+  - "A bare raise inside an except block means \"re-raise whatever is currently being handled, with its ORIGINAL traceback intact\" -- raise e can reset that traceback to start at the re-raise line instead."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 33
+difficulty: deep_dive
+contains_patterns:
+  - "raise\\s*\\n"
+concept_tags: [exceptions, traceback, gotchas]

@@ -1,0 +1,59 @@
+id: ai_227
+title: "RunnableBranch Must Actually Check Its Conditions, Not Just Use the Default"
+language: ai
+level: 227
+objective: "Fix a conditional router that always falls through to the default branch regardless of input, when it should check each condition in order and route to the first one that matches."
+explanation: |
+  A `RunnableBranch` picks which of several sub-chains to run based on
+  a list of `(condition, branch)` pairs, falling back to a default only
+  when nothing matches -- the same idea as an if/elif/else chain, just
+  expressed as data instead of code so the routing logic can be built
+  up dynamically. A router that never actually evaluates any condition
+  and always falls straight to the default defeats the entire point of
+  having conditional branches at all.
+
+  The bug this exercise fixes returns the default branch's result
+  unconditionally. The fix checks each condition in order and routes to
+  the first branch whose condition is true.
+example_code: |
+  # The trap: always uses the default branch -- never checks any
+  # condition at all.
+  def route_trap(x, branches, default):
+      return default(x)
+
+  branches = [(lambda x: x < 0, lambda x: "negative"), (lambda x: x == 0, lambda x: "zero")]
+  default = lambda x: "positive"
+  print(route_trap(-5, branches, default))   # "positive" -- wrong, -5 is negative but no condition was ever checked
+
+  # The fix: check each condition in order, route to the first match.
+  def route(x, branches, default):
+      for condition, branch in branches:
+          if condition(x):
+              return branch(x)
+      return default(x)
+
+  print(route(-5, branches, default))   # "negative" -- correctly matched the first true condition
+starter_code: |
+  def route(x, branches, default):
+      return default(x)
+
+  branches = [(lambda x: x < 0, lambda x: "negative"), (lambda x: x == 0, lambda x: "zero")]
+  default = lambda x: "positive"
+  print(route(-5, branches, default))
+challenge: |
+  Fix `route` so it loops over `branches`, calling `branch(x)` for the
+  first `condition` that's true, and only falls through to `default(x)`
+  when nothing matched. It should print `negative`, not `positive`.
+expected_output: |
+  negative
+hints:
+  - "for condition, branch in branches: if condition(x): return branch(x) -- then the default(x) fallback after the loop."
+  - "The default should only ever run once every condition has been checked and none of them matched."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "if condition\\(x\\):"
+concept_tags: [langchain, runnable_branch, conditional_routing]

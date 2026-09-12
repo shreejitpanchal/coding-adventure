@@ -1,0 +1,85 @@
+id: ai_379
+title: "The Reasoning Loop's Own Step Cap Must Actually Be Enforced"
+language: ai
+level: 379
+objective: "Fix a reasoning loop that never checks its own max_steps limit, when a model that simply never produces a final answer needs the loop itself to guarantee termination, not just an unrelated hardcoded safety net that has nothing to do with the caller's configured budget."
+explanation: |
+  This category's earlier lesson fixed a loop that never appended tool
+  results back into the conversation -- this is a distinct failure
+  mode of the same loop: even with results correctly threaded through
+  on every turn, if the model simply keeps requesting more tool calls
+  and never produces a final answer, the loop needs its own genuine
+  `max_steps` check to guarantee it eventually stops. Without one, the
+  loop's only real termination guarantee is whatever unrelated internal
+  safety net happens to exist, not the caller's actual configured
+  budget.
+
+  The bug this exercise fixes loops with no bound at all tied to
+  `max_steps`. The fix checks `steps < max_steps` on every iteration.
+example_code: |
+  # The trap: no max_steps enforcement at all -- only an unrelated,
+  # very high internal safety net keeps this demo from truly hanging.
+  def run_loop_trap(model_fn, conversation, max_steps):
+      steps = 0
+      while True:
+          response = model_fn(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          conversation.append({"role": "tool_result", "content": "some result"})
+          steps += 1
+          if steps > 500:
+              return "SAFETY_NET_HIT"
+
+  def never_finishes(conversation):
+      return {"tool_call": "keep_trying"}
+
+  print(run_loop_trap(never_finishes, [], max_steps=3))
+  # "SAFETY_NET_HIT" -- completely ignored max_steps=3
+
+  # The fix: check steps against max_steps on every iteration.
+  def run_loop(model_fn, conversation, max_steps):
+      steps = 0
+      while steps < max_steps:
+          response = model_fn(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          conversation.append({"role": "tool_result", "content": "some result"})
+          steps += 1
+      return "gave up after max_steps"
+
+  print(run_loop(never_finishes, [], max_steps=3))
+  # "gave up after max_steps" -- correctly bounded by the caller's actual configured limit
+starter_code: |
+  def never_finishes(conversation):
+      return {"tool_call": "keep_trying"}
+
+  def run_loop(model_fn, conversation, max_steps):
+      steps = 0
+      while True:
+          response = model_fn(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          conversation.append({"role": "tool_result", "content": "some result"})
+          steps += 1
+          if steps > 500:
+              return "SAFETY_NET_HIT"
+
+  print(run_loop(never_finishes, [], max_steps=3))
+challenge: |
+  Fix `run_loop` so its `while` condition checks `steps < max_steps`,
+  instead of looping unconditionally and relying only on the unrelated
+  hardcoded safety net of 500. It should print
+  `gave up after max_steps`, not `SAFETY_NET_HIT`.
+expected_output: |
+  gave up after max_steps
+hints:
+  - "Change while True: to while steps < max_steps:, and replace the final return with return \"gave up after max_steps\"."
+  - "The caller's own configured budget (max_steps=3) should be what actually bounds the loop -- not an unrelated internal number that has nothing to do with it."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "steps < max_steps"
+concept_tags: [solace_agent_mesh, agent_reasoning_loop, max_steps]

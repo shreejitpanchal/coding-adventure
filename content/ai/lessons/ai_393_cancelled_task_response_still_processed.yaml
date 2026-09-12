@@ -1,0 +1,55 @@
+id: ai_393
+title: "A Cancelled Task's Late-Arriving Response Should Be Ignored"
+language: ai
+level: 393
+objective: "Fix a response handler that processes a task's result regardless of whether that task was already cancelled, when a response arriving after cancellation is genuinely stale and acting on it can undo the very reason the task was cancelled in the first place."
+explanation: |
+  Cancelling a delegated task doesn't retroactively stop a response
+  that's already in flight from eventually arriving -- a handler needs
+  to check whether the task it's about was cancelled before acting on
+  that response at all. Processing it anyway means potentially acting
+  on stale, no-longer-wanted work exactly when the cancellation was
+  meant to prevent that outcome.
+
+  The bug this exercise fixes returns the result unconditionally. The
+  fix checks whether the task was cancelled first, ignoring the
+  response if so.
+example_code: |
+  # The trap: never checks whether this task was already cancelled --
+  # processes a stale response regardless.
+  def handle_task_response_trap(task_id, result, cancelled_task_ids):
+      return result
+
+  print(handle_task_response_trap("task-5", "stale result", cancelled_task_ids={"task-5"}))
+  # "stale result" -- processed a response for a task that was already cancelled
+
+  # The fix: check for cancellation first, ignore the response if so.
+  def handle_task_response(task_id, result, cancelled_task_ids):
+      if task_id in cancelled_task_ids:
+          return "IGNORED_CANCELLED"
+      return result
+
+  print(handle_task_response("task-5", "stale result", cancelled_task_ids={"task-5"}))
+  # "IGNORED_CANCELLED" -- correctly ignored the stale response
+starter_code: |
+  def handle_task_response(task_id, result, cancelled_task_ids):
+      return result
+
+  print(handle_task_response("task-5", "stale result", cancelled_task_ids={"task-5"}))
+challenge: |
+  Fix `handle_task_response` so it returns `"IGNORED_CANCELLED"` when
+  `task_id in cancelled_task_ids`, instead of always returning
+  `result`. It should print `IGNORED_CANCELLED`, not `stale result`.
+expected_output: |
+  IGNORED_CANCELLED
+hints:
+  - "Add: if task_id in cancelled_task_ids: return \"IGNORED_CANCELLED\", as the first check in the function."
+  - "A response that arrives after its own task was cancelled represents stale, no-longer-wanted work -- acting on it can undo the whole point of cancelling."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "task_id in cancelled_task_ids"
+concept_tags: [solace_agent_mesh, a2a_protocol, cancellation]

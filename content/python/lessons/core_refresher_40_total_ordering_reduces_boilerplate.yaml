@@ -1,0 +1,82 @@
+id: core_refresher_40
+title: "@total_ordering Fills In the Rest of the Comparisons for You"
+language: python
+level: 153
+objective: "Fix a class manually implementing every comparison dunder method, when @functools.total_ordering can derive the rest automatically from just __eq__ and one of the ordering methods."
+explanation: |
+  Making a class fully comparable (`<`, `<=`, `>`, `>=`, `==`) by hand
+  means writing five separate dunder methods, even though the other
+  three orderings are always logically derivable from just two of them
+  (`__eq__` and `__lt__`, say -- `>` is just "not less than and not
+  equal," and so on). `functools.total_ordering` fills in the rest
+  automatically once those two are defined, removing the repetitive
+  boilerplate of writing every comparison by hand while still
+  producing a fully comparable class.
+
+  The bug this exercise fixes hand-writes all five comparison methods.
+  The fix defines only `__eq__` and `__lt__`, letting
+  `@total_ordering` derive the rest.
+example_code: |
+  # Every comparison written out by hand.
+  class MoneyLoop:
+      def __init__(self, cents):
+          self.cents = cents
+      def __eq__(self, other):
+          return self.cents == other.cents
+      def __lt__(self, other):
+          return self.cents < other.cents
+      def __le__(self, other):
+          return self.cents <= other.cents
+      def __gt__(self, other):
+          return self.cents > other.cents
+      def __ge__(self, other):
+          return self.cents >= other.cents
+
+  print(MoneyLoop(100) < MoneyLoop(200))   # True
+
+  # @total_ordering derives the rest from just __eq__ and __lt__.
+  from functools import total_ordering
+
+  @total_ordering
+  class Money:
+      def __init__(self, cents):
+          self.cents = cents
+      def __eq__(self, other):
+          return self.cents == other.cents
+      def __lt__(self, other):
+          return self.cents < other.cents
+
+  print(Money(100) < Money(200))           # True
+starter_code: |
+  class Money:
+      def __init__(self, cents):
+          self.cents = cents
+      def __eq__(self, other):
+          return self.cents == other.cents
+      def __lt__(self, other):
+          return self.cents < other.cents
+      def __le__(self, other):
+          return self.cents <= other.cents
+      def __gt__(self, other):
+          return self.cents > other.cents
+      def __ge__(self, other):
+          return self.cents >= other.cents
+
+  print(Money(100) < Money(200))
+challenge: |
+  Fix `Money` by adding `@total_ordering` and removing `__le__`,
+  `__gt__`, and `__ge__`, keeping only `__eq__` and `__lt__`. Keep the
+  same output: True.
+expected_output: |
+  True
+hints:
+  - "from functools import total_ordering, then @total_ordering above the class, keeping only __eq__ and __lt__."
+  - "total_ordering derives __le__, __gt__, and __ge__ automatically from whichever ordering method and __eq__ you actually define."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 40
+difficulty: core
+contains_patterns:
+  - "@total_ordering"
+concept_tags: [total_ordering, functools]

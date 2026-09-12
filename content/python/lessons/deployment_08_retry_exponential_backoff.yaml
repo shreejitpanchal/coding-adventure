@@ -1,0 +1,100 @@
+id: deployment_08
+title: "One Retry Isn't Enough for a Step That Needs Three Tries"
+language: python
+level: 398
+objective: "Fix a retry loop with too few attempts and no backoff delay between them, when a flaky deploy step needs enough attempts (spaced out with a growing exponential delay) to actually recover from a transient failure instead of giving up too early."
+explanation: |
+  A flaky operation -- a deploy step hitting a service that's still
+  finishing its own startup, say -- often needs more than one retry to
+  succeed, and hammering it again immediately with no delay at all
+  doesn't give the underlying problem any time to resolve itself.
+  Exponential backoff addresses both issues together: retry enough
+  times to have a real chance of succeeding, and grow the delay
+  between each attempt (doubling it every time) so repeated failures
+  back off increasingly, rather than retrying at a fixed, possibly
+  too-fast pace forever.
+
+  The fix increases the retry count to a number the flaky step can
+  actually recover within, and grows the delay between attempts
+  exponentially.
+example_code: |
+  # The trap: only ONE attempt, no delay at all -- not enough tries to recover.
+  import time
+
+  def flaky_step(state):
+      state["attempts"] += 1
+      if state["attempts"] < 3:
+          raise ConnectionError("still down")
+      return "success"
+
+  def retry_trap(func, max_attempts=1):
+      for _ in range(max_attempts):
+          try:
+              return func()
+          except ConnectionError:
+              continue
+      raise RuntimeError("failed after retries")
+
+  state_trap = {"attempts": 0}
+  try:
+      print(retry_trap(lambda: flaky_step(state_trap), max_attempts=1))
+  except RuntimeError:
+      print("crashed")
+  # "crashed" -- WRONG, a step that needs 3 attempts was only ever given 1
+
+  # The fix: enough attempts, with a growing exponential delay between them.
+  def retry(func, max_attempts=5):
+      delay = 0.01
+      for attempt in range(max_attempts):
+          try:
+              return func()
+          except ConnectionError:
+              if attempt == max_attempts - 1:
+                  raise RuntimeError("failed after retries")
+              time.sleep(delay)
+              delay *= 2
+      raise RuntimeError("failed after retries")
+
+  state = {"attempts": 0}
+  print(retry(lambda: flaky_step(state)))
+  # "success" -- correctly recovered, with enough attempts and a growing delay
+starter_code: |
+  import time
+
+  def flaky_step(state):
+      state["attempts"] += 1
+      if state["attempts"] < 3:
+          raise ConnectionError("still down")
+      return "success"
+
+  def retry(func, max_attempts=1):
+      for _ in range(max_attempts):
+          try:
+              return func()
+          except ConnectionError:
+              continue
+      raise RuntimeError("failed after retries")
+
+  state = {"attempts": 0}
+  try:
+      print(retry(lambda: flaky_step(state), max_attempts=1))
+  except RuntimeError:
+      print("crashed")
+challenge: |
+  Fix `retry` so it defaults to `max_attempts=5`, sleeps a growing
+  `delay` (starting at `0.01`, doubling each retry) between attempts,
+  and re-raises only after the last attempt. Call it without
+  overriding `max_attempts`. It should print `success`, not `crashed`.
+expected_output: |
+  success
+hints:
+  - "def retry(func, max_attempts=5): delay = 0.01; for attempt in range(max_attempts): try: return func() except ConnectionError: if attempt == max_attempts - 1: raise RuntimeError(...); time.sleep(delay); delay *= 2."
+  - "A flaky step that needs 3 attempts to recover was only ever given 1 -- both the attempt count AND a growing delay between tries matter for genuinely recovering from a transient failure."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 8
+difficulty: deep_dive
+contains_patterns:
+  - "delay \\*= 2"
+concept_tags: [deployment, retries, backoff]

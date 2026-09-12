@@ -1,0 +1,85 @@
+id: concurrency_async_23
+title: "asyncio.Semaphore Caps How Many Coroutines Run a Section At Once"
+language: python
+level: 313
+objective: "Fix async code using asyncio.Lock to guard a section that legitimately allows more than one concurrent coroutine, when asyncio.Semaphore(n) -- the coroutine-native equivalent of this category's threading.Semaphore lesson -- allows up to n concurrent holders instead of only ever one."
+explanation: |
+  The same distinction this category's `threading.Semaphore` lesson
+  covers applies directly to coroutines: `asyncio.Lock` only ever
+  allows one coroutine into its guarded section at a time, which is
+  overly restrictive for something like a limited pool of at most
+  two concurrent outbound requests. `asyncio.Semaphore(n)` allows up
+  to `n` coroutines to hold it concurrently before an `(n + 1)`th has
+  to wait -- correctly modeling "up to N concurrent," not just
+  "exactly one."
+
+  The fix replaces `asyncio.Lock()` with `asyncio.Semaphore(2)`.
+example_code: |
+  # The trap: a Lock only EVER allows ONE coroutine into the section at once.
+  import asyncio
+
+  async def worker_trap(sem, active, peak):
+      async with sem:
+          active[0] += 1
+          peak[0] = max(peak[0], active[0])
+          await asyncio.sleep(0.01)
+          active[0] -= 1
+
+  async def demo_trap():
+      pool = asyncio.Lock()
+      active, peak = [0], [0]
+      await asyncio.gather(*(worker_trap(pool, active, peak) for _ in range(5)))
+      print(peak[0])
+
+  asyncio.run(demo_trap())
+  # 1 -- WRONG if up to 2 concurrent workers should have been allowed in at once
+
+  # The fix: Semaphore(2) allows up to 2 concurrent holders in the section.
+  async def worker(sem, active, peak):
+      async with sem:
+          active[0] += 1
+          peak[0] = max(peak[0], active[0])
+          await asyncio.sleep(0.01)
+          active[0] -= 1
+
+  async def demo():
+      pool = asyncio.Semaphore(2)
+      active, peak = [0], [0]
+      await asyncio.gather(*(worker(pool, active, peak) for _ in range(5)))
+      print(peak[0])
+
+  asyncio.run(demo())
+  # 2 -- correctly allowed up to 2 workers into the section concurrently
+starter_code: |
+  import asyncio
+
+  async def worker(sem, active, peak):
+      async with sem:
+          active[0] += 1
+          peak[0] = max(peak[0], active[0])
+          await asyncio.sleep(0.01)
+          active[0] -= 1
+
+  async def demo():
+      pool = asyncio.Lock()
+      active, peak = [0], [0]
+      await asyncio.gather(*(worker(pool, active, peak) for _ in range(5)))
+      print(peak[0])
+
+  asyncio.run(demo())
+challenge: |
+  Fix `demo` so `pool = asyncio.Semaphore(2)` is used instead of
+  `asyncio.Lock()`. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Change pool = asyncio.Lock() to pool = asyncio.Semaphore(2)."
+  - "asyncio.Lock only ever allows one coroutine into the section at once -- asyncio.Semaphore(n) allows up to n concurrently, correctly modeling a bounded pool bigger than 1."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 23
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.Semaphore\\(2\\)"
+concept_tags: [asyncio, semaphore, concurrency]

@@ -1,0 +1,61 @@
+id: ai_160
+title: "A Long-Running Agent Can Drift Away From the Original Request"
+language: ai
+level: 160
+objective: "Fix a drift-detection check that always reports an agent's actions as still aligned with the original goal, regardless of how far the actual actions taken have diverged from what was originally asked."
+explanation: |
+  Over a long enough sequence of steps, an agent can gradually stray
+  from what the user actually asked for -- each individual step might
+  seem locally reasonable, but the cumulative path can end up somewhere
+  the user never intended, especially once a tool result or an
+  intermediate conclusion nudges the agent's own framing of the task.
+  A drift check compares the *pattern* of recent actions against the
+  original goal's own key terms, flagging a genuine mismatch instead
+  of assuming every agent run stays perfectly on track by default.
+
+  The bug this exercise fixes always reports alignment, regardless of
+  what the actual action history looks like. The fix checks whether
+  recent actions still reference the original goal's key terms at all,
+  flagging drift when none of them do.
+example_code: |
+  # The trap: always reports "ALIGNED" -- never actually checks whether
+  # recent actions still relate to the original goal at all.
+  def check_alignment_trap(original_goal, recent_actions):
+      return "ALIGNED"
+
+  original_goal = "find the cheapest flight to Denver"
+  recent_actions = ["checked hotel prices", "checked car rental rates", "checked restaurant reviews"]
+  print(check_alignment_trap(original_goal, recent_actions))   # "ALIGNED" -- but NONE of this is about flights anymore!
+
+  # The fix: check whether recent actions still relate to the goal's own key terms.
+  def check_alignment(original_goal, recent_actions):
+      goal_words = set(original_goal.lower().split())
+      relevant_count = sum(1 for action in recent_actions if goal_words & set(action.lower().split()))
+      return "ALIGNED" if relevant_count > 0 else "DRIFTED"
+
+  print(check_alignment(original_goal, recent_actions))   # "DRIFTED" -- correctly catches that the agent wandered off-task
+starter_code: |
+  def check_alignment(original_goal, recent_actions):
+      return "ALIGNED"
+
+  original_goal = "find the cheapest flight to Denver"
+  recent_actions = ["checked hotel prices", "checked car rental rates", "checked restaurant reviews"]
+  print(check_alignment(original_goal, recent_actions))
+challenge: |
+  Fix `check_alignment` so it compares each recent action's words
+  against the original goal's own words, returning `"DRIFTED"` if none
+  of the recent actions share any words with the goal at all. It should
+  print `DRIFTED`, not `ALIGNED`.
+expected_output: |
+  DRIFTED
+hints:
+  - "Build goal_words = set(original_goal.lower().split()), then count how many recent_actions share any word with goal_words (via set intersection &)."
+  - "None of \"hotel prices\", \"car rental rates\", or \"restaurant reviews\" share a word with \"find the cheapest flight to denver\" -- correctly flagged as drift."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 30
+difficulty: deep_dive
+contains_patterns:
+  - "goal_words & set\\(action\\.lower\\(\\)\\.split\\(\\)\\)"
+concept_tags: [agentic_frameworks, goal_drift, agent_monitoring]

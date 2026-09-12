@@ -1,0 +1,80 @@
+id: functional_programming_25
+title: "A List of Predicate Functions Is a Composable Validation Pipeline"
+language: python
+level: 360
+objective: "Replace a hardcoded chain of if-checks validating a password with a list of independent predicate functions checked via all(), so adding a new rule means adding one function to a list, not editing a growing conditional."
+explanation: |
+  A validation function with several hardcoded `if` conditions --
+  minimum length, needs a digit, needs an uppercase letter -- grows
+  every time a new rule is needed, and the checks are tangled together
+  inside one function body. Expressing each rule as its own small,
+  independently-named predicate function, collected into a plain list,
+  turns validation into pure composition: `all(rule(password) for rule
+  in rules)` (this category's earlier `any`/`all` short-circuiting
+  lesson) runs every rule and requires them all to pass, and adding a
+  new rule means adding one more function to the list -- no existing
+  code needs to change at all.
+
+  The fix replaces the hardcoded `if` chain with a list of predicate
+  functions checked via `all()`.
+example_code: |
+  # The trap: hardcoded if-checks, tangled together in one growing function.
+  def is_valid_password_trap(password):
+      if len(password) < 8:
+          return False
+      if not any(c.isdigit() for c in password):
+          return False
+      if not any(c.isupper() for c in password):
+          return False
+      return True
+
+  print(is_valid_password_trap("Secret123"))
+  # True -- correct, but every new rule means editing this same function
+
+  # The fix: each rule is its OWN function, composed via all().
+  def has_min_length(p):
+      return len(p) >= 8
+
+  def has_digit(p):
+      return any(c.isdigit() for c in p)
+
+  def has_upper(p):
+      return any(c.isupper() for c in p)
+
+  RULES = [has_min_length, has_digit, has_upper]
+
+  def is_valid_password(password, rules):
+      return all(rule(password) for rule in rules)
+
+  print(is_valid_password("Secret123", RULES))
+  # True -- same result; a new rule means adding one function to RULES
+starter_code: |
+  def is_valid_password(password):
+      if len(password) < 8:
+          return False
+      if not any(c.isdigit() for c in password):
+          return False
+      if not any(c.isupper() for c in password):
+          return False
+      return True
+
+  print(is_valid_password("Secret123"))
+challenge: |
+  Rewrite this as three small predicate functions
+  (`has_min_length`/`has_digit`/`has_upper`) collected into a `RULES`
+  list, with `is_valid_password(password, rules)` returning `all
+  (rule(password) for rule in rules)`, instead of a hardcoded if
+  chain. Keep the same output: True.
+expected_output: |
+  True
+hints:
+  - "def has_min_length(p): return len(p) >= 8, and similarly for has_digit/has_upper, then RULES = [has_min_length, has_digit, has_upper]."
+  - "def is_valid_password(password, rules): return all(rule(password) for rule in rules), called as is_valid_password(\"Secret123\", RULES)."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "all\\(rule\\(password\\) for rule in rules\\)"
+concept_tags: [functional_programming, validation, predicates, composition]

@@ -1,0 +1,57 @@
+id: data_structures_34
+title: "A Nested Comprehension Flattens a 2D Grid in One Expression"
+language: python
+level: 191
+objective: "Replace a manual nested loop that flattens a 2D grid with a single nested list comprehension."
+explanation: |
+  Flattening a list of rows into one flat list by hand needs an outer
+  loop over the rows and an inner loop over each row's elements,
+  appending every one into a growing result list. A comprehension can
+  chain two `for` clauses to express exactly the same nested iteration
+  in one expression: `[x for row in grid for x in row]` reads left to
+  right as "for each row in the grid, for each x in that row, take
+  x" -- the outer `for` comes first, matching how the loops would be
+  nested if written explicitly.
+example_code: |
+  # A manual nested loop, appending into a growing result list.
+  def flatten_loop(grid):
+      result = []
+      for row in grid:
+          for x in row:
+              result.append(x)
+      return result
+
+  print(flatten_loop([[1, 2], [3, 4], [5, 6]]))
+  # [1, 2, 3, 4, 5, 6]
+
+  # A nested comprehension does this in one expression.
+  def flatten(grid):
+      return [x for row in grid for x in row]
+
+  print(flatten([[1, 2], [3, 4], [5, 6]]))
+  # [1, 2, 3, 4, 5, 6]
+starter_code: |
+  def flatten(grid):
+      result = []
+      for row in grid:
+          for x in row:
+              result.append(x)
+      return result
+
+  print(flatten([[1, 2], [3, 4], [5, 6]]))
+challenge: |
+  Rewrite `flatten` as a single nested comprehension: `[x for row in
+  grid for x in row]`. Keep the same output: [1, 2, 3, 4, 5, 6].
+expected_output: |
+  [1, 2, 3, 4, 5, 6]
+hints:
+  - "Replace the whole loop with: return [x for row in grid for x in row]."
+  - "The for clauses read in the same order they'd be nested as explicit loops -- the OUTER loop (over rows) comes first."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 34
+difficulty: core
+contains_patterns:
+  - "\\[x for row in grid for x in row\\]"
+concept_tags: [comprehensions, flattening]

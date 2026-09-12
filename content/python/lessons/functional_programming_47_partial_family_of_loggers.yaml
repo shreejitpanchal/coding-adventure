@@ -1,0 +1,76 @@
+id: functional_programming_47
+title: "Building a Whole Family of Specialized Functions From One, via partial"
+language: python
+level: 382
+objective: "Replace three near-identical logging functions (info/warning/error, each hardcoding its own level) with ONE generic log function plus three functools.partial specializations, eliminating the duplicated logic between them entirely."
+explanation: |
+  Three separate functions that each do the same thing with one
+  hardcoded difference -- `log_info`, `log_warning`, and `log_error`,
+  each formatting a message the same way but with a different level
+  string baked in -- duplicate their shared logic three times over,
+  with the only real difference being one fixed argument.
+  `functools.partial` collapses this into one real function plus three
+  cheap specializations: `log(level, msg)` holds the actual logic
+  once, and `partial(log, "INFO")`, `partial(log, "WARNING")`, `partial
+  (log, "ERROR")` each pre-fill the one varying argument, producing
+  three independently callable functions that share the exact same
+  underlying implementation.
+
+  The fix replaces the three duplicated functions with one generic
+  `log` plus three `partial`-built specializations.
+example_code: |
+  # The trap: three near-identical functions, duplicating the same logic.
+  def log_info_trap(msg):
+      return f"[INFO] {msg}"
+
+  def log_warning_trap(msg):
+      return f"[WARNING] {msg}"
+
+  print(log_info_trap("started"))
+  print(log_warning_trap("low disk space"))
+  # [INFO] started
+  # [WARNING] low disk space
+
+  # The fix: ONE real function, specialized via partial.
+  from functools import partial
+
+  def log(level, msg):
+      return f"[{level}] {msg}"
+
+  log_info = partial(log, "INFO")
+  log_warning = partial(log, "WARNING")
+
+  print(log_info("started"))
+  print(log_warning("low disk space"))
+  # [INFO] started
+  # [WARNING] low disk space -- same results, from ONE shared implementation
+starter_code: |
+  def log_info(msg):
+      return f"[INFO] {msg}"
+
+  def log_warning(msg):
+      return f"[WARNING] {msg}"
+
+  print(log_info("started"))
+  print(log_warning("low disk space"))
+challenge: |
+  Replace `log_info`/`log_warning` with one generic `log(level, msg)`
+  function plus `log_info = partial(log, "INFO")` and
+  `log_warning = partial(log, "WARNING")`. Keep the same output:
+  [INFO] started
+  [WARNING] low disk space
+expected_output: |
+  [INFO] started
+  [WARNING] low disk space
+hints:
+  - "def log(level, msg): return f\"[{level}] {msg}\", then log_info = partial(log, \"INFO\") and log_warning = partial(log, \"WARNING\")."
+  - "Both specialized functions now share the EXACT same underlying implementation -- no duplicated formatting logic between them at all."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 47
+difficulty: core
+contains_patterns:
+  - "log_info = partial\\(log, \"INFO\"\\)"
+  - "log_warning = partial\\(log, \"WARNING\"\\)"
+concept_tags: [functional_programming, partial_application, deduplication]

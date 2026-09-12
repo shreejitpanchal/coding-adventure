@@ -1,0 +1,59 @@
+id: ai_264
+title: "An Agent Loop Must Keep Going Until It Actually Sees the Final Answer"
+language: ai
+level: 264
+objective: "Fix an agent loop that stops after the very first step regardless of its type, treating an intermediate tool call's output as if it were already the final answer, when the loop should keep going until a step explicitly marked as the final answer actually appears."
+explanation: |
+  A multi-turn agent loop alternates between tool calls and reasoning
+  until the model produces a step explicitly marked as the final
+  answer -- and stopping at anything earlier than that means returning
+  an intermediate, incomplete result to the caller as if the task were
+  already done. A loop that just returns whatever the first step
+  happens to be, without checking its type, can't tell "the agent is
+  still working" from "the agent is finished."
+
+  The bug this exercise fixes returns `steps[0]` unconditionally. The
+  fix scans for the step whose `type` is actually `"final_answer"`.
+example_code: |
+  # The trap: stops after the FIRST step, regardless of its type --
+  # treats a tool call's output as if it were already the final answer.
+  def run_agent_loop_trap(steps):
+      return steps[0]
+
+  steps = [{"type": "tool_call", "content": "checking inventory..."}, {"type": "final_answer", "content": "We have 12 in stock."}]
+  print(run_agent_loop_trap(steps)["type"])
+  # "tool_call" -- stopped too early, this isn't the final answer at all
+
+  # The fix: scan for the step whose type is actually "final_answer".
+  def run_agent_loop(steps):
+      for step in steps:
+          if step["type"] == "final_answer":
+              return step
+      return None
+
+  print(run_agent_loop(steps)["type"])
+  # "final_answer" -- correctly kept going until the real final answer appeared
+starter_code: |
+  def run_agent_loop(steps):
+      return steps[0]
+
+  steps = [{"type": "tool_call", "content": "checking inventory..."}, {"type": "final_answer", "content": "We have 12 in stock."}]
+  print(run_agent_loop(steps)["type"])
+challenge: |
+  Fix `run_agent_loop` so it loops over `steps`, returning the first one
+  whose `"type"` is `"final_answer"`, instead of always returning
+  `steps[0]` regardless of type. It should print `final_answer`, not
+  `tool_call`.
+expected_output: |
+  final_answer
+hints:
+  - "for step in steps: if step[\"type\"] == \"final_answer\": return step -- then return None if the loop finds nothing."
+  - "A tool call's output is intermediate work, not the answer -- the loop has no way to tell the difference without actually checking each step's type."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 44
+difficulty: core
+contains_patterns:
+  - "step\\[\"type\"\\] == \"final_answer\""
+concept_tags: [langchain, agent_loop, final_answer_detection]

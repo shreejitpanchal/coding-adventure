@@ -1,0 +1,60 @@
+id: idioms_gotchas_41
+title: "Printing a List of Objects Uses repr(), Not str() -- Define __repr__"
+language: python
+level: 110
+objective: "Fix a class with no __repr__ defined, when printing a LIST of its instances calls repr() on each element (not str()), producing Python's useless default '<ClassName object at 0x...>' for every single one."
+explanation: |
+  `print(some_list)` doesn't call `str()` on each element -- it calls
+  `repr()` on each one, then wraps the results in brackets. A class
+  that only defines `__str__` (or defines nothing at all) still shows
+  the default, memory-address-based representation the instant it's
+  printed as part of a list, dict, or any other container, since none
+  of those use `str()` internally. Defining `__repr__` is what actually
+  fixes this, for containers and for the interactive REPL alike.
+
+  The bug this exercise fixes has no `__repr__` at all, so a list of
+  instances prints as unhelpful default reprs. The fix adds one.
+example_code: |
+  # The trap: no __repr__ at all -- printing a LIST of these gives the
+  # useless default, since list printing uses repr() on each element.
+  class ItemTrap:
+      def __init__(self, name):
+          self.name = name
+
+  items_trap = [ItemTrap("widget")]
+  print(str(items_trap).startswith("[<"))
+  # True -- "[<__main__.ItemTrap object at 0x...>]", utterly unhelpful
+
+  # The fix: define __repr__ explicitly.
+  class Item:
+      def __init__(self, name):
+          self.name = name
+      def __repr__(self):
+          return f"Item({self.name!r})"
+
+  items = [Item("widget")]
+  print(str(items).startswith("[<"))
+  # False -- correctly shows "[Item('widget')]" instead
+starter_code: |
+  class Item:
+      def __init__(self, name):
+          self.name = name
+
+  items = [Item("widget")]
+  print(str(items).startswith("[<"))
+challenge: |
+  Fix `Item` by adding a `__repr__` method returning `f"Item({self.name
+  !r})"`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add: def __repr__(self): return f\"Item({self.name!r})\", as another method on the class."
+  - "Printing a list calls repr() on each of its elements, not str() -- a class needs __repr__ specifically to look meaningful inside a container."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 41
+difficulty: warmup
+contains_patterns:
+  - "def __repr__\\(self\\):"
+concept_tags: [idioms, repr, str_vs_repr]

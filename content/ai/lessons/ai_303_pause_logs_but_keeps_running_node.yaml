@@ -1,0 +1,68 @@
+id: ai_303
+title: "A Paused Node Must Actually Not Run, Not Just Log That It Was Paused"
+language: ai
+level: 303
+objective: "Fix a node runner that logs a pause message but then runs the node anyway, when a genuine human-in-the-loop pause has to actually prevent the node from executing, not merely note that a pause was supposed to happen."
+explanation: |
+  Logging that a node is paused is not the same thing as actually
+  pausing it -- a runner that prints a message and then calls the node
+  regardless has all the appearance of a pause mechanism (there's a
+  flag, there's a log line) with none of the actual behavior a pause is
+  supposed to guarantee. The whole reason to pause before a sensitive
+  action is to prevent it from happening without oversight; a pause
+  that doesn't prevent anything isn't a safety mechanism at all.
+
+  The bug this exercise fixes prints a message when `paused` is true,
+  then calls the node regardless. The fix returns the unchanged state
+  when paused, never calling the node at all.
+example_code: |
+  # The trap: just LOGS the pause, then keeps running the node anyway.
+  def run_node_trap(node_fn, state, paused):
+      if paused:
+          print("(paused for human review)")
+      return node_fn(state)
+
+  def approve_action(state):
+      return {"approved": True}
+
+  result_trap = run_node_trap(approve_action, {}, paused=True)
+  print(result_trap.get("approved", False))
+  # True -- ran anyway, despite supposedly being paused for human review
+
+  # The fix: return unchanged state when paused, never call the node.
+  def run_node(node_fn, state, paused):
+      if paused:
+          return state
+      return node_fn(state)
+
+  result = run_node(approve_action, {}, paused=True)
+  print(result.get("approved", False))
+  # False -- correctly halted, the node never actually ran
+starter_code: |
+  def approve_action(state):
+      return {"approved": True}
+
+  def run_node(node_fn, state, paused):
+      if paused:
+          print("(paused for human review)")
+      return node_fn(state)
+
+  result = run_node(approve_action, {}, paused=True)
+  print(result.get("approved", False))
+challenge: |
+  Fix `run_node` so the `paused` branch returns `state` unchanged
+  instead of just printing a message and falling through to
+  `node_fn(state)` anyway. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace the print(...) line inside the paused branch with return state."
+  - "A pause that only logs and doesn't actually prevent the node from running provides zero real safety, no matter how convincing the log message looks."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "return state"
+concept_tags: [langgraph, human_in_the_loop, interrupt_before]

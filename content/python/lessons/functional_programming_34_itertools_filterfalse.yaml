@@ -1,0 +1,58 @@
+id: functional_programming_34
+title: "itertools.filterfalse Is filter()'s Direct Complement"
+language: python
+level: 369
+objective: "Replace a list comprehension that negates a predicate with 'not' when the actual intent is 'everything filter() would have excluded', when itertools.filterfalse expresses that complement directly, without needing to negate the predicate by hand at every call site."
+explanation: |
+  `filter(predicate, items)` keeps everything the predicate accepts;
+  `itertools.filterfalse(predicate, items)` keeps everything it
+  *rejects* -- the direct functional complement, using the *exact
+  same* predicate function unmodified. Writing `[x for x in items if
+  not predicate(x)]` works, but it requires negating the predicate by
+  hand at the call site every single time -- `filterfalse` expresses
+  "the opposite of filter" as its own named tool, with no manual `not`
+  needed, and the predicate itself stays reusable, unmodified, for
+  both the "keep" and "reject" cases.
+
+  The fix replaces the negated comprehension with
+  `itertools.filterfalse`.
+example_code: |
+  # The trap: negates the predicate manually inside the comprehension.
+  def is_even(n):
+      return n % 2 == 0
+
+  items = [1, 2, 3, 4, 5, 6]
+  odds_trap = [x for x in items if not is_even(x)]
+  print(odds_trap)
+  # [1, 3, 5] -- correct, but negates is_even by hand at the call site
+
+  # The fix: filterfalse expresses the complement directly.
+  from itertools import filterfalse
+
+  odds = list(filterfalse(is_even, items))
+  print(odds)
+  # [1, 3, 5] -- same result, using is_even completely unmodified
+starter_code: |
+  def is_even(n):
+      return n % 2 == 0
+
+  items = [1, 2, 3, 4, 5, 6]
+  odds = [x for x in items if not is_even(x)]
+  print(odds)
+challenge: |
+  Rewrite `odds` using `list(filterfalse(is_even, items))` (imported
+  from `itertools`), instead of a negated comprehension. Keep the
+  same output: [1, 3, 5].
+expected_output: |
+  [1, 3, 5]
+hints:
+  - "from itertools import filterfalse, then: odds = list(filterfalse(is_even, items))."
+  - "filterfalse keeps everything the predicate REJECTS -- the exact opposite of filter, using the same predicate function completely unmodified."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 34
+difficulty: core
+contains_patterns:
+  - "filterfalse\\(is_even, items\\)"
+concept_tags: [functional_programming, itertools, filterfalse]

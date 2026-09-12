@@ -1,0 +1,54 @@
+id: ai_207
+title: "A Connection That's Shutting Down Shouldn't Keep Handling Requests"
+language: ai
+level: 207
+objective: "Fix a request handler that processes every request regardless of connection state, when a connection that's already shutting down should refuse new requests instead of pretending it can still serve them."
+explanation: |
+  A connection's lifecycle has real states beyond just "initialized" --
+  it can also be shutting down or already closed, and a request handler
+  that doesn't check for that keeps accepting work it can no longer
+  reliably complete. Serving a `tools/call` after shutdown has already
+  begun risks the response never actually reaching the client, or
+  racing against resources the shutdown path is in the middle of
+  tearing down.
+
+  The bug this exercise fixes handles every request unconditionally,
+  with no check of the connection's actual state. The fix rejects new
+  requests once the connection has entered `"shut_down"`.
+example_code: |
+  # The trap: doesn't check connection state at all -- keeps "handling"
+  # requests even after shutdown has begun.
+  def handle_request_trap(method, state):
+      return {"status": "handled"}
+
+  print(handle_request_trap("tools/list", "shut_down"))   # {"status": "handled"} -- wrongly processed after shutdown
+
+  # The fix: reject new requests once the connection has shut down.
+  def handle_request(method, state):
+      if state == "shut_down":
+          return {"status": "rejected"}
+      return {"status": "handled"}
+
+  print(handle_request("tools/list", "shut_down"))   # {"status": "rejected"} -- correctly refused
+starter_code: |
+  def handle_request(method, state):
+      return {"status": "handled"}
+
+  print(handle_request("tools/list", "shut_down")["status"])
+challenge: |
+  Fix `handle_request` so it returns `{"status": "rejected"}` when
+  `state` is `"shut_down"`, instead of always handling the request. It
+  should print `rejected`, not `handled`.
+expected_output: |
+  rejected
+hints:
+  - "Add: if state == \"shut_down\": return {\"status\": \"rejected\"} before the normal handling path."
+  - "A connection lifecycle has more states than just initialized/not-initialized -- shutting down needs its own check too."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 32
+difficulty: warmup
+contains_patterns:
+  - "state == \"shut_down\""
+concept_tags: [mcp, connection_lifecycle, shutdown]

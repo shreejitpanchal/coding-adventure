@@ -1,0 +1,59 @@
+id: ai_216
+title: "Shutdown Should Wait for In-Flight Requests, Not Discard Them"
+language: ai
+level: 216
+objective: "Fix a shutdown function that immediately clears every in-flight request and reports success, when it should refuse to finish shutting down while requests are still running."
+explanation: |
+  A graceful shutdown means letting whatever's already running finish
+  before the connection actually closes -- discarding in-flight
+  requests instead just abandons whatever work was underway, silently
+  turning "shutting down" into "dropping active work on the floor." A
+  shutdown path that clears the tracking dict and reports success
+  regardless of what was still running gives no signal that anything
+  was cut short.
+
+  The bug this exercise fixes clears `in_flight` unconditionally and
+  reports success either way. The fix refuses to report a successful
+  shutdown while anything is still tracked as running.
+example_code: |
+  # The trap: discards in-flight requests immediately and claims
+  # success regardless.
+  def shutdown_trap(in_flight):
+      in_flight.clear()
+      return True
+
+  in_flight_trap = {"r1": "running"}
+  print(shutdown_trap(in_flight_trap))   # True -- claims success even though a request was still running
+
+  # The fix: refuse to shut down while requests are still in flight.
+  def shutdown(in_flight):
+      if in_flight:
+          return False
+      return True
+
+  in_flight = {"r1": "running"}
+  print(shutdown(in_flight))   # False -- correctly refuses while a request is still running
+starter_code: |
+  def shutdown(in_flight):
+      in_flight.clear()
+      return True
+
+  in_flight = {"r1": "running"}
+  print(shutdown(in_flight))
+challenge: |
+  Fix `shutdown` so it returns `False` (without clearing `in_flight`)
+  when `in_flight` is non-empty, instead of always clearing it and
+  returning `True`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Check `if in_flight:` first and return False in that case, before ever touching .clear()."
+  - "Only report success once in_flight is genuinely empty -- draining happens elsewhere, this function shouldn't force it by discarding entries."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 41
+difficulty: core
+contains_patterns:
+  - "if in_flight:"
+concept_tags: [mcp, graceful_shutdown, connection_lifecycle]

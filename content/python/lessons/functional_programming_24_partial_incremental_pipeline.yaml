@@ -1,0 +1,60 @@
+id: functional_programming_24
+title: "Building Up a Specialized Function Incrementally With partial"
+language: python
+level: 359
+objective: "Use functools.partial twice in a row to progressively pre-fill a multi-argument function's parameters one at a time, instead of writing a single call that supplies every argument at once."
+explanation: |
+  `functools.partial` can be applied more than once, each time fixing
+  another argument -- the result of one `partial` call is just an
+  ordinary callable, so it can itself be passed to `partial` again to
+  fix yet another parameter. `send_email(to, subject, body)` can be
+  specialized step by step: `partial(send_email, subject="Reminder")`
+  fixes the subject, and calling `partial(...)` again on *that*
+  result fixes `to` as well, leaving only `body` to be supplied at the
+  final call site -- each step narrowing down the function's remaining
+  parameters independently, without needing all the fixed values known
+  at once.
+
+  This exercise builds a fully-specialized `send_reminder_to_ada` via
+  two chained `partial` calls.
+example_code: |
+  def send_email(to, subject, body):
+      return f"To: {to} | Subject: {subject} | Body: {body}"
+
+  # One call at a time, supplying every argument together.
+  print(send_email("ada@example.com", "Reminder", "Don't forget!"))
+  # To: ada@example.com | Subject: Reminder | Body: Don't forget!
+
+  # Building it up incrementally with partial, one argument at a time.
+  from functools import partial
+
+  send_reminder = partial(send_email, subject="Reminder")
+  send_reminder_to_ada = partial(send_reminder, to="ada@example.com")
+  print(send_reminder_to_ada(body="Don't forget!"))
+  # To: ada@example.com | Subject: Reminder | Body: Don't forget!
+  # -- same result, built up from two independently reusable specializations
+starter_code: |
+  def send_email(to, subject, body):
+      return f"To: {to} | Subject: {subject} | Body: {body}"
+
+  print(send_email("ada@example.com", "Reminder", "Don't forget!"))
+challenge: |
+  Build `send_reminder = partial(send_email, subject="Reminder")`,
+  then `send_reminder_to_ada = partial(send_reminder,
+  to="ada@example.com")`, and call
+  `send_reminder_to_ada(body="Don't forget!")` instead of calling
+  `send_email` directly with all three arguments. Keep the same
+  output.
+expected_output: |
+  To: ada@example.com | Subject: Reminder | Body: Don't forget!
+hints:
+  - "from functools import partial, then: send_reminder = partial(send_email, subject=\"Reminder\")."
+  - "send_reminder_to_ada = partial(send_reminder, to=\"ada@example.com\"), then call it with just body=\"Don't forget!\"."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "partial\\(send_reminder, to=\"ada@example\\.com\"\\)"
+concept_tags: [functional_programming, partial_application, currying]

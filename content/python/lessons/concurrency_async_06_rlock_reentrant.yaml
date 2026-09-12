@@ -1,0 +1,59 @@
+id: concurrency_async_06
+title: "A Plain Lock Can't Be Reacquired By the Same Thread -- RLock Can"
+language: python
+level: 296
+objective: "Fix code that needs the SAME thread to acquire a lock it already holds (for a recursive or nested call), when a plain threading.Lock deadlocks on self-reacquisition -- threading.RLock allows the owning thread to reacquire it any number of times."
+explanation: |
+  A plain `threading.Lock` has no notion of "who" holds it -- once
+  acquired, a second `acquire()` call blocks until it's released, even
+  if that second call comes from the *same* thread that's already
+  holding it. That matters for recursive functions, or a method that
+  calls another method needing the same lock: the second `acquire()`
+  waits forever for a release that can never happen, since the only
+  thread that could release it is the one blocked waiting to reacquire
+  it -- a self-deadlock. `threading.RLock` ("reentrant lock") tracks
+  both *which* thread holds it and *how many times*, so the owning
+  thread can acquire it again without blocking; it must then call
+  `release()` the same number of times before another thread can
+  acquire it.
+
+  The fix is swapping `threading.Lock()` for `threading.RLock()`,
+  which allows the exact same thread to reacquire it.
+example_code: |
+  # The trap: a plain Lock can't be reacquired by its own owning thread.
+  import threading
+
+  lock_trap = threading.Lock()
+  lock_trap.acquire()
+  print(lock_trap.acquire(blocking=False))
+  # False -- WRONG if the intent was letting the same thread reacquire it
+
+  # The fix: RLock tracks ownership -- the SAME thread can reacquire it.
+  rlock = threading.RLock()
+  rlock.acquire()
+  print(rlock.acquire(blocking=False))
+  # True -- correctly reentrant; must be released twice before others can acquire
+  rlock.release()
+  rlock.release()
+starter_code: |
+  import threading
+
+  lock = threading.Lock()
+  lock.acquire()
+  print(lock.acquire(blocking=False))
+challenge: |
+  Fix this so `lock = threading.RLock()` is used instead of
+  `threading.Lock()`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change threading.Lock() to threading.RLock()."
+  - "A plain Lock has no concept of which thread holds it -- RLock does, which is what lets the SAME thread reacquire it without deadlocking itself."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 6
+difficulty: deep_dive
+contains_patterns:
+  - "threading\\.RLock\\(\\)"
+concept_tags: [threading, rlock, concurrency]

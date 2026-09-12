@@ -1,0 +1,64 @@
+id: gotcha_gauntlet_10
+title: "The Comparison That Crashed Because One Clock Knew Its Timezone and the Other Didn't"
+language: python
+level: 255
+objective: "Fix a TypeError raised by comparing a naive datetime (no timezone attached) against an aware one (a timezone attached), when Python refuses to guess which timezone the naive one is actually in."
+explanation: |
+  A `datetime` is either 'naive' (no timezone information at all -- it
+  doesn't know if it means UTC, local time, or anything else) or
+  'aware' (a `tzinfo` is attached, fully specifying the timezone). Two
+  datetimes can only be compared when they're either *both* naive or
+  *both* aware -- comparing one of each raises `TypeError: can't
+  compare offset-naive and offset-aware datetimes`, deliberately,
+  since Python has no way to know what timezone the naive one
+  actually represents, and silently guessing would risk a wrong
+  comparison with no error to catch it.
+
+  The fix is to make both sides aware, attaching the same explicit
+  timezone (UTC here) to the naive value before comparing, so the
+  comparison has a well-defined, unambiguous answer.
+example_code: |
+  # The trap: comparing a naive datetime against an aware one crashes.
+  from datetime import datetime, timezone
+
+  naive = datetime(2024, 1, 1, 12, 0)
+  aware = datetime(2024, 1, 1, 10, 0, tzinfo=timezone.utc)
+
+  try:
+      print(naive > aware)
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- can't compare naive and aware datetimes at all
+
+  # The fix: attach the same explicit timezone before comparing.
+  naive_made_aware = naive.replace(tzinfo=timezone.utc)
+  print(naive_made_aware > aware)
+  # True -- correctly comparable, now that both sides are aware
+starter_code: |
+  from datetime import datetime, timezone
+
+  naive = datetime(2024, 1, 1, 12, 0)
+  aware = datetime(2024, 1, 1, 10, 0, tzinfo=timezone.utc)
+
+  try:
+      print(naive > aware)
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix this by attaching UTC to the naive datetime first --
+  `naive.replace(tzinfo=timezone.utc)` -- before comparing it against
+  `aware`. It should print `True`, not `crashed`.
+expected_output: |
+  True
+hints:
+  - "naive_made_aware = naive.replace(tzinfo=timezone.utc), then compare naive_made_aware > aware."
+  - "Python refuses to compare a naive and an aware datetime directly -- it has no way to know what timezone the naive one is actually meant to represent."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 10
+difficulty: gotcha
+contains_patterns:
+  - "naive\\.replace\\(tzinfo=timezone\\.utc\\)"
+concept_tags: [datetime, timezones, gotchas]

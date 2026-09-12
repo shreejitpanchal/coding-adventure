@@ -1,0 +1,86 @@
+id: data_structures_22
+title: "Breadth-First Search Needs a Real Queue -- Popping From the Wrong End Changes the Order Entirely"
+language: python
+level: 179
+objective: "Fix a graph traversal that pops from the end of a plain list (stack behavior) instead of the front (queue behavior), when breadth-first order specifically depends on processing nodes in the order they were discovered."
+explanation: |
+  Breadth-first search visits every neighbor of the current node before
+  moving on to any of *their* neighbors -- level by level -- and that
+  specific ordering depends entirely on processing discovered nodes in
+  first-in-first-out order, a genuine queue. Using a plain list and
+  popping from the *end* (`.pop()`, stack/LIFO behavior) instead of the
+  front processes the most *recently* discovered node next, not the
+  earliest -- which produces a completely different traversal order,
+  not just a slower version of the same one.
+
+  The bug this exercise fixes pops from the end of a plain list. The
+  fix uses `collections.deque` and `.popleft()`, giving genuine O(1)
+  FIFO queue behavior.
+example_code: |
+  # The trap: pops from the END (stack/LIFO behavior) -- processes the
+  # most RECENTLY discovered node next, not the earliest.
+  graph = {"A": ["B", "C"], "B": ["D", "E"], "C": ["F"], "D": [], "E": [], "F": []}
+
+  def bfs_trap(graph, start):
+      visited = [start]
+      queue = [start]
+      while queue:
+          node = queue.pop()
+          for neighbor in graph[node]:
+              if neighbor not in visited:
+                  visited.append(neighbor)
+                  queue.append(neighbor)
+      return visited
+
+  print(bfs_trap(graph, "A"))
+  # ['A', 'B', 'C', 'F', 'D', 'E'] -- WRONG order, this isn't breadth-first at all
+
+  # The fix: a real FIFO queue via deque.popleft().
+  from collections import deque
+
+  def bfs(graph, start):
+      visited = [start]
+      queue = deque([start])
+      while queue:
+          node = queue.popleft()
+          for neighbor in graph[node]:
+              if neighbor not in visited:
+                  visited.append(neighbor)
+                  queue.append(neighbor)
+      return visited
+
+  print(bfs(graph, "A"))
+  # ['A', 'B', 'C', 'D', 'E', 'F'] -- correctly breadth-first, level by level
+starter_code: |
+  graph = {"A": ["B", "C"], "B": ["D", "E"], "C": ["F"], "D": [], "E": [], "F": []}
+
+  def bfs(graph, start):
+      visited = [start]
+      queue = [start]
+      while queue:
+          node = queue.pop()
+          for neighbor in graph[node]:
+              if neighbor not in visited:
+                  visited.append(neighbor)
+                  queue.append(neighbor)
+      return visited
+
+  print(bfs(graph, "A"))
+challenge: |
+  Fix `bfs` so it uses `collections.deque` and `.popleft()`, instead of
+  a plain list and `.pop()` (which pops from the wrong end). It should
+  print `['A', 'B', 'C', 'D', 'E', 'F']`, not
+  `['A', 'B', 'C', 'F', 'D', 'E']`.
+expected_output: |
+  ['A', 'B', 'C', 'D', 'E', 'F']
+hints:
+  - "from collections import deque, then queue = deque([start]) and node = queue.popleft() instead of queue.pop()."
+  - "popleft() removes from the FRONT, processing nodes in the order they were discovered -- that's what actually makes the traversal breadth-first."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 22
+difficulty: gotcha
+contains_patterns:
+  - "queue\\.popleft\\(\\)"
+concept_tags: [bfs, deque, graphs]

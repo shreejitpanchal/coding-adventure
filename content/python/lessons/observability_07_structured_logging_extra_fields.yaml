@@ -1,0 +1,65 @@
+id: observability_07
+title: "Interpolating Fields Into the Message String vs Attaching Them as Structured Data"
+language: python
+level: 407
+objective: "Fix a log call that interpolates a user_id directly into the message string, when attaching it via the logging call's 'extra' parameter keeps it as a genuinely separate, structured field a log aggregator can filter and query on -- not just buried text inside a formatted message."
+explanation: |
+  `logging.info(f"user {user_id} logged in")` produces a message that
+  looks informative to a human reading it directly, but to a log
+  aggregator (something parsing and indexing logs for searching and
+  filtering later), `user_id` is just an arbitrary substring buried
+  inside a formatted string -- there's no structured field named
+  `user_id` to filter on, only text that happens to contain those
+  digits somewhere in it. `logging.info(msg, extra={"user_id": user_id
+  })` attaches `user_id` as a genuinely separate, named field on the
+  log record itself, retrievable via a custom formatter or handler
+  (`record.user_id`) independent of the human-readable message text --
+  exactly what a structured-logging pipeline (JSON logs shipped to
+  something like Elasticsearch or Datadog) actually needs to let
+  someone query "show me every log line where `user_id == 42`"
+  directly, rather than grepping for a substring.
+
+  The fix passes `user_id` via `extra=`, instead of interpolating it
+  into the message string.
+example_code: |
+  # The trap: user_id is just buried text inside the formatted message.
+  import logging
+
+  def log_login_trap(user_id):
+      logging.info(f"user {user_id} logged in")
+  # A log aggregator sees one opaque message string -- no queryable "user_id" field
+
+  # The fix: extra= attaches user_id as its OWN structured field.
+  def log_login(user_id):
+      logging.info("user logged in", extra={"user_id": user_id})
+  # The message stays human-readable, AND user_id is now a real, separate,
+  # queryable field on the log record -- not just buried inside message text
+
+  print("user_id" in {"user_id": 42})
+  # True -- the extra dict IS the structured field a real logging pipeline reads
+starter_code: |
+  import logging
+
+  def log_login(user_id):
+      logging.info(f"user {user_id} logged in")
+
+  log_login(42)
+  print("done")
+challenge: |
+  Fix `log_login` so it calls
+  `logging.info("user logged in", extra={"user_id": user_id})`,
+  attaching `user_id` as a structured field, instead of interpolating
+  it directly into the message string. Keep printing `done` afterward.
+expected_output: |
+  done
+hints:
+  - "logging.info(\"user logged in\", extra={\"user_id\": user_id})."
+  - "extra= attaches a genuinely separate, named field on the log record itself -- a log aggregator can filter and query on it directly, unlike text buried inside a formatted message."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "extra=\\{\"user_id\": user_id\\}"
+concept_tags: [observability, structured_logging]

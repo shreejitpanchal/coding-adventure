@@ -1,0 +1,85 @@
+id: ai_249
+title: "A Prompt's Partial Variables Need to Actually Be Stored for Later"
+language: ai
+level: 249
+objective: "Fix a prompt template's .partial() method that returns the template unchanged without storing anything, when pre-binding a variable ahead of time should mean that variable no longer needs to be supplied again at format time."
+explanation: |
+  `.partial()` lets a prompt template have some of its variables filled
+  in ahead of time -- a `day` that's fixed for the whole session, say --
+  so later `.format()` calls only need to supply whatever's actually
+  still variable per call. A `.partial()` that returns the template
+  object without storing the pre-bound values anywhere means every
+  variable still has to be supplied at format time regardless, silently
+  discarding the whole point of partial application.
+
+  The bug this exercise fixes returns `self` from `.partial()` without
+  ever recording the passed-in values. The fix merges the partial
+  values into a new template that remembers them for every later
+  `.format()` call.
+example_code: |
+  # The trap: .partial() returns self, but never actually STORES the
+  # values it was given anywhere.
+  class PromptTemplateTrap:
+      def __init__(self, template):
+          self.template = template
+      def partial(self, **kwargs):
+          return self
+      def format(self, **variables):
+          return self.template.format(**variables)
+
+  t = PromptTemplateTrap("Hello {name}, today is {day}.")
+  t2 = t.partial(day="Monday")
+  # t2.format(name="Ada")  # KeyError: 'day' -- the partial value was never remembered
+
+  # The fix: merge partial values into a new template that remembers them.
+  class PromptTemplate:
+      def __init__(self, template, partial_vars=None):
+          self.template = template
+          self.partial_vars = partial_vars if partial_vars is not None else {}
+      def partial(self, **kwargs):
+          merged = dict(self.partial_vars)
+          merged.update(kwargs)
+          return PromptTemplate(self.template, merged)
+      def format(self, **variables):
+          merged = dict(self.partial_vars)
+          merged.update(variables)
+          return self.template.format(**merged)
+
+  t3 = PromptTemplate("Hello {name}, today is {day}.")
+  t4 = t3.partial(day="Monday")
+  print(t4.format(name="Ada"))   # "Hello Ada, today is Monday." -- day was correctly remembered
+starter_code: |
+  class PromptTemplate:
+      def __init__(self, template):
+          self.template = template
+          self.partial_vars = {}
+      def partial(self, **kwargs):
+          return self
+      def format(self, **variables):
+          return self.template.format(**variables)
+
+  t = PromptTemplate("Hello {name}, today is {day}.")
+  t2 = t.partial(day="Monday")
+  try:
+      print(t2.format(name="Ada"))
+  except KeyError as e:
+      print(f"unhandled: {e}")
+challenge: |
+  Fix `PromptTemplate` so `.partial()` stores the values it's given
+  (merged into a `partial_vars` dict carried on the returned instance),
+  and `.format()` merges those stored values with whatever's newly
+  passed in. It should print `Hello Ada, today is Monday.`, not
+  `unhandled: 'day'`.
+expected_output: |
+  Hello Ada, today is Monday.
+hints:
+  - "Give __init__ a partial_vars parameter, have .partial() build merged = dict(self.partial_vars); merged.update(kwargs) and return a new PromptTemplate(self.template, merged)."
+  - ".format() then needs the same merge pattern: start from self.partial_vars, then update with whatever variables were passed to format() itself."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 29
+difficulty: gotcha
+contains_patterns:
+  - "merged = dict\\(self\\.partial_vars\\)"
+concept_tags: [langchain, prompt_template, partial_variables]

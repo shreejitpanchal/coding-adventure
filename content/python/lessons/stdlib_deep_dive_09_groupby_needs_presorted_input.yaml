@@ -1,0 +1,58 @@
+id: stdlib_deep_dive_09
+title: "groupby Only Groups CONSECUTIVE Equal Items -- Sort First, or It Splits Them Apart"
+language: python
+level: 210
+objective: "Fix a groupby call on unsorted data, when itertools.groupby only groups elements that are already adjacent to each other -- the same value appearing again later, non-consecutively, starts a brand-new group instead of joining the earlier one."
+explanation: |
+  `itertools.groupby` does not scan the whole sequence looking for
+  every occurrence of each value -- it only groups *consecutive* runs
+  of equal elements, closing a group the instant a different value
+  appears, even if the same value shows up again later. Data that
+  isn't already sorted (or otherwise pre-arranged so equal values sit
+  next to each other) produces far more groups than expected, since
+  every non-adjacent repeat starts an entirely new group of its own.
+
+  The bug this exercise fixes calls `groupby` directly on unsorted
+  data. The fix sorts first, bringing equal elements together before
+  grouping them.
+example_code: |
+  # The trap: groupby on UNSORTED data -- each non-adjacent repeat
+  # starts a brand-new group instead of joining the earlier one.
+  from itertools import groupby
+
+  def count_groups_trap(data):
+      return len(list(groupby(data)))
+
+  print(count_groups_trap(["a", "b", "a", "b"]))
+  # 4 -- WRONG, groupby saw 4 separate runs, since "a" and "b" alternate
+
+  # The fix: sort first, bringing equal elements together.
+  def count_groups(data):
+      return len(list(groupby(sorted(data))))
+
+  print(count_groups(["a", "b", "a", "b"]))
+  # 2 -- correctly grouped, once sorting made equal elements adjacent
+starter_code: |
+  from itertools import groupby
+
+  def count_groups(data):
+      return len(list(groupby(data)))
+
+  print(count_groups(["a", "b", "a", "b"]))
+challenge: |
+  Fix `count_groups` so it calls `groupby(sorted(data))`, instead of
+  `groupby(data)` directly on unsorted data. It should print `2`, not
+  `4`.
+expected_output: |
+  2
+hints:
+  - "Wrap data in sorted(...) before passing it to groupby: groupby(sorted(data))."
+  - "groupby has no memory of a value it already closed a group for -- the same value appearing again later, non-adjacently, always starts a new group."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 9
+difficulty: gotcha
+contains_patterns:
+  - "groupby\\(sorted\\(data\\)\\)"
+concept_tags: [itertools, groupby]

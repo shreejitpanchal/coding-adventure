@@ -1,0 +1,65 @@
+id: thread_scheduling_14
+title: "Setting '.priority' on a Thread Does Nothing At All -- Python Has No Such Concept"
+language: python
+level: 434
+objective: "Fix code that sets an arbitrary '.priority' attribute on a Thread and reports it as if it actually took effect, when Python's threading module has no real thread-priority mechanism at all -- every thread is scheduled by the OS with the same priority, and a custom attribute like this is a pure illusion the scheduler never looks at."
+explanation: |
+  Some other languages' threading APIs genuinely support setting a
+  thread's OS-level scheduling priority -- Python's `threading` module
+  does not, at all, on any platform, in the standard library.
+  `t.priority = "high"` is just an ordinary attribute assignment on a
+  plain Python object -- it creates a completely arbitrary attribute
+  named `priority` that means absolutely nothing to the actual OS
+  thread scheduler underneath, which continues to treat every Python
+  thread identically regardless of what that attribute happens to
+  hold. Code that sets it and then reports "priority set to high" is
+  actively misleading -- it implies an effect that never actually
+  happened anywhere in the real scheduling behavior.
+
+  The fix removes the fake priority attribute entirely and reports the
+  actual, honest fact instead: Python threads have no real priority
+  control.
+example_code: |
+  # The trap: sets a meaningless custom attribute, reports it as if it worked.
+  import threading
+
+  def describe_priority_trap(t, priority):
+      t.priority = priority
+      return f"priority set to {t.priority}"
+
+  print(describe_priority_trap(threading.Thread(target=lambda: None), "high"))
+  # "priority set to high" -- WRONG/misleading, this attribute does NOTHING at all;
+  # the OS thread scheduler never looks at it
+
+  # The fix: report the actual, honest fact instead of a fake effect.
+  def describe_priority(t, priority):
+      return "Python's threading module has no real priority control -- every thread is scheduled equally by the OS"
+
+  print(describe_priority(threading.Thread(target=lambda: None), "high"))
+  # correctly honest -- doesn't pretend a nonexistent feature actually did something
+starter_code: |
+  import threading
+
+  def describe_priority(t, priority):
+      t.priority = priority
+      return f"priority set to {t.priority}"
+
+  print(describe_priority(threading.Thread(target=lambda: None), "high"))
+challenge: |
+  Fix `describe_priority` so it returns the honest string
+  `"Python's threading module has no real priority control -- every
+  thread is scheduled equally by the OS"`, instead of setting a fake
+  `.priority` attribute and echoing it back.
+expected_output: |
+  Python's threading module has no real priority control -- every thread is scheduled equally by the OS
+hints:
+  - "Return the honest string directly -- don't set anything on t at all."
+  - "There is no cross-platform way to set a Python thread's OS-level priority in the standard library -- a custom .priority attribute is a pure illusion the scheduler never reads."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "no real priority control"
+concept_tags: [threading, scheduling, misconceptions]

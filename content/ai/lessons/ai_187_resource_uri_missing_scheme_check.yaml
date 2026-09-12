@@ -1,0 +1,68 @@
+id: ai_187
+title: "A Resource URI Needs a Recognized Scheme Before It's Trusted"
+language: ai
+level: 187
+objective: "Fix a resource-registration function that accepts any string as a URI with no validation at all, letting a malformed or unsupported URI scheme (missing the '://' separator, or using a scheme the server doesn't actually support) register successfully and fail confusingly later."
+explanation: |
+  A resource URI like `file:///readme.md` or `https://example.com/doc`
+  has a **scheme** (`file`, `https`) that tells a client how to
+  interpret the rest of the URI -- and a server should only register
+  resources with schemes it actually knows how to serve. Accepting any
+  string at all as a URI, with no validation, means a malformed URI (no
+  scheme separator) or an unsupported scheme (`ftp://` when the server
+  only implements `file://`) gets registered successfully, only to fail
+  confusingly whenever a client actually tries to read it.
+
+  The bug this exercise fixes accepts any string as a valid URI with no
+  check at all. The fix validates that the URI's scheme is one of the
+  server's actually-supported schemes before allowing registration.
+example_code: |
+  # The trap: accepts ANY string as a URI -- no validation of the
+  # scheme, or even that it looks like a URI, at all.
+  def register_resource_trap(uri, supported_schemes):
+      return {"uri": uri, "registered": True}
+
+  print(register_resource_trap("not-a-uri-at-all", {"file", "https"})["registered"])   # True -- accepted total garbage
+
+  # The fix: validate the URI's scheme is actually supported first.
+  def register_resource(uri, supported_schemes):
+      if "://" not in uri:
+          raise ValueError(f"malformed URI, missing scheme separator: {uri}")
+      scheme = uri.split("://")[0]
+      if scheme not in supported_schemes:
+          raise ValueError(f"unsupported URI scheme: {scheme}")
+      return {"uri": uri, "registered": True}
+
+  try:
+      register_resource("not-a-uri-at-all", {"file", "https"})
+  except ValueError as e:
+      print(e)   # correctly rejected
+starter_code: |
+  def register_resource(uri, supported_schemes):
+      return {"uri": uri, "registered": True}
+
+  try:
+      result = register_resource("not-a-uri-at-all", {"file", "https"})
+      print(result["registered"])
+  except ValueError as e:
+      print(e)
+challenge: |
+  Fix `register_resource` so it checks for `"://"` in the URI first,
+  raising `ValueError(f"malformed URI, missing scheme separator:
+  {uri}")` if it's missing, instead of accepting any string
+  unconditionally. It should print
+  `malformed URI, missing scheme separator: not-a-uri-at-all`, not
+  `True`.
+expected_output: |
+  malformed URI, missing scheme separator: not-a-uri-at-all
+hints:
+  - "Add: if \"://\" not in uri: raise ValueError(f\"malformed URI, missing scheme separator: {uri}\"), as the first check."
+  - "\"not-a-uri-at-all\" has no \"://\" anywhere in it, so this check correctly catches it as malformed."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 12
+difficulty: warmup
+contains_patterns:
+  - "malformed URI, missing scheme separator"
+concept_tags: [mcp, resources, uri_validation]

@@ -1,0 +1,85 @@
+id: ai_47
+title: "A Single Split Gives a Noisy Performance Estimate"
+language: ai
+level: 47
+objective: "Fix an evaluation that reports a single train/test split's score as THE model's performance, instead of averaging over several folds to see how much that estimate actually varies."
+explanation: |
+  A single 80/20 split gives exactly one number, and that number
+  depends partly on which rows happened to land in the test set --
+  a model can look great or mediocre purely from an unlucky split, with
+  nothing in a single score revealing how much it would wobble on a
+  different split. **K-fold cross-validation** addresses this by
+  partitioning the data into k folds, training on k-1 of them and
+  testing on the remaining one, k times, so every row gets used for
+  testing exactly once -- and averaging the k resulting scores gives
+  both a more reliable estimate and, from their spread, a sense of how
+  stable that estimate actually is.
+
+  The fix below computes a real 3-fold cross-validation score, training
+  on two-thirds of the data and testing on the remaining third in three
+  different arrangements, then averages the results -- rather than
+  reporting whatever a single arbitrary split happened to produce.
+example_code: |
+  # The trap: one split, one number -- no idea how much it would vary.
+  def score_single_split(rows, labels, model_fn):
+      split = len(rows) // 2
+      model = model_fn(rows[:split], labels[:split])
+      correct = sum(model(r) == l for r, l in zip(rows[split:], labels[split:]))
+      return correct / len(rows[split:])
+
+  # The fix: k-fold cross-validation -- every row is tested exactly once,
+  # across k different train/test arrangements, then averaged.
+  def score_kfold(rows, labels, model_fn, k):
+      n = len(rows)
+      fold_size = n // k
+      scores = []
+      for i in range(k):
+          test_idx = set(range(i * fold_size, (i + 1) * fold_size))
+          train_r = [r for j, r in enumerate(rows) if j not in test_idx]
+          train_l = [l for j, l in enumerate(labels) if j not in test_idx]
+          test_r = [r for j, r in enumerate(rows) if j in test_idx]
+          test_l = [l for j, l in enumerate(labels) if j in test_idx]
+          model = model_fn(train_r, train_l)
+          correct = sum(model(r) == l for r, l in zip(test_r, test_l))
+          scores.append(correct / len(test_r))
+      return sum(scores) / len(scores)
+
+  def dummy_model(train_r, train_l):
+      majority = max(set(train_l), key=train_l.count)
+      return lambda r: majority
+
+  rows = list(range(9))
+  labels = [0, 0, 0, 0, 0, 0, 1, 1, 1]
+  print(round(score_kfold(rows, labels, dummy_model, 3), 3))
+starter_code: |
+  def score_single_split(rows, labels, model_fn):
+      split = len(rows) // 2
+      model = model_fn(rows[:split], labels[:split])
+      correct = sum(model(r) == l for r, l in zip(rows[split:], labels[split:]))
+      return correct / len(rows[split:])
+
+  def dummy_model(train_r, train_l):
+      majority = max(set(train_l), key=train_l.count)
+      return lambda r: majority
+
+  rows = list(range(9))
+  labels = [0, 0, 0, 0, 0, 0, 1, 1, 1]
+  print(round(score_single_split(rows, labels, dummy_model), 3))
+challenge: |
+  Replace `score_single_split` with `score_kfold(rows, labels, model_fn,
+  k)`, doing real 3-fold cross-validation (train on 2 folds, test on the
+  held-out fold, three times) and averaging the results. Call it with
+  `k=3` and print the rounded average. It should print `0.667`.
+expected_output: |
+  0.667
+hints:
+  - "For each of the k folds, the test set is one contiguous slice; the train set is everything else -- collect a score per fold, then average all k scores at the end."
+  - "With this majority-class dummy model and this particular 9-row/2-class split, 2 of the 3 folds correctly predict their held-out fold's majority; the third doesn't -- averaging gives 0.667."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "for i in range\\(k\\)"
+concept_tags: [ml_fundamentals, cross_validation, model_evaluation]

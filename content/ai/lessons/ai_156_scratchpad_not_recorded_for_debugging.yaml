@@ -1,0 +1,70 @@
+id: ai_156
+title: "Discarding the Agent's Intermediate Reasoning Makes Failures Undebuggable"
+language: ai
+level: 156
+objective: "Fix an agent loop that only keeps the final answer and discards every intermediate thought and tool call along the way, making it impossible to diagnose why a wrong answer happened after the fact."
+explanation: |
+  When an agent's final answer turns out wrong, the only way to
+  actually diagnose *why* is to look at the reasoning and tool calls
+  that led there -- which tool was called, what it returned, what the
+  agent concluded from it. Keeping only the final answer, with every
+  intermediate step thrown away the moment it's no longer needed for
+  computing that answer, makes a wrong result completely undebuggable:
+  there's no record of the actual path taken, only where it ended up.
+
+  The bug this exercise fixes runs each step of the loop but never
+  records anything except the final result. The fix appends each
+  step's thought and observation to a persistent scratchpad as the loop
+  runs, preserving the full reasoning trace for later inspection
+  regardless of whether the final answer turns out right or wrong.
+example_code: |
+  # The trap: only the FINAL answer survives -- every intermediate
+  # thought and tool result is discarded the moment the loop moves on.
+  def run_agent_trap(steps):
+      result = None
+      for thought, tool_result in steps:
+          result = tool_result   # bug: nothing about `thought` is ever recorded anywhere
+      return result
+
+  steps = [("check inventory", "5 units left"), ("check price", "$19.99")]
+  print(run_agent_trap(steps))   # "$19.99" -- no trace of the inventory check ever existed
+
+  # The fix: record every step into a persistent scratchpad as the loop runs.
+  def run_agent(steps):
+      scratchpad = []
+      result = None
+      for thought, tool_result in steps:
+          scratchpad.append({"thought": thought, "observation": tool_result})
+          result = tool_result
+      return result, scratchpad
+
+  result, scratchpad = run_agent(steps)
+  print(len(scratchpad))   # 2 -- the full reasoning trace survives, regardless of the final answer
+starter_code: |
+  def run_agent(steps):
+      result = None
+      for thought, tool_result in steps:
+          result = tool_result
+      return result, []
+
+  steps = [("check inventory", "5 units left"), ("check price", "$19.99")]
+  result, scratchpad = run_agent(steps)
+  print(len(scratchpad))
+challenge: |
+  Fix `run_agent` so it appends each step's thought and observation to a
+  `scratchpad` list as the loop runs, and returns that scratchpad
+  alongside the result, instead of always returning an empty list. It
+  should print `2`, not `0`.
+expected_output: |
+  2
+hints:
+  - "Initialize scratchpad = [] before the loop, and inside it, do scratchpad.append({\"thought\": thought, \"observation\": tool_result})."
+  - "Return result, scratchpad -- both the final answer AND the full reasoning trace, not just the answer with an empty placeholder."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 26
+difficulty: warmup
+contains_patterns:
+  - "scratchpad\\.append"
+concept_tags: [agentic_frameworks, observability, debugging]

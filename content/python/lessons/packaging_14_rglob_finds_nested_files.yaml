@@ -1,0 +1,69 @@
+id: packaging_14
+title: "glob() Only Looks One Level Deep -- rglob() Searches Every Subdirectory"
+language: python
+level: 394
+objective: "Fix a MANIFEST-style file listing using Path.glob('*.py'), which only matches files directly inside the given directory and misses anything in a subdirectory, when Path.rglob('*.py') recursively searches every nested subdirectory too."
+explanation: |
+  `Path(root).glob(pattern)` matches files directly inside `root`
+  only -- it has no notion of descending into subdirectories at all,
+  the same way a shell's plain `*.py` glob doesn't reach into nested
+  folders either. A real package's source files are almost never all
+  sitting in one flat directory -- there are subpackages, nested
+  modules -- so building a file listing (for a `MANIFEST.in`-style
+  include list, or any packaging tool that needs "every Python file in
+  this project") with plain `glob()` silently misses everything below
+  the top level. `Path(root).rglob(pattern)` ("recursive glob") is the
+  version that descends into every subdirectory, matching the pattern
+  at any depth.
+
+  The fix replaces `glob("*.py")` with `rglob("*.py")`.
+example_code: |
+  # The trap: glob() only matches files directly inside root -- misses nested ones.
+  import tempfile
+  from pathlib import Path
+
+  with tempfile.TemporaryDirectory() as tmp:
+      root = Path(tmp)
+      (root / "a.py").write_text("")
+      sub = root / "sub"
+      sub.mkdir()
+      (sub / "b.py").write_text("")
+
+      found_trap = list(root.glob("*.py"))
+      print(len(found_trap))
+      # 1 -- WRONG, "sub/b.py" was never even looked at
+
+      # The fix: rglob() descends into every subdirectory too.
+      found = list(root.rglob("*.py"))
+      print(len(found))
+      # 2 -- correctly found both a.py AND sub/b.py
+starter_code: |
+  import tempfile
+  from pathlib import Path
+
+  with tempfile.TemporaryDirectory() as tmp:
+      root = Path(tmp)
+      (root / "a.py").write_text("")
+      sub = root / "sub"
+      sub.mkdir()
+      (sub / "b.py").write_text("")
+
+      found = list(root.glob("*.py"))
+      print(len(found))
+challenge: |
+  Fix this by replacing `root.glob("*.py")` with `root.rglob("*.py")`,
+  so files inside the nested `sub` directory are found too. It should
+  print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Change root.glob(\"*.py\") to root.rglob(\"*.py\")."
+  - "glob() only matches files directly inside the given directory -- rglob() recursively searches every subdirectory as well."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 14
+difficulty: core
+contains_patterns:
+  - "root\\.rglob\\(\"\\*\\.py\"\\)"
+concept_tags: [packaging, pathlib, file_discovery]

@@ -1,0 +1,61 @@
+id: ai_129
+title: "A One-Word Query Often Needs Expansion Before Retrieval, Not After"
+language: ai
+level: 129
+objective: "Fix a retrieval function that sends a bare single-word query straight to search with no additional context, when a very short query is exactly the case where query expansion (this category's own lesson on it) matters most for getting useful results."
+explanation: |
+  A single word like `"returns"` is genuinely ambiguous on its own --
+  it could mean product returns, financial returns, function return
+  values, or a handful of other things, and a retrieval system has
+  almost nothing to disambiguate which one the user actually meant.
+  Longer queries naturally carry more disambiguating context; very
+  short queries carry the least, making them exactly the case where
+  this category's query-expansion technique (adding related terms)
+  earns its cost the most -- a single ambiguous word benefits far more
+  from expansion than an already-detailed, unambiguous query does.
+
+  The bug this exercise fixes sends every query straight to search
+  regardless of length, missing the specific opportunity to expand a
+  short, ambiguous one. The fix checks the query's word count and
+  applies expansion specifically when it's short, leaving longer,
+  already-detailed queries untouched.
+example_code: |
+  # The trap: sends every query straight through, regardless of length --
+  # misses the chance to disambiguate a short, ambiguous one.
+  def prepare_query_trap(query, domain_context):
+      return query
+
+  print(prepare_query_trap("returns", domain_context="ecommerce"))   # "returns" -- still hopelessly ambiguous
+
+  # The fix: expand a SHORT query with domain context; leave longer ones alone.
+  def prepare_query(query, domain_context, short_threshold=2):
+      if len(query.split()) <= short_threshold:
+          return f"{query} {domain_context}"
+      return query
+
+  print(prepare_query("returns", domain_context="ecommerce"))   # "returns ecommerce" -- disambiguated with domain context
+  print(prepare_query("what is your return policy for damaged items", domain_context="ecommerce"))
+  # unchanged -- already long and specific enough on its own
+starter_code: |
+  def prepare_query(query, domain_context, short_threshold=2):
+      return query
+
+  print(prepare_query("returns", domain_context="ecommerce"))
+challenge: |
+  Fix `prepare_query` so it appends `domain_context` to `query` when the
+  query has `short_threshold` words or fewer, instead of always
+  returning the query unchanged. It should print `returns ecommerce`,
+  not `returns`.
+expected_output: |
+  returns ecommerce
+hints:
+  - "Check len(query.split()) <= short_threshold to decide whether the query counts as short."
+  - "When it's short, return f\"{query} {domain_context}\" -- otherwise, return query unchanged."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 44
+difficulty: warmup
+contains_patterns:
+  - "len\\(query\\.split\\(\\)\\) <= short_threshold"
+concept_tags: [rag, query_expansion, short_queries]

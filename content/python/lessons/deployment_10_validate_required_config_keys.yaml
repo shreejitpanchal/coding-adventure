@@ -1,0 +1,72 @@
+id: deployment_10
+title: "The Deploy That Proceeded Without a Database URL"
+language: python
+level: 400
+objective: "Fix a config validator that always reports success regardless of what's actually in the config, when checking for every genuinely required key -- and raising with a clear list of what's missing -- catches a broken deploy before it even starts, instead of failing much later at first actual use."
+explanation: |
+  Deploying with an incomplete configuration -- a missing database URL,
+  a missing API key -- doesn't have to fail immediately: the process
+  might start up fine and only crash later, the first time something
+  actually tries to *use* the missing value, at some arbitrary point
+  disconnected from the actual root cause. Validating that every
+  required config key is genuinely present *before* deploying
+  proceeds turns that delayed, confusing failure into an immediate,
+  clear one: `missing required config keys: ['DATABASE_URL']` says
+  exactly what's wrong, at the moment it's actually discoverable,
+  rather than a `KeyError` or `None`-related crash showing up minutes
+  later somewhere unrelated.
+
+  The fix checks every required key against the config, raising with a
+  clear list of whatever's missing.
+example_code: |
+  # The trap: always reports success, regardless of what's actually there.
+  def validate_config_trap(config, required_keys):
+      return True
+
+  config_trap = {"PORT": "8000"}
+  print(validate_config_trap(config_trap, ["PORT", "DATABASE_URL"]))
+  # True -- WRONG, DATABASE_URL is genuinely missing and this said nothing
+
+  # The fix: check every required key, raise with a clear list of what's missing.
+  def validate_config(config, required_keys):
+      missing = [k for k in required_keys if k not in config]
+      if missing:
+          raise ValueError(f"missing required config keys: {missing}")
+      return True
+
+  config = {"PORT": "8000"}
+  try:
+      validate_config(config, ["PORT", "DATABASE_URL"])
+      print("valid")
+  except ValueError as e:
+      print(e)
+  # missing required config keys: ['DATABASE_URL'] -- correctly caught before deploying at all
+starter_code: |
+  def validate_config(config, required_keys):
+      return True
+
+  config = {"PORT": "8000"}
+  try:
+      validate_config(config, ["PORT", "DATABASE_URL"])
+      print("valid")
+  except ValueError as e:
+      print(e)
+challenge: |
+  Fix `validate_config` so it computes `missing = [k for k in
+  required_keys if k not in config]` and raises
+  `ValueError(f"missing required config keys: {missing}")` when
+  `missing` is non-empty. It should print
+  `missing required config keys: ['DATABASE_URL']`, not `valid`.
+expected_output: |
+  missing required config keys: ['DATABASE_URL']
+hints:
+  - "missing = [k for k in required_keys if k not in config], then: if missing: raise ValueError(f\"missing required config keys: {missing}\")."
+  - "A deploy that starts without genuinely required config doesn't crash right away -- it fails later, at first use, far from the actual root cause. Validating up front surfaces it immediately instead."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "missing = \\[k for k in required_keys if k not in config\\]"
+concept_tags: [deployment, configuration, validation]

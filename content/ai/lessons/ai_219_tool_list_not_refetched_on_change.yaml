@@ -1,0 +1,57 @@
+id: ai_219
+title: "A 'list_changed' Notification Should Trigger an Actual Refetch"
+language: ai
+level: 219
+objective: "Fix a notification handler that keeps returning the cached tool list even after being told it changed, when receiving 'notifications/tools/list_changed' should trigger a genuine refetch instead of serving stale data forever."
+explanation: |
+  A server sends `notifications/tools/list_changed` specifically so the
+  client knows its cached tool list is now stale and should be
+  refetched -- the notification only accomplishes anything if the
+  client actually acts on it. A handler that receives the notification
+  but keeps returning whatever was cached before defeats the entire
+  point: the client would be just as well off never listening for the
+  notification at all.
+
+  The bug this exercise fixes always returns the stale `cached_tools`
+  regardless of which notification came in. The fix calls the refetch
+  function specifically when it sees the `list_changed` notification.
+example_code: |
+  # The trap: ignores the listChanged notification, keeps serving the
+  # stale cached list forever.
+  def handle_notification_trap(method, cached_tools, fetch_fn):
+      return cached_tools
+
+  print(len(handle_notification_trap("notifications/tools/list_changed", ["a"], lambda: ["a", "b"])))
+  # 1 -- stale, missing the newly added tool
+
+  # The fix: refetch specifically when list_changed arrives.
+  def handle_notification(method, cached_tools, fetch_fn):
+      if method == "notifications/tools/list_changed":
+          return fetch_fn()
+      return cached_tools
+
+  print(len(handle_notification("notifications/tools/list_changed", ["a"], lambda: ["a", "b"])))
+  # 2 -- refetched instead of serving the stale cache
+starter_code: |
+  def handle_notification(method, cached_tools, fetch_fn):
+      return cached_tools
+
+  print(len(handle_notification("notifications/tools/list_changed", ["a"], lambda: ["a", "b"])))
+challenge: |
+  Fix `handle_notification` so it calls `fetch_fn()` and returns that
+  when `method` is `"notifications/tools/list_changed"`, instead of
+  always returning the stale `cached_tools`. It should print `2`, not
+  `1`.
+expected_output: |
+  2
+hints:
+  - "Add: if method == \"notifications/tools/list_changed\": return fetch_fn() before the fallback return."
+  - "The notification is a signal to act on, not just information to note and otherwise ignore."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 44
+difficulty: core
+contains_patterns:
+  - "return fetch_fn\\(\\)"
+concept_tags: [mcp, list_changed, cache_invalidation]

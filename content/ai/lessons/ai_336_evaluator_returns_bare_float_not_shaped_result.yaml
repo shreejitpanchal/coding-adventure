@@ -1,0 +1,57 @@
+id: ai_336
+title: "An Evaluator's Result Should Be a Consistently Shaped Object, Not a Bare Number"
+language: ai
+level: 336
+objective: "Fix an evaluator that returns a plain float, when tooling built around evaluators expects a consistently shaped result -- a key naming what was measured, alongside the actual score -- so results from different evaluators can be handled uniformly."
+explanation: |
+  A dataset is usually scored by more than one evaluator at once
+  (exact-match, a judge-based relevance score, a latency check), and
+  code that aggregates results across all of them relies on each
+  evaluator returning the same general shape -- a key naming the
+  metric, and a score. An evaluator that returns a bare float breaks
+  that uniformity: it works fine used on its own, but as soon as it
+  needs to sit alongside other evaluators' results in one combined
+  report, there's no way to tell what the number even measured.
+
+  The bug this exercise fixes returns a bare `float`. The fix returns
+  a dict naming the metric alongside the score.
+example_code: |
+  # The trap: returns a BARE float -- no way to tell what it measured
+  # once mixed in with other evaluators' results.
+  def evaluate_trap(actual, expected):
+      return 1.0 if actual == expected else 0.0
+
+  result_trap = evaluate_trap("yes", "yes")
+  print(isinstance(result_trap, dict))
+  # False -- can't be combined uniformly with other evaluators' shaped results
+
+  # The fix: return a dict naming the metric alongside the score.
+  def evaluate(actual, expected):
+      return {"key": "exact_match", "score": 1 if actual == expected else 0}
+
+  result = evaluate("yes", "yes")
+  print(isinstance(result, dict))
+  # True -- correctly shaped for uniform aggregation
+starter_code: |
+  def evaluate(actual, expected):
+      return 1.0 if actual == expected else 0.0
+
+  result = evaluate("yes", "yes")
+  print(isinstance(result, dict))
+challenge: |
+  Fix `evaluate` so it returns `{"key": "exact_match", "score": 1 if
+  actual == expected else 0}`, instead of a bare float. It should
+  print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Wrap the score in a dict: {\"key\": \"exact_match\", \"score\": 1 if actual == expected else 0}."
+  - "A consistent {key, score} shape lets a report combine results from many different evaluators without special-casing each one's return type."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 26
+difficulty: warmup
+contains_patterns:
+  - "\"key\": \"exact_match\", \"score\""
+concept_tags: [langsmith, evaluators, result_shape]

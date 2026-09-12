@@ -1,0 +1,57 @@
+id: ai_56
+title: "L2 Regularization Means Adding a Penalty Term to the Gradient"
+language: ai
+level: 56
+objective: "Fix a gradient descent step that ignores the L2 regularization penalty entirely, so weights never actually shrink toward zero the way regularization is supposed to make them."
+explanation: |
+  **L2 regularization** (ridge) discourages a model from relying on any
+  one weight too heavily by adding a penalty proportional to the
+  weight's own magnitude into the loss the model is optimizing --
+  concretely, this shows up in gradient descent as an *extra term*
+  added to the gradient before the weight update: `grad + lambda *
+  weight`, where `lambda` controls how strongly weights get pulled
+  toward zero on every step.
+
+  The bug this exercise fixes is a gradient step that computes the
+  update from the data gradient alone, with no regularization term
+  added at all -- so even with `lambda` set to some non-zero value, it
+  has zero actual effect, and weights never shrink the way L2
+  regularization is supposed to make them. On this exercise's example
+  (an isolated weight with a zero data gradient, so any shrinkage is
+  attributable entirely to regularization), the unregularized version
+  leaves the weight completely unchanged, while the fixed version
+  correctly pulls it toward zero.
+example_code: |
+  # The trap: no regularization term at all -- lambda has zero effect.
+  def gradient_step_trap(weight, grad, lr, lam):
+      return weight - lr * grad   # bug: lam is accepted but never used
+
+  print(gradient_step_trap(10.0, 0, 0.1, 0.5))   # 10.0 -- unchanged, even with lam=0.5
+
+  # The fix: add the L2 penalty term (lam * weight) into the gradient.
+  def gradient_step_l2(weight, grad, lr, lam):
+      return weight - lr * (grad + lam * weight)
+
+  print(gradient_step_l2(10.0, 0, 0.1, 0.5))   # 9.5 -- correctly shrunk toward zero
+starter_code: |
+  def gradient_step_l2(weight, grad, lr, lam):
+      return weight - lr * grad
+
+  print(gradient_step_l2(10.0, 0, 0.1, 0.5))
+challenge: |
+  Fix `gradient_step_l2` so it adds the L2 penalty term (`lam * weight`)
+  into the gradient before applying the update, instead of ignoring
+  `lam` entirely. It should print `9.5`, not `10.0`.
+expected_output: |
+  9.5
+hints:
+  - "Change the update to: return weight - lr * (grad + lam * weight)."
+  - "With grad=0, the only thing driving the weight down is the regularization term itself: lr * lam * weight = 0.1 * 0.5 * 10.0 = 0.5, so the new weight is 10.0 - 0.5 = 9.5."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "grad \\+ lam \\* weight"
+concept_tags: [ml_fundamentals, l2_regularization, gradient_descent]

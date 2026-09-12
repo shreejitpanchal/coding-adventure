@@ -1,0 +1,55 @@
+id: core_refresher_19
+title: "Unpack Key and Value Directly in a for Loop's Header"
+language: python
+level: 132
+objective: "Rewrite a loop that indexes into each (key, value) tuple from dict.items(), unpacking both directly in the for statement instead."
+explanation: |
+  `dict.items()` yields `(key, value)` tuples, and indexing into each
+  one (`pair[0]`, `pair[1]`) works, but it forces a reader to remember
+  which index means what. Unpacking directly in the `for` statement's
+  own header (`for k, v in d.items():`) names both parts immediately,
+  right where the loop begins, with no separate indexing step needed
+  anywhere in the loop body.
+example_code: |
+  # Indexes into each (key, value) tuple by position.
+  def describe_loop(d):
+      result = []
+      for pair in d.items():
+          result.append(f"{pair[0]}={pair[1]}")
+      return result
+
+  print(describe_loop({"a": 1, "b": 2}))   # ['a=1', 'b=2']
+
+  # Unpacks key and value directly in the for statement.
+  def describe(d):
+      result = []
+      for k, v in d.items():
+          result.append(f"{k}={v}")
+      return result
+
+  print(describe({"a": 1, "b": 2}))        # ['a=1', 'b=2']
+starter_code: |
+  def describe(d):
+      result = []
+      for pair in d.items():
+          result.append(f"{pair[0]}={pair[1]}")
+      return result
+
+  print(describe({"a": 1, "b": 2}))
+challenge: |
+  Fix `describe` so it unpacks `k, v` directly in the for statement
+  (`for k, v in d.items():`), instead of indexing into each tuple.
+  Keep the same output: ['a=1', 'b=2'].
+expected_output: |
+  ['a=1', 'b=2']
+hints:
+  - "Change for pair in d.items(): to for k, v in d.items():, and use f\"{k}={v}\" in the body."
+  - "dict.items() yields (key, value) tuples -- unpacking them in the for header names both parts immediately."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "for k, v in d\\.items\\(\\):"
+concept_tags: [unpacking, dicts, for_loops]

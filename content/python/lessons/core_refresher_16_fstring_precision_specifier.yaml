@@ -1,0 +1,43 @@
+id: core_refresher_16
+title: "An f-string's Format Spec Rounds a Float Right Inside the Expression"
+language: python
+level: 129
+objective: "Use an f-string's ':.2f' format specifier to round a float to two decimal places, instead of calling round() and converting to a string separately."
+explanation: |
+  An f-string placeholder can carry a format specifier after a colon --
+  `f"{value:.2f}"` formats `value` as a fixed-point number with exactly
+  two digits after the decimal point, right inside the expression
+  itself. This does the same job as calling `round(value, 2)` and then
+  converting the result to a string, but as a single, self-contained
+  piece of the f-string rather than a separate computation that has to
+  happen before the string is even built.
+example_code: |
+  # round() first, then convert to a string separately.
+  value = 3.14159
+  message_loop = "Pi is " + str(round(value, 2))
+  print(message_loop)                      # "Pi is 3.14"
+
+  # The format specifier does it directly, inside the f-string itself.
+  message = f"Pi is {value:.2f}"
+  print(message)                           # "Pi is 3.14"
+starter_code: |
+  value = 3.14159
+  message = "Pi is " + str(round(value, 2))
+  print(message)
+challenge: |
+  Rewrite this using an f-string with the `:.2f` format specifier,
+  instead of round() plus string concatenation. Keep the same output:
+  "Pi is 3.14".
+expected_output: |
+  Pi is 3.14
+hints:
+  - "f\"Pi is {value:.2f}\""
+  - "The :.2f after the expression inside the braces means \"format as fixed-point with 2 decimal places.\""
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "f\"Pi is \\{value:\\.2f\\}\""
+concept_tags: [f_strings, formatting]

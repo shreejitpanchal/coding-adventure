@@ -1,0 +1,80 @@
+id: functional_programming_29
+title: "dataclasses.replace() Gets an Updated Copy of a Frozen Instance"
+language: python
+level: 364
+objective: "Fix code trying to mutate a frozen dataclass field directly (which raises FrozenInstanceError), when the actual intent was getting a NEW instance with one field changed -- dataclasses.replace() builds exactly that, leaving the original untouched."
+explanation: |
+  This category's earlier `frozen=True` lesson covers why direct
+  mutation of a frozen dataclass raises an error -- but that leaves an
+  open question: how do you get an "updated" version of one at all,
+  if fields can never be reassigned? `dataclasses.replace(instance,
+  **changes)` answers that: it builds a genuinely new instance,
+  copying every field from the original except whichever ones are
+  explicitly overridden, leaving the original instance completely
+  unchanged. This is the dataclass equivalent of the `NamedTuple.
+  _replace()` pattern this app's gotcha-hunting category covers for
+  `namedtuple`.
+
+  The fix replaces the direct field assignment with `dataclasses.
+  replace(p, x=5)`.
+example_code: |
+  # The trap: direct assignment on a frozen instance -- raises immediately.
+  from dataclasses import dataclass
+
+  @dataclass(frozen=True)
+  class PointTrap:
+      x: int
+      y: int
+
+  p_trap = PointTrap(1, 2)
+  try:
+      p_trap.x = 5
+      print("ok")
+  except Exception:
+      print("crashed")
+  # "crashed" -- frozen dataclass fields can never be reassigned directly
+
+  # The fix: dataclasses.replace() builds a NEW instance with one field changed.
+  from dataclasses import dataclass, replace
+
+  @dataclass(frozen=True)
+  class Point:
+      x: int
+      y: int
+
+  p = Point(1, 2)
+  p2 = replace(p, x=5)
+  print(p, p2)
+  # Point(x=1, y=2) Point(x=5, y=2) -- original untouched, new copy updated
+starter_code: |
+  from dataclasses import dataclass
+
+  @dataclass(frozen=True)
+  class Point:
+      x: int
+      y: int
+
+  p = Point(1, 2)
+  try:
+      p.x = 5
+      print(p)
+  except Exception:
+      print("crashed")
+challenge: |
+  Fix this by importing `replace` from `dataclasses` and using
+  `p2 = replace(p, x=5)` to build an updated copy, then printing `p,
+  p2`, instead of assigning to `p.x` directly. It should print
+  `Point(x=1, y=2) Point(x=5, y=2)`, not `crashed`.
+expected_output: |
+  Point(x=1, y=2) Point(x=5, y=2)
+hints:
+  - "from dataclasses import dataclass, replace, then: p2 = replace(p, x=5); print(p, p2)."
+  - "replace() builds a genuinely new instance, copying every field except the ones explicitly overridden -- the original is never touched."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 29
+difficulty: core
+contains_patterns:
+  - "replace\\(p, x=5\\)"
+concept_tags: [functional_programming, dataclasses, immutability]

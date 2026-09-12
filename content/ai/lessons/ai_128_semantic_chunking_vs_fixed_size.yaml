@@ -1,0 +1,63 @@
+id: ai_128
+title: "Fixed-Size Chunking Ignores Natural Topic Boundaries"
+language: ai
+level: 128
+objective: "Fix a chunker that splits purely by character count, ignoring an explicit topic-boundary marker in the source text -- semantic chunking splits at those natural boundaries instead, keeping each chunk topically coherent."
+explanation: |
+  A document often has natural topic boundaries -- section headers, a
+  clear shift from one subject to another -- that a fixed character
+  count knows nothing about, potentially merging the tail end of one
+  topic with the start of a completely unrelated one inside a single
+  chunk. **Semantic chunking** splits along those natural boundaries
+  instead of an arbitrary character count, keeping each resulting chunk
+  topically coherent -- entirely about one subject, not an arbitrary
+  slice that happens to span two unrelated ones.
+
+  This exercise's source text marks its natural topic boundaries
+  explicitly with a `"---"` separator (standing in for a real semantic
+  boundary detector). The bug this exercise fixes ignores that marker
+  entirely, chunking by a fixed character count that can span straight
+  across it. The fix splits on the boundary marker first, producing one
+  chunk per topic section instead.
+example_code: |
+  # The trap: chunks by a FIXED CHARACTER COUNT -- ignores the explicit
+  # topic-boundary marker entirely, potentially merging unrelated topics.
+  def chunk_fixed_trap(text, chunk_size):
+      cleaned = text.replace("---", "")
+      return [cleaned[i:i + chunk_size] for i in range(0, len(cleaned), chunk_size)]
+
+  text = "Topic A: revenue grew 12%.---Topic B: the CEO announced a new product line."
+  chunks_trap = chunk_fixed_trap(text, chunk_size=40)
+  print(len(chunks_trap))   # 2 -- but NOT cleanly split along the actual topic boundary
+
+  # The fix: split on the topic-boundary marker itself.
+  def chunk_semantic(text):
+      return [section.strip() for section in text.split("---") if section.strip()]
+
+  chunks = chunk_semantic(text)
+  print(len(chunks))   # 2 -- correctly one chunk per topic, split exactly at the real boundary
+starter_code: |
+  def chunk_semantic(text, chunk_size=40):
+      cleaned = text.replace("---", "")
+      return [cleaned[i:i + chunk_size] for i in range(0, len(cleaned), chunk_size)]
+
+  text = "Topic A: revenue grew 12%.---Topic B: the CEO announced a new product line."
+  chunks = chunk_semantic(text)
+  print(chunks[0].endswith("12%."))
+challenge: |
+  Fix `chunk_semantic` so it splits `text` on the `"---"` topic-boundary
+  marker, instead of chunking by a fixed character count with the
+  marker stripped out. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace the whole body with: return [section.strip() for section in text.split(\"---\") if section.strip()]."
+  - "Splitting on the actual marker guarantees the first chunk ends exactly at the real topic boundary (\"...12%.\"), instead of wherever an arbitrary character count happens to land."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 43
+difficulty: core
+contains_patterns:
+  - "text\\.split\\(.---.\\)"
+concept_tags: [rag, semantic_chunking, chunking]

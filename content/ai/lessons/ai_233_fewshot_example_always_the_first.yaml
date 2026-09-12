@@ -1,0 +1,66 @@
+id: ai_233
+title: "A Few-Shot Example Should Be Picked for Relevance, Not Always the First One"
+language: ai
+level: 233
+objective: "Fix a few-shot example selector that always returns the first example in the list regardless of the actual query, when it should pick whichever example is most relevant to what's actually being asked."
+explanation: |
+  Few-shot prompting works by showing the model one or more worked
+  examples similar to the current task before asking it to handle a new
+  case -- and the value of that technique depends entirely on the
+  examples actually being relevant to the query at hand. A selector
+  that always returns the first example in some fixed list, with no
+  regard for what the current query is even about, might as well not
+  bother selecting at all: it's just always showing the same example
+  regardless of fit.
+
+  The bug this exercise fixes always returns `examples[0]`. The fix
+  scores each example by keyword overlap with the query and picks the
+  best match.
+example_code: |
+  # The trap: always picks the FIRST example, ignoring relevance to
+  # the actual query entirely.
+  def select_example_trap(query, examples):
+      return examples[0]
+
+  examples = [
+      {"input": "refund policy", "output": "Refunds are processed within 5 business days."},
+      {"input": "shipping cost", "output": "Shipping is $4.99 for standard delivery."},
+  ]
+  print(select_example_trap("How much is shipping?", examples)["input"])
+  # "refund policy" -- irrelevant to the actual query
+
+  # The fix: score each example by keyword overlap, pick the best match.
+  def select_example(query, examples):
+      def score(ex):
+          return sum(1 for word in ex["input"].split() if word in query)
+      return max(examples, key=score)
+
+  print(select_example("How much is shipping?", examples)["input"])
+  # "shipping cost" -- correctly the more relevant example
+starter_code: |
+  def select_example(query, examples):
+      return examples[0]
+
+  examples = [
+      {"input": "refund policy", "output": "Refunds are processed within 5 business days."},
+      {"input": "shipping cost", "output": "Shipping is $4.99 for standard delivery."},
+  ]
+  print(select_example("How much is shipping?", examples)["input"])
+challenge: |
+  Fix `select_example` so it scores each example by how many of its
+  `"input"` words appear in `query`, and returns the example with the
+  highest score via `max(examples, key=score)`, instead of always
+  `examples[0]`. It should print `shipping cost`, not `refund policy`.
+expected_output: |
+  shipping cost
+hints:
+  - "def score(ex): return sum(1 for word in ex[\"input\"].split() if word in query) -- then return max(examples, key=score)."
+  - "\"shipping\" is a substring of the query \"How much is shipping?\", so the shipping-cost example scores higher than the refund one."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "max\\(examples, key=score\\)"
+concept_tags: [langchain, few_shot_prompting, example_selection]

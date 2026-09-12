@@ -1,0 +1,57 @@
+id: ai_198
+title: "Every Content Block in a Tool Result Needs Its Own Declared Type"
+language: ai
+level: 198
+objective: "Fix a tool-result builder that omits the 'type' field on a content block, leaving the client with no way to know whether it's looking at text, an image, or an embedded resource -- each content type has a genuinely different shape a client needs to know how to interpret."
+explanation: |
+  MCP tool results are made of content blocks, and each block declares
+  its own `type` (`"text"`, `"image"`, `"resource"`) because the rest
+  of the block's shape depends entirely on that type -- a text block
+  has a `text` field, an image block has `data` and `mimeType` fields
+  instead, and a client has to check `type` first to know which fields
+  to even look for. A content block missing its `type` field is
+  genuinely ambiguous: the client can't safely guess whether to treat
+  `data` as raw text or base64-encoded image bytes.
+
+  The bug this exercise fixes builds a content block with the actual
+  text data but no `type` field labeling it. The fix includes the
+  explicit type, letting a client correctly interpret the block's
+  shape before trying to read any of its other fields.
+example_code: |
+  # The trap: no "type" field at all -- the client has no reliable way
+  # to know this block should be interpreted as TEXT specifically.
+  def build_text_content_trap(text):
+      return {"text": text}
+
+  block_trap = build_text_content_trap("The result is 42.")
+  print("type" in block_trap)   # False -- ambiguous, the client can't safely tell what kind of block this is
+
+  # The fix: declare the content type explicitly.
+  def build_text_content(text):
+      return {"type": "text", "text": text}
+
+  block = build_text_content("The result is 42.")
+  print("type" in block)   # True -- correctly self-describing
+starter_code: |
+  def build_text_content(text):
+      return {"text": text}
+
+  block = build_text_content("The result is 42.")
+  print("type" in block)
+challenge: |
+  Fix `build_text_content` so the returned dict includes a `"type":
+  "text"` field, alongside the existing `"text"` field. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"type\": \"text\" as an additional key in the returned dict, alongside \"text\": text."
+  - "Every content block type (text, image, resource) needs this same self-describing type field to be interpretable at all."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 23
+difficulty: warmup
+contains_patterns:
+  - "\"type\": \"text\""
+concept_tags: [mcp, content_blocks, tool_results]

@@ -70,7 +70,7 @@ hints:
   - "filename.removesuffix(\".whl\") strips the extension cleanly."
   - "Split the stem on \"-\" and take the first two parts as (name, version)."
 xp_reward: 15
-achievement: packaging_master
+achievement: null
 category: packaging
 category_level: 5
 difficulty: deep_dive

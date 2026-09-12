@@ -1,0 +1,66 @@
+id: ai_106
+title: "A Matched Sentence Alone Can Lose the Context Around It"
+language: ai
+level: 106
+objective: "Fix a retrieval function that returns only the single sentence that matched, instead of a window including the sentences immediately before and after it -- context a reader often needs to actually understand the match."
+explanation: |
+  A single matched sentence, pulled out of its surrounding paragraph,
+  can lose exactly the context that made it meaningful -- "It grew by
+  12% that quarter" means very little without the preceding sentence
+  naming what "it" refers to. **Sentence-window retrieval** returns a
+  small window of sentences around the actual match (one or two before
+  and after) specifically to preserve that immediate context, rather
+  than returning the matched sentence in complete isolation.
+
+  The bug this exercise fixes returns only the exact matched sentence
+  by index, with no surrounding context at all. The fix returns a
+  window of sentences centered on the match, correctly bounded so it
+  doesn't run off either end of the document.
+example_code: |
+  # The trap: returns ONLY the matched sentence -- loses the surrounding
+  # context that often makes it meaningful.
+  def retrieve_sentence_trap(sentences, match_index):
+      return [sentences[match_index]]
+
+  sentences = [
+      "The company launched a new product line in March.",
+      "It grew by 12% that quarter.",
+      "Analysts credited the launch for the growth.",
+  ]
+  print(len(retrieve_sentence_trap(sentences, match_index=1)))   # 1 -- "It grew by 12%" with no idea what "It" means
+
+  # The fix: return a WINDOW of sentences around the match.
+  def retrieve_window(sentences, match_index, window=1):
+      start = max(0, match_index - window)
+      end = min(len(sentences), match_index + window + 1)
+      return sentences[start:end]
+
+  print(len(retrieve_window(sentences, match_index=1, window=1)))   # 3 -- correctly includes the sentence before AND after
+starter_code: |
+  def retrieve_window(sentences, match_index, window=1):
+      return [sentences[match_index]]
+
+  sentences = [
+      "The company launched a new product line in March.",
+      "It grew by 12% that quarter.",
+      "Analysts credited the launch for the growth.",
+  ]
+  print(len(retrieve_window(sentences, match_index=1, window=1)))
+challenge: |
+  Fix `retrieve_window` so it returns a slice from `match_index -
+  window` to `match_index + window + 1` (bounded within the list),
+  instead of just the single matched sentence. It should print `3`,
+  not `1`.
+expected_output: |
+  3
+hints:
+  - "Compute start = max(0, match_index - window) and end = min(len(sentences), match_index + window + 1)."
+  - "Return sentences[start:end] -- a slice, not a single indexed element."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 21
+difficulty: warmup
+contains_patterns:
+  - "sentences\\[start:end\\]"
+concept_tags: [rag, sentence_window_retrieval, chunking]

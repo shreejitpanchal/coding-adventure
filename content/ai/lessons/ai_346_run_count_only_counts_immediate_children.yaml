@@ -1,0 +1,54 @@
+id: ai_346
+title: "Counting a Trace's Total Runs Means Counting Every Descendant, Not Just Immediate Children"
+language: ai
+level: 346
+objective: "Fix a run-counting function that only counts a node's direct children, when a trace with grandchildren (a tool call nested inside a step, itself nested inside the root) needs its full nested tree counted, not just the first level down."
+explanation: |
+  A trace tree can nest arbitrarily deep -- a root's child might itself
+  have children of its own -- and a total run count that only looks at
+  the immediate children level silently undercounts anything with real
+  depth. This is the counting equivalent of this category's earlier
+  cost- and duration-rollup lessons: a shallow, one-level check misses
+  everything nested further down.
+
+  The bug this exercise fixes returns `len(run["children"])` alone.
+  The fix recursively adds each child's own descendant count too.
+example_code: |
+  # The trap: only counts IMMEDIATE children, not the full nested
+  # tree of descendants.
+  def count_all_runs_trap(run):
+      return len(run["children"])
+
+  tree = {"children": [{"children": [{"children": []}]}, {"children": []}]}
+  print(count_all_runs_trap(tree))
+  # 2 -- missed the grandchild entirely
+
+  # The fix: recursively add each child's own descendant count too.
+  def count_all_runs(run):
+      return len(run["children"]) + sum(count_all_runs(child) for child in run["children"])
+
+  print(count_all_runs(tree))
+  # 3 -- correctly counted the grandchild as well
+starter_code: |
+  def count_all_runs(run):
+      return len(run["children"])
+
+  tree = {"children": [{"children": [{"children": []}]}, {"children": []}]}
+  print(count_all_runs(tree))
+challenge: |
+  Fix `count_all_runs` so it returns `len(run["children"]) +
+  sum(count_all_runs(child) for child in run["children"])`, instead of
+  `len(run["children"])` alone. It should print `3`, not `2`.
+expected_output: |
+  3
+hints:
+  - "Add sum(count_all_runs(child) for child in run[\"children\"]) to len(run[\"children\"]) in the return statement."
+  - "This is the same recursive rollup shape as summing cost or duration across a trace tree, applied to counting runs instead."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 36
+difficulty: core
+contains_patterns:
+  - "sum\\(count_all_runs\\(child\\) for child in run\\[\"children\"\\]\\)"
+concept_tags: [langsmith, run_tree, recursive_counting]

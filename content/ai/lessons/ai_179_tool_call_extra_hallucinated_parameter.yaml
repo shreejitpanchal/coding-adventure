@@ -1,0 +1,65 @@
+id: ai_179
+title: "A Tool Call With an Unexpected, Hallucinated Parameter Shouldn't Just Pass Through"
+language: ai
+level: 179
+objective: "Fix a tool-call validator that only checks required parameters are present (this category's earlier lesson), but never checks for parameters the model included that AREN'T part of the tool's declared schema at all -- a model can hallucinate an extra argument that doesn't belong."
+explanation: |
+  This category's own lesson on validating tool arguments covered
+  *missing* required parameters -- but a model can just as easily
+  generate a tool call with an *extra* parameter that was never part of
+  the tool's declared schema at all, effectively inventing an argument
+  the tool never asked for. Silently accepting unknown parameters (many
+  languages' keyword-argument mechanisms will simply crash, but not
+  every calling convention does) can either mask a genuine
+  misunderstanding of the tool's interface or, worse, silently succeed
+  while ignoring the unexpected input, hiding a real problem.
+
+  The bug this exercise fixes only checks whether required parameters
+  are present, saying nothing about extra ones the model might have
+  invented. The fix also checks that every provided parameter is
+  actually part of the tool's declared schema, flagging anything that
+  isn't.
+example_code: |
+  # The trap: only checks REQUIRED parameters are present -- says
+  # nothing about extra, hallucinated ones the model might have invented.
+  def validate_call_trap(schema, provided_args):
+      missing = [p for p in schema["required"] if p not in provided_args]
+      return {"valid": len(missing) == 0, "missing": missing}
+
+  schema = {"required": ["order_id"], "allowed": ["order_id", "include_history"]}
+  provided_args = {"order_id": "123", "delete_after_lookup": True}   # hallucinated an argument that doesn't exist
+  print(validate_call_trap(schema, provided_args)["valid"])   # True -- the hallucinated argument went completely unnoticed
+
+  # The fix: also check every provided argument is actually part of the schema.
+  def validate_call(schema, provided_args):
+      missing = [p for p in schema["required"] if p not in provided_args]
+      unexpected = [p for p in provided_args if p not in schema["allowed"]]
+      return {"valid": len(missing) == 0 and len(unexpected) == 0, "missing": missing, "unexpected": unexpected}
+
+  print(validate_call(schema, provided_args)["valid"])   # False -- correctly caught the hallucinated "delete_after_lookup"
+starter_code: |
+  def validate_call(schema, provided_args):
+      missing = [p for p in schema["required"] if p not in provided_args]
+      return {"valid": len(missing) == 0, "missing": missing}
+
+  schema = {"required": ["order_id"], "allowed": ["order_id", "include_history"]}
+  provided_args = {"order_id": "123", "delete_after_lookup": True}
+  print(validate_call(schema, provided_args)["valid"])
+challenge: |
+  Fix `validate_call` so it also computes `unexpected` (provided
+  arguments not in `schema["allowed"]`), and requires both `missing`
+  and `unexpected` to be empty for the call to be valid. It should
+  print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Compute unexpected = [p for p in provided_args if p not in schema[\"allowed\"]]."
+  - "Change the valid check to: len(missing) == 0 and len(unexpected) == 0 -- \"delete_after_lookup\" isn't in schema[\"allowed\"], so unexpected won't be empty."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 49
+difficulty: deep_dive
+contains_patterns:
+  - "unexpected = \\[p for p in provided_args"
+concept_tags: [agentic_frameworks, tool_calling, schema_validation]

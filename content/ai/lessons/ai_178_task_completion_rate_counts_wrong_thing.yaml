@@ -1,0 +1,65 @@
+id: ai_178
+title: "Task Completion Rate Should Count Genuine Successes, Not Every Run That Finished"
+language: ai
+level: 178
+objective: "Fix a completion-rate calculation that counts every agent run that finished (didn't crash) as a success, when a run can finish cleanly while still failing to actually accomplish what the user asked for."
+explanation: |
+  A run "finishing" (reaching a final answer without crashing or timing
+  out) and a run genuinely *succeeding* (actually accomplishing what
+  the user asked for) are different things -- an agent can confidently
+  return a wrong or unhelpful answer and still finish cleanly by every
+  technical measure. Evaluating agent quality by "did it finish" alone
+  credits every non-crashing run as a success, completely missing runs
+  that finished but didn't actually solve the task.
+
+  The bug this exercise fixes counts every run that has a
+  `"final_answer"` field as a success, regardless of whether that run
+  was also separately marked as having actually succeeded. The fix
+  checks the run's own explicit success flag, correctly distinguishing
+  "finished" from "genuinely succeeded."
+example_code: |
+  # The trap: counts every run that FINISHED (has a final_answer) as a
+  # success -- doesn't check whether it actually solved the task.
+  def completion_rate_trap(runs):
+      finished = sum(1 for r in runs if r.get("final_answer") is not None)
+      return finished / len(runs)
+
+  runs = [
+      {"final_answer": "Your refund has been processed", "task_succeeded": True},
+      {"final_answer": "I'm not sure, but here's a guess", "task_succeeded": False},   # finished, but WRONG
+  ]
+  print(completion_rate_trap(runs))   # 1.0 -- credits BOTH runs as successes, since both technically finished
+
+  # The fix: check the run's own explicit success flag.
+  def completion_rate(runs):
+      succeeded = sum(1 for r in runs if r.get("task_succeeded"))
+      return succeeded / len(runs)
+
+  print(completion_rate(runs))   # 0.5 -- correctly reflects that only one run actually succeeded
+starter_code: |
+  def completion_rate(runs):
+      finished = sum(1 for r in runs if r.get("final_answer") is not None)
+      return finished / len(runs)
+
+  runs = [
+      {"final_answer": "Your refund has been processed", "task_succeeded": True},
+      {"final_answer": "I'm not sure, but here's a guess", "task_succeeded": False},
+  ]
+  print(completion_rate(runs))
+challenge: |
+  Fix `completion_rate` so it counts runs where `r.get("task_succeeded")`
+  is true, instead of counting every run that merely has a
+  `"final_answer"`. It should print `0.5`, not `1.0`.
+expected_output: |
+  0.5
+hints:
+  - "Change the count to: succeeded = sum(1 for r in runs if r.get(\"task_succeeded\"))."
+  - "A run having SOME final answer doesn't mean that answer was actually correct or useful -- only the explicit task_succeeded flag reflects genuine success."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 48
+difficulty: gotcha
+contains_patterns:
+  - "r\\.get\\(.task_succeeded.\\)"
+concept_tags: [agentic_frameworks, evaluation, task_completion]

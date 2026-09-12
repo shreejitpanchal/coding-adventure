@@ -1,0 +1,70 @@
+id: ai_313
+title: "A Side-Effecting Node Must Not Repeat Its Side Effect on a Resume"
+language: ai
+level: 313
+objective: "Fix a node with a real side effect (charging a card) that fires again on every call regardless of what the checkpoint already shows, when a resume should recognize the node already succeeded and skip repeating the side effect entirely."
+explanation: |
+  This category's checkpoint-and-resume lessons have covered skipping
+  already-completed *nodes in the walk* -- the sharper version of that
+  same idea is a node whose own side effect must never fire twice for
+  work the checkpoint already shows as done, even if something upstream
+  calls it again by mistake. A payment node that recharges a card every
+  time it happens to run, with no memory of having already succeeded,
+  turns a resume into a very literal double-charge.
+
+  The bug this exercise fixes fires the side effect unconditionally.
+  The fix checks the checkpoint first, returning the already-recorded
+  result instead of repeating the side effect.
+example_code: |
+  # The trap: charges every time this node runs, even on a resume
+  # where the checkpoint already shows it succeeded.
+  _charged_trap = []
+  def charge_card_trap(state, checkpoints):
+      _charged_trap.append(state["order_id"])
+      return {"charged": True}
+
+  checkpoints = {"charge_card": {"charged": True}}   # a previous run already completed this node successfully
+  charge_card_trap({"order_id": "A1"}, checkpoints)
+  print(len(_charged_trap))
+  # 1 -- charged again, despite the checkpoint already showing this succeeded
+
+  # The fix: check the checkpoint first, skip the side effect if already done.
+  _charged = []
+  def charge_card(state, checkpoints):
+      if checkpoints.get("charge_card", {}).get("charged"):
+          return checkpoints["charge_card"]
+      _charged.append(state["order_id"])
+      return {"charged": True}
+
+  checkpoints2 = {"charge_card": {"charged": True}}
+  charge_card({"order_id": "A1"}, checkpoints2)
+  print(len(_charged))
+  # 0 -- correctly skipped, since the checkpoint already showed this node had succeeded
+starter_code: |
+  _charged = []
+
+  def charge_card(state, checkpoints):
+      _charged.append(state["order_id"])
+      return {"charged": True}
+
+  checkpoints = {"charge_card": {"charged": True}}
+  charge_card({"order_id": "A1"}, checkpoints)
+  print(len(_charged))
+challenge: |
+  Fix `charge_card` so it checks `checkpoints.get("charge_card",
+  {}).get("charged")` first, returning the already-recorded result
+  instead of firing the side effect again. It should print `0`, not
+  `1`.
+expected_output: |
+  0
+hints:
+  - "Add the check as the first line: if checkpoints.get(\"charge_card\", {}).get(\"charged\"): return checkpoints[\"charge_card\"]."
+  - "The nested .get(\"charge_card\", {}) guards against there being no checkpoint entry at all yet -- only a genuinely recorded success should trigger the skip."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 48
+difficulty: gotcha
+contains_patterns:
+  - "checkpoints\\.get\\(\"charge_card\", \\{\\}\\)\\.get\\(\"charged\"\\)"
+concept_tags: [langgraph, idempotency, checkpointing]

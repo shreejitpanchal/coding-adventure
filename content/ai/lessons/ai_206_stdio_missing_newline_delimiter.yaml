@@ -1,0 +1,55 @@
+id: ai_206
+title: "Stdio-Transport Messages Need Their Own Newline Delimiter"
+language: ai
+level: 206
+objective: "Fix a message-framing function that returns a JSON payload with no trailing newline, when MCP's stdio transport delimits one message from the next purely by newlines -- without one, consecutive messages run together on the wire."
+explanation: |
+  MCP's stdio transport sends each JSON-RPC message as a single line:
+  the receiving side reads up to the next newline to know where one
+  message ends and the next begins. A framing function that returns the
+  raw JSON without appending that newline works fine in isolation (one
+  message, read once) but breaks the moment a second message follows
+  immediately after -- the two payloads run together into one
+  unparseable blob, since nothing in the stream marks where the first
+  one stopped.
+
+  The bug this exercise fixes returns the JSON string unchanged, with
+  no delimiter. The fix appends the newline the transport actually
+  relies on.
+example_code: |
+  # The trap: no newline delimiter -- the next message will run
+  # together with this one on the wire.
+  def frame_message_trap(json_str):
+      return json_str
+
+  trap = frame_message_trap('{"a":1}')
+  print(trap.endswith("\n"))   # False -- frames will merge
+
+  # The fix: append the newline the stdio transport relies on.
+  def frame_message(json_str):
+      return json_str + "\n"
+
+  framed = frame_message('{"a":1}')
+  print(framed.endswith("\n"))   # True -- correctly delimited
+starter_code: |
+  def frame_message(json_str):
+      return json_str
+
+  framed = frame_message('{"a":1}')
+  print(framed.endswith("\n"))
+challenge: |
+  Fix `frame_message` so it returns `json_str + "\n"` instead of
+  `json_str` unchanged. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Return json_str + \"\\n\" instead of json_str alone."
+  - "The stdio transport has no other way to know where one message ends and the next begins -- the newline IS the delimiter."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 31
+difficulty: warmup
+contains_patterns:
+  - "json_str \\+ \""
+concept_tags: [mcp, stdio_transport, message_framing]

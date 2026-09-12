@@ -1,0 +1,90 @@
+id: concurrency_async_18
+title: "asyncio.Event Signals Readiness to a Coroutine -- No Polling Loop Needed"
+language: python
+level: 308
+objective: "Fix async code that polls a plain flag in an await asyncio.sleep() loop, when asyncio.Event provides the coroutine-native equivalent of this category's threading.Event lesson -- await event.wait() suspends cleanly until event.set() is called."
+explanation: |
+  The same manual-flag-versus-proper-signaling-tool distinction this
+  category's `threading.Event` lesson covers applies directly to
+  coroutines: polling a plain flag with `while not ready: await
+  asyncio.sleep(...)` works, but it's a hand-rolled substitute for
+  what `asyncio.Event` already provides correctly. `await event.wait
+  ()` suspends the calling coroutine, cooperatively yielding control
+  back to the event loop, until `event.set()` is called from anywhere
+  else in the program -- no manual re-checking on a timer.
+
+  The fix replaces the plain flag and polling loop with an
+  `asyncio.Event`.
+example_code: |
+  # The trap: a plain flag, polled with an asyncio.sleep loop.
+  import asyncio
+
+  async def worker_trap(log):
+      while not ready_trap:
+          await asyncio.sleep(0.001)
+      log.append("worker saw ready")
+
+  async def main_trap():
+      global ready_trap
+      ready_trap = False
+      log = []
+      task = asyncio.create_task(worker_trap(log))
+      ready_trap = True
+      await task
+      print(log)
+
+  asyncio.run(main_trap())
+  # ['worker saw ready'] -- works, but via inefficient manual polling
+
+  # The fix: asyncio.Event suspends cleanly until set() is called.
+  async def worker(event, log):
+      await event.wait()
+      log.append("worker saw ready")
+
+  async def main():
+      event = asyncio.Event()
+      log = []
+      task = asyncio.create_task(worker(event, log))
+      event.set()
+      await task
+      print(log)
+
+  asyncio.run(main())
+  # ['worker saw ready'] -- correctly signaled, no polling loop needed
+starter_code: |
+  import asyncio
+
+  async def worker(log):
+      while not ready:
+          await asyncio.sleep(0.001)
+      log.append("worker saw ready")
+
+  async def main():
+      global ready
+      ready = False
+      log = []
+      task = asyncio.create_task(worker(log))
+      ready = True
+      await task
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Rewrite this using `asyncio.Event` -- `await event.wait()` in the
+  worker, `event.set()` in `main` -- instead of a plain flag polled
+  with an `asyncio.sleep()` loop. Keep the same output:
+  `['worker saw ready']`.
+expected_output: |
+  ['worker saw ready']
+hints:
+  - "event = asyncio.Event(); worker calls await event.wait(); main calls event.set() (not awaited -- set() is a plain synchronous call)."
+  - "await event.wait() suspends the coroutine cleanly until set() is called elsewhere -- no manual sleep-and-recheck loop needed."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 18
+difficulty: core
+contains_patterns:
+  - "asyncio\\.Event\\(\\)"
+  - "await event\\.wait\\(\\)"
+concept_tags: [asyncio, event, concurrency]

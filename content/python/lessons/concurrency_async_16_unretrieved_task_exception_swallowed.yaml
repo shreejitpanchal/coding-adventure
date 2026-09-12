@@ -1,0 +1,80 @@
+id: concurrency_async_16
+title: "The Background Task's Exception That Nobody Ever Checked For"
+language: python
+level: 306
+objective: "Fix code that creates a background Task with create_task but never awaits it or checks its exception, silently losing a failure that happened inside it -- awaiting the task is what actually surfaces the exception to the caller."
+explanation: |
+  A `Task` created with `asyncio.create_task(...)` runs independently
+  in the background -- if the coroutine inside it raises, that
+  exception is stored on the `Task` object, exactly like this
+  category's `Future.result()` lesson covers for threads. Nothing
+  automatically re-raises it anywhere unless something actually
+  `await`s the task (or explicitly calls `.exception()` on it). Code
+  that fires off a background task and moves on without ever awaiting
+  it can run to completion looking perfectly successful, while the
+  task's actual failure sits unretrieved and invisible to normal
+  program flow.
+
+  The fix is `await`-ing the task (inside a `try/except`), which
+  correctly re-raises whatever exception happened inside it, instead
+  of silently losing it.
+example_code: |
+  # The trap: creates a Task, never awaits it -- its failure is never surfaced.
+  import asyncio
+
+  async def failing_trap():
+      raise ValueError("bad")
+
+  async def main_trap():
+      task_trap = asyncio.create_task(failing_trap())
+      await asyncio.sleep(0.01)
+      print("done")
+
+  asyncio.run(main_trap())
+  # "done" -- WRONG if the ValueError inside failing_trap() should have surfaced
+
+  # The fix: awaiting the task re-raises its stored exception.
+  async def failing():
+      raise ValueError("bad")
+
+  async def main():
+      task = asyncio.create_task(failing())
+      await asyncio.sleep(0.01)
+      try:
+          await task
+          print("done")
+      except ValueError as e:
+          print(f"caught: {e}")
+
+  asyncio.run(main())
+  # "caught: bad" -- correctly surfaced, instead of silently lost
+starter_code: |
+  import asyncio
+
+  async def failing():
+      raise ValueError("bad")
+
+  async def main():
+      task = asyncio.create_task(failing())
+      await asyncio.sleep(0.01)
+      print("done")
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it wraps `await task` in a `try/except ValueError as
+  e:`, printing `f"caught: {e}"`, instead of never awaiting the task at
+  all. It should print `caught: bad`, not `done`.
+expected_output: |
+  caught: bad
+hints:
+  - "try: await task; print(\"done\") except ValueError as e: print(f\"caught: {e}\")."
+  - "A Task just STORES its exception until something actually awaits it (or calls .exception() on it) -- exactly the same principle as Future.result() for threads."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 16
+difficulty: deep_dive
+contains_patterns:
+  - "await task"
+  - "caught: \\{e\\}"
+concept_tags: [asyncio, tasks, exceptions, concurrency]

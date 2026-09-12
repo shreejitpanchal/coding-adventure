@@ -1,0 +1,66 @@
+id: data_structures_39
+title: "heapq Is Always a Min-Heap -- Negate Values to Get Max-Heap Behavior"
+language: python
+level: 196
+objective: "Fix a function that pops from a heap expecting the largest value, when heapq is always a min-heap -- popping returns the smallest value, and getting max-heap behavior requires negating values on the way in and out."
+explanation: |
+  Python's `heapq` module implements only a min-heap -- `heappop()`
+  always returns the smallest element, with no built-in option for a
+  max-heap. Getting max-heap behavior out of it is a well-known trick
+  rather than a separate feature: negate every value when pushing it
+  in, and negate the result again when popping it back out. The
+  smallest of the negated values corresponds exactly to the largest of
+  the original ones, so the double negation gives genuine max-heap
+  behavior on top of a structure that's fundamentally still a
+  min-heap underneath.
+
+  The bug this exercise fixes heapifies the values directly and pops,
+  getting the smallest. The fix negates on the way in and out, getting
+  the largest.
+example_code: |
+  # The trap: heapq is a MIN-heap -- this returns the SMALLEST value,
+  # not the largest.
+  import heapq
+
+  def get_max_trap(nums):
+      heap = list(nums)
+      heapq.heapify(heap)
+      return heapq.heappop(heap)
+
+  print(get_max_trap([3, 1, 4, 1, 5, 9, 2, 6]))
+  # 1 -- WRONG, this is the smallest value, not the largest
+
+  # The fix: negate on the way in and out to get max-heap behavior.
+  def get_max(nums):
+      heap = [-n for n in nums]
+      heapq.heapify(heap)
+      return -heapq.heappop(heap)
+
+  print(get_max([3, 1, 4, 1, 5, 9, 2, 6]))
+  # 9 -- correctly the largest value
+starter_code: |
+  import heapq
+
+  def get_max(nums):
+      heap = list(nums)
+      heapq.heapify(heap)
+      return heapq.heappop(heap)
+
+  print(get_max([3, 1, 4, 1, 5, 9, 2, 6]))
+challenge: |
+  Fix `get_max` so it negates each value going into the heap (`[-n for
+  n in nums]`) and negates the popped result again (`-heapq.heappop
+  (heap)`). It should print `9`, not `1`.
+expected_output: |
+  9
+hints:
+  - "heap = [-n for n in nums], then return -heapq.heappop(heap)."
+  - "The smallest of the NEGATED values is exactly the largest of the ORIGINAL values -- that's the entire trick."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 39
+difficulty: gotcha
+contains_patterns:
+  - "heap = \\[-n for n in nums\\]"
+concept_tags: [heapq, max_heap]

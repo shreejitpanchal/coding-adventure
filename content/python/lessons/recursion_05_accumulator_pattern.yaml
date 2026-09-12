@@ -78,7 +78,7 @@ hints:
   - "Add a second parameter, e.g. acc=None, defaulting to a fresh empty list."
   - "Each call does: return reverse_list(items[1:], [items[0]] + acc) instead of concatenating at the end."
 xp_reward: 15
-achievement: recursion_master
+achievement: null
 category: recursion
 category_level: 5
 difficulty: deep_dive

@@ -1,0 +1,55 @@
+id: ai_290
+title: "A Missing Optional State Key Should Fall Back to a Default, Not Crash"
+language: ai
+level: 290
+objective: "Fix a state reader that crashes with a raw KeyError when an optional field was never set, when reading a field that might genuinely not exist yet should fall back to a sensible default instead."
+explanation: |
+  Not every state field is guaranteed to exist by the time a given node
+  runs -- a `summary` might not have been computed yet if this is the
+  very first node in the graph, and that's a perfectly normal,
+  expected situation rather than an error condition. Reading such a
+  field with direct dict indexing (`state["summary"]`) treats "not set
+  yet" the same as "something is broken," crashing with a bare
+  `KeyError` for a case that was entirely anticipated.
+
+  The bug this exercise fixes reads `state["summary"]` directly. The
+  fix uses `.get()` with a sensible default instead.
+example_code: |
+  # The trap: direct indexing -- crashes if "summary" was never set,
+  # even though that's a perfectly normal, expected situation.
+  def get_summary_trap(state):
+      return state["summary"]
+
+  # get_summary_trap({})  # KeyError: 'summary' -- but this is an expected case, not an error
+
+  # The fix: use .get() with a sensible default.
+  def get_summary(state):
+      return state.get("summary", "(no summary yet)")
+
+  print(get_summary({}))
+  # "(no summary yet)" -- correctly handled without crashing
+starter_code: |
+  def get_summary(state):
+      return state["summary"]
+
+  try:
+      print(get_summary({}))
+  except KeyError:
+      print("unhandled")
+challenge: |
+  Fix `get_summary` so it returns `state.get("summary", "(no summary
+  yet)")` instead of `state["summary"]` directly. It should print
+  `(no summary yet)`, not `unhandled`.
+expected_output: |
+  (no summary yet)
+hints:
+  - "Replace state[\"summary\"] with state.get(\"summary\", \"(no summary yet)\")."
+  - "A field that's genuinely optional at this point in the graph shouldn't be read the same way as one that's guaranteed to be present."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 25
+difficulty: warmup
+contains_patterns:
+  - "state\\.get\\(\"summary\", \"\\(no summary yet\\)\"\\)"
+concept_tags: [langgraph, state_access, defaults]

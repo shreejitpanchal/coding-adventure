@@ -1,0 +1,99 @@
+id: observability_12
+title: "A Child Span That Never Learned Who Its Parent Was"
+language: python
+level: 412
+objective: "Fix a tracing Span that always sets parent_id to None, losing the trace tree structure entirely, when reading the current span id from a contextvars.ContextVar (this category's correlation-id pattern, applied to spans) lets a new child span automatically pick up whichever span is currently active as its parent."
+explanation: |
+  A distributed trace is a tree of spans -- one span per unit of work
+  (a whole request, a specific database query inside it), each child
+  span recording which span it happened *inside of*. That parent
+  relationship is what lets a tracing UI reconstruct the actual
+  call structure afterward, showing which operations nested inside
+  which others. A `Span` that always sets `parent_id = None` loses
+  that structure completely -- every span looks like a disconnected
+  root, with no way to tell that a `db_query` span happened inside a
+  `request` span at all. This category's correlation-id
+  `contextvars.ContextVar` lesson solves exactly this shape of problem
+  for a request id; the same mechanism works for tracking "the
+  currently active span" too -- reading it when a new span starts
+  (as that new span's parent), then updating it to the new span so
+  anything started after it picks up the new span as *its* parent.
+
+  The fix reads `current_span_id.get()` as the new span's `parent_id`,
+  then sets `current_span_id` to the new span's own id.
+example_code: |
+  # The trap: parent_id is always None -- no trace tree structure at all.
+  import contextvars
+
+  current_span_id_trap = contextvars.ContextVar("current_span_id_trap", default=None)
+
+  class SpanTrap:
+      def __init__(self, name):
+          self.name = name
+          self.parent_id = None       # BUG: ignores the current span entirely
+          self.id = id(self)
+
+  def start_span_trap(name):
+      return SpanTrap(name)
+
+  root_trap = start_span_trap("request")
+  current_span_id_trap.set(root_trap.id)
+  child_trap = start_span_trap("db_query")
+  print(child_trap.parent_id == root_trap.id)
+  # False -- WRONG, child_trap has no idea it's nested under root_trap at all
+
+  # The fix: read the CURRENT span id as the new span's parent.
+  current_span_id = contextvars.ContextVar("current_span_id", default=None)
+
+  class Span:
+      def __init__(self, name):
+          self.name = name
+          self.parent_id = current_span_id.get()
+          self.id = id(self)
+
+  def start_span(name):
+      span = Span(name)
+      current_span_id.set(span.id)
+      return span
+
+  root = start_span("request")
+  child = start_span("db_query")
+  print(child.parent_id == root.id)
+  # True -- correctly captured root as the parent, automatically, via the ContextVar
+starter_code: |
+  import contextvars
+
+  current_span_id = contextvars.ContextVar("current_span_id", default=None)
+
+  class Span:
+      def __init__(self, name):
+          self.name = name
+          self.parent_id = None
+          self.id = id(self)
+
+  def start_span(name):
+      return Span(name)
+
+  root = start_span("request")
+  current_span_id.set(root.id)
+  child = start_span("db_query")
+  print(child.parent_id == root.id)
+challenge: |
+  Fix `Span.__init__` so `self.parent_id = current_span_id.get()`
+  instead of always `None`, and have `start_span` set `current_span_id`
+  to the new span's own id after creating it. It should print `True`,
+  not `False`.
+expected_output: |
+  True
+hints:
+  - "self.parent_id = current_span_id.get(), then in start_span: span = Span(name); current_span_id.set(span.id); return span."
+  - "Reading the current span id BEFORE overwriting it is what lets a new span correctly capture whichever span was active when it started as its own parent."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 12
+difficulty: deep_dive
+contains_patterns:
+  - "self\\.parent_id = current_span_id\\.get\\(\\)"
+  - "current_span_id\\.set\\(span\\.id\\)"
+concept_tags: [observability, tracing, contextvars]

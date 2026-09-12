@@ -1,0 +1,89 @@
+id: data_structures_25
+title: "Cycle Detection Must Check a Node's Visited Status Before Recursing Into It Again"
+language: python
+level: 182
+objective: "Fix a graph traversal that never checks whether a node was already visited before recursing into it again, when a genuine cycle causes that to recurse forever -- a visited check is what both detects the cycle and stops the infinite recursion."
+explanation: |
+  Recording that a node has been visited only helps if something
+  actually *checks* that record before recursing into the node again
+  -- a traversal that adds nodes to a `visited` set but never consults
+  it before making the next recursive call has no way to notice it's
+  going in circles. On a graph with a genuine cycle, that means calling
+  itself forever, node after node, around the cycle indefinitely, until
+  Python's own recursion depth limit finally raises `RecursionError` --
+  a crash standing in for what should have been a clean, immediate
+  "yes, this graph has a cycle" answer.
+
+  The bug this exercise fixes never checks `visited` before recursing.
+  The fix checks it first, both detecting the cycle and stopping the
+  recursion immediately.
+example_code: |
+  # The trap: never checks visited before recursing again -- a real
+  # cycle recurses forever until Python's own recursion limit crashes it.
+  graph_with_cycle = {"A": ["B"], "B": ["C"], "C": ["A"]}
+
+  def has_cycle_trap(graph, start):
+      visited = set()
+      def visit(node):
+          visited.add(node)
+          for neighbor in graph[node]:
+              visit(neighbor)
+      try:
+          visit(start)
+          return False
+      except RecursionError:
+          return "crashed"
+
+  print(has_cycle_trap(graph_with_cycle, "A"))
+  # "crashed" -- infinite recursion around the cycle, never actually detected
+
+  # The fix: check visited FIRST -- this both detects the cycle and
+  # stops the recursion immediately.
+  def has_cycle(graph, start):
+      visited = set()
+      def visit(node):
+          if node in visited:
+              return True
+          visited.add(node)
+          for neighbor in graph[node]:
+              if visit(neighbor):
+                  return True
+          return False
+      return visit(start)
+
+  print(has_cycle(graph_with_cycle, "A"))
+  # True -- correctly detected, with no crash at all
+starter_code: |
+  graph_with_cycle = {"A": ["B"], "B": ["C"], "C": ["A"]}
+
+  def has_cycle(graph, start):
+      visited = set()
+      def visit(node):
+          visited.add(node)
+          for neighbor in graph[node]:
+              visit(neighbor)
+      try:
+          visit(start)
+          return False
+      except RecursionError:
+          return "crashed"
+
+  print(has_cycle(graph_with_cycle, "A"))
+challenge: |
+  Fix `has_cycle` so `visit` checks `if node in visited: return True`
+  before adding the node and recursing further, propagating that
+  `True` back up through each recursive call. It should print `True`,
+  not `crashed`.
+expected_output: |
+  True
+hints:
+  - "Add: if node in visited: return True, as the very first line inside visit()."
+  - "Each recursive call also needs to check and propagate the True it gets back -- if visit(neighbor): return True -- so the cycle detection actually reaches the top-level caller."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 25
+difficulty: gotcha
+contains_patterns:
+  - "if node in visited:"
+concept_tags: [graphs, cycle_detection, recursion]

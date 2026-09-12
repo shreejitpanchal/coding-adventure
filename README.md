@@ -46,9 +46,14 @@ through in a few focused minutes, not tutorials to sit through.
   heavy ecosystem language like Python/Java, not a bare compiled
   language the way C++ is here). **AI** and **Architecture** are their
   own dedicated tracks with their own category sets entirely — see below.
-  - **Python** — 75 exercises (mutable defaults, race conditions, float
-    precision, silent exception swallowing, GIL vs true parallelism,
-    and more).
+  - **Python** — 455 exercises: the seven broad categories (Idioms &
+    Gotchas, Core Language Refresher, Data Structures & Algorithms,
+    Standard Library Deep Dive, Gotcha Gauntlet, Concurrency & Async,
+    Functional Programming) at 50 exercises each, and the seven narrower
+    categories (Packaging, Deployment, Observability, Dependency
+    Management, Thread Scheduling, Sync vs Async, Recursion) at 15 each
+    (mutable defaults, race conditions, float precision, silent exception
+    swallowing, GIL vs true parallelism, and far more).
   - **Java** — 70 exercises, each idiomatically Java rather than a
     literal port (streams/lambdas/records, the Collections Framework,
     virtual threads and CompletableFuture for concurrency,
@@ -90,10 +95,11 @@ through in a few focused minutes, not tutorials to sit through.
     logging, `process.env`'s string-only typing, graceful `SIGTERM`
     shutdown, and more), run directly with `node` (no separate compile
     step, unlike Java/C++).
-  - **AI** — 45 exercises across 9 categories (ML Fundamentals,
+  - **AI** — 405 exercises across 9 categories (ML Fundamentals,
     Retrieval-Augmented Generation, Agentic Frameworks, Model Context
     Protocol, Microsoft Agent 365, LangChain, LangGraph, LangSmith,
-    Solace Agent Mesh) — hand-rolled, dependency-free Python covering
+    Solace Agent Mesh — 50 exercises each except Microsoft Agent 365's
+    5) — hand-rolled, dependency-free Python covering
     reproducible train/test splits, data leakage, gradient descent's
     sign convention, cosine similarity vs. raw dot product, chunk
     overlap, prompt templating, tool-dispatch loops with max-iteration

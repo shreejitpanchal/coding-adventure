@@ -1,0 +1,62 @@
+id: data_structures_20
+title: "A Sliding Window Reuses the Previous Sum Instead of Recomputing It"
+language: python
+level: 177
+objective: "Replace a function that recomputes each window's sum from scratch with the sliding-window technique, which updates the running sum incrementally as the window moves."
+explanation: |
+  Finding the maximum sum among every fixed-size window of a list by
+  slicing and summing each window separately (`sum(nums[i:i+k])`)
+  recomputes the whole window's sum from scratch every single time --
+  O(n*k) overall. The sliding-window technique notices that moving the
+  window by one position only changes two elements: the one that just
+  left the window, and the one that just entered it. Updating the
+  running sum by subtracting the departing element and adding the
+  entering one keeps it correct in O(1) per step, making the whole scan
+  O(n) instead of O(n*k).
+example_code: |
+  # Recomputes the FULL sum for every window -- O(n*k).
+  def max_window_sum_loop(nums, k):
+      max_sum = float("-inf")
+      for i in range(len(nums) - k + 1):
+          window_sum = sum(nums[i:i + k])
+          max_sum = max(max_sum, window_sum)
+      return max_sum
+
+  print(max_window_sum_loop([1, 3, -1, -3, 5, 3, 6, 7], 3))   # 16
+
+  # Sliding window: update the running sum incrementally -- O(n).
+  def max_window_sum(nums, k):
+      window_sum = sum(nums[:k])
+      max_sum = window_sum
+      for i in range(k, len(nums)):
+          window_sum += nums[i] - nums[i - k]
+          max_sum = max(max_sum, window_sum)
+      return max_sum
+
+  print(max_window_sum([1, 3, -1, -3, 5, 3, 6, 7], 3))         # 16
+starter_code: |
+  def max_window_sum(nums, k):
+      max_sum = float("-inf")
+      for i in range(len(nums) - k + 1):
+          window_sum = sum(nums[i:i + k])
+          max_sum = max(max_sum, window_sum)
+      return max_sum
+
+  print(max_window_sum([1, 3, -1, -3, 5, 3, 6, 7], 3))
+challenge: |
+  Rewrite `max_window_sum` using the sliding-window technique: compute
+  the first window's sum once, then update it incrementally for each
+  later position. Keep the same output: 16.
+expected_output: |
+  16
+hints:
+  - "window_sum = sum(nums[:k]) to start, then for each later i: window_sum += nums[i] - nums[i - k]."
+  - "Moving the window by one only ever changes two elements -- the one leaving and the one entering -- there's no need to re-sum everything else in between."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 20
+difficulty: core
+contains_patterns:
+  - "window_sum \\+= nums\\[i\\] - nums\\[i - k\\]"
+concept_tags: [sliding_window, algorithms]

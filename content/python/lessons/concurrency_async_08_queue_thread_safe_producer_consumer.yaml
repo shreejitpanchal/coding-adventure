@@ -1,0 +1,104 @@
+id: concurrency_async_08
+title: "queue.Queue Blocks Until Work Is Ready -- No Manual Polling Loop Needed"
+language: python
+level: 298
+objective: "Fix a consumer that busy-waits on a plain list with a sleep loop, checking over and over whether the producer has added anything yet, when queue.Queue.get() is already thread-safe and blocks naturally until an item is actually available."
+explanation: |
+  Coordinating a producer and consumer thread through a plain list
+  works, but only by hand-rolling exactly what `queue.Queue` already
+  provides -- a busy-wait loop that repeatedly checks `if not shared:
+  time.sleep(...)` wastes CPU cycles re-checking an empty list over
+  and over, and still needs its own manual `pop(0)` afterward with no
+  built-in protection against two consumers racing to pop the same
+  slot. `queue.Queue` is already thread-safe for exactly this
+  producer/consumer pattern: `q.put(item)` and `q.get()` handle all
+  the necessary internal locking themselves, and `q.get()` *blocks*
+  the calling thread naturally until an item is actually available --
+  no polling loop, no manual locking, no wasted CPU cycles re-checking
+  an empty container.
+
+  The fix replaces the plain list and busy-wait loop with a
+  `queue.Queue`, letting `q.get()` do the blocking-until-ready waiting
+  correctly and efficiently on its own.
+example_code: |
+  # The trap: hand-rolled busy-wait polling a plain list.
+  import threading, time
+
+  shared_trap = []
+
+  def producer_trap(items):
+      for item in items:
+          shared_trap.append(item)
+
+  def consume_trap(count):
+      results = []
+      while len(results) < count:
+          while not shared_trap:
+              time.sleep(0.001)
+          results.append(shared_trap.pop(0))
+      return results
+
+  t_trap = threading.Thread(target=producer_trap, args=([1, 2, 3],))
+  t_trap.start()
+  results_trap = consume_trap(3)
+  t_trap.join()
+  print(sum(results_trap))
+  # 6 -- works, but only via a clumsy, CPU-wasting polling loop
+
+  # The fix: queue.Queue already blocks naturally until an item exists.
+  import queue
+
+  def producer(q, items):
+      for item in items:
+          q.put(item)
+
+  def consume(q, count):
+      return [q.get() for _ in range(count)]
+
+  q = queue.Queue()
+  t = threading.Thread(target=producer, args=(q, [1, 2, 3]))
+  t.start()
+  results = consume(q, 3)
+  t.join()
+  print(sum(results))
+  # 6 -- correctly blocks on q.get() until each item is ready, no polling at all
+starter_code: |
+  import threading, time
+
+  shared = []
+
+  def producer(items):
+      for item in items:
+          shared.append(item)
+
+  def consume(count):
+      results = []
+      while len(results) < count:
+          while not shared:
+              time.sleep(0.001)
+          results.append(shared.pop(0))
+      return results
+
+  t = threading.Thread(target=producer, args=([1, 2, 3],))
+  t.start()
+  results = consume(3)
+  t.join()
+  print(sum(results))
+challenge: |
+  Rewrite this using `queue.Queue` -- `q.put(item)` in the producer and
+  `q.get()` in the consumer -- instead of a plain list with a manual
+  busy-wait polling loop. Keep the same output: `6`.
+expected_output: |
+  6
+hints:
+  - "import queue; q = queue.Queue(); producer calls q.put(item); consumer calls [q.get() for _ in range(count)]."
+  - "q.get() already blocks the calling thread until an item is actually available -- no manual sleep-and-recheck loop needed at all."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "queue\\.Queue\\(\\)"
+  - "q\\.get\\(\\)"
+concept_tags: [threading, queue, concurrency]

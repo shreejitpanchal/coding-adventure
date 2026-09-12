@@ -1,0 +1,73 @@
+id: core_refresher_39
+title: "frozen=True Makes a Dataclass Immutable -- and Hashable"
+language: python
+level: 152
+objective: "Fix a plain (mutable) dataclass that can't be put in a set, when @dataclass(frozen=True) both prevents field reassignment and makes instances hashable, since a mutable object's hash could change out from under a set or dict."
+explanation: |
+  A plain `@dataclass` gets an auto-generated `__eq__` (comparing
+  field-by-field), but its `__hash__` is set to `None` -- the same
+  "can't safely define equality without a consistent hash" issue this
+  category's idioms lesson covers for a hand-written `__eq__`, applying
+  here to dataclasses too, since a *mutable* dataclass's fields (and
+  therefore what its hash would need to be) could change at any time.
+  `@dataclass(frozen=True)` fixes both problems at once: it prevents
+  any field from being reassigned after construction, and because the
+  object genuinely can't change anymore, Python generates a real,
+  consistent `__hash__` for it automatically.
+
+  The bug this exercise fixes is a plain, mutable dataclass -- unhashable
+  by default. The fix adds `frozen=True`.
+example_code: |
+  # A plain dataclass -- mutable, and therefore unhashable by default.
+  from dataclasses import dataclass
+
+  @dataclass
+  class PointLoop:
+      x: int
+      y: int
+
+  try:
+      {PointLoop(1, 2)}
+      print("hashable")
+  except TypeError:
+      print("unhashable")
+  # "unhashable" -- a mutable dataclass's auto-generated __eq__ disables __hash__
+
+  # frozen=True makes it immutable, and therefore hashable.
+  @dataclass(frozen=True)
+  class Point:
+      x: int
+      y: int
+
+  {Point(1, 2)}
+  print("hashable")
+  # "hashable" -- correctly hashable now that it can't change
+starter_code: |
+  from dataclasses import dataclass
+
+  @dataclass
+  class Point:
+      x: int
+      y: int
+
+  try:
+      {Point(1, 2)}
+      print("hashable")
+  except TypeError:
+      print("unhashable")
+challenge: |
+  Fix `Point` by adding `frozen=True` to the `@dataclass` decorator. It
+  should print `hashable`, not `unhashable`.
+expected_output: |
+  hashable
+hints:
+  - "Change @dataclass to @dataclass(frozen=True)."
+  - "A mutable object's hash could change out from under a set at any time -- frozen=True removes that risk by making the object genuinely immutable."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 39
+difficulty: core
+contains_patterns:
+  - "@dataclass\\(frozen=True\\)"
+concept_tags: [dataclasses, frozen, hashability]

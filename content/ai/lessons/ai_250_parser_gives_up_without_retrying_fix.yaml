@@ -1,0 +1,72 @@
+id: ai_250
+title: "An Output-Fixing Parser Should Retry With a Correction, Not Just Give Up"
+language: ai
+level: 250
+objective: "Fix a parser that raises immediately on the first parse failure, when it should attempt a correction (fixing likely formatting mistakes) and retry the parse once before actually giving up."
+explanation: |
+  Models don't always produce perfectly valid JSON even when asked to --
+  single quotes instead of double, a stray trailing comma. An
+  output-fixing parser attempts a plausible correction and retries the
+  parse once before giving up entirely, recovering from exactly the
+  kind of minor formatting slip that would otherwise fail a chain
+  outright over something a simple text substitution could have fixed.
+
+  The bug this exercise fixes calls `json.loads` directly with no
+  fallback at all. The fix catches the initial failure, applies the
+  provided `fix_fn`, and retries the parse on the corrected text.
+example_code: |
+  # The trap: no fallback at all -- a parse failure just crashes,
+  # even though a simple fix might have recovered it.
+  import json
+
+  def parse_with_fix_trap(raw_text, fix_fn):
+      return json.loads(raw_text)
+
+  raw = "{'name': 'Ada'}"   # single quotes -- not valid JSON
+  def fix_fn(text):
+      return text.replace("'", '"')
+
+  # parse_with_fix_trap(raw, fix_fn)  # json.JSONDecodeError -- never even tried the fix
+
+  # The fix: catch the failure, apply fix_fn, retry the parse.
+  def parse_with_fix(raw_text, fix_fn):
+      try:
+          return json.loads(raw_text)
+      except json.JSONDecodeError:
+          return json.loads(fix_fn(raw_text))
+
+  print(parse_with_fix(raw, fix_fn)["name"])   # "Ada" -- recovered via the correction
+starter_code: |
+  import json
+
+  def parse_with_fix(raw_text, fix_fn):
+      return json.loads(raw_text)
+
+  raw = "{'name': 'Ada'}"
+
+  def fix_fn(text):
+      return text.replace("'", '"')
+
+  try:
+      result = parse_with_fix(raw, fix_fn)
+      print(result["name"])
+  except json.JSONDecodeError:
+      print("unhandled")
+challenge: |
+  Fix `parse_with_fix` so it wraps the initial `json.loads(raw_text)` in
+  a `try/except json.JSONDecodeError`, and on failure retries with
+  `json.loads(fix_fn(raw_text))`, instead of only ever attempting the
+  initial parse. It should print `Ada`, not `unhandled`.
+expected_output: |
+  Ada
+hints:
+  - "try: return json.loads(raw_text) except json.JSONDecodeError: return json.loads(fix_fn(raw_text))"
+  - "fix_fn already does the work of correcting the single quotes -- this exercise is about actually calling it on a retry, not about writing the correction itself."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 30
+difficulty: core
+contains_patterns:
+  - "json\\.loads\\(fix_fn\\(raw_text\\)\\)"
+concept_tags: [langchain, output_parser, error_recovery]

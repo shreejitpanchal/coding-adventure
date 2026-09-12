@@ -1,0 +1,53 @@
+id: ai_236
+title: "A Retriever Must Actually Respect Its k Limit"
+language: ai
+level: 236
+objective: "Fix a retriever function that returns every document regardless of the requested k, when wrapping a vector store as a retriever means honoring the caller's requested result count, not returning the entire corpus every time."
+explanation: |
+  `as_retriever()` wraps a vector store's search behind a simpler
+  interface, but the contract stays the same: the caller asks for `k`
+  results and expects to get back at most `k`, not the entire
+  underlying document set regardless of what was requested. A retriever
+  that ignores `k` entirely might still "work" in the sense that it
+  returns real documents, but it defeats the purpose of asking for a
+  bounded number of results in the first place -- every downstream step
+  now has to deal with an unpredictable, unbounded amount of content.
+
+  The bug this exercise fixes returns `all_docs` unchanged, ignoring
+  `k` completely. The fix slices to the requested `k`.
+example_code: |
+  # The trap: ignores k entirely -- returns EVERYTHING regardless of
+  # what was actually requested.
+  def retrieve_trap(all_docs, query, k):
+      return all_docs
+
+  all_docs = ["doc1", "doc2", "doc3", "doc4"]
+  print(len(retrieve_trap(all_docs, "query", 2)))   # 4 -- ignored the k=2 limit entirely
+
+  # The fix: slice to the requested k.
+  def retrieve(all_docs, query, k):
+      return all_docs[:k]
+
+  print(len(retrieve(all_docs, "query", 2)))   # 2 -- correctly bounded to the requested count
+starter_code: |
+  def retrieve(all_docs, query, k):
+      return all_docs
+
+  all_docs = ["doc1", "doc2", "doc3", "doc4"]
+  print(len(retrieve(all_docs, "query", 2)))
+challenge: |
+  Fix `retrieve` so it returns `all_docs[:k]` instead of `all_docs`
+  unchanged. It should print `2`, not `4`.
+expected_output: |
+  2
+hints:
+  - "Change the return statement to: return all_docs[:k]."
+  - "A retriever exists to bound how much content flows downstream -- ignoring k defeats that entirely."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 16
+difficulty: warmup
+contains_patterns:
+  - "return all_docs\\[:k\\]"
+concept_tags: [langchain, retriever, result_limiting]

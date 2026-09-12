@@ -1,0 +1,52 @@
+id: ai_213
+title: "Method Names Follow a 'category/action' Convention for a Reason"
+language: ai
+level: 213
+objective: "Fix a method-name builder that concatenates category and action with no separator, producing an ambiguous run-together name instead of the 'category/action' convention every real MCP method follows."
+explanation: |
+  Every MCP method name follows a `category/action` shape --
+  `tools/call`, `resources/read`, `prompts/get` -- and that slash isn't
+  cosmetic: it's what makes the namespace unambiguous and lets a router
+  split on `/` to dispatch by category. Concatenating category and
+  action with no separator at all produces a name like `"toolscall"`
+  that's both wrong (it doesn't match any real method) and genuinely
+  ambiguous, since there's no way to tell where the category name ends
+  and the action name begins.
+
+  The bug this exercise fixes joins the two strings directly with no
+  separator. The fix inserts the `/` the convention actually requires.
+example_code: |
+  # The trap: no separator at all -- ambiguous AND doesn't match the
+  # real convention.
+  def build_method_name_trap(category, action):
+      return category + action
+
+  print(build_method_name_trap("tools", "call"))   # "toolscall" -- wrong, not a real MCP method name
+
+  # The fix: join with the "/" the convention actually requires.
+  def build_method_name(category, action):
+      return category + "/" + action
+
+  print(build_method_name("tools", "call"))   # "tools/call" -- matches the real convention
+starter_code: |
+  def build_method_name(category, action):
+      return category + action
+
+  print(build_method_name("tools", "call"))
+challenge: |
+  Fix `build_method_name` so it returns `category + "/" + action`
+  instead of concatenating them directly. It should print `tools/call`,
+  not `toolscall`.
+expected_output: |
+  tools/call
+hints:
+  - "Insert a literal \"/\" between category and action: category + \"/\" + action."
+  - "The slash is what lets a router split the method name to dispatch by category -- without it there's no reliable boundary."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 38
+difficulty: warmup
+contains_patterns:
+  - "category \\+ \"/\" \\+ action"
+concept_tags: [mcp, method_naming, namespacing]

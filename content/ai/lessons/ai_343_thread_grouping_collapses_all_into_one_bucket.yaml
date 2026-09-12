@@ -1,0 +1,63 @@
+id: ai_343
+title: "Grouping Runs by Thread Should Actually Split Them by Thread"
+language: ai
+level: 343
+objective: "Fix a thread-grouping function that puts every run into a single bucket regardless of its own thread_id, when separate conversation threads need to be kept in genuinely separate groups for any per-thread analysis to make sense."
+explanation: |
+  Grouping traces by conversation thread is what lets someone look at
+  "everything that happened in this one specific conversation" rather
+  than an undifferentiated stream of every run across every thread
+  mixed together. A grouping function that ignores each run's own
+  `thread_id` and dumps everything into one shared bucket makes
+  per-thread analysis impossible -- there's no way to isolate a single
+  conversation's runs from anyone else's once they're all merged
+  together.
+
+  The bug this exercise fixes returns `{"all": runs}` -- one bucket for
+  everything. The fix groups each run under its own `thread_id`.
+example_code: |
+  # The trap: groups EVERYTHING into one bucket, ignoring each run's
+  # own thread_id entirely.
+  def group_by_thread_trap(runs):
+      return {"all": runs}
+
+  runs = [{"thread_id": "t1", "id": "r1"}, {"thread_id": "t2", "id": "r2"}]
+  groups_trap = group_by_thread_trap(runs)
+  print(len(groups_trap))
+  # 1 -- both threads collapsed into a single bucket
+
+  # The fix: group each run under its own thread_id.
+  def group_by_thread(runs):
+      groups = {}
+      for run in runs:
+          groups.setdefault(run["thread_id"], []).append(run)
+      return groups
+
+  groups = group_by_thread(runs)
+  print(len(groups))
+  # 2 -- correctly separated by thread
+starter_code: |
+  def group_by_thread(runs):
+      return {"all": runs}
+
+  runs = [{"thread_id": "t1", "id": "r1"}, {"thread_id": "t2", "id": "r2"}]
+  groups = group_by_thread(runs)
+  print(len(groups))
+challenge: |
+  Fix `group_by_thread` so it builds a `groups` dict via
+  `groups.setdefault(run["thread_id"], []).append(run)` for each run,
+  instead of putting everything into one `"all"` bucket. It should
+  print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "groups = {}, then for run in runs: groups.setdefault(run[\"thread_id\"], []).append(run), then return groups."
+  - "setdefault creates an empty list the first time a given thread_id is seen, then reuses it for every later run from that same thread."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 33
+difficulty: warmup
+contains_patterns:
+  - "groups\\.setdefault\\(run\\[\"thread_id\"\\], \\[\\]\\)"
+concept_tags: [langsmith, thread_grouping, sessions]

@@ -1,0 +1,53 @@
+id: ai_232
+title: "A Chat System Message Needs to Come First, Not Last"
+language: ai
+level: 232
+objective: "Fix a message-list builder that appends the system prompt after the user's message, when the system message is supposed to set context and behavior BEFORE the model ever sees what the user actually asked."
+explanation: |
+  A chat prompt's `system` message establishes the model's role, tone,
+  and constraints, and it's meant to be read first -- the same way a
+  person given instructions before a task performs it differently than
+  someone handed the instructions only after finishing. Building the
+  messages list with the system entry appended last means the model
+  effectively receives its operating instructions only after already
+  having "seen" the user's request, which isn't the ordering the whole
+  mechanism depends on.
+
+  The bug this exercise fixes puts the user message first and the
+  system message last. The fix builds the list with the system message
+  first, exactly as the convention requires.
+example_code: |
+  # The trap: the system message is appended AFTER the user message,
+  # not first.
+  def build_messages_trap(system_prompt, user_message):
+      return [{"role": "user", "content": user_message}, {"role": "system", "content": system_prompt}]
+
+  print(build_messages_trap("Be concise.", "Hi")[0]["role"])   # "user" -- wrong, system should set context first
+
+  # The fix: system message comes first.
+  def build_messages(system_prompt, user_message):
+      return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
+
+  print(build_messages("Be concise.", "Hi")[0]["role"])   # "system" -- correctly comes first
+starter_code: |
+  def build_messages(system_prompt, user_message):
+      return [{"role": "user", "content": user_message}, {"role": "system", "content": system_prompt}]
+
+  print(build_messages("Be concise.", "Hi")[0]["role"])
+challenge: |
+  Fix `build_messages` so the returned list starts with the system
+  message dict, followed by the user message dict, instead of the
+  other way around. It should print `system`, not `user`.
+expected_output: |
+  system
+hints:
+  - "Swap the order of the two dicts in the returned list: system message first, user message second."
+  - "The list literal should start with [{\"role\": \"system\", ...} -- check that's genuinely the first element, not the second."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 12
+difficulty: warmup
+contains_patterns:
+  - "\\[\\{\"role\": \"system\""
+concept_tags: [langchain, chat_prompt_template, message_ordering]

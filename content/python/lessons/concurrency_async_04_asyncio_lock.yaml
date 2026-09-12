@@ -89,7 +89,7 @@ hints:
   - "lock = asyncio.Lock() at module scope."
   - "Wrap the whole read/sleep/write sequence: `async with lock: ...`."
 xp_reward: 15
-achievement: concurrency_async_master
+achievement: null
 category: concurrency_async
 category_level: 4
 difficulty: deep_dive

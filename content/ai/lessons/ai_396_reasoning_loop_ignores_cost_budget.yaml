@@ -1,0 +1,85 @@
+id: ai_396
+title: "The Reasoning Loop Should Stop Once Its Cost Budget Is Exhausted"
+language: ai
+level: 396
+objective: "Fix a reasoning loop that never checks its own spend against a configured budget, when each additional turn genuinely costs something -- a loop that keeps going regardless of an exhausted budget can spend without limit on a task that was never worth that much."
+explanation: |
+  Every additional turn through the reasoning loop -- another model
+  call, another tool invocation -- has a real cost, and a per-task
+  budget exists specifically to cap how much a single task is allowed
+  to spend before the loop has to stop and report back, regardless of
+  whether the model would have kept going if given the chance. A loop
+  with no actual budget check just keeps spending as long as the model
+  keeps requesting more work, with nothing to enforce the limit that
+  was supposedly configured.
+
+  The bug this exercise fixes loops with no real budget check tied to
+  `cost_so_far`. The fix checks `cost_so_far["spent"] < budget` on
+  every iteration.
+example_code: |
+  # The trap: no budget enforcement at all -- only an unrelated
+  # internal safety net keeps this demo from truly hanging.
+  def run_loop_trap(model_fn, conversation, cost_so_far, budget):
+      while True:
+          response = model_fn(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          conversation.append({"role": "tool_result", "content": "result"})
+          cost_so_far["spent"] += 1
+          if cost_so_far["spent"] > 500:
+              return "SAFETY_NET_HIT"
+
+  def never_finishes(conversation):
+      return {"tool_call": "keep_trying"}
+
+  cost = {"spent": 0}
+  print(run_loop_trap(never_finishes, [], cost, budget=3))
+  # "SAFETY_NET_HIT" -- ignored the budget of 3 entirely
+
+  # The fix: check the actual budget against spend on every iteration.
+  def run_loop(model_fn, conversation, cost_so_far, budget):
+      while cost_so_far["spent"] < budget:
+          response = model_fn(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          conversation.append({"role": "tool_result", "content": "result"})
+          cost_so_far["spent"] += 1
+      return "gave up: budget exhausted"
+
+  cost2 = {"spent": 0}
+  print(run_loop(never_finishes, [], cost2, budget=3))
+  # "gave up: budget exhausted" -- correctly bounded by the actual configured budget
+starter_code: |
+  def never_finishes(conversation):
+      return {"tool_call": "keep_trying"}
+
+  def run_loop(model_fn, conversation, cost_so_far, budget):
+      while True:
+          response = model_fn(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          conversation.append({"role": "tool_result", "content": "result"})
+          cost_so_far["spent"] += 1
+          if cost_so_far["spent"] > 500:
+              return "SAFETY_NET_HIT"
+
+  cost = {"spent": 0}
+  print(run_loop(never_finishes, [], cost, budget=3))
+challenge: |
+  Fix `run_loop` so its `while` condition checks
+  `cost_so_far["spent"] < budget`, instead of looping unconditionally
+  and relying on the unrelated hardcoded safety net of 500. It should
+  print `gave up: budget exhausted`, not `SAFETY_NET_HIT`.
+expected_output: |
+  gave up: budget exhausted
+hints:
+  - "Change while True: to while cost_so_far[\"spent\"] < budget:, and return \"gave up: budget exhausted\" once the loop exits."
+  - "The caller's actual configured budget (3) should be what bounds the loop -- not an unrelated internal number that has nothing to do with it."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 41
+difficulty: core
+contains_patterns:
+  - "cost_so_far\\[\"spent\"\\] < budget"
+concept_tags: [solace_agent_mesh, agent_reasoning_loop, cost_budget]

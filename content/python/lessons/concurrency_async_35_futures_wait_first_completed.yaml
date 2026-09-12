@@ -1,0 +1,85 @@
+id: concurrency_async_35
+title: "Reading the Wrong Future's Result Instead of Whichever Finished First"
+language: python
+level: 325
+objective: "Fix code that reads a specific Future's result directly, when the actual intent was reacting to WHICHEVER of several submitted tasks finishes first -- concurrent.futures.wait(..., return_when=FIRST_COMPLETED) is the thread-pool equivalent of this category's asyncio.wait(FIRST_COMPLETED) lesson."
+explanation: |
+  Calling `.result()` on one specific `Future` blocks until *that*
+  particular task finishes and returns *its* value -- it has no idea
+  whether some other submitted task actually finished sooner. Code
+  that means "give me whichever of these finishes first" but reads a
+  specific future's result directly gets that future's own value
+  regardless of timing, which is silently wrong the moment that
+  particular future isn't the fastest one. `concurrent.futures.wait
+  (futures, return_when=FIRST_COMPLETED)` is built specifically for
+  this: it returns as soon as *any* future in the set finishes, in two
+  sets -- `done` and `not_done` -- so the caller can correctly grab
+  whichever one actually finished first.
+
+  The fix replaces the direct `.result()` call with `wait(...,
+  return_when=FIRST_COMPLETED)`, reading the result from whichever
+  future landed in `done`.
+example_code: |
+  # The trap: reads ONE specific future's result -- ignores whichever
+  # actually finished first.
+  import time
+  from concurrent.futures import ThreadPoolExecutor
+
+  def slow():
+      time.sleep(0.3)
+      return "slow"
+
+  def fast():
+      time.sleep(0.01)
+      return "fast"
+
+  with ThreadPoolExecutor(2) as pool:
+      f_slow_trap = pool.submit(slow)
+      f_fast_trap = pool.submit(fast)
+      print(f_slow_trap.result())
+  # "slow" -- WRONG if the intent was "whichever finishes first"
+
+  # The fix: wait(..., FIRST_COMPLETED) correctly finds the actual winner.
+  from concurrent.futures import wait, FIRST_COMPLETED
+
+  with ThreadPoolExecutor(2) as pool:
+      f_slow = pool.submit(slow)
+      f_fast = pool.submit(fast)
+      done, not_done = wait({f_slow, f_fast}, return_when=FIRST_COMPLETED)
+      winner = done.pop()
+      print(winner.result())
+  # "fast" -- correctly picked whichever future actually finished first
+starter_code: |
+  import time
+  from concurrent.futures import ThreadPoolExecutor
+
+  def slow():
+      time.sleep(0.3)
+      return "slow"
+
+  def fast():
+      time.sleep(0.01)
+      return "fast"
+
+  with ThreadPoolExecutor(2) as pool:
+      f_slow = pool.submit(slow)
+      f_fast = pool.submit(fast)
+      print(f_slow.result())
+challenge: |
+  Fix this using `wait({f_slow, f_fast}, return_when=FIRST_COMPLETED)`
+  (imported from `concurrent.futures`), reading `.result()` from
+  whichever future ends up in `done`, instead of reading `f_slow`
+  directly. It should print `fast`, not `slow`.
+expected_output: |
+  fast
+hints:
+  - "from concurrent.futures import wait, FIRST_COMPLETED, then: done, not_done = wait({f_slow, f_fast}, return_when=FIRST_COMPLETED); print(done.pop().result())."
+  - "Reading one specific future's result always gives that future's own value, regardless of timing -- wait(..., FIRST_COMPLETED) is what actually finds whichever one finished first."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 35
+difficulty: deep_dive
+contains_patterns:
+  - "return_when=FIRST_COMPLETED"
+concept_tags: [threading, futures, concurrency]

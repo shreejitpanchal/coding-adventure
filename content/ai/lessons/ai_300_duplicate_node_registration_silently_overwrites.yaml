@@ -1,0 +1,74 @@
+id: ai_300
+title: "Registering a Node Twice Under the Same Name Should Raise, Not Silently Overwrite"
+language: ai
+level: 300
+objective: "Fix a node-registration function that silently replaces an existing node whenever the same name is registered again, when an accidental duplicate registration should be caught with a clear error instead of quietly discarding whichever node was registered first."
+explanation: |
+  Registering two different functions under the same node name is
+  almost always a mistake -- a copy-pasted registration call, a typo
+  that happens to collide with an existing name -- and silently letting
+  the second one win means whichever node was registered first simply
+  stops existing, with nothing in the graph's own behavior to hint that
+  anything went wrong. Catching the collision at registration time,
+  with a clear error naming exactly which node name collided, turns a
+  silent and confusing behavior change into an immediate, obvious
+  signal.
+
+  The bug this exercise fixes assigns into `nodes[name]` unconditionally.
+  The fix checks whether that name is already registered first, and
+  raises if it is.
+example_code: |
+  # The trap: silently OVERWRITES an existing node under the same
+  # name, no matter what.
+  def add_node_trap(nodes, name, fn):
+      nodes[name] = fn
+
+  nodes = {}
+  add_node_trap(nodes, "greet", lambda s: "hello")
+  add_node_trap(nodes, "greet", lambda s: "bonjour")   # accidental duplicate registration
+  print(nodes["greet"](None))
+  # "bonjour" -- the original "greet" node was silently replaced, with no warning at all
+
+  # The fix: check whether the name is already registered, raise if so.
+  def add_node(nodes, name, fn):
+      if name in nodes:
+          raise ValueError(f"node already registered: {name}")
+      nodes[name] = fn
+
+  nodes2 = {}
+  add_node(nodes2, "greet", lambda s: "hello")
+  try:
+      add_node(nodes2, "greet", lambda s: "bonjour")
+      print(nodes2["greet"](None))
+  except ValueError as e:
+      print(str(e))
+  # "node already registered: greet" -- correctly caught instead of silently overwriting
+starter_code: |
+  def add_node(nodes, name, fn):
+      nodes[name] = fn
+
+  nodes = {}
+  add_node(nodes, "greet", lambda s: "hello")
+  try:
+      add_node(nodes, "greet", lambda s: "bonjour")
+      print(nodes["greet"](None))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `add_node` so it raises `ValueError(f"node already registered:
+  {name}")` when `name` is already a key in `nodes`, instead of always
+  overwriting it. It should print `node already registered: greet`,
+  not `bonjour`.
+expected_output: |
+  node already registered: greet
+hints:
+  - "Add: if name in nodes: raise ValueError(f\"node already registered: {name}\"), as the first line of the function."
+  - "This check needs to happen BEFORE nodes[name] = fn ever runs -- once the assignment happens, the original registration is already gone."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 35
+difficulty: warmup
+contains_patterns:
+  - "if name in nodes:"
+concept_tags: [langgraph, node_registration, error_handling]

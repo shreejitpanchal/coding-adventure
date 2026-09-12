@@ -1,0 +1,73 @@
+id: ai_113
+title: "Merging Multi-Query Results Needs to Deduplicate, Not Just Concatenate"
+language: ai
+level: 113
+objective: "Fix a multi-query retrieval merge that concatenates results from several reformulated queries without deduplicating, letting the same document appear multiple times and crowd out genuinely different results."
+explanation: |
+  **Multi-query retrieval** runs several reformulated versions of a
+  user's question (different phrasings, different emphasis) and merges
+  their individual result sets, specifically to catch relevant
+  documents that any single phrasing alone might have missed. But
+  different reformulations often retrieve *overlapping* results too --
+  the same strongly relevant document can easily show up in the top
+  results for several of the reformulated queries at once. Simply
+  concatenating every query's results without deduplicating means that
+  document occupies multiple slots in the final merged list, crowding
+  out other genuinely different documents that could have filled those
+  slots instead.
+
+  The bug this exercise fixes concatenates every query's result list
+  directly, with no deduplication at all. The fix merges them while
+  keeping only the first occurrence of each unique document, so a
+  document retrieved by multiple reformulations counts once, freeing up
+  the remaining slots for other results.
+example_code: |
+  # The trap: concatenates every query's results -- the SAME document
+  # can occupy multiple slots if several reformulations all found it.
+  def merge_trap(results_per_query):
+      merged = []
+      for results in results_per_query:
+          merged.extend(results)
+      return merged
+
+  results_per_query = [["docA", "docB"], ["docA", "docC"], ["docA", "docD"]]
+  print(len(merge_trap(results_per_query)))   # 6 -- "docA" alone occupies 3 of the 6 slots
+
+  # The fix: merge while keeping only the FIRST occurrence of each document.
+  def merge_deduped(results_per_query):
+      merged, seen = [], set()
+      for results in results_per_query:
+          for doc in results:
+              if doc not in seen:
+                  merged.append(doc)
+                  seen.add(doc)
+      return merged
+
+  print(len(merge_deduped(results_per_query)))   # 4 -- "docA" now counted exactly once
+starter_code: |
+  def merge_deduped(results_per_query):
+      merged = []
+      for results in results_per_query:
+          merged.extend(results)
+      return merged
+
+  results_per_query = [["docA", "docB"], ["docA", "docC"], ["docA", "docD"]]
+  print(len(merge_deduped(results_per_query)))
+challenge: |
+  Fix `merge_deduped` so it tracks which documents have already been
+  added (a `seen` set) and only appends a document the first time it's
+  encountered across all the queries' results. It should print `4`,
+  not `6`.
+expected_output: |
+  4
+hints:
+  - "Track a `seen = set()` alongside the merged list, and check `if doc not in seen:` before appending."
+  - "After appending a document, add it to `seen` too, so later occurrences of the same document (from other queries' results) get skipped."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 28
+difficulty: core
+contains_patterns:
+  - "if doc not in seen"
+concept_tags: [rag, multi_query_retrieval, deduplication]

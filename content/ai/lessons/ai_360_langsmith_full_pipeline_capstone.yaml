@@ -1,0 +1,84 @@
+id: ai_360
+title: "Capstone: Cost Rollup and Per-Example Regression, Fixed Together"
+language: ai
+level: 360
+objective: "Fix an experiment analyzer that combines this category's cost-rollup lesson and its original per-example regression-detection lesson into one composite bug -- a cost calculation that ignores every child run, feeding an aggregate-only regression check that hides an individual example flipping from correct to wrong -- so only fixing both together produces a trustworthy analysis."
+explanation: |
+  This category opened with the idea that comparing two experiments by
+  their aggregate totals alone can hide a real regression on a specific
+  example, and separately covered that a trace's true cost has to roll
+  up every child run, not just the top-level one. This capstone
+  combines both defects into a single experiment-analysis function:
+  the reported cost only counts the root's own line item, and the
+  regression check only compares the two totals -- so it's possible to
+  simultaneously under-report what an experiment actually cost AND
+  miss a genuine regression, while every number involved looks
+  perfectly reasonable in isolation.
+
+  The bug this exercise fixes indexes `run_costs[0]` for the cost
+  (ignoring every other run) and compares only the two aggregate
+  totals for regression (missing individual flips). The fix sums every
+  run's cost, and checks every example individually for a flip from
+  correct to wrong.
+example_code: |
+  # The trap: cost only counts the ROOT's own line item, AND
+  # regression only compares the two AGGREGATE totals.
+  def analyze_experiment_trap(baseline_leaf_scores, candidate_leaf_scores, run_costs):
+      total_cost = run_costs[0]
+      baseline_total = sum(baseline_leaf_scores)
+      candidate_total = sum(candidate_leaf_scores)
+      regression = "REGRESSION" if candidate_total < baseline_total else "OK"
+      return {"total_cost": total_cost, "regression": regression}
+
+  run_costs = [0, 2, 3]   # [root's own cost, child1's cost, child2's cost]
+  baseline_leaf_scores = [True, True, False]
+  candidate_leaf_scores = [True, False, True]   # same total (2), but example index 1 flipped from correct to wrong
+  result_trap = analyze_experiment_trap(baseline_leaf_scores, candidate_leaf_scores, run_costs)
+  print(result_trap["total_cost"], result_trap["regression"])
+  # 0 OK -- wrong on both counts: the cost ignores both children, and the regression is completely hidden
+
+  # The fix: sum every run's cost, AND check every example individually.
+  def analyze_experiment(baseline_leaf_scores, candidate_leaf_scores, run_costs):
+      total_cost = sum(run_costs)
+      regressed = [
+          i for i, (b, c) in enumerate(zip(baseline_leaf_scores, candidate_leaf_scores))
+          if b and not c
+      ]
+      regression = "REGRESSION" if regressed else "OK"
+      return {"total_cost": total_cost, "regression": regression}
+
+  result = analyze_experiment(baseline_leaf_scores, candidate_leaf_scores, run_costs)
+  print(result["total_cost"], result["regression"])
+  # 5 REGRESSION -- correctly reflects the full cost and the real, hidden regression
+starter_code: |
+  def analyze_experiment(baseline_leaf_scores, candidate_leaf_scores, run_costs):
+      total_cost = run_costs[0]
+      baseline_total = sum(baseline_leaf_scores)
+      candidate_total = sum(candidate_leaf_scores)
+      regression = "REGRESSION" if candidate_total < baseline_total else "OK"
+      return {"total_cost": total_cost, "regression": regression}
+
+  run_costs = [0, 2, 3]
+  baseline_leaf_scores = [True, True, False]
+  candidate_leaf_scores = [True, False, True]
+  result = analyze_experiment(baseline_leaf_scores, candidate_leaf_scores, run_costs)
+  print(result["total_cost"], result["regression"])
+challenge: |
+  Fix both bugs together: compute `total_cost` as `sum(run_costs)`
+  instead of just `run_costs[0]`, and compute `regression` by checking
+  every example individually for a flip from correct to wrong (`b and
+  not c`), instead of comparing only the two aggregate totals. It
+  should print `5 REGRESSION`, not `0 OK`.
+expected_output: |
+  5 REGRESSION
+hints:
+  - "First fix the cost: total_cost = sum(run_costs)."
+  - "Then fix the regression check: regressed = [i for i, (b, c) in enumerate(zip(baseline_leaf_scores, candidate_leaf_scores)) if b and not c], and regression = \"REGRESSION\" if regressed else \"OK\"."
+xp_reward: 20
+achievement: langsmith_master
+category: langsmith
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "if b and not c"
+concept_tags: [langsmith, capstone, cost_tracking, regression_detection]

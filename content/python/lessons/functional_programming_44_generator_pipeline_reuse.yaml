@@ -1,0 +1,66 @@
+id: functional_programming_44
+title: "A Lazy Pipeline Can Only Be Walked Once -- Materialize It First If You Need It Twice"
+language: python
+level: 379
+objective: "Fix code building a lazy generator pipeline and consuming it twice for two different computations, when a generator is exhausted after its first full consumption -- materializing it into a list once, up front, lets both computations reuse the same underlying data."
+explanation: |
+  This category's `lazy_generator_vs_eager_list` lesson covers why
+  laziness is often exactly what's wanted -- but it comes with a real
+  constraint: a generator can only be walked *once*. `sum(positives)`
+  fully drains the generator to compute the total; a second pass over
+  the same generator object afterward finds nothing left to give,
+  silently returning as if the sequence were empty, with no error at
+  all. Materializing the pipeline into a concrete list *once*, up
+  front -- accepting the eager evaluation this category otherwise
+  argues against -- is exactly right whenever the values genuinely
+  need to be consumed more than once.
+
+  The fix builds `positives` as a list comprehension instead of a
+  generator expression, so both `sum(...)` and `len(...)` can reuse it.
+example_code: |
+  # The trap: a generator pipeline consumed TWICE -- the second pass finds nothing.
+  def compute_stats_trap(data):
+      positives = (x for x in data if x > 0)
+      total = sum(positives)
+      count = sum(1 for _ in positives)      # generator already exhausted!
+      return total, count
+
+  print(compute_stats_trap([1, -2, 3, -4, 5]))
+  # (9, 0) -- WRONG, count should be 3, but the generator was already drained
+
+  # The fix: materialize into a list ONCE, reuse it for both computations.
+  def compute_stats(data):
+      positives = [x for x in data if x > 0]
+      total = sum(positives)
+      count = len(positives)
+      return total, count
+
+  print(compute_stats([1, -2, 3, -4, 5]))
+  # (9, 3) -- correctly reused the same materialized list for both
+starter_code: |
+  def compute_stats(data):
+      positives = (x for x in data if x > 0)
+      total = sum(positives)
+      count = sum(1 for _ in positives)
+      return total, count
+
+  print(compute_stats([1, -2, 3, -4, 5]))
+challenge: |
+  Fix `compute_stats` so `positives = [x for x in data if x > 0]` is a
+  list comprehension (not a generator expression), then use
+  `len(positives)` instead of re-consuming it with `sum(1 for _ in
+  positives)`. It should print `(9, 3)`, not `(9, 0)`.
+expected_output: |
+  (9, 3)
+hints:
+  - "positives = [x for x in data if x > 0], then count = len(positives)."
+  - "A generator can only be walked ONCE -- summing it fully drains it, so a second consumption attempt finds nothing left, silently, with no error."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "positives = \\[x for x in data if x > 0\\]"
+  - "len\\(positives\\)"
+concept_tags: [functional_programming, generators, laziness, gotchas]

@@ -1,0 +1,85 @@
+id: ai_289
+title: "An Unintended Cycle Between Two Nodes Should Be Flagged, Not Silently Followed"
+language: ai
+level: 289
+objective: "Fix a graph walker that never notices a node being revisited outside of a deliberately allowed retry cycle, when an accidental back-and-forth between two nodes that was never meant to loop should be caught explicitly instead of just quietly running until some unrelated step cap kicks in."
+explanation: |
+  This category's earlier lesson covered a *deliberate* self-loop with
+  a bounded retry counter -- but an *accidental* cycle (a typo in an
+  edge, two nodes that were never meant to route back to each other) is
+  a different failure mode entirely: nothing about it looks like a
+  retry, there's no counter anywhere expecting it, and it should be
+  treated as a bug in the graph's own structure, not silently tolerated
+  the way an intentional retry loop is. A walker with no way to
+  distinguish "revisiting a node I'm allowed to revisit" from
+  "revisiting a node nothing ever expected to see twice" just keeps
+  walking either way.
+
+  The bug this exercise fixes never tracks which nodes have already
+  been visited at all. The fix tracks visited nodes and raises the
+  moment one is revisited outside the explicitly allowed set.
+example_code: |
+  # The trap: never tracks visited nodes at all -- an accidental cycle
+  # between two nodes is indistinguishable from ordinary progress.
+  def run_graph_trap(edges, start, end, max_steps, allowed_cycle_nodes):
+      current = start
+      steps = 0
+      while current != end and steps < max_steps:
+          current = edges[current]
+          steps += 1
+      return "completed"
+
+  edges = {"a": "b", "b": "a"}   # an unintended cycle -- "a" and "b" alternate forever
+  print(run_graph_trap(edges, "a", "END", 6, allowed_cycle_nodes=set()))
+  # "completed" -- silently ran through an unintended cycle without ever flagging it
+
+  # The fix: track visited nodes, raise on an unexpected revisit.
+  def run_graph(edges, start, end, max_steps, allowed_cycle_nodes):
+      current = start
+      seen = set()
+      steps = 0
+      while current != end and steps < max_steps:
+          if current in seen and current not in allowed_cycle_nodes:
+              raise ValueError(f"unintended cycle detected at node: {current}")
+          seen.add(current)
+          current = edges[current]
+          steps += 1
+      return "completed"
+
+  try:
+      print(run_graph(edges, "a", "END", 6, allowed_cycle_nodes=set()))
+  except ValueError as e:
+      print(str(e))
+  # "unintended cycle detected at node: a" -- correctly flagged as a structural problem
+starter_code: |
+  def run_graph(edges, start, end, max_steps, allowed_cycle_nodes):
+      current = start
+      steps = 0
+      while current != end and steps < max_steps:
+          current = edges[current]
+          steps += 1
+      return "completed"
+
+  edges = {"a": "b", "b": "a"}
+  try:
+      print(run_graph(edges, "a", "END", 6, allowed_cycle_nodes=set()))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `run_graph` so it tracks a `seen` set and raises `ValueError(f
+  "unintended cycle detected at node: {current}")` when a node not in
+  `allowed_cycle_nodes` is revisited. It should print
+  `unintended cycle detected at node: a`, not `completed`.
+expected_output: |
+  unintended cycle detected at node: a
+hints:
+  - "seen = set() before the loop; inside it, check if current in seen and current not in allowed_cycle_nodes: raise ValueError(...), then seen.add(current)."
+  - "With edges {\"a\": \"b\", \"b\": \"a\"}, \"a\" is revisited on the third step -- that's exactly the point where the check should fire."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 24
+difficulty: gotcha
+contains_patterns:
+  - "current in seen and current not in allowed_cycle_nodes"
+concept_tags: [langgraph, cycle_detection, graph_validation]

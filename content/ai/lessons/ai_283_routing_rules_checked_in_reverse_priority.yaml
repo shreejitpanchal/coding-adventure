@@ -1,0 +1,65 @@
+id: ai_283
+title: "Priority-Ordered Routing Rules Must Be Checked in Priority Order"
+language: ai
+level: 283
+objective: "Fix a multi-rule router that checks its rules in reverse order, so a lower-priority rule matches before a higher-priority one ever gets a chance, when the whole point of ordering the rules is that the first (highest-priority) match should win."
+explanation: |
+  When several routing rules could plausibly match the same state --
+  "urgent" and "normal" priority might both technically be true for a
+  high-priority item -- the order the rules are checked in decides
+  which one actually wins. Checking them in the wrong order means a
+  broader, lower-priority rule can shadow a more specific, higher-
+  priority one that should have taken precedence, silently routing
+  urgent items down the ordinary path.
+
+  The bug this exercise fixes iterates the rules in reverse. The fix
+  checks them in their actual declared (highest-priority-first) order.
+example_code: |
+  # The trap: checks rules in REVERSE priority order -- a
+  # lower-priority rule matches before the higher-priority one gets a
+  # chance.
+  def route_trap(state, rules):
+      for name, condition in reversed(list(rules.items())):
+          if condition(state):
+              return name
+      return "default"
+
+  rules = {"urgent": lambda s: s["priority"] >= 8, "normal": lambda s: s["priority"] >= 3}
+  print(route_trap({"priority": 9}, rules))
+  # "normal" -- WRONG, checked in reverse order so the lower-priority rule matched first
+
+  # The fix: check rules in their actual declared order.
+  def route(state, rules):
+      for name, condition in rules.items():
+          if condition(state):
+              return name
+      return "default"
+
+  print(route({"priority": 9}, rules))
+  # "urgent" -- correctly matched the first (highest-priority) rule
+starter_code: |
+  def route(state, rules):
+      for name, condition in reversed(list(rules.items())):
+          if condition(state):
+              return name
+      return "default"
+
+  rules = {"urgent": lambda s: s["priority"] >= 8, "normal": lambda s: s["priority"] >= 3}
+  print(route({"priority": 9}, rules))
+challenge: |
+  Fix `route` so it iterates `rules.items()` directly, in declared
+  order, instead of `reversed(list(rules.items()))`. It should print
+  `urgent`, not `normal`.
+expected_output: |
+  urgent
+hints:
+  - "Change for name, condition in reversed(list(rules.items())): to just for name, condition in rules.items():."
+  - "A priority of 9 satisfies BOTH rules' conditions -- which one wins depends entirely on which order they're checked in."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "for name, condition in rules\\.items\\(\\):"
+concept_tags: [langgraph, conditional_edges, rule_priority]

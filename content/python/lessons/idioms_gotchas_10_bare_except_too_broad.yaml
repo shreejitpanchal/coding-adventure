@@ -1,0 +1,65 @@
+id: idioms_gotchas_10
+title: "Starred Unpacking Lets You Grab 'Everything in the Middle'"
+language: python
+level: 79
+objective: "Fix an unpacking statement that tries to assign a variable-length sequence to a fixed number of names, when a starred target is what actually lets the first and last elements be pulled out while everything else collects into a list."
+explanation: |
+  Plain tuple/list unpacking (`a, b, c = values`) requires the number of
+  names to exactly match the number of items -- which breaks the
+  instant `values` has more or fewer elements than expected, even when
+  what you actually wanted was just "the first one, the last one, and
+  whatever's in between." A starred target (`a, *b, c = values`) solves
+  exactly that: `b` collects however many elements are left over, as a
+  list, regardless of how long `values` actually is.
+
+  The bug this exercise fixes tries fixed 3-name unpacking on a
+  variable-length list, raising a `ValueError` the moment the list
+  isn't exactly 3 items long. The fix uses a starred target for the
+  middle portion.
+example_code: |
+  # The trap: fixed 3-name unpacking -- crashes the moment the list
+  # isn't EXACTLY 3 items long.
+  def first_middle_last_trap(values):
+      first, middle, last = values
+      return first, middle, last
+
+  try:
+      first_middle_last_trap([1, 2, 3, 4, 5])
+  except ValueError:
+      print("unhandled")
+  # "unhandled" -- ValueError: too many values to unpack
+
+  # The fix: a starred target collects "everything in between" as a list.
+  def first_middle_last(values):
+      first, *middle, last = values
+      return first, middle, last
+
+  print(first_middle_last([1, 2, 3, 4, 5]))
+  # (1, [2, 3, 4], 5) -- correctly handles any length, 3 or more
+starter_code: |
+  def first_middle_last(values):
+      first, middle, last = values
+      return first, middle, last
+
+  try:
+      print(first_middle_last([1, 2, 3, 4, 5]))
+  except ValueError:
+      print("unhandled")
+challenge: |
+  Fix `first_middle_last` so it uses starred unpacking (`first, *middle,
+  last = values`), instead of fixed 3-name unpacking that only works
+  for exactly 3 items. It should print `(1, [2, 3, 4], 5)`, not
+  `unhandled`.
+expected_output: |
+  (1, [2, 3, 4], 5)
+hints:
+  - "Change first, middle, last = values to first, *middle, last = values."
+  - "The starred name always ends up as a list, even when it happens to collect only one item or none at all."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 10
+difficulty: warmup
+contains_patterns:
+  - "first, \\*middle, last = values"
+concept_tags: [idioms, unpacking, starred_expressions]

@@ -1,0 +1,85 @@
+id: concurrency_async_29
+title: "threading.Timer Schedules a One-Off Call Without Blocking the Caller"
+language: python
+level: 319
+objective: "Fix code using time.sleep() then a direct call to schedule a delayed action, which blocks the calling thread for the whole delay, when threading.Timer schedules the call to run later on its OWN thread, letting the caller continue immediately."
+explanation: |
+  `time.sleep(delay); do_something()` works for a delayed one-off
+  action, but it blocks the *calling* thread for the entire delay --
+  nothing else that thread needs to do can happen until the sleep
+  finishes. `threading.Timer(delay, func)` schedules `func` to run
+  after `delay` seconds on its *own* separate thread, started with
+  `.start()` the same way an ordinary `Thread` is -- the calling
+  thread returns immediately and can keep doing other work while the
+  timer counts down in the background.
+
+  The fix replaces the blocking `sleep`-then-call with a
+  `threading.Timer`.
+example_code: |
+  # The trap: sleep() blocks the CALLING thread for the whole delay.
+  import time
+
+  def notify_trap(log):
+      log.append("notified")
+
+  def schedule_trap(log, delay):
+      time.sleep(delay)         # blocks HERE for the whole delay
+      notify_trap(log)
+      log.append("scheduler continued")   # only runs AFTER the full delay
+
+  log_trap = []
+  schedule_trap(log_trap, 0.05)
+  print(log_trap)
+  # ['notified', 'scheduler continued'] -- correct order, but the caller was
+  # blocked for the entire delay before it could do anything else at all
+
+  # The fix: Timer runs the delayed call on its OWN thread.
+  import threading
+
+  def notify(log):
+      log.append("notified")
+
+  def schedule(log, delay):
+      timer = threading.Timer(delay, notify, args=(log,))
+      timer.start()
+      log.append("scheduler continued")   # runs IMMEDIATELY, not after the delay
+      timer.join()
+
+  log = []
+  schedule(log, 0.05)
+  print(log)
+  # ['scheduler continued', 'notified'] -- correctly returned immediately,
+  # the notification happened later on the Timer's own background thread
+starter_code: |
+  import time
+
+  def notify(log):
+      log.append("notified")
+
+  def schedule(log, delay):
+      time.sleep(delay)
+      notify(log)
+      log.append("scheduler continued")
+
+  log = []
+  schedule(log, 0.05)
+  print(log)
+challenge: |
+  Fix `schedule` so it uses `threading.Timer(delay, notify, args=
+  (log,))` (started and then joined), letting `"scheduler continued"`
+  be appended immediately instead of only after the delay. It should
+  print `['scheduler continued', 'notified']`, not
+  `['notified', 'scheduler continued']`.
+expected_output: |
+  ['scheduler continued', 'notified']
+hints:
+  - "timer = threading.Timer(delay, notify, args=(log,)); timer.start(); log.append(\"scheduler continued\"); timer.join()."
+  - "time.sleep() blocks the calling thread for the entire delay -- threading.Timer runs the delayed call on its OWN thread, letting the caller continue immediately."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 29
+difficulty: core
+contains_patterns:
+  - "threading\\.Timer\\(delay, notify, args=\\(log,\\)\\)"
+concept_tags: [threading, timer, concurrency]

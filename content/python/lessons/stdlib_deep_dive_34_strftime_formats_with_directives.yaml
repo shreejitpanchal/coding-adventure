@@ -1,0 +1,59 @@
+id: stdlib_deep_dive_34
+title: "strftime Uses Format Directives -- Manual Field Concatenation Skips Zero-Padding"
+language: python
+level: 235
+objective: "Fix code that manually concatenates a datetime's year/month/day fields into a string (losing zero-padding on single-digit months and days), when strftime's format directives handle padding correctly."
+explanation: |
+  Manually building a date string with f-string interpolation of
+  `.month` and `.day` prints those integers exactly as they are --
+  `3` stays `"3"`, not `"03"`. A date string like `"2024-3-5"` is not
+  a valid `"YYYY-MM-DD"` format, even though every individual field is
+  numerically correct. `datetime.strftime("%Y-%m-%d")` uses format
+  directives that zero-pad `%m` and `%d` to two digits automatically,
+  producing a genuinely well-formed date string.
+
+  The bug this exercise fixes builds the string manually and loses the
+  padding on single-digit months. The fix uses `strftime` with the
+  correct directives.
+example_code: |
+  # The trap: manual field interpolation has no zero-padding.
+  from datetime import datetime
+
+  def format_date_trap(dt):
+      return f"{dt.year}-{dt.month}-{dt.day}"
+
+  d = datetime(2024, 3, 5)
+  print(format_date_trap(d))
+  # "2024-3-5" -- WRONG, not zero-padded to a valid YYYY-MM-DD shape
+
+  # The fix: strftime directives zero-pad automatically.
+  def format_date(dt):
+      return dt.strftime("%Y-%m-%d")
+
+  print(format_date(d))
+  # "2024-03-05" -- correctly zero-padded
+starter_code: |
+  from datetime import datetime
+
+  def format_date(dt):
+      return f"{dt.year}-{dt.month}-{dt.day}"
+
+  d = datetime(2024, 3, 5)
+  print(format_date(d))
+challenge: |
+  Fix `format_date` so it uses `dt.strftime("%Y-%m-%d")` instead of
+  manual f-string interpolation. It should print `2024-03-05`, not
+  `2024-3-5`.
+expected_output: |
+  2024-03-05
+hints:
+  - "return dt.strftime(\"%Y-%m-%d\")."
+  - "%m and %d always zero-pad to two digits -- manual interpolation of .month/.day never does."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 34
+difficulty: gotcha
+contains_patterns:
+  - "dt\\.strftime\\(\"%Y-%m-%d\"\\)"
+concept_tags: [datetime, strftime]

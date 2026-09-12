@@ -1,0 +1,63 @@
+id: core_refresher_26
+title: "__add__ Lets Your Own Objects Use the + Operator Directly"
+language: python
+level: 139
+objective: "Replace an explicitly-named add() method with the __add__ dunder method, so instances of the class can be combined with the ordinary + operator."
+explanation: |
+  Defining `__add__(self, other)` on a class is what makes `+` work
+  between its instances at all -- `a + b` is really just Python calling
+  `a.__add__(b)` under the hood. A method named plainly `add()` works
+  exactly the same functionally, but forces every caller to know and
+  use that specific method name; overloading `__add__` instead lets the
+  class participate in the same natural `+` syntax built-in numeric
+  types already use, which is usually the whole point of representing
+  something as an addable value in the first place.
+example_code: |
+  # A plainly-named method -- functionally fine, but doesn't work with +.
+  class VectorMethod:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def add(self, other):
+          return VectorMethod(self.x + other.x, self.y + other.y)
+
+  v_loop = VectorMethod(1, 2).add(VectorMethod(3, 4))
+  print(v_loop.x, v_loop.y)                # 4 6
+
+  # __add__ makes + itself work between instances.
+  class Vector:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def __add__(self, other):
+          return Vector(self.x + other.x, self.y + other.y)
+
+  v = Vector(1, 2) + Vector(3, 4)
+  print(v.x, v.y)                          # 4 6
+starter_code: |
+  class Vector:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+      def add(self, other):
+          return Vector(self.x + other.x, self.y + other.y)
+
+  v = Vector(1, 2).add(Vector(3, 4))
+  print(v.x, v.y)
+challenge: |
+  Fix `Vector` so combining is done via `__add__` instead of a plain
+  `add()` method, and combine two vectors with `+` directly. Keep the
+  same output: 4 6.
+expected_output: |
+  4 6
+hints:
+  - "Rename add to __add__, then combine with v = Vector(1, 2) + Vector(3, 4)."
+  - "a + b is really Python calling a.__add__(b) -- defining that dunder method is what makes the operator itself work."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "def __add__\\(self, other\\):"
+concept_tags: [operator_overloading, dunder_methods]

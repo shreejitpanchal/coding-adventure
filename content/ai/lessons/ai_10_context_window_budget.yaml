@@ -69,7 +69,7 @@ hints:
   - "if len(result) + len(chunk) > budget: break -- add this check as the first line inside the loop, before appending."
   - "Chunks are already ordered most-to-least relevant, so stopping early naturally keeps the most relevant ones."
 xp_reward: 10
-achievement: rag_master
+achievement: null
 category: rag
 category_level: 5
 difficulty: core

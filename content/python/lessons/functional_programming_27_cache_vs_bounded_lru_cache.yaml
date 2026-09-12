@@ -1,0 +1,80 @@
+id: functional_programming_27
+title: "A Small lru_cache Evicts Old Entries -- functools.cache Never Does"
+language: python
+level: 362
+objective: "Fix a memoized function using a small, bounded lru_cache(maxsize=2), which evicts older cached results once the cache fills up (silently recomputing an input seen before), when functools.cache (equivalent to lru_cache(maxsize=None)) never evicts anything at all."
+explanation: |
+  `@lru_cache(maxsize=N)` only remembers the `N` *most recently used*
+  distinct inputs -- once a genuinely new input arrives and the cache
+  is already full, the least-recently-used entry is evicted to make
+  room. Requesting that evicted input again looks, from the caller's
+  side, exactly like requesting anything else -- but it silently
+  triggers a real recomputation, since the cached answer is already
+  gone. `functools.cache` (a shorthand for `lru_cache(maxsize=None)`)
+  never evicts anything -- every distinct input, once computed, stays
+  cached for the lifetime of the program, which is the right choice
+  whenever the set of distinct inputs is small enough that memory
+  isn't a real concern.
+
+  The fix replaces the small, bounded `lru_cache(maxsize=2)` with
+  `functools.cache`.
+example_code: |
+  # The trap: a tiny maxsize=2 cache evicts the oldest entry once full.
+  from functools import lru_cache
+
+  call_count_trap = [0]
+
+  @lru_cache(maxsize=2)
+  def compute_trap(n):
+      call_count_trap[0] += 1
+      return n * n
+
+  for n in [1, 2, 3, 1]:      # computing 3 evicts 1's cached result (maxsize=2)
+      compute_trap(n)
+  print(call_count_trap[0])
+  # 4 -- WRONG if every distinct input should be cached permanently
+
+  # The fix: functools.cache never evicts anything at all.
+  from functools import cache
+
+  call_count = [0]
+
+  @cache
+  def compute(n):
+      call_count[0] += 1
+      return n * n
+
+  for n in [1, 2, 3, 1]:
+      compute(n)
+  print(call_count[0])
+  # 3 -- correctly cached every distinct input permanently, no eviction
+starter_code: |
+  from functools import lru_cache
+
+  call_count = [0]
+
+  @lru_cache(maxsize=2)
+  def compute(n):
+      call_count[0] += 1
+      return n * n
+
+  for n in [1, 2, 3, 1]:
+      compute(n)
+  print(call_count[0])
+challenge: |
+  Fix this by importing `cache` from `functools` instead of
+  `lru_cache`, and decorating `compute` with `@cache` instead of
+  `@lru_cache(maxsize=2)`. It should print `3`, not `4`.
+expected_output: |
+  3
+hints:
+  - "from functools import cache, then decorate with @cache instead of @lru_cache(maxsize=2)."
+  - "A bounded lru_cache evicts the least-recently-used entry once full -- functools.cache never evicts anything, remembering every distinct input for the program's whole lifetime."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 27
+difficulty: deep_dive
+contains_patterns:
+  - "@cache"
+concept_tags: [functional_programming, memoization, functools]

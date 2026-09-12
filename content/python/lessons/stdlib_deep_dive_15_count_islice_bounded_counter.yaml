@@ -1,0 +1,63 @@
+id: stdlib_deep_dive_15
+title: "itertools.count Makes an Infinite Counter -- islice Is What Bounds It"
+language: python
+level: 216
+objective: "Replace a manual while loop incrementing a counter with itertools.count paired with islice, which produces the same bounded sequence starting from any value."
+explanation: |
+  `itertools.count(start)` produces an infinite sequence of increasing
+  numbers, starting from `start` -- genuinely infinite, so it needs to
+  be combined with something that bounds it, like this category's
+  earlier `islice` lesson, to actually be consumed into a finite
+  result. `list(islice(count(start), n))` reads directly as "count
+  starting from `start`, but only take `n` of them" -- the same effect
+  as a manual `while len(result) < n` loop, expressed as composed,
+  reusable pieces instead of hand-managed loop state.
+example_code: |
+  # A manual while loop, tracking both the counter and how many
+  # results have been collected so far.
+  def first_n_from_loop(start, n):
+      result = []
+      i = start
+      while len(result) < n:
+          result.append(i)
+          i += 1
+      return result
+
+  print(first_n_from_loop(5, 4))
+  # [5, 6, 7, 8]
+
+  # count() + islice() compose to the same bounded sequence.
+  from itertools import count, islice
+
+  def first_n_from(start, n):
+      return list(islice(count(start), n))
+
+  print(first_n_from(5, 4))
+  # [5, 6, 7, 8]
+starter_code: |
+  def first_n_from(start, n):
+      result = []
+      i = start
+      while len(result) < n:
+          result.append(i)
+          i += 1
+      return result
+
+  print(first_n_from(5, 4))
+challenge: |
+  Rewrite `first_n_from` using `itertools.count(start)` combined with
+  `itertools.islice(..., n)`, instead of a manual while loop. Keep the
+  same output: [5, 6, 7, 8].
+expected_output: |
+  [5, 6, 7, 8]
+hints:
+  - "from itertools import count, islice, then: return list(islice(count(start), n))."
+  - "count(start) alone never stops -- islice is what turns it into a genuinely finite result."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "islice\\(count\\(start\\), n\\)"
+concept_tags: [itertools, count, islice]

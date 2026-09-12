@@ -1,0 +1,104 @@
+id: functional_programming_50
+title: "Capstone: A Pure, Immutable Pipeline From Raw Records to a Final Report"
+language: python
+level: 385
+objective: "Combine this category's core ideas -- pure functions, immutable frozen dataclasses, and a functools.reduce fold -- into one small pipeline: parse raw records into immutable objects, then fold them into a single aggregated report, with no shared mutable state anywhere in the process."
+explanation: |
+  This category has built up several separate, reusable ideas: pure
+  functions with no hidden side effects, `@dataclass(frozen=True)` for
+  data that can't be silently mutated out from under a caller, and
+  `functools.reduce` for expressing accumulation as a fold instead of
+  a mutating loop. A realistic small pipeline combines all three:
+  parse each raw record into an immutable `Sale` object (pure --
+  same input always produces an equal, independent object), then fold
+  the whole list of sales into one aggregated `Report` (also
+  immutable) using `reduce`, building a *new* `Report` at each step
+  instead of mutating a shared accumulator. Nothing in this pipeline
+  is ever mutated after creation, and every step is a pure function of
+  its input -- exactly the properties this whole category has been
+  building toward.
+
+  The bug this exercise fixes uses a mutable dict accumulator, mutated
+  in place across a loop. The fix rebuilds the whole pipeline using
+  frozen dataclasses and a `reduce` fold instead.
+example_code: |
+  # The trap: a mutable dict accumulator, mutated in place across a loop.
+  def parse_sale_trap(record):
+      return {"amount": record[1]}
+
+  def build_report_trap(records):
+      report = {"total": 0, "count": 0}
+      for record in records:
+          sale = parse_sale_trap(record)
+          report["total"] += sale["amount"]     # mutates the SAME dict every time
+          report["count"] += 1
+      return report
+
+  raw = [("a", 100), ("b", 50), ("c", 75)]
+  print(build_report_trap(raw))
+  # {'total': 225, 'count': 3} -- correct numbers, but built through
+  # in-place mutation of one shared accumulator the whole way through
+
+  # The fix: immutable Sale/Report objects, folded with reduce -- no mutation anywhere.
+  from dataclasses import dataclass
+  from functools import reduce
+
+  @dataclass(frozen=True)
+  class Sale:
+      amount: float
+
+  @dataclass(frozen=True)
+  class Report:
+      total: float = 0
+      count: int = 0
+
+  def parse_sale(record):
+      return Sale(amount=record[1])
+
+  def add_sale(report, sale):
+      return Report(total=report.total + sale.amount, count=report.count + 1)
+
+  def build_report(records):
+      sales = [parse_sale(r) for r in records]
+      return reduce(add_sale, sales, Report())
+
+  print(build_report(raw))
+  # Report(total=225, count=3) -- same numbers, built with zero mutation:
+  # every Sale and every intermediate Report is a brand-new, immutable object
+starter_code: |
+  def parse_sale(record):
+      return {"amount": record[1]}
+
+  def build_report(records):
+      report = {"total": 0, "count": 0}
+      for record in records:
+          sale = parse_sale(record)
+          report["total"] += sale["amount"]
+          report["count"] += 1
+      return report
+
+  raw = [("a", 100), ("b", 50), ("c", 75)]
+  print(build_report(raw))
+challenge: |
+  Rewrite this pipeline using `@dataclass(frozen=True)` for both
+  `Sale` and `Report`, with `parse_sale` building a `Sale`, and
+  `build_report` folding the list of `Sale`s into a `Report` via
+  `reduce(add_sale, sales, Report())`, where `add_sale(report, sale)`
+  returns a brand-new `Report` rather than mutating anything. It
+  should print `Report(total=225, count=3)`, not
+  `{'total': 225, 'count': 3}`.
+expected_output: |
+  Report(total=225, count=3)
+hints:
+  - "@dataclass(frozen=True) class Sale: amount: float, and @dataclass(frozen=True) class Report: total: float = 0; count: int = 0."
+  - "def add_sale(report, sale): return Report(total=report.total + sale.amount, count=report.count + 1), then reduce(add_sale, sales, Report())."
+xp_reward: 20
+achievement: functional_programming_master
+category: functional_programming
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "class Sale:"
+  - "class Report:"
+  - "reduce\\(add_sale, sales, Report\\(\\)\\)"
+concept_tags: [functional_programming, purity, immutability, reduce, capstone]

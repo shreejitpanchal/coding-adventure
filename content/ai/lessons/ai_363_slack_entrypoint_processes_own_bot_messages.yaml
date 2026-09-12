@@ -1,0 +1,58 @@
+id: ai_363
+title: "A Slack Entrypoint Must Never Process the Bot's Own Messages"
+language: ai
+level: 363
+objective: "Fix a Slack event handler that processes every message regardless of who sent it, when a bot reading and reacting to its own replies creates an infinite loop -- reply triggers a new event, which the bot then reads and replies to again, forever."
+explanation: |
+  A bot connected to Slack receives events for every message posted in
+  a channel it's watching, including messages the bot itself just
+  posted. Without an explicit check for that, the bot's own reply
+  becomes a new incoming event, which it then processes and replies to
+  again, and again -- an infinite loop of a bot talking to itself,
+  triggered by nothing more than doing its job correctly the first
+  time.
+
+  The bug this exercise fixes processes every event regardless of
+  `event["user"]`. The fix checks whether the message came from the
+  bot itself and ignores it if so.
+example_code: |
+  # The trap: processes EVERY message, including the bot's OWN --
+  # a recipe for an infinite reply loop.
+  def handle_slack_event_trap(event, bot_user_id):
+      return {"text": event["text"]}
+
+  event = {"text": "Sure, here's the report", "user": "BOT123"}
+  print(handle_slack_event_trap(event, bot_user_id="BOT123") is not None)
+  # True -- wrongly processed the bot's OWN message
+
+  # The fix: check whether the message came from the bot itself.
+  def handle_slack_event(event, bot_user_id):
+      if event["user"] == bot_user_id:
+          return None
+      return {"text": event["text"]}
+
+  print(handle_slack_event(event, bot_user_id="BOT123") is not None)
+  # False -- correctly ignored, since the bot shouldn't react to itself
+starter_code: |
+  def handle_slack_event(event, bot_user_id):
+      return {"text": event["text"]}
+
+  event = {"text": "Sure, here's the report", "user": "BOT123"}
+  print(handle_slack_event(event, bot_user_id="BOT123") is not None)
+challenge: |
+  Fix `handle_slack_event` so it returns `None` when
+  `event["user"] == bot_user_id`, instead of processing every message
+  unconditionally. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add: if event[\"user\"] == bot_user_id: return None, as the first check in the function."
+  - "A bot's own reply becomes a brand new incoming event -- without this check, that reply gets processed and answered again, forever."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "event\\[\"user\"\\] == bot_user_id"
+concept_tags: [solace_agent_mesh, entrypoint, self_message_filtering]

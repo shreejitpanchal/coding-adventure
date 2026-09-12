@@ -1,0 +1,60 @@
+id: ai_358
+title: "Filtering by a Tag That Some Runs Don't Have Should Skip Them, Not Crash"
+language: ai
+level: 358
+objective: "Fix a tag-filter function that crashes with a KeyError the moment a run's tags dict doesn't contain the key being filtered on, when a run without that particular tag should just be excluded from the results, not blow up the entire filter."
+explanation: |
+  Not every run necessarily carries every possible tag -- a run from
+  before a particular tag was introduced, or one that simply never got
+  tagged with `"env"`, is a completely normal thing to encounter when
+  filtering across a whole trace history. Indexing directly into each
+  run's tags dict assumes every run has the key being filtered on,
+  which crashes the entire filter operation the instant it hits one
+  run that doesn't, rather than simply excluding that run from the
+  results the way a real absence of a match should be handled.
+
+  The bug this exercise fixes indexes `r["tags"][tag_key]` directly.
+  The fix uses `.get()`, so a run without that tag is naturally
+  excluded instead of crashing the whole filter.
+example_code: |
+  # The trap: crashes with a KeyError if a run's tags dict doesn't
+  # even have tag_key.
+  def filter_by_tag_trap(runs, tag_key, tag_value):
+      return [r for r in runs if r["tags"][tag_key] == tag_value]
+
+  runs = [{"tags": {"env": "prod"}}, {"tags": {}}]
+  # filter_by_tag_trap(runs, "env", "prod")  # KeyError: 'env' -- crashes on the second run
+
+  # The fix: use .get(), so a missing tag naturally excludes that run.
+  def filter_by_tag(runs, tag_key, tag_value):
+      return [r for r in runs if r["tags"].get(tag_key) == tag_value]
+
+  print(len(filter_by_tag(runs, "env", "prod")))
+  # 1 -- correctly matched only the run that actually has this tag
+starter_code: |
+  def filter_by_tag(runs, tag_key, tag_value):
+      return [r for r in runs if r["tags"][tag_key] == tag_value]
+
+  runs = [{"tags": {"env": "prod"}}, {"tags": {}}]
+  try:
+      print(len(filter_by_tag(runs, "env", "prod")))
+  except KeyError:
+      print("unhandled")
+challenge: |
+  Fix `filter_by_tag` so it uses `r["tags"].get(tag_key) == tag_value`
+  instead of `r["tags"][tag_key] == tag_value`, so a run missing that
+  tag key is naturally excluded instead of crashing. It should print
+  `1`, not `unhandled`.
+expected_output: |
+  1
+hints:
+  - "Replace r[\"tags\"][tag_key] with r[\"tags\"].get(tag_key)."
+  - ".get() returns None for a missing key, which simply won't equal tag_value -- no crash, and the run is correctly excluded."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 48
+difficulty: gotcha
+contains_patterns:
+  - "r\\[\"tags\"\\]\\.get\\(tag_key\\)"
+concept_tags: [langsmith, trace_search, tag_filtering]

@@ -1,0 +1,66 @@
+id: ai_374
+title: "Publishing to a Topic Nobody Subscribes To Should Be Caught, Not Silent"
+language: ai
+level: 374
+objective: "Fix a publish function that always reports success regardless of whether the topic is one any real agent is actually subscribed to, when a typo'd topic name publishes into the void with no error to indicate the message will never actually be received."
+explanation: |
+  A message published to a topic with even a single-character typo
+  simply disappears -- no subscriber matches it, no error occurs on
+  the publisher's side, and the message is gone forever with nothing
+  to indicate anything went wrong. Validating the topic against the
+  set of topics real agents are actually subscribed to before
+  publishing catches exactly this kind of silent failure at the one
+  point where it's still cheap to fix: before the message is sent, not
+  after waiting indefinitely for a response that was never coming.
+
+  The bug this exercise fixes always returns `"published"`, with no
+  validation. The fix checks the topic against `known_topics` first.
+example_code: |
+  # The trap: never validates the topic against known_topics at all --
+  # a typo'd topic "publishes" successfully into the void.
+  def publish_trap(topic, message, known_topics):
+      return "published"
+
+  known_topics = ["acme-mesh/a2a/v1/summarizer-agent"]
+  print(publish_trap("acme-mesh/a2a/v1/summarzier-agent", "task", known_topics))
+  # "published" -- but this topic has a typo, and nobody is actually subscribed to it
+
+  # The fix: validate the topic against the known set before publishing.
+  def publish(topic, message, known_topics):
+      if topic not in known_topics:
+          raise ValueError(f"no agent is subscribed to topic: {topic}")
+      return "published"
+
+  try:
+      publish("acme-mesh/a2a/v1/summarzier-agent", "task", known_topics)
+  except ValueError as e:
+      print(str(e))
+  # "no agent is subscribed to topic: acme-mesh/a2a/v1/summarzier-agent" -- correctly caught before the message vanished silently
+starter_code: |
+  def publish(topic, message, known_topics):
+      return "published"
+
+  known_topics = ["acme-mesh/a2a/v1/summarizer-agent"]
+  try:
+      print(publish("acme-mesh/a2a/v1/summarzier-agent", "task", known_topics))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `publish` so it raises `ValueError(f"no agent is subscribed to
+  topic: {topic}")` when `topic not in known_topics`, instead of
+  always returning `"published"`. It should print
+  `no agent is subscribed to topic: acme-mesh/a2a/v1/summarzier-agent`,
+  not `published`.
+expected_output: |
+  no agent is subscribed to topic: acme-mesh/a2a/v1/summarzier-agent
+hints:
+  - "Add: if topic not in known_topics: raise ValueError(f\"no agent is subscribed to topic: {topic}\"), before the return."
+  - "A single typo'd character in a topic name is enough to send a message somewhere nobody will ever read it -- this check catches that before it's too late."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "topic not in known_topics"
+concept_tags: [solace_agent_mesh, event_broker, topic_validation]

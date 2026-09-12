@@ -1,0 +1,73 @@
+id: stdlib_deep_dive_27
+title: "contextlib.suppress Accepts Several Exception Types in One Call"
+language: python
+level: 228
+objective: "Fix a lookup that only catches KeyError, when a bad index on the same lookup can also raise IndexError -- contextlib.suppress(KeyError, IndexError) handles both possible failures in one context manager."
+explanation: |
+  A lookup chained across two different structures (`d[key][index]`)
+  can fail in more than one way -- a missing dict key raises
+  `KeyError`, and a bad list index on the result raises `IndexError`.
+  Catching only one of the two leaves the other genuinely unhandled.
+  `contextlib.suppress` accepts multiple exception types in one call,
+  exactly like a multi-type `except (KeyError, IndexError):` clause
+  would, silencing either failure mode with the same single context
+  manager.
+
+  The bug this exercise fixes catches only `KeyError`. The fix
+  suppresses both `KeyError` and `IndexError`.
+example_code: |
+  # The trap: only catches KeyError -- an IndexError from a bad index
+  # still crashes.
+  def safe_lookup_trap(d, key, index):
+      try:
+          return d[key][index]
+      except KeyError:
+          return None
+
+  d = {"a": [1, 2, 3]}
+  try:
+      safe_lookup_trap(d, "a", 10)
+      print("ok")
+  except IndexError:
+      print("crashed")
+  # "crashed" -- the index was out of range, but only KeyError was ever handled
+
+  # The fix: suppress both possible failure modes in one call.
+  from contextlib import suppress
+
+  def safe_lookup(d, key, index):
+      with suppress(KeyError, IndexError):
+          return d[key][index]
+      return None
+
+  print(safe_lookup(d, "a", 10))
+  # None -- correctly handled, regardless of which of the two failures actually happened
+starter_code: |
+  def safe_lookup(d, key, index):
+      try:
+          return d[key][index]
+      except KeyError:
+          return None
+
+  d = {"a": [1, 2, 3]}
+  try:
+      print(safe_lookup(d, "a", 10))
+  except IndexError:
+      print("crashed")
+challenge: |
+  Fix `safe_lookup` so it uses `with suppress(KeyError, IndexError):`
+  (imported from `contextlib`), instead of only catching `KeyError`.
+  It should print `None`, not `crashed`.
+expected_output: |
+  None
+hints:
+  - "from contextlib import suppress, then: with suppress(KeyError, IndexError): return d[key][index], followed by return None."
+  - "suppress accepts multiple exception types just like a multi-type except clause -- both KeyError and IndexError are silenced by the same one context manager."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "suppress\\(KeyError, IndexError\\)"
+concept_tags: [contextlib, suppress]

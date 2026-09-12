@@ -1,0 +1,53 @@
+id: ai_222
+title: "An Elicitation Request Needs a Schema Describing What It's Asking For"
+language: ai
+level: 222
+objective: "Fix an elicitation-request builder that sends only a free-text message with no schema at all, when the client needs a 'requestedSchema' to know what shape of answer to actually collect from the user."
+explanation: |
+  When a server needs additional information from the user mid-task, it
+  can send an elicitation request -- but a plain text prompt alone
+  doesn't tell the client what *shape* the answer should take: a free
+  string, a number, a choice from a fixed set? `requestedSchema`
+  supplies exactly that, so the client can render an appropriate input
+  control and validate the answer before sending it back, instead of
+  just capturing raw freeform text and hoping it's usable.
+
+  The bug this exercise fixes sends only the `message`, with no schema
+  at all. The fix includes `requestedSchema` describing the expected
+  shape of the response.
+example_code: |
+  # The trap: no requestedSchema at all -- the client has no idea what
+  # shape of answer to collect.
+  def build_elicit_request_trap(message):
+      return {"message": message}
+
+  print("requestedSchema" in build_elicit_request_trap("What's your name?"))
+  # False -- the client can't validate or render an appropriate input control
+
+  # The fix: include a schema describing the expected shape.
+  def build_elicit_request(message, schema):
+      return {"message": message, "requestedSchema": schema}
+
+  print("requestedSchema" in build_elicit_request("What's your name?", {"type": "string"}))
+  # True -- the client now knows exactly what kind of answer to collect
+starter_code: |
+  def build_elicit_request(message, schema):
+      return {"message": message}
+
+  print("requestedSchema" in build_elicit_request("What's your name?", {"type": "string"}))
+challenge: |
+  Fix `build_elicit_request` so it also includes `"requestedSchema":
+  schema` in the returned dict. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"requestedSchema\": schema as a second key alongside \"message\"."
+  - "Without a schema, the client has to guess whether to collect a string, a number, or a choice from a fixed set."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 47
+difficulty: warmup
+contains_patterns:
+  - "\"requestedSchema\": schema"
+concept_tags: [mcp, elicitation, requested_schema]

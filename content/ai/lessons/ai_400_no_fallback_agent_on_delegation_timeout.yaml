@@ -1,0 +1,72 @@
+id: ai_400
+title: "A Non-Responsive Delegated Agent Should Trigger a Fallback, Not a Hang"
+language: ai
+level: 400
+objective: "Fix a delegation function that always waits on the primary agent regardless of whether it's known to be non-responsive, when a delegated agent that won't respond in time should trigger a fallback agent instead of leaving the whole task stuck waiting indefinitely."
+explanation: |
+  This category's earlier lesson covered the mesh-wide `with_fallbacks`
+  idea in the LangChain category's terms -- the same principle applies
+  directly to agent delegation: if the primary delegated agent is known
+  to be non-responsive, retrying the same call or waiting indefinitely
+  wastes time a fallback agent could have spent actually completing the
+  task. A delegation function with no fallback path at all leaves the
+  whole task permanently stuck the moment its one and only candidate
+  agent stops responding.
+
+  The bug this exercise fixes always calls `primary_agent_fn()`
+  regardless of `responded_in_time`. The fix checks that flag first,
+  calling the fallback instead when the primary is known to be
+  non-responsive.
+example_code: |
+  # The trap: always waits on the primary agent, even when it's
+  # already known to be non-responsive.
+  def delegate_with_timeout_trap(primary_agent_fn, fallback_agent_fn, responded_in_time):
+      return primary_agent_fn()
+
+  def primary_agent():
+      raise TimeoutError("primary agent did not respond")
+  def fallback_agent():
+      return "handled by fallback"
+
+  # delegate_with_timeout_trap(primary_agent, fallback_agent, responded_in_time=False)  # TimeoutError
+
+  # The fix: check for non-responsiveness first, use the fallback.
+  def delegate_with_timeout(primary_agent_fn, fallback_agent_fn, responded_in_time):
+      if not responded_in_time:
+          return fallback_agent_fn()
+      return primary_agent_fn()
+
+  print(delegate_with_timeout(primary_agent, fallback_agent, responded_in_time=False))
+  # "handled by fallback" -- correctly routed to the fallback instead of hanging
+starter_code: |
+  def primary_agent():
+      raise TimeoutError("primary agent did not respond")
+
+  def fallback_agent():
+      return "handled by fallback"
+
+  def delegate_with_timeout(primary_agent_fn, fallback_agent_fn, responded_in_time):
+      return primary_agent_fn()
+
+  try:
+      print(delegate_with_timeout(primary_agent, fallback_agent, responded_in_time=False))
+  except TimeoutError:
+      print("unhandled")
+challenge: |
+  Fix `delegate_with_timeout` so it checks `if not
+  responded_in_time: return fallback_agent_fn()` before ever calling
+  `primary_agent_fn`. It should print `handled by fallback`, not
+  `unhandled`.
+expected_output: |
+  handled by fallback
+hints:
+  - "Add the check as the first line of the function, before primary_agent_fn() is ever called."
+  - "A task shouldn't stay stuck waiting on an agent that's already known to be non-responsive -- the fallback exists for exactly this case."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "if not responded_in_time:"
+concept_tags: [solace_agent_mesh, delegation, fallback_routing]

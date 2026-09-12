@@ -1,0 +1,57 @@
+id: gotcha_gauntlet_12
+title: "The Monthly Report That Was Always One Day Short"
+language: python
+level: 257
+objective: "Fix a range() call meant to cover 'day 1 through day 30 inclusive' that actually stops one short, because range's upper bound is always exclusive."
+explanation: |
+  `range(start, stop)` never includes `stop` itself -- it produces
+  every integer from `start` up to, but not including, `stop`. Writing
+  `range(1, 30)` to mean "days 1 through 30" is a natural, very common
+  mistake: it actually produces `1, 2, ..., 29`, stopping one short of
+  30 entirely, since 30 was only ever the exclusive boundary, not a
+  value that gets generated. A report that's supposed to cover a full
+  30-day month ends up silently missing its very last day, with
+  nothing about the code visibly signaling that anything was left out.
+
+  The fix is to bump the exclusive stop value by one -- `range(1, 31)`
+  -- so day 30 is actually included, matching the inclusive range the
+  code was actually meant to describe.
+example_code: |
+  # The trap: range(1, 30) STOPS before reaching 30 -- day 30 is missing.
+  def days_in_month_trap(n):
+      return list(range(1, n))
+
+  days_trap = days_in_month_trap(30)
+  print(len(days_trap), days_trap[-1])
+  # 29 29 -- WRONG, a 30-day month should have 30 entries, ending at 30
+
+  # The fix: bump the exclusive stop by one to actually include day 30.
+  def days_in_month(n):
+      return list(range(1, n + 1))
+
+  days = days_in_month(30)
+  print(len(days), days[-1])
+  # 30 30 -- correctly includes every day, 1 through 30
+starter_code: |
+  def days_in_month(n):
+      return list(range(1, n))
+
+  days = days_in_month(30)
+  print(len(days), days[-1])
+challenge: |
+  Fix `days_in_month` so it uses `range(1, n + 1)`, instead of
+  `range(1, n)`, so the report actually includes day `n`. It should
+  print `30 30`, not `29 29`.
+expected_output: |
+  30 30
+hints:
+  - "return list(range(1, n + 1))."
+  - "range()'s stop value is always exclusive -- to include n itself, the stop argument needs to be n + 1, not n."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 12
+difficulty: gotcha
+contains_patterns:
+  - "range\\(1, n \\+ 1\\)"
+concept_tags: [range, off_by_one, gotchas]

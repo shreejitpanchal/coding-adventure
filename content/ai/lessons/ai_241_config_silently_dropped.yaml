@@ -1,0 +1,59 @@
+id: ai_241
+title: "A RunnableConfig Needs to Actually Reach the Function It Was Passed To"
+language: ai
+level: 241
+objective: "Fix an invoke wrapper that accepts a config argument but never forwards it to the function it calls, when the entire point of threading a config through is that the callee can actually read it."
+explanation: |
+  LangChain's `RunnableConfig` carries per-call settings (tags,
+  callbacks, run-specific overrides) through a chain so any step along
+  the way can read it if it needs to. A wrapper that accepts `config` as
+  a parameter but never actually passes it into the function it calls
+  defeats the entire purpose: the config exists in the wrapper's own
+  scope, but the callee -- the only place that could actually use it --
+  never sees it at all.
+
+  The bug this exercise fixes calls `fn(x)`, silently dropping `config`.
+  The fix forwards it through: `fn(x, config=config)`.
+example_code: |
+  # The trap: silently DROPS config -- the callee never even knows it
+  # was passed one.
+  def invoke_with_config_trap(fn, x, config):
+      return fn(x)
+
+  def annotate(x, config=None):
+      tag = config.get("tag") if config else "none"
+      return f"{x}-{tag}"
+
+  print(invoke_with_config_trap(annotate, 5, {"tag": "prod"}))   # "5-none" -- config never reached annotate
+
+  # The fix: forward config into the function call.
+  def invoke_with_config(fn, x, config):
+      return fn(x, config=config)
+
+  print(invoke_with_config(annotate, 5, {"tag": "prod"}))   # "5-prod" -- correctly threaded through
+starter_code: |
+  def annotate(x, config=None):
+      tag = config.get("tag") if config else "none"
+      return f"{x}-{tag}"
+
+  def invoke_with_config(fn, x, config):
+      return fn(x)
+
+  print(invoke_with_config(annotate, 5, {"tag": "prod"}))
+challenge: |
+  Fix `invoke_with_config` so it calls `fn(x, config=config)` instead of
+  `fn(x)`, actually forwarding the config through. It should print
+  `5-prod`, not `5-none`.
+expected_output: |
+  5-prod
+hints:
+  - "Change return fn(x) to return fn(x, config=config)."
+  - "Accepting a parameter and actually forwarding it to where it's needed are two different things -- this bug only does the first."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 21
+difficulty: warmup
+contains_patterns:
+  - "fn\\(x, config=config\\)"
+concept_tags: [langchain, runnable_config, parameter_threading]

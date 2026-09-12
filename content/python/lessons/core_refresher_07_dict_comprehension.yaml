@@ -1,0 +1,48 @@
+id: core_refresher_07
+title: "Loop to Dict Comprehension"
+language: python
+level: 120
+objective: "Rewrite an explicit loop that filters and builds a dict as a single dict comprehension."
+explanation: |
+  A dict comprehension is the dict equivalent of the list comprehension
+  from this category's first lesson -- `{key_expr: value_expr for item
+  in iterable if condition}` builds a new dict in one expression,
+  instead of initializing an empty dict and populating it key by key
+  inside an explicit loop. The shape is identical to a list
+  comprehension, just with a `key: value` pair instead of a single
+  expression before the `for`.
+example_code: |
+  # The explicit loop being replaced:
+  scores = {"a": 50, "b": 90, "c": 70}
+  passing_loop = {}
+  for k, v in scores.items():
+      if v >= 60:
+          passing_loop[k] = v
+  print(passing_loop)                     # {'b': 90, 'c': 70}
+
+  # As a dict comprehension:
+  passing = {k: v for k, v in scores.items() if v >= 60}
+  print(passing)                          # {'b': 90, 'c': 70}
+starter_code: |
+  scores = {"a": 50, "b": 90, "c": 70}
+  passing = {}
+  for k, v in scores.items():
+      if v >= 60:
+          passing[k] = v
+  print(passing)
+challenge: |
+  Rewrite this as a single-line dict comprehension producing the same
+  result: only the entries scoring 60 or above.
+expected_output: |
+  {'b': 90, 'c': 70}
+hints:
+  - "The shape is {key: value for item in iterable if condition}."
+  - "{k: v for k, v in scores.items() if v >= 60}"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "\\{k: v for k, v in scores\\.items\\(\\) if v >= 60\\}"
+concept_tags: [comprehensions, dicts]

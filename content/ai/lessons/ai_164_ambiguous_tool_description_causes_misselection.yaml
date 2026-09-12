@@ -1,0 +1,72 @@
+id: ai_164
+title: "A Vague Tool Description Can Accidentally Score as Well as a Specific One"
+language: ai
+level: 164
+objective: "Fix a tool registry entry whose description is so generic and broadly-worded that it happens to score just as well as a genuinely well-matched, specific tool -- letting keyword-overlap scoring (this category's own tool-selection lesson) pick the wrong one on a tie."
+explanation: |
+  This category's tool-selection lesson scored candidate tools by
+  keyword overlap with the task -- but that scoring is only as reliable
+  as the tool descriptions being scored against. A description worded
+  broadly enough to mention several unrelated concepts can accidentally
+  rack up the same keyword-overlap score as a tool that's genuinely,
+  specifically suited to the task, without actually being suited to it
+  at all -- and on a tie, whichever tool happens to be listed first
+  wins, by pure accident of ordering rather than genuine fitness.
+
+  The bug this exercise fixes gives a generic, catch-all tool a
+  description broad enough to accidentally tie with the specifically
+  correct tool's score, so the wrong (generic) tool gets selected
+  purely because it was listed first. The fix replaces that generic
+  tool's description with one that accurately reflects its own real,
+  different purpose, removing the accidental keyword overlap entirely.
+example_code: |
+  # The trap: an overly broad description accidentally ties the score
+  # of a genuinely well-matched tool -- the wrong one wins on list order.
+  def score(tool, keywords):
+      return sum(1 for kw in keywords if kw in tool["description"])
+
+  task_keywords = ["invoice", "number"]
+  tools_trap = [
+      {"name": "generic_tool", "description": "handles invoice and number related data"},
+      {"name": "invoice_lookup", "description": "invoice number lookup tool"},
+  ]
+  best_trap = max(tools_trap, key=lambda t: score(t, task_keywords))
+  print(best_trap["name"])   # "generic_tool" -- WRONG, it's not actually suited to invoice lookups at all
+
+  # The fix: give the generic tool a description reflecting its OWN real purpose.
+  tools_fixed = [
+      {"name": "generic_tool", "description": "retrieves account balance summaries"},
+      {"name": "invoice_lookup", "description": "invoice number lookup tool"},
+  ]
+  best_fixed = max(tools_fixed, key=lambda t: score(t, task_keywords))
+  print(best_fixed["name"])   # "invoice_lookup" -- correctly wins now that the accidental overlap is gone
+starter_code: |
+  def score(tool, keywords):
+      return sum(1 for kw in keywords if kw in tool["description"])
+
+  tools = [
+      {"name": "generic_tool", "description": "handles invoice and number related data"},
+      {"name": "invoice_lookup", "description": "invoice number lookup tool"},
+  ]
+  task_keywords = ["invoice", "number"]
+  best = max(tools, key=lambda t: score(t, task_keywords))
+  print(best["name"])
+challenge: |
+  Fix the `generic_tool` entry's `"description"` field so it reflects
+  its own specific, real purpose (e.g. `"retrieves account balance
+  summaries"`) instead of the overly broad `"handles invoice and number
+  related data"`, which accidentally ties `invoice_lookup`'s score. It
+  should print `invoice_lookup`, not `generic_tool`.
+expected_output: |
+  invoice_lookup
+hints:
+  - "Change generic_tool's description to something that reflects what it ACTUALLY does, with no accidental overlap with \"invoice\"/\"number\" -- e.g. \"retrieves account balance summaries\"."
+  - "Once generic_tool's score drops to 0 (no keyword overlap) and invoice_lookup's stays at 2, invoice_lookup wins clearly, without needing to rely on list order to break a tie."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 34
+difficulty: gotcha
+contains_patterns:
+  - "retrieves account balance summaries"
+concept_tags: [agentic_frameworks, tool_selection, tool_descriptions]

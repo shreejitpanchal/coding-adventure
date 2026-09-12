@@ -1,0 +1,58 @@
+id: functional_programming_14
+title: "map() Is Really Just a Special Case of a Fold"
+language: python
+level: 349
+objective: "Implement your own version of map() using functools.reduce, demonstrating that 'apply this to every element, building a new list' is itself expressible as a fold -- reduce is the more fundamental operation map/filter are both built from conceptually."
+explanation: |
+  `reduce(func, iterable, initial)` folds a sequence down to a single
+  accumulated value, one element at a time -- and "build a new list by
+  transforming each element" turns out to be exactly this kind of
+  fold, just with the accumulator being a list instead of a number:
+  start with an empty list, and for each element, append its
+  transformed value to the accumulator, then continue with the next
+  one. This is worth seeing explicitly at least once: `map` and
+  `filter` are convenient, purpose-built tools, but they aren't
+  fundamentally different operations from `reduce` -- they're both
+  expressible as a fold with the right accumulator and step function.
+
+  This exercise builds `my_map(func, items)` using `reduce`, matching
+  the built-in `map`'s behavior.
+example_code: |
+  # Using the built-in map() directly.
+  def double(x):
+      return x * 2
+
+  print(list(map(double, [1, 2, 3])))
+  # [2, 4, 6]
+
+  # The same result, built from reduce -- map as a special case of fold.
+  from functools import reduce
+
+  def my_map(func, items):
+      return reduce(lambda acc, x: acc + [func(x)], items, [])
+
+  print(my_map(double, [1, 2, 3]))
+  # [2, 4, 6] -- identical result, expressed purely as a fold
+starter_code: |
+  def double(x):
+      return x * 2
+
+  print(list(map(double, [1, 2, 3])))
+challenge: |
+  Write `my_map(func, items)` using `functools.reduce`, folding with
+  `lambda acc, x: acc + [func(x)]` starting from `[]`, then call
+  `my_map(double, [1, 2, 3])` instead of the built-in `map`. Keep the
+  same output: [2, 4, 6].
+expected_output: |
+  [2, 4, 6]
+hints:
+  - "from functools import reduce, then: def my_map(func, items): return reduce(lambda acc, x: acc + [func(x)], items, [])."
+  - "The accumulator starts as an empty list, and each step appends that element's transformed value -- exactly what map() does internally, just expressed as an explicit fold."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 14
+difficulty: deep_dive
+contains_patterns:
+  - "def my_map\\(func, items\\):"
+concept_tags: [functional_programming, reduce, fold, map]

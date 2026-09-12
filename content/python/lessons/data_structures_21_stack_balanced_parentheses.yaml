@@ -1,0 +1,76 @@
+id: data_structures_21
+title: "A Stack Must Reject an Unmatched Closing Bracket, Not Silently Ignore It"
+language: python
+level: 178
+objective: "Fix a balanced-parentheses checker that silently does nothing when a closing bracket appears with an empty stack, when an unmatched closing bracket should immediately report the string as unbalanced, not be quietly skipped."
+explanation: |
+  A stack (a plain list, using `.append()` and `.pop()` at the same
+  end) is the standard tool for matching opening and closing brackets:
+  push every opener, and every closer should pop exactly one matching
+  opener off the top. If a closer shows up while the stack is empty,
+  that's a definitive sign of imbalance -- there's no opener left for
+  it to match -- and needs to report failure immediately, not be
+  silently skipped as if it simply didn't happen.
+
+  The bug this exercise fixes does nothing when a closer arrives with
+  an empty stack, letting the string end up looking balanced by
+  coincidence. The fix returns `False` immediately in that case.
+example_code: |
+  # The trap: silently does NOTHING when a closer arrives with an
+  # empty stack -- the unmatched closer is never actually flagged.
+  def is_balanced_trap(s):
+      stack = []
+      for ch in s:
+          if ch == "(":
+              stack.append(ch)
+          elif ch == ")":
+              if stack:
+                  stack.pop()
+      return len(stack) == 0
+
+  print(is_balanced_trap("())"))
+  # True -- WRONG, this has an extra unmatched ")" but it's reported as balanced
+
+  # The fix: an unmatched closer immediately reports failure.
+  def is_balanced(s):
+      stack = []
+      for ch in s:
+          if ch == "(":
+              stack.append(ch)
+          elif ch == ")":
+              if not stack:
+                  return False
+              stack.pop()
+      return len(stack) == 0
+
+  print(is_balanced("())"))
+  # False -- correctly caught the unmatched closing bracket
+starter_code: |
+  def is_balanced(s):
+      stack = []
+      for ch in s:
+          if ch == "(":
+              stack.append(ch)
+          elif ch == ")":
+              if stack:
+                  stack.pop()
+      return len(stack) == 0
+
+  print(is_balanced("())"))
+challenge: |
+  Fix `is_balanced` so it returns `False` immediately when a closing
+  bracket arrives with an empty stack, instead of silently doing
+  nothing. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add: if not stack: return False, as the check before stack.pop() in the closing-bracket branch."
+  - "A closer with nothing on the stack to match is a definitive sign of imbalance -- it should stop the check immediately, not be quietly skipped."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 21
+difficulty: gotcha
+contains_patterns:
+  - "return False"
+concept_tags: [stacks, algorithms]

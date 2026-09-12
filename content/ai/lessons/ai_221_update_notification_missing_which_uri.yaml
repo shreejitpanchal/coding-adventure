@@ -1,0 +1,53 @@
+id: ai_221
+title: "A Resource Update Notification Must Say Which Resource Changed"
+language: ai
+level: 221
+objective: "Fix a resource-update notification builder that never says which URI actually changed, when the whole point of the notification is to tell a subscribed client exactly which resource needs to be re-read."
+explanation: |
+  `notifications/resources/updated` exists so a client that subscribed
+  to a specific resource finds out when that resource's content
+  changed -- and that's only useful if the notification actually names
+  which URI changed. A notification with no `params` at all forces the
+  client to either re-read every resource it's subscribed to (defeating
+  the purpose of a targeted subscription) or simply not know what to do
+  with the notification at all.
+
+  The bug this exercise fixes returns just the bare `method`, with no
+  `params`. The fix includes `params.uri` naming exactly which resource
+  changed.
+example_code: |
+  # The trap: doesn't say WHICH resource changed at all.
+  def build_update_notification_trap(uri):
+      return {"method": "notifications/resources/updated"}
+
+  print("params" in build_update_notification_trap("file:///a.txt"))
+  # False -- the client has no way to know which subscribed resource this is about
+
+  # The fix: name exactly which uri changed.
+  def build_update_notification(uri):
+      return {"method": "notifications/resources/updated", "params": {"uri": uri}}
+
+  print("params" in build_update_notification("file:///a.txt"))
+  # True -- the client can now target exactly the resource that changed
+starter_code: |
+  def build_update_notification(uri):
+      return {"method": "notifications/resources/updated"}
+
+  print("params" in build_update_notification("file:///a.txt"))
+challenge: |
+  Fix `build_update_notification` so it also includes `"params":
+  {"uri": uri}` in the returned dict. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"params\": {\"uri\": uri} as a second key alongside \"method\"."
+  - "A subscription only pays off if the client learns exactly which resource changed, not just that something, somewhere, did."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 46
+difficulty: warmup
+contains_patterns:
+  - "\"params\": \\{\"uri\": uri\\}"
+concept_tags: [mcp, subscriptions, resource_updates]

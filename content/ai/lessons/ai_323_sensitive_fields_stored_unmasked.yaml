@@ -1,0 +1,64 @@
+id: ai_323
+title: "Sensitive Fields Must Be Masked Before a Trace Ever Stores Them"
+language: ai
+level: 323
+objective: "Fix an input-recording function that stores every field completely unmasked, when fields explicitly named as sensitive (an SSN, a card number) need to be redacted before the trace is ever persisted -- not left as raw, readable data sitting in observability tooling."
+explanation: |
+  Whatever gets traced ends up stored somewhere, often visible to
+  anyone with dashboard access -- which makes tracing itself a genuine
+  privacy risk the moment sensitive user data flows through a chain's
+  inputs. Recording every field exactly as received, with no masking
+  of fields explicitly flagged as sensitive, means an SSN or account
+  number typed by a user ends up sitting in plaintext inside
+  observability tooling that was never meant to be a system of record
+  for that kind of data.
+
+  The bug this exercise fixes returns every field completely
+  unmasked. The fix replaces each sensitive field's value with a
+  redaction marker before storing.
+example_code: |
+  # The trap: stores EVERY field completely unmasked, sensitive or not.
+  def record_input_trap(inputs, sensitive_fields):
+      return dict(inputs)
+
+  inputs = {"query": "what's my balance", "ssn": "123-45-6789"}
+  recorded_trap = record_input_trap(inputs, sensitive_fields=["ssn"])
+  print(recorded_trap["ssn"])
+  # "123-45-6789" -- stored completely unmasked
+
+  # The fix: replace each sensitive field's value with a redaction marker.
+  def record_input(inputs, sensitive_fields):
+      recorded = dict(inputs)
+      for field in sensitive_fields:
+          if field in recorded:
+              recorded[field] = "[REDACTED]"
+      return recorded
+
+  recorded = record_input(inputs, sensitive_fields=["ssn"])
+  print(recorded["ssn"])
+  # "[REDACTED]" -- correctly masked before storage
+starter_code: |
+  def record_input(inputs, sensitive_fields):
+      return dict(inputs)
+
+  inputs = {"query": "what's my balance", "ssn": "123-45-6789"}
+  recorded = record_input(inputs, sensitive_fields=["ssn"])
+  print(recorded["ssn"])
+challenge: |
+  Fix `record_input` so it replaces each field named in
+  `sensitive_fields` with `"[REDACTED]"` before returning, instead of
+  storing every field exactly as received. It should print
+  `[REDACTED]`, not `123-45-6789`.
+expected_output: |
+  [REDACTED]
+hints:
+  - "Loop over sensitive_fields, and for each one present in recorded, set recorded[field] = \"[REDACTED]\"."
+  - "Tracing tooling isn't a secure system of record -- masking sensitive fields before storage has to happen at the point of capture, not later."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "recorded\\[field\\] = \"\\[REDACTED\\]\""
+concept_tags: [langsmith, redaction, pii]

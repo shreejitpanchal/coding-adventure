@@ -1,0 +1,76 @@
+id: gotcha_gauntlet_38
+title: "The 'Shared Constant' Update That Only Ever Updated One Instance"
+language: python
+level: 283
+objective: "Fix code that assigns to self.MAX_RETRIES intending to update a shared class-level constant, when assigning through self always creates a new INSTANCE attribute that merely shadows the class attribute, instead of actually changing it."
+explanation: |
+  Assigning to `self.NAME = value` never modifies a class attribute --
+  it always creates (or overwrites) an attribute on that *one specific
+  instance*, which then simply shadows the class attribute of the same
+  name for lookups on `self` from that point on. Every *other*
+  instance, and the class itself, still sees the original class-level
+  value completely unchanged; only the one instance that did `self.
+  NAME = value` sees the new value, and only because its own instance
+  attribute is now found first during lookup, not because anything
+  shared was actually updated.
+
+  Genuinely updating a class-level constant requires assigning through
+  the class itself -- `ClassName.NAME = value` -- which is what every
+  instance (including ones that never touched it directly) then sees.
+example_code: |
+  # The trap: self.MAX_RETRIES only shadows on ONE instance -- others
+  # still see the original class-level value.
+  class ConfigTrap:
+      MAX_RETRIES = 3
+
+  def bump_trap(instance):
+      instance.MAX_RETRIES = 5      # creates an INSTANCE attribute, doesn't update the class
+
+  a_trap = ConfigTrap()
+  b_trap = ConfigTrap()
+  bump_trap(a_trap)
+  print(a_trap.MAX_RETRIES, b_trap.MAX_RETRIES)
+  # 5 3 -- WRONG if the intent was updating a value shared by every instance
+
+  # The fix: assign through the CLASS itself to genuinely update it.
+  class Config:
+      MAX_RETRIES = 3
+
+  def bump(cls):
+      cls.MAX_RETRIES = 5
+
+  a = Config()
+  b = Config()
+  bump(Config)
+  print(a.MAX_RETRIES, b.MAX_RETRIES)
+  # 5 5 -- correctly updated for every instance, since the class itself changed
+starter_code: |
+  class Config:
+      MAX_RETRIES = 3
+
+  def bump(instance):
+      instance.MAX_RETRIES = 5
+
+  a = Config()
+  b = Config()
+  bump(a)
+  print(a.MAX_RETRIES, b.MAX_RETRIES)
+challenge: |
+  Fix `bump` so it takes the class itself and assigns
+  `cls.MAX_RETRIES = 5` directly on `Config`, instead of shadowing it
+  on one instance. Call it as `bump(Config)`. It should print `5 5`,
+  not `5 3`.
+expected_output: |
+  5 5
+hints:
+  - "def bump(cls): cls.MAX_RETRIES = 5, then call bump(Config) instead of bump(a)."
+  - "Assigning through self (or any instance) only ever creates a new instance attribute that shadows the class attribute -- it never actually changes the shared class-level value."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 38
+difficulty: gotcha
+contains_patterns:
+  - "cls\\.MAX_RETRIES = 5"
+  - "bump\\(Config\\)"
+concept_tags: [classes, class_attributes, gotchas]

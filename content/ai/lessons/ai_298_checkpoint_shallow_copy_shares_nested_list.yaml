@@ -1,0 +1,65 @@
+id: ai_298
+title: "A Checkpoint's Nested Values Need Their Own Copy Too, Not a Shared Reference"
+language: ai
+level: 298
+objective: "Fix a checkpointing function that only shallow-copies state, when a nested mutable value (like a list) inside it stays shared with the live state -- so mutating the live state afterward silently changes the 'saved' checkpoint too."
+explanation: |
+  `dict(state)` copies the top-level keys, but any value that's itself
+  a mutable object (a list, a nested dict) is still the exact same
+  object in both the original and the copy -- only the outer dict is
+  actually independent. If a node keeps mutating a list stored in
+  state after checkpointing, the checkpoint's own copy of that list
+  changes right along with it, even though the whole point of
+  checkpointing was to freeze what state looked like at that specific
+  moment.
+
+  The bug this exercise fixes uses a shallow `dict(state)` copy. The
+  fix uses `copy.deepcopy`, which also makes independent copies of
+  every nested mutable value.
+example_code: |
+  # The trap: a SHALLOW copy -- nested mutable values (like a list)
+  # are still SHARED with the live state.
+  def checkpoint_state_trap(state):
+      return dict(state)
+
+  state = {"tags": ["a", "b"]}
+  checkpoint = checkpoint_state_trap(state)
+  state["tags"].append("c")   # mutate the live state's nested list AFTER checkpointing
+  print(len(checkpoint["tags"]))
+  # 3 -- the "checkpoint" changed too, because it shared the same underlying list
+
+  # The fix: a deep copy, independent all the way down.
+  import copy
+
+  def checkpoint_state(state):
+      return copy.deepcopy(state)
+
+  state2 = {"tags": ["a", "b"]}
+  checkpoint2 = checkpoint_state(state2)
+  state2["tags"].append("c")
+  print(len(checkpoint2["tags"]))
+  # 2 -- correctly independent, unaffected by the later mutation
+starter_code: |
+  def checkpoint_state(state):
+      return dict(state)
+
+  state = {"tags": ["a", "b"]}
+  checkpoint = checkpoint_state(state)
+  state["tags"].append("c")
+  print(len(checkpoint["tags"]))
+challenge: |
+  Fix `checkpoint_state` so it uses `copy.deepcopy(state)` instead of
+  the shallow `dict(state)`. It should print `2`, not `3`.
+expected_output: |
+  2
+hints:
+  - "import copy, then: return copy.deepcopy(state)."
+  - "dict(state) only copies the top-level keys -- a nested list value is still the exact same object shared between the original and the \"copy.\""
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 33
+difficulty: gotcha
+contains_patterns:
+  - "copy\\.deepcopy\\(state\\)"
+concept_tags: [langgraph, checkpointing, deep_copy]

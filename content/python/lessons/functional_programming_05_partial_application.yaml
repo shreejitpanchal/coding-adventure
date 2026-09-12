@@ -71,7 +71,7 @@ hints:
   - "from functools import partial"
   - "cube = partial(power, exponent=3)"
 xp_reward: 15
-achievement: functional_programming_master
+achievement: null
 category: functional_programming
 category_level: 5
 difficulty: deep_dive

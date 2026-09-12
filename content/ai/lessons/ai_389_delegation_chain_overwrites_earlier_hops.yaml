@@ -1,0 +1,62 @@
+id: ai_389
+title: "A Delegation Chain Needs Every Hop Recorded, Not Just the Latest One"
+language: ai
+level: 389
+objective: "Fix a delegation-recording function that overwrites the delegation record with just the immediate delegator, when a task passed from agent to agent needs its FULL delegation path preserved -- overwriting loses every earlier hop the moment a new one is recorded."
+explanation: |
+  A task can be delegated more than once -- agent A delegates to agent
+  B, which in turn delegates part of the work to agent C -- and tracing
+  what actually happened requires the full chain, not just whoever
+  handled the most recent hop. Overwriting a single `delegated_by`
+  field with each new delegation discards every earlier agent's
+  involvement the instant the next hop happens, leaving no way to
+  reconstruct how the task actually got where it ended up.
+
+  The bug this exercise fixes overwrites `task["delegated_by"]` with
+  just the latest delegator. The fix appends to a `delegation_chain`
+  list instead, preserving every hop.
+example_code: |
+  # The trap: OVERWRITES with just the immediate delegator -- loses
+  # the full chain each time.
+  def record_delegation_trap(task, delegated_by):
+      task["delegated_by"] = delegated_by
+
+  task_trap = {"delegation_chain": ["agent-a"]}
+  record_delegation_trap(task_trap, "agent-b")
+  print(task_trap.get("delegation_chain", []))
+  # ['agent-a'] -- the new hop was never actually added to the chain at all
+
+  # The fix: append to a delegation_chain list, preserving every hop.
+  def record_delegation(task, delegated_by):
+      task["delegation_chain"] = task.get("delegation_chain", []) + [delegated_by]
+
+  task = {"delegation_chain": ["agent-a"]}
+  record_delegation(task, "agent-b")
+  print(task.get("delegation_chain", []))
+  # ['agent-a', 'agent-b'] -- correctly preserved the full chain
+starter_code: |
+  def record_delegation(task, delegated_by):
+      task["delegated_by"] = delegated_by
+
+  task = {"delegation_chain": ["agent-a"]}
+  record_delegation(task, "agent-b")
+  print(task.get("delegation_chain", []))
+challenge: |
+  Fix `record_delegation` so it sets `task["delegation_chain"] =
+  task.get("delegation_chain", []) + [delegated_by]`, appending to the
+  chain, instead of overwriting an unrelated `"delegated_by"` field
+  that the check doesn't even look at. It should print
+  `['agent-a', 'agent-b']`, not `['agent-a']`.
+expected_output: |
+  ['agent-a', 'agent-b']
+hints:
+  - "task.get(\"delegation_chain\", []) gets the existing chain (or an empty list if none yet), then + [delegated_by] adds the newest hop onto the end."
+  - "The buggy version writes to a completely different key (\"delegated_by\") that the delegation_chain check never even sees."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 34
+difficulty: core
+contains_patterns:
+  - "task\\.get\\(\"delegation_chain\", \\[\\]\\) \\+ \\[delegated_by\\]"
+concept_tags: [solace_agent_mesh, delegation, audit_trail]

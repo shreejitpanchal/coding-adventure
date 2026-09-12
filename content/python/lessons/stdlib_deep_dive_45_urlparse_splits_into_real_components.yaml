@@ -1,0 +1,57 @@
+id: stdlib_deep_dive_45
+title: "urlparse Splits a URL Into Real Components -- split('/') Doesn't Understand URL Structure"
+language: python
+level: 246
+objective: "Fix code that extracts a URL's hostname with a naive split('/') (which breaks once the URL contains a port, query string, or differently-shaped path), when urllib.parse.urlparse correctly separates the URL into scheme/netloc/path/query components."
+explanation: |
+  Splitting a URL on `/` and grabbing a fixed index only works for one
+  exact URL shape -- a query string, a port number, or a different
+  path depth all shift where the hostname actually lands, breaking a
+  hardcoded index. `urllib.parse.urlparse(url)` correctly parses the
+  URL into its real structural components (`scheme`, `netloc`, `path`,
+  `query`, ...), so `.netloc` reliably gives the host (and port, if
+  present) regardless of how the rest of the URL is shaped.
+
+  The bug this exercise fixes grabs `split("/")[2]`, which happens to
+  work for a plain URL but breaks once a port number is present. The
+  fix uses `urlparse(url).hostname`, which correctly strips the port.
+example_code: |
+  # The trap: split('/')[2] includes the port number as part of the "host".
+  def get_host_trap(url):
+      return url.split("/")[2]
+
+  url = "https://example.com:8080/path"
+  print(get_host_trap(url))
+  # "example.com:8080" -- WRONG, that's host AND port, not just the hostname
+
+  # The fix: urlparse correctly separates hostname from port.
+  from urllib.parse import urlparse
+
+  def get_host(url):
+      return urlparse(url).hostname
+
+  print(get_host(url))
+  # "example.com" -- correctly just the hostname, port handled separately
+starter_code: |
+  def get_host(url):
+      return url.split("/")[2]
+
+  url = "https://example.com:8080/path"
+  print(get_host(url))
+challenge: |
+  Fix `get_host` so it uses `urlparse(url).hostname` (imported from
+  `urllib.parse`) instead of `split("/")[2]`. It should print
+  `example.com`, not `example.com:8080`.
+expected_output: |
+  example.com
+hints:
+  - "from urllib.parse import urlparse, then: return urlparse(url).hostname."
+  - "split('/')[2] grabs host AND port together as one chunk -- urlparse's .hostname correctly separates them."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 45
+difficulty: gotcha
+contains_patterns:
+  - "urlparse\\(url\\)\\.hostname"
+concept_tags: [urllib, urlparse]

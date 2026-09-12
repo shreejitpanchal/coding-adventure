@@ -1,0 +1,51 @@
+id: idioms_gotchas_11
+title: "Chained Assignment Points Every Name at the Same Object"
+language: python
+level: 80
+objective: "Fix a setup that uses chained assignment to give two variables 'their own' empty list, when `a = b = []` actually makes both names refer to the exact same single list object -- mutating one mutates 'both.'"
+explanation: |
+  `a = b = []` looks like it should create two independent empty
+  lists, one per name -- but Python evaluates the right-hand side
+  exactly once and binds every name in the chain to that same single
+  resulting object. There's only ever one list here, with two names
+  both pointing at it; appending through `a` is visible through `b`
+  too, since they were never separate lists to begin with.
+
+  The bug this exercise fixes uses `cart_a = cart_b = []`. The fix
+  creates two genuinely separate list literals.
+example_code: |
+  # The trap: chained assignment -- both names point at the SAME
+  # single list object.
+  cart_a_trap = cart_b_trap = []
+  cart_a_trap.append("apple")
+  print(len(cart_b_trap))
+  # 1 -- cart_b was never actually separate from cart_a
+
+  # The fix: two genuinely separate list literals.
+  cart_a = []
+  cart_b = []
+  cart_a.append("apple")
+  print(len(cart_b))
+  # 0 -- correctly independent
+starter_code: |
+  cart_a = cart_b = []
+  cart_a.append("apple")
+  print(len(cart_b))
+challenge: |
+  Fix this so `cart_a` and `cart_b` are two genuinely separate list
+  literals (`cart_a = []` then `cart_b = []`), instead of the chained
+  assignment `cart_a = cart_b = []`. It should print `0`, not `1`.
+expected_output: |
+  0
+hints:
+  - "Split the chained assignment into two separate lines: cart_a = [] and cart_b = []."
+  - "Chained assignment evaluates the right-hand side ONCE and binds every name to that same result -- it never creates one object per name."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 11
+difficulty: gotcha
+contains_patterns:
+  - "cart_a = \\[\\]"
+  - "cart_b = \\[\\]"
+concept_tags: [idioms, chained_assignment, aliasing]

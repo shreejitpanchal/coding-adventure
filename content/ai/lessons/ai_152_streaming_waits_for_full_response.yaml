@@ -1,0 +1,71 @@
+id: ai_152
+title: "Streaming Means Yielding Chunks as They Arrive, Not Buffering the Whole Response First"
+language: ai
+level: 152
+objective: "Fix a streaming handler that collects every chunk into a list and only returns them all at once at the end, defeating the entire point of streaming -- which is showing partial output to the user as it becomes available, not after everything has already arrived."
+explanation: |
+  Streaming exists specifically to improve perceived responsiveness --
+  showing the first part of a long response immediately, rather than
+  making a user stare at a blank screen until the *entire* response has
+  finished generating. A function that collects every streamed chunk
+  into a list and only hands them back once the stream is fully
+  exhausted defeats that purpose completely: from the caller's
+  perspective, nothing arrives until everything does, exactly the
+  behavior streaming was meant to avoid.
+
+  The bug this exercise fixes gathers every chunk into a list before
+  returning anything at all. The fix uses a generator (`yield`) to hand
+  each chunk to the caller the moment it arrives, letting a caller
+  process (or display) partial output as it comes in, rather than
+  waiting for the whole thing.
+example_code: |
+  # The trap: collects EVERY chunk into a list before returning
+  # anything -- nothing reaches the caller until the whole thing is done.
+  def stream_response_trap(chunk_source):
+      collected = []
+      for chunk in chunk_source:
+          collected.append(chunk)
+      return collected   # the caller gets nothing until EVERY chunk has already arrived
+
+  def fake_chunk_source():
+      for word in ["Hello", " there", "!"]:
+          yield word
+
+  result = stream_response_trap(fake_chunk_source())
+  print(type(result).__name__)   # "list" -- nothing was actually streamed to the caller as it arrived
+
+  # The fix: yield each chunk immediately as it arrives.
+  def stream_response(chunk_source):
+      for chunk in chunk_source:
+          yield chunk
+
+  print(type(stream_response(fake_chunk_source())).__name__)   # "generator" -- correctly streams, chunk by chunk
+starter_code: |
+  def stream_response(chunk_source):
+      collected = []
+      for chunk in chunk_source:
+          collected.append(chunk)
+      return collected
+
+  def fake_chunk_source():
+      for word in ["Hello", " there", "!"]:
+          yield word
+
+  print(type(stream_response(fake_chunk_source())).__name__)
+challenge: |
+  Fix `stream_response` so it `yield`s each chunk immediately instead
+  of collecting them all into a list and returning the list. It should
+  print `generator`, not `list`.
+expected_output: |
+  generator
+hints:
+  - "Replace the whole function body with a loop that does `yield chunk` for each chunk, removing the `collected` list entirely."
+  - "A function containing `yield` is automatically a generator function -- calling it returns a generator object, not a list."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 22
+difficulty: warmup
+contains_patterns:
+  - "yield chunk"
+concept_tags: [agentic_frameworks, streaming, generators]

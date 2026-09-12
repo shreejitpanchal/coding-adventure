@@ -1,0 +1,77 @@
+id: ai_110
+title: "Top-K From a Single Document Isn't the Same as Broad Coverage"
+language: ai
+level: 110
+objective: "Fix a top-k selector that can return every result from the same single source document, instead of enforcing a per-document cap so the final context reflects a broader spread of sources when several are similarly relevant."
+explanation: |
+  If one document happens to contain several highly similar chunks, a
+  plain top-k-by-similarity selection can fill the *entire* result set
+  with chunks from that one document, even when other, different
+  documents also contain genuinely relevant (if slightly
+  lower-scoring) content. This is a close cousin of this category's
+  MMR lesson on redundancy -- but the redundancy here is at the
+  document level, not just chunk-content similarity: a result set with
+  broader source diversity is often more useful than one that's
+  technically all high-scoring but represents only one document's
+  perspective.
+
+  The bug this exercise fixes takes the top-k results with no cap on
+  how many can come from the same document. The fix enforces a maximum
+  number of chunks per document while building the result set, so
+  reaching the per-document cap forces the selection to move on to
+  chunks from other documents instead.
+example_code: |
+  # The trap: no per-document cap -- one document's chunks can fill the
+  # ENTIRE result set, crowding out other relevant documents entirely.
+  def top_k_trap(candidates, k):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      return [c["doc_id"] for c in ranked[:k]]
+
+  candidates = [
+      {"doc_id": "docA", "score": 0.95}, {"doc_id": "docA", "score": 0.93},
+      {"doc_id": "docA", "score": 0.91}, {"doc_id": "docB", "score": 0.85},
+  ]
+  print(top_k_trap(candidates, k=3))   # ['docA', 'docA', 'docA'] -- docB never gets a chance
+
+  # The fix: enforce a per-document cap while building the result set.
+  def top_k_diverse(candidates, k, max_per_doc=1):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      result, counts = [], {}
+      for c in ranked:
+          if counts.get(c["doc_id"], 0) >= max_per_doc:
+              continue
+          result.append(c["doc_id"])
+          counts[c["doc_id"]] = counts.get(c["doc_id"], 0) + 1
+          if len(result) == k:
+              break
+      return result
+
+  print(top_k_diverse(candidates, k=3, max_per_doc=1))   # ['docA', 'docB'] -- docB correctly gets included
+starter_code: |
+  def top_k_diverse(candidates, k, max_per_doc=1):
+      ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+      return [c["doc_id"] for c in ranked[:k]]
+
+  candidates = [
+      {"doc_id": "docA", "score": 0.95}, {"doc_id": "docA", "score": 0.93},
+      {"doc_id": "docA", "score": 0.91}, {"doc_id": "docB", "score": 0.85},
+  ]
+  print(top_k_diverse(candidates, k=3, max_per_doc=1))
+challenge: |
+  Fix `top_k_diverse` so it enforces `max_per_doc`, skipping any
+  candidate once its document has already reached that cap, instead of
+  just taking the raw top-k by score. It should print
+  `['docA', 'docB']`, not `['docA', 'docA', 'docA']`.
+expected_output: |
+  ['docA', 'docB']
+hints:
+  - "Track a `counts` dict per doc_id, skipping a candidate (with `continue`) if counts.get(c[\"doc_id\"], 0) >= max_per_doc."
+  - "Only append a candidate and increment its doc's count when it hasn't hit the cap yet -- stop once `result` reaches length k."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 25
+difficulty: deep_dive
+contains_patterns:
+  - "counts\\.get\\(c\\[.doc_id.\\], 0\\) >= max_per_doc"
+concept_tags: [rag, source_diversity, retrieval]

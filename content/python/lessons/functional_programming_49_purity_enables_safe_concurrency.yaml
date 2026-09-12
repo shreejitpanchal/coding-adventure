@@ -1,0 +1,72 @@
+id: functional_programming_49
+title: "A Pure Function Needs No Lock at All -- It Never Shares Anything to Race On"
+language: python
+level: 384
+objective: "Fix a function that appends its result into a shared list (the same kind of shared-mutable-state pattern this app's concurrency category needs a real threading.Lock to protect), when a pure function -- returning a new value instead of mutating shared state -- is safe to call from any number of concurrent threads with zero risk of a race condition, since there's nothing shared to race on."
+explanation: |
+  This app's concurrency category covers, at length, why mutating
+  shared state from multiple threads needs explicit protection (a
+  `threading.Lock`) to avoid a race condition -- but that whole
+  problem only exists *because* there's shared, mutable state being
+  written to in the first place. A pure function that only ever reads
+  its own arguments and returns a brand-new value touches no shared
+  state at all: calling it from as many threads as you like, all at
+  once, produces no race condition whatsoever, since there's nothing
+  for two threads to collide over. The caller collecting each
+  independent result together afterward (with a plain loop, or
+  `ThreadPoolExecutor.map`, this app's own concurrency lessons) is
+  what safely reassembles them -- no lock, no shared accumulator,
+  needed inside the function itself.
+
+  The fix makes `process` pure -- returning its result instead of
+  appending it into a shared list -- and lets the caller collect the
+  results afterward.
+example_code: |
+  # The trap: appends into a SHARED list -- the exact pattern that needs a
+  # threading.Lock to be genuinely safe under real concurrent threads.
+  results_trap = []
+
+  def process_trap(x):
+      results_trap.append(x * 2)
+
+  for x in [1, 2, 3]:
+      process_trap(x)
+  print(results_trap)
+  # [2, 4, 6] -- correct here, sequentially, but NOT safe to call concurrently
+  # without a lock protecting the shared results_trap list
+
+  # The fix: a pure function returns a new value -- nothing shared to race on.
+  def process(x):
+      return x * 2
+
+  results = [process(x) for x in [1, 2, 3]]
+  print(results)
+  # [2, 4, 6] -- same result, and safe to call from any number of threads
+  # concurrently, since process() touches no shared state at all
+starter_code: |
+  results = []
+
+  def process(x):
+      results.append(x * 2)
+
+  for x in [1, 2, 3]:
+      process(x)
+  print(results)
+challenge: |
+  Fix `process` so it returns `x * 2` instead of appending it into the
+  shared `results` list, and build `results` with a list comprehension
+  -- `[process(x) for x in [1, 2, 3]]` -- instead. Keep the same
+  output: [2, 4, 6].
+expected_output: |
+  [2, 4, 6]
+hints:
+  - "def process(x): return x * 2, then: results = [process(x) for x in [1, 2, 3]]."
+  - "A function that only reads its arguments and returns a new value touches no shared state -- calling it concurrently from many threads needs no lock at all, since there's nothing to race on."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "\\[process\\(x\\) for x in \\[1, 2, 3\\]\\]"
+concept_tags: [functional_programming, purity, concurrency]

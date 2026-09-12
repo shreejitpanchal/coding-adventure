@@ -1,0 +1,66 @@
+id: packaging_13
+title: "The ~= Specifier Means 'Compatible Release,' Not 'Any Version at All'"
+language: python
+level: 393
+objective: "Implement the ~= 'compatible release' version specifier correctly -- ~=2.2 means 'at least 2.2, but less than the next major version, 3.0' -- instead of a stub that accepts every version unconditionally."
+explanation: |
+  `~=2.2` (PEP 440's "compatible release" operator) means "at least
+  `2.2`, but anything from `3.0` onward is a breaking change and no
+  longer compatible" -- it expresses "allow patch/minor upgrades within
+  this major version, but not a jump to the next major version,"
+  bundling a lower AND an upper bound into one compact specifier. A
+  stub that accepts *any* version unconditionally defeats the entire
+  point of a version constraint -- it would happily accept a version
+  from three major releases later, which is exactly the kind of
+  breaking, incompatible upgrade `~=` exists to prevent.
+
+  The fix checks both bounds: the parsed version must be greater than
+  or equal to the base version, and strictly less than the next major
+  version.
+example_code: |
+  # The trap: accepts ANY version, ignoring the specifier's bounds entirely.
+  def satisfies_trap(version, spec):
+      return True
+
+  print(satisfies_trap("5.0.0", "~=2.2"))
+  # True -- WRONG, 5.0.0 is nowhere near compatible with a ~=2.2 ceiling of <3.0
+
+  # The fix: check BOTH the lower bound and the next-major-version ceiling.
+  def parse(v):
+      return tuple(int(p) for p in v.split("."))
+
+  def satisfies(version, spec):
+      base = parse(spec[2:])              # strip the leading "~="
+      upper = (base[0] + 1, 0)
+      return parse(version) >= base and parse(version) < upper
+
+  print(satisfies("5.0.0", "~=2.2"))
+  # False -- correctly rejected, since 5.0.0 exceeds the compatible ceiling
+  print(satisfies("2.5.0", "~=2.2"))
+  # True -- correctly within the compatible range
+starter_code: |
+  def parse(v):
+      return tuple(int(p) for p in v.split("."))
+
+  def satisfies(version, spec):
+      return True
+
+  print(satisfies("5.0.0", "~=2.2"))
+challenge: |
+  Fix `satisfies` so it parses `spec[2:]` as the base version, computes
+  `upper = (base[0] + 1, 0)`, and returns
+  `parse(version) >= base and parse(version) < upper`, instead of
+  always returning `True`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "base = parse(spec[2:]), upper = (base[0] + 1, 0), then return parse(version) >= base and parse(version) < upper."
+  - "~=2.2 bundles a lower bound (>=2.2) AND an upper bound (<3.0, the next major version) into one specifier -- both need checking."
+xp_reward: 15
+achievement: null
+category: packaging
+category_level: 13
+difficulty: deep_dive
+contains_patterns:
+  - "upper = \\(base\\[0\\] \\+ 1, 0\\)"
+concept_tags: [packaging, versioning, specifiers]

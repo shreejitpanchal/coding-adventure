@@ -1,0 +1,59 @@
+id: ai_210
+title: "A Tool Failure Should Come Back as a Structured Result, Not a Bare String"
+language: ai
+level: 210
+objective: "Fix a tool-execution wrapper that returns a plain error string on failure but a proper result dict on success, when a failed tool call should still come back as a normal result with isError set, not a differently-shaped value the client has to special-case."
+explanation: |
+  MCP represents a tool execution failure as a normal result with
+  `isError: True` set, not as a protocol-level error and not as some
+  other ad-hoc shape -- this keeps the result's structure consistent
+  whether the tool succeeded or failed, so a client can always look at
+  `result["content"]` without first checking what type of thing it got
+  back. Returning a bare string on failure breaks that consistency: the
+  client would need a special code path just to detect "this response
+  isn't even the same shape as a normal result."
+
+  The bug this exercise fixes returns a plain string on failure. The
+  fix returns the same `{isError, content}` shape either way, just with
+  `isError` set appropriately.
+example_code: |
+  # The trap: returns a bare STRING on failure -- a different shape
+  # than the normal result dict.
+  def run_tool_trap(succeeds):
+      if not succeeds:
+          return "error: tool failed"
+      return {"isError": False, "content": "ok"}
+
+  print(isinstance(run_tool_trap(False), dict))   # False -- client can't uniformly parse a result vs. a plain string
+
+  # The fix: failure still comes back as the same result shape.
+  def run_tool(succeeds):
+      if not succeeds:
+          return {"isError": True, "content": "tool failed"}
+      return {"isError": False, "content": "ok"}
+
+  print(isinstance(run_tool(False), dict))   # True -- always the same shape, just isError differs
+starter_code: |
+  def run_tool(succeeds):
+      if not succeeds:
+          return "error: tool failed"
+      return {"isError": False, "content": "ok"}
+
+  print(isinstance(run_tool(False), dict))
+challenge: |
+  Fix `run_tool` so the failure branch also returns a dict --
+  `{"isError": True, "content": "tool failed"}` -- instead of a bare
+  string. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace return \"error: tool failed\" with return {\"isError\": True, \"content\": \"tool failed\"}."
+  - "Both branches should return the exact same shape (isError + content) -- only the values inside should differ."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 35
+difficulty: core
+contains_patterns:
+  - "\"isError\": True, \"content\": \"tool failed\""
+concept_tags: [mcp, is_error, tool_results]

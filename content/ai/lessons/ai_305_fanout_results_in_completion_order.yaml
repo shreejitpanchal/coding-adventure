@@ -1,0 +1,64 @@
+id: ai_305
+title: "Fan-Out Results Need to Come Back in Input Order, Not Completion Order"
+language: ai
+level: 305
+objective: "Fix a fan-out result collector that reassembles results in whatever order the branches happened to finish, when the caller needs them back in the same order the original input items were given in."
+explanation: |
+  When a fan-out runs a worker over several items, the items don't
+  necessarily finish in the order they started -- a longer computation
+  can finish after one that started later. A caller downstream almost
+  always still wants the results correlated to the *original* input
+  order (item 1's result first, then item 2's, in that order),
+  regardless of which one actually completed first. Reassembling
+  results by completion order instead of input order silently
+  scrambles which result belongs to which original item.
+
+  The bug this exercise fixes builds the result list by iterating
+  `completion_order`. The fix builds a lookup keyed by item, then
+  reads results back out in the original `items` order.
+example_code: |
+  # The trap: reassembles results in COMPLETION order, not the
+  # original input order.
+  def collect_fanout_trap(items, worker_fn, completion_order):
+      return [worker_fn(i) for i in completion_order]
+
+  items = ["a", "b", "c"]
+  worker_fn = lambda x: f"result-{x}"
+  completion_order = ["c", "a", "b"]   # "c" happened to finish first
+  print(collect_fanout_trap(items, worker_fn, completion_order))
+  # ['result-c', 'result-a', 'result-b'] -- wrong order entirely
+
+  # The fix: build a lookup, then read results back in the original order.
+  def collect_fanout(items, worker_fn, completion_order):
+      results_by_item = {i: worker_fn(i) for i in completion_order}
+      return [results_by_item[i] for i in items]
+
+  print(collect_fanout(items, worker_fn, completion_order))
+  # ['result-a', 'result-b', 'result-c'] -- correctly reassembled in the ORIGINAL input order
+starter_code: |
+  def collect_fanout(items, worker_fn, completion_order):
+      return [worker_fn(i) for i in completion_order]
+
+  items = ["a", "b", "c"]
+  worker_fn = lambda x: f"result-{x}"
+  completion_order = ["c", "a", "b"]
+  print(collect_fanout(items, worker_fn, completion_order))
+challenge: |
+  Fix `collect_fanout` so it builds a `results_by_item` dict from
+  `completion_order`, then returns `[results_by_item[i] for i in
+  items]`, reassembling in the original input order. It should print
+  `['result-a', 'result-b', 'result-c']`, not
+  `['result-c', 'result-a', 'result-b']`.
+expected_output: |
+  ['result-a', 'result-b', 'result-c']
+hints:
+  - "results_by_item = {i: worker_fn(i) for i in completion_order}, then return [results_by_item[i] for i in items]."
+  - "Which order the branches happen to finish in shouldn't determine the order of the caller's results -- items already defines the order that matters."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 40
+difficulty: core
+contains_patterns:
+  - "\\[results_by_item\\[i\\] for i in items\\]"
+concept_tags: [langgraph, fan_out, result_ordering]

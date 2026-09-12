@@ -1,0 +1,77 @@
+id: stdlib_deep_dive_31
+title: "re.findall Returns Group Contents When a Pattern Has Groups, Not the Full Match"
+language: python
+level: 232
+objective: "Fix code assuming re.findall always returns full matched substrings, when a pattern containing a capturing group makes findall return the GROUP's contents instead of the whole match."
+explanation: |
+  `re.findall(pattern, s)` returns full matched substrings only when
+  the pattern has no capturing groups. The instant a pattern contains
+  `(...)`, `findall` switches to returning just the captured group's
+  contents for each match, not the entire matched text -- a genuinely
+  surprising behavior change triggered purely by adding parentheses.
+  Extracting "the digits after each '#'" with a pattern like
+  `r"#(\d+)"` correctly returns only the digits themselves, not the
+  `#` prefix, precisely because of this group-extraction behavior.
+
+  The bug this exercise fixes assumes a groupless pattern's full-match
+  behavior still applies once a group is added, and manually strips a
+  prefix that `findall` already removed. The fix accounts for
+  `findall` already returning just the group contents.
+example_code: |
+  # The trap: assumes findall still returns full matches like "#12", then
+  # tries to manually strip the "#" that findall already removed.
+  import re
+
+  def extract_ids_trap(s):
+      matches = re.findall(r"#(\d+)", s)
+      return [m.lstrip("#") for m in matches]
+
+  print(extract_ids_trap("item #12 and #34"))
+  # ['12', '34'] happens to look right here, but only because lstrip("#")
+  # on a string with no leading "#" is a harmless no-op -- the REAL bug is
+  # that "matches" already held just the digits, so this "stripping" step
+  # is dead code masking a misunderstanding, not a working fix
+  print(re.findall(r"#(\d+)", "no ids here") == [])
+  # True -- fine so far, but the confusion breaks the next line:
+  print(extract_ids_trap("#5"))
+  first_char_is_hash = extract_ids_trap("#5")[0].startswith("#")
+  print(first_char_is_hash)
+  # False -- proving the group content NEVER had a "#" to strip in the first place
+
+  # The fix: findall with one group already returns just the group's
+  # contents -- no stripping needed at all.
+  def extract_ids(s):
+      return re.findall(r"#(\d+)", s)
+
+  print(extract_ids("item #12 and #34"))
+  # ['12', '34'] -- correct, and there's no leftover "#" to strip because
+  # findall already extracted only the captured group
+starter_code: |
+  import re
+
+  def extract_ids(s):
+      matches = re.findall(r"#(\d+)", s)
+      return [m.lstrip("#") for m in matches]
+
+  result = extract_ids("item #12 and #34")
+  print(result)
+  print("contains_hash=" + str(any("#" in m for m in result)))
+challenge: |
+  Fix `extract_ids` by removing the pointless `lstrip("#")` step --
+  `re.findall(r"#(\d+)", s)` already returns just the captured digits,
+  with no `#` ever present to strip. It should print `['12', '34']`
+  then `contains_hash=False`.
+expected_output: |
+  ['12', '34']
+  contains_hash=False
+hints:
+  - "Just return re.findall(r\"#(\\d+)\", s) directly -- no list comprehension or lstrip needed."
+  - "Once a pattern has a capturing group, findall returns the group's own contents for each match, not the full matched text."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 31
+difficulty: gotcha
+contains_patterns:
+  - "return re\\.findall\\(r\"#\\(\\\\d\\+\\)\", s\\)"
+concept_tags: [regex, re_module, findall]

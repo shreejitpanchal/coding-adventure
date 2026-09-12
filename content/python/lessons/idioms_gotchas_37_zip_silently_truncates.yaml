@@ -1,0 +1,67 @@
+id: idioms_gotchas_37
+title: "zip() Silently Stops at the Shortest Iterable"
+language: python
+level: 106
+objective: "Fix a pairing function that uses zip() with no length check, when two lists of different lengths should probably be treated as a data error -- zip() instead just quietly drops whatever's left over in the longer one, with no warning at all."
+explanation: |
+  `zip(a, b)` stops the moment either `a` or `b` runs out -- if they're
+  different lengths, everything past the shorter one's end is simply
+  never included in the result, with no error, no warning, nothing to
+  indicate anything was dropped. That's occasionally exactly what's
+  wanted, but far more often it's masking a real bug: two lists that
+  were supposed to correspond one-to-one but somehow ended up different
+  lengths, silently losing data instead of surfacing the mismatch.
+
+  The bug this exercise fixes zips `names` and `scores` directly, with
+  no length check. The fix validates the lengths match first, raising
+  a clear error if they don't.
+example_code: |
+  # The trap: zips directly -- silently drops any extra names once
+  # scores runs out, no error at all.
+  def pair_up_trap(names, scores):
+      return dict(zip(names, scores))
+
+  names = ["Ada", "Bo", "Cy"]
+  scores = [90, 85]
+  print(len(pair_up_trap(names, scores)))
+  # 2 -- "Cy" was silently dropped since scores was shorter
+
+  # The fix: validate the lengths match first.
+  def pair_up(names, scores):
+      if len(names) != len(scores):
+          raise ValueError(f"length mismatch: {len(names)} names vs {len(scores)} scores")
+      return dict(zip(names, scores))
+
+  try:
+      pair_up(names, scores)
+  except ValueError as e:
+      print(str(e))
+  # "length mismatch: 3 names vs 2 scores" -- correctly caught instead of silently dropping data
+starter_code: |
+  def pair_up(names, scores):
+      return dict(zip(names, scores))
+
+  names = ["Ada", "Bo", "Cy"]
+  scores = [90, 85]
+  try:
+      print(len(pair_up(names, scores)))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `pair_up` so it raises `ValueError(f"length mismatch: {len(names)}
+  names vs {len(scores)} scores")` when the lengths don't match,
+  instead of silently zipping and dropping the extra names. It should
+  print `length mismatch: 3 names vs 2 scores`, not `2`.
+expected_output: |
+  length mismatch: 3 names vs 2 scores
+hints:
+  - "Add: if len(names) != len(scores): raise ValueError(...), before the dict(zip(...)) line."
+  - "zip() has no concept of \"these should have matched\" -- it silently stops at whichever iterable runs out first, no matter why they're different lengths."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "len\\(names\\) != len\\(scores\\)"
+concept_tags: [idioms, zip, data_validation]

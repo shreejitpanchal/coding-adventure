@@ -1,0 +1,69 @@
+id: idioms_gotchas_29
+title: "A Dict Key Must Be Hashable -- a Plain List Never Is"
+language: python
+level: 98
+objective: "Fix a lookup builder that tries to use a plain list as a dict key, when a dict key must be hashable -- and a list, being mutable, deliberately isn't -- crashing with a TypeError the instant it's used that way."
+explanation: |
+  Dict keys need a stable hash value that never changes for as long as
+  the key is in use -- otherwise the dict's internal bucket for that
+  key could become unreachable the moment the key's contents (and
+  therefore its hash) changed. Python enforces this by making mutable
+  types like `list` and `dict` themselves unhashable: attempting to use
+  one as a dict key raises `TypeError: unhashable type` immediately,
+  rather than allowing a key whose identity could silently shift
+  underneath the dict later. A `tuple` of the same values works fine,
+  since tuples are immutable.
+
+  The bug this exercise fixes tries to use a `list` as a dict key. The
+  fix uses an equivalent `tuple` instead.
+example_code: |
+  # The trap: tries to use a plain LIST as a dict key -- lists are
+  # mutable, so Python makes them deliberately unhashable.
+  def build_lookup_trap():
+      key = [1, 2]
+      lookup = {}
+      try:
+          lookup[key] = "value"
+      except TypeError:
+          return "failed"
+      return "ok"
+
+  print(build_lookup_trap())
+  # "failed" -- lists can't be dict keys at all
+
+  # The fix: use an equivalent, immutable tuple instead.
+  def build_lookup():
+      key = (1, 2)
+      lookup = {}
+      lookup[key] = "value"
+      return "ok"
+
+  print(build_lookup())
+  # "ok" -- tuples are immutable and hashable, safe to use as a key
+starter_code: |
+  def build_lookup():
+      key = [1, 2]
+      lookup = {}
+      try:
+          lookup[key] = "value"
+      except TypeError:
+          return "failed"
+      return "ok"
+
+  print(build_lookup())
+challenge: |
+  Fix `build_lookup` so `key = (1, 2)` is a tuple, instead of `key =
+  [1, 2]` a list. It should print `ok`, not `failed`.
+expected_output: |
+  ok
+hints:
+  - "Change key = [1, 2] to key = (1, 2)."
+  - "A list's contents can change after creation, so Python refuses to let it be a dict key at all -- a tuple's contents can't, so it's fine."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 29
+difficulty: warmup
+contains_patterns:
+  - "key = \\(1, 2\\)"
+concept_tags: [idioms, hashability, dict_keys]

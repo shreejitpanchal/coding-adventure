@@ -1,0 +1,62 @@
+id: stdlib_deep_dive_14
+title: "itertools.accumulate Builds a Running Total in One Call"
+language: python
+level: 215
+objective: "Replace a manual loop tracking a running total with itertools.accumulate, which produces the same sequence of partial sums directly."
+explanation: |
+  A running total -- where each output value is the sum of everything
+  seen so far, not just the current item -- needs a separate
+  accumulator variable maintained across loop iterations when written
+  by hand. `itertools.accumulate(iterable)` produces exactly this
+  sequence of partial sums directly, with no separate accumulator
+  variable to manage. It also accepts a custom two-argument function
+  in place of addition, generalizing to a running maximum, a running
+  product, or any other fold-as-you-go computation.
+example_code: |
+  # A manual loop, tracking a running total in a separate variable.
+  def running_totals_loop(nums):
+      result = []
+      total = 0
+      for n in nums:
+          total += n
+          result.append(total)
+      return result
+
+  print(running_totals_loop([1, 2, 3, 4]))
+  # [1, 3, 6, 10]
+
+  # itertools.accumulate produces the same sequence directly.
+  from itertools import accumulate
+
+  def running_totals(nums):
+      return list(accumulate(nums))
+
+  print(running_totals([1, 2, 3, 4]))
+  # [1, 3, 6, 10]
+starter_code: |
+  def running_totals(nums):
+      result = []
+      total = 0
+      for n in nums:
+          total += n
+          result.append(total)
+      return result
+
+  print(running_totals([1, 2, 3, 4]))
+challenge: |
+  Rewrite `running_totals` using `itertools.accumulate(nums)`, instead
+  of a manual loop with a separate accumulator variable. Keep the same
+  output: [1, 3, 6, 10].
+expected_output: |
+  [1, 3, 6, 10]
+hints:
+  - "from itertools import accumulate, then: return list(accumulate(nums))."
+  - "accumulate defaults to running sums, but also accepts a custom two-argument function for a running maximum, product, or any other fold."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 14
+difficulty: core
+contains_patterns:
+  - "list\\(accumulate\\(nums\\)\\)"
+concept_tags: [itertools, accumulate]

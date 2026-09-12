@@ -1,0 +1,79 @@
+id: gotcha_gauntlet_40
+title: "The Generator's Return Value That Vanished Into Thin Air"
+language: python
+level: 285
+objective: "Fix code that expects a generator's 'return value' to come back from iterating over it directly, when a generator's return value is NOT yielded -- it's only accessible through the StopIteration exception's .value attribute."
+explanation: |
+  A `return value` statement inside a generator function doesn't
+  `yield` that value -- it ends the generator and attaches `value` to
+  the `StopIteration` exception raised when the generator is exhausted.
+  Iterating over the generator normally (a `for` loop, or collecting
+  its values with `list(...)`) never sees that return value at all --
+  it's specifically *not* one of the yielded values, and code that
+  expects to find it there by looking at the last yielded item, or
+  the list's last element, will always come up empty.
+
+  The only way to actually retrieve it is manually driving the
+  generator with `next()` inside a `try/except StopIteration as e:`,
+  and reading `e.value` once the generator is exhausted.
+example_code: |
+  # The trap: expects the return value to show up among the yielded values.
+  def countdown_trap():
+      yield 3
+      yield 2
+      yield 1
+      return "done"
+
+  values_trap = list(countdown_trap())
+  print(values_trap)
+  # [3, 2, 1] -- WRONG if you expected "done" to be in there somewhere;
+  # a generator's return value is never yielded, so list() can't see it
+
+  # The fix: drive the generator manually and catch StopIteration.value.
+  def countdown():
+      yield 3
+      yield 2
+      yield 1
+      return "done"
+
+  gen = countdown()
+  values = []
+  result = None
+  while True:
+      try:
+          values.append(next(gen))
+      except StopIteration as e:
+          result = e.value
+          break
+
+  print(values, result)
+  # [3, 2, 1] done -- correctly retrieved the return value separately
+starter_code: |
+  def countdown():
+      yield 3
+      yield 2
+      yield 1
+      return "done"
+
+  values = list(countdown())
+  result = values[-1] if values else None
+  print(values, result)
+challenge: |
+  Fix this by driving `countdown()` manually with `next()` inside a
+  `try/except StopIteration as e:` loop, capturing `e.value` as
+  `result` separately from the yielded `values`. It should print
+  `[3, 2, 1] done`, not `[3, 2, 1] 1`.
+expected_output: |
+  [3, 2, 1] done
+hints:
+  - "gen = countdown(); values = []; then loop: try: values.append(next(gen)) except StopIteration as e: result = e.value; break."
+  - "A generator's return value is attached to the StopIteration exception, not yielded -- iterating normally (for, list(), ...) can never see it."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 40
+difficulty: deep_dive
+contains_patterns:
+  - "except StopIteration as e:"
+  - "e\\.value"
+concept_tags: [generators, stopiteration, gotchas]

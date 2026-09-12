@@ -1,0 +1,63 @@
+id: ai_273
+title: "A Node Should Never Mutate the Caller's Own State Dict in Place"
+language: ai
+level: 273
+objective: "Fix a node that mutates the exact dict object it was given, silently changing the caller's own copy of state too, when a node should return a fresh state object and leave whatever was passed in completely untouched."
+explanation: |
+  If a graph passes the same state object to more than one place (a
+  fan-out branch, a caller that inspects state after invoking a node),
+  a node that mutates that object in place changes it everywhere it's
+  referenced -- not just in the graph's own internal bookkeeping. This
+  is the same aliasing hazard that shows up anywhere a mutable object
+  is shared by reference instead of copied: the caller's `original`
+  dict silently picks up whatever a node did to "its own" state,
+  because they were never actually two separate objects to begin with.
+
+  The bug this exercise fixes assigns directly into the `state`
+  parameter it was given. The fix builds a genuinely new dict and
+  leaves the original untouched.
+example_code: |
+  # The trap: mutates the CALLER'S own dict in place, instead of
+  # returning a new one.
+  def add_flag_trap(state):
+      state["flagged"] = True
+      return state
+
+  original = {"text": "hello"}
+  result = add_flag_trap(original)
+  print("flagged" in original)   # True -- the caller's own dict was silently mutated too!
+
+  # The fix: build a genuinely new dict, leave the original untouched.
+  def add_flag(state):
+      new_state = dict(state)
+      new_state["flagged"] = True
+      return new_state
+
+  original2 = {"text": "hello"}
+  result2 = add_flag(original2)
+  print("flagged" in original2)   # False -- the caller's own dict was left untouched
+starter_code: |
+  def add_flag(state):
+      state["flagged"] = True
+      return state
+
+  original = {"text": "hello"}
+  result = add_flag(original)
+  print("flagged" in original)
+challenge: |
+  Fix `add_flag` so it builds `new_state = dict(state)` and modifies
+  that copy instead of mutating `state` directly. It should print
+  `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "new_state = dict(state), then new_state[\"flagged\"] = True, then return new_state -- never assign directly into the state parameter itself."
+  - "The caller's original dict and the node's \"own\" state are the exact same object here -- copying first is what actually separates them."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "new_state = dict\\(state\\)"
+concept_tags: [langgraph, node_purity, aliasing]

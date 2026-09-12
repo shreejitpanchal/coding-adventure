@@ -1,0 +1,57 @@
+id: ai_205
+title: "A Sampling Response Must Be Matched by Its Own ID, Not Guessed"
+language: ai
+level: 205
+objective: "Fix a response-matching function that just returns the first pending entry regardless of the response's own id, when a server-initiated sampling request (like any other request) must be correlated by its actual id."
+explanation: |
+  When a server sends a `sampling/createMessage` request to the client,
+  the eventual response has to be matched back to the specific pending
+  request it answers -- the same id-based correlation this category's
+  earlier request/response lesson covers, just flowing in the opposite
+  direction (server asking, client answering) since MCP requests can
+  originate from either side. Picking "whichever pending entry happens
+  to come first" instead of matching by id works only by coincidence
+  when there's exactly one request in flight, and breaks the moment
+  there's more than one.
+
+  The bug this exercise fixes ignores the response's `response_id`
+  entirely, arbitrarily returning the first pending key. The fix
+  matches by the id itself.
+example_code: |
+  # The trap: ignores response_id entirely, just returns the first
+  # pending key arbitrarily.
+  def match_response_trap(pending, response_id):
+      return list(pending.keys())[0]
+
+  pending_trap = {"r1": "waiting", "r2": "waiting"}
+  print(match_response_trap(pending_trap, "r2"))   # "r1" -- wrong request matched entirely
+
+  # The fix: match by the response's own id.
+  def match_response(pending, response_id):
+      return response_id if response_id in pending else None
+
+  pending = {"r1": "waiting", "r2": "waiting"}
+  print(match_response(pending, "r2"))   # "r2" -- correctly matched via id correlation
+starter_code: |
+  def match_response(pending, response_id):
+      return list(pending.keys())[0]
+
+  pending = {"r1": "waiting", "r2": "waiting"}
+  print(match_response(pending, "r2"))
+challenge: |
+  Fix `match_response` so it returns `response_id` when it's present in
+  `pending` (and `None` otherwise), instead of always returning the
+  first key in `pending`. It should print `r2`, not `r1`.
+expected_output: |
+  r2
+hints:
+  - "return response_id if response_id in pending else None -- drop list(pending.keys())[0] entirely."
+  - "Sampling requests flow server-to-client, but they still need the same id-based correlation as any other MCP request."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 30
+difficulty: core
+contains_patterns:
+  - "response_id if response_id in pending else None"
+concept_tags: [mcp, sampling, request_correlation]

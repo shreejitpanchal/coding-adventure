@@ -1,0 +1,73 @@
+id: gotcha_gauntlet_35
+title: "The Static Method That Silently Absorbed Its Own First Argument"
+language: python
+level: 280
+objective: "Fix a @staticmethod whose first parameter is still named self, silently absorbing the real first argument into a throwaway parameter, when a static method should have no self/cls parameter at all."
+explanation: |
+  `@staticmethod` deliberately removes the automatic `self` (or `cls`)
+  binding that instance and class methods get -- a static method is
+  called with *exactly* the arguments it's given, nothing extra
+  inserted in front. Leaving `self` in the parameter list out of habit
+  doesn't raise any error at *definition* time -- Python simply treats
+  it as an ordinary first parameter. But nothing automatically fills
+  it the way a real instance method's `self` gets filled, so a call
+  written for the intended two-argument function (`add(3, 4)`) shifts
+  `3` into `self` and `4` into `a`, leaving the actual three-parameter
+  signature one argument short and raising `TypeError: add() missing 1
+  required positional argument: 'b'` -- a confusing crash for a
+  function that looks, from its decorator and call site, like it
+  should obviously work.
+
+  The fix is removing `self` from a static method's parameter list
+  entirely, since `@staticmethod` never binds anything special to it
+  in the first place.
+example_code: |
+  # The trap: self is still there, silently eating the first REAL
+  # argument and leaving the call one argument short.
+  class MathHelperTrap:
+      @staticmethod
+      def add(self, a, b):
+          return a + b
+
+  try:
+      MathHelperTrap.add(3, 4)
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- add() missing 1 required positional argument: 'b'
+
+  # The fix: a static method takes no self/cls parameter at all.
+  class MathHelper:
+      @staticmethod
+      def add(a, b):
+          return a + b
+
+  print(MathHelper.add(3, 4))
+  # 7 -- correctly used both real arguments, nothing silently absorbed
+starter_code: |
+  class MathHelper:
+      @staticmethod
+      def add(self, a, b):
+          return a + b
+
+  try:
+      print(MathHelper.add(3, 4))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `add` by removing the unnecessary `self` parameter -- a
+  `@staticmethod` should be `def add(a, b):`, with no `self` at all. It
+  should print `7`, not `crashed`.
+expected_output: |
+  7
+hints:
+  - "def add(a, b): return a + b, with the @staticmethod decorator kept but self removed entirely."
+  - "@staticmethod never binds anything special to a first parameter -- a self left in the signature just eats whatever the real first argument was meant to be, leaving the call one argument short."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 35
+difficulty: gotcha
+contains_patterns:
+  - "def add\\(a, b\\):"
+concept_tags: [staticmethod, classes, gotchas]

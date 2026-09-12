@@ -1,0 +1,82 @@
+id: ai_115
+title: "An Embedding Cache That's Never Checked Isn't a Cache"
+language: ai
+level: 115
+objective: "Fix a query-embedding function that always recomputes the embedding, ignoring a perfectly good cache dict that was passed in specifically to avoid redundant, repeated work for the same query text."
+explanation: |
+  Real applications see the same or very similar queries repeated
+  often -- a common FAQ-style question, a user refining and re-running
+  a search. Recomputing the embedding for an identical query text every
+  single time wastes real, non-trivial work (the same expensive
+  embedding call this category's batch-embedding lesson already flagged
+  as costly) that a simple cache keyed by query text can eliminate
+  entirely for repeat queries.
+
+  The bug this exercise fixes accepts a `cache` dict as a parameter but
+  never actually checks it before computing a fresh embedding -- the
+  cache exists, but nothing in the function ever reads from or writes
+  to it, so every call recomputes from scratch regardless of whether
+  the exact same query was already embedded moments ago. The fix checks
+  the cache first, only computing (and then storing) a fresh embedding
+  on an actual cache miss.
+example_code: |
+  # The trap: a cache dict is accepted, but never actually checked --
+  # every call recomputes from scratch, cache or no cache.
+  call_count = 0
+  def embed(text):
+      global call_count
+      call_count += 1
+      return f"embedding_of({text})"
+
+  def get_query_embedding_trap(query, cache):
+      return embed(query)   # bug: cache is accepted but completely ignored
+
+  cache = {}
+  get_query_embedding_trap("refund policy", cache)
+  get_query_embedding_trap("refund policy", cache)   # the EXACT SAME query, again
+  print(call_count)   # 2 -- recomputed both times, despite the cache existing
+
+  # The fix: check the cache FIRST, only compute (and store) on a real miss.
+  call_count = 0
+  def get_query_embedding(query, cache):
+      if query in cache:
+          return cache[query]
+      result = embed(query)
+      cache[query] = result
+      return result
+
+  cache2 = {}
+  get_query_embedding("refund policy", cache2)
+  get_query_embedding("refund policy", cache2)
+  print(call_count)   # 1 -- the second call correctly reused the cached result
+starter_code: |
+  call_count = 0
+  def embed(text):
+      global call_count
+      call_count += 1
+      return f"embedding_of({text})"
+
+  def get_query_embedding(query, cache):
+      return embed(query)
+
+  cache = {}
+  get_query_embedding("refund policy", cache)
+  get_query_embedding("refund policy", cache)
+  print(call_count)
+challenge: |
+  Fix `get_query_embedding` so it checks `cache` first (returning the
+  cached value on a hit), and only calls `embed` (storing the result
+  into `cache`) on an actual miss. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Add: if query in cache: return cache[query], as the very first line of the function."
+  - "On a cache miss, compute result = embed(query), store it with cache[query] = result, then return result."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 30
+difficulty: warmup
+contains_patterns:
+  - "if query in cache"
+concept_tags: [rag, caching, embeddings]

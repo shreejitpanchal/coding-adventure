@@ -1,0 +1,64 @@
+id: ai_137
+title: "Plan-and-Execute Means Actually Following the Plan, Not Re-Deciding Each Step"
+language: ai
+level: 137
+objective: "Fix a plan-and-execute agent that generates a full upfront plan but then ignores it, deciding each step's action independently -- defeating the entire point of planning ahead."
+explanation: |
+  **Plan-and-execute** agents generate a complete multi-step plan
+  upfront, then work through it -- a different structure from ReAct's
+  interleaved, one-step-at-a-time reasoning (this category's own ReAct
+  lesson). The value of planning ahead is coherence: a plan considers
+  the whole task before committing to any one step, avoiding the kind
+  of locally-reasonable-but-globally-inconsistent choices a purely
+  step-by-step approach can make. That value only exists if execution
+  actually *follows* the plan that was generated.
+
+  The bug this exercise fixes generates a plan but then executes each
+  step by re-deciding independently what to do, never actually
+  consulting the plan it just made. The fix executes the plan's own
+  steps directly, in the order they were planned.
+example_code: |
+  # The trap: generates a PLAN, then ignores it -- decides each step
+  # independently instead of actually following what was planned.
+  def execute_trap(plan, independent_decision_fn):
+      results = []
+      for _ in plan:
+          results.append(independent_decision_fn())   # bug: ignores the actual planned step entirely
+      return results
+
+  plan = ["reserve_flight", "reserve_hotel", "send_confirmation"]
+  print(execute_trap(plan, lambda: "did_something_else"))   # ['did_something_else', 'did_something_else', 'did_something_else']
+
+  # The fix: execute the PLAN's own steps, in order.
+  def execute(plan, step_executor):
+      return [step_executor(step) for step in plan]
+
+  print(execute(plan, lambda step: f"executed_{step}"))
+  # ['executed_reserve_flight', 'executed_reserve_hotel', 'executed_send_confirmation']
+starter_code: |
+  def execute(plan, step_executor, independent_decision_fn):
+      results = []
+      for _ in plan:
+          results.append(independent_decision_fn())
+      return results
+
+  plan = ["reserve_flight", "reserve_hotel", "send_confirmation"]
+  print(execute(plan, lambda step: f"executed_{step}", lambda: "did_something_else"))
+challenge: |
+  Fix `execute` so it calls `step_executor(step)` for each actual step
+  in `plan`, instead of calling `independent_decision_fn()` and
+  ignoring the plan entirely. It should print
+  `['executed_reserve_flight', 'executed_reserve_hotel', 'executed_send_confirmation']`.
+expected_output: |
+  ['executed_reserve_flight', 'executed_reserve_hotel', 'executed_send_confirmation']
+hints:
+  - "Change the loop to: for step in plan: results.append(step_executor(step))."
+  - "Each planned step needs to actually be passed to step_executor -- the independent_decision_fn parameter shouldn't be used at all in the fixed version."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 7
+difficulty: warmup
+contains_patterns:
+  - "step_executor\\(step\\)"
+concept_tags: [agentic_frameworks, plan_and_execute, agent_architecture]

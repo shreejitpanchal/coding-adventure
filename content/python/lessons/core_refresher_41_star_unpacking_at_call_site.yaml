@@ -1,0 +1,47 @@
+id: core_refresher_41
+title: "* at a Call Site Unpacks a Sequence Into Separate Positional Arguments"
+language: python
+level: 154
+objective: "Replace manually indexing into a list to pass each element as a separate argument with '*' unpacking at the call site."
+explanation: |
+  Passing each element of an existing list as a separate positional
+  argument by indexing into it (`total(nums[0], nums[1], nums[2])`)
+  works, but it hardcodes the list's length into the call and reads
+  awkwardly. `*` at a *call site* (as opposed to in a function
+  signature, this category's earlier `*args` lesson) unpacks an
+  existing sequence directly into separate positional arguments --
+  `total(*nums)` is exactly equivalent to writing out every element by
+  hand, without needing to know or hardcode how many there are.
+example_code: |
+  # Manually indexing into the list for each argument.
+  def total(a, b, c):
+      return a + b + c
+
+  nums = [1, 2, 3]
+  print(total(nums[0], nums[1], nums[2]))  # 6
+
+  # * unpacks the list directly into separate arguments.
+  print(total(*nums))                      # 6
+starter_code: |
+  def total(a, b, c):
+      return a + b + c
+
+  nums = [1, 2, 3]
+  print(total(nums[0], nums[1], nums[2]))
+challenge: |
+  Rewrite the call as `total(*nums)`, unpacking the list directly
+  instead of indexing into each element by hand. Keep the same
+  output: 6.
+expected_output: |
+  6
+hints:
+  - "Replace total(nums[0], nums[1], nums[2]) with total(*nums)."
+  - "* at a call site unpacks an existing sequence into separate positional arguments -- it's the mirror image of *args collecting them in a signature."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 41
+difficulty: core
+contains_patterns:
+  - "total\\(\\*nums\\)"
+concept_tags: [unpacking, function_calls]

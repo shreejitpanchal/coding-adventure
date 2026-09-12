@@ -1,0 +1,68 @@
+id: ai_159
+title: "A Tool's Return Value Needs Schema Validation Before Being Trusted"
+language: ai
+level: 159
+objective: "Fix a tool-result handler that assumes a required field is always present, crashing with a KeyError the moment a malformed or unexpected tool response arrives instead of validating its shape first."
+explanation: |
+  A tool call -- especially one wrapping an external API -- can return
+  a response that doesn't match the expected shape: a field renamed by
+  an upstream API change, a partial response from a degraded service,
+  a genuinely malformed payload. Code that reaches straight into a
+  required field without checking it's actually there crashes the
+  moment reality doesn't match the assumed schema, instead of failing
+  in a controlled, diagnosable way.
+
+  The bug this exercise fixes indexes directly into a required field
+  with no validation at all. The fix checks that the field exists
+  first, returning a clear, specific error describing exactly what was
+  missing instead of letting a raw `KeyError` propagate with no context
+  about which field or which tool was involved.
+example_code: |
+  # The trap: reaches directly into a required field -- crashes with a
+  # bare KeyError the moment the response doesn't match the expected shape.
+  def process_response_trap(response):
+      return response["price"] * 1.08   # KeyError if "price" is missing, with zero context
+
+  malformed_response = {"prcie": 19.99}   # a typo'd field name from an upstream API
+  # process_response_trap(malformed_response)  # KeyError: 'price' -- no idea WHICH tool or field this even came from
+
+  # The fix: validate the required field exists FIRST, with a clear error if not.
+  def process_response(response):
+      if "price" not in response:
+          raise ValueError(f"tool response missing required field 'price': {response}")
+      return response["price"] * 1.08
+
+  try:
+      process_response(malformed_response)
+  except ValueError as e:
+      print(e)
+starter_code: |
+  def process_response(response):
+      return response["price"] * 1.08
+
+  malformed_response = {"prcie": 19.99}
+  try:
+      process_response(malformed_response)
+  except ValueError as e:
+      print(e)
+  except KeyError as e:
+      print(f"unhandled: {e}")
+challenge: |
+  Fix `process_response` so it checks `"price" not in response` first,
+  raising a specific `ValueError` naming the missing field, instead of
+  letting a bare `KeyError` propagate. It should print
+  `tool response missing required field 'price': {'prcie': 19.99}`,
+  not `unhandled: 'price'`.
+expected_output: |
+  tool response missing required field 'price': {'prcie': 19.99}
+hints:
+  - "Add: if \"price\" not in response: raise ValueError(f\"tool response missing required field 'price': {response}\")."
+  - "This check needs to happen before response[\"price\"] is ever accessed, so the specific ValueError is raised instead of a bare KeyError."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 29
+difficulty: gotcha
+contains_patterns:
+  - "raise ValueError"
+concept_tags: [agentic_frameworks, schema_validation, tool_calling, error_handling]

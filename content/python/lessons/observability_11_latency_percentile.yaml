@@ -1,0 +1,59 @@
+id: observability_11
+title: "A Percentile Needs Sorted Data -- The First Value Isn't the Median"
+language: python
+level: 411
+objective: "Fix a 'p50 latency' function that just returns the first recorded duration, when a genuine percentile requires sorting every recorded value first and picking the one at the right position -- the raw recording order has nothing to do with which value is actually the median."
+explanation: |
+  A percentile answers "what value is X% of the way through the sorted
+  data" -- the 50th percentile (the median) is the middle value once
+  everything is sorted, not whichever measurement happened to be
+  recorded first. Latency measurements arrive in whatever order
+  requests happened to complete, which has no relationship to their
+  relative size at all -- returning the first one recorded reports a
+  essentially arbitrary value, not a real statistical percentile.
+  Computing a percentile correctly requires sorting every recorded
+  value first, then indexing into that sorted list at the position
+  corresponding to the requested percentile.
+
+  The fix sorts the durations first, then picks the value at the
+  correct percentile position.
+example_code: |
+  # The trap: returns the FIRST recorded value -- not a percentile at all.
+  def p50_trap(durations):
+      return durations[0]
+
+  print(p50_trap([10, 50, 20, 90, 30]))
+  # 10 -- WRONG, this is just whatever happened to be recorded first
+
+  # The fix: sort first, then index at the correct percentile position.
+  def percentile(durations, p):
+      sorted_durations = sorted(durations)
+      index = int(len(sorted_durations) * p / 100)
+      index = min(index, len(sorted_durations) - 1)
+      return sorted_durations[index]
+
+  print(percentile([10, 50, 20, 90, 30], 50))
+  # 30 -- correctly the middle value once sorted: [10, 20, 30, 50, 90]
+starter_code: |
+  def percentile(durations, p):
+      return durations[0]
+
+  print(percentile([10, 50, 20, 90, 30], 50))
+challenge: |
+  Fix `percentile` so it sorts `durations`, computes
+  `index = int(len(sorted_durations) * p / 100)` (capped at the last
+  valid index), and returns `sorted_durations[index]`, instead of
+  `durations[0]`. It should print `30`, not `10`.
+expected_output: |
+  30
+hints:
+  - "sorted_durations = sorted(durations), then index = min(int(len(sorted_durations) * p / 100), len(sorted_durations) - 1)."
+  - "A percentile is about POSITION in sorted order -- the recording order the values happened to arrive in has nothing to do with which one is actually the median."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 11
+difficulty: deep_dive
+contains_patterns:
+  - "sorted_durations = sorted\\(durations\\)"
+concept_tags: [observability, metrics, percentiles]

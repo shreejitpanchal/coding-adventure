@@ -1,0 +1,65 @@
+id: ai_97
+title: "A Re-Ranking Stage Must Actually Use the Re-Ranker's Scores"
+language: ai
+level: 97
+objective: "Fix a two-stage retrieval pipeline that calls a more precise re-ranking model on the initial candidates but then returns them in their original order anyway, wasting the entire point of running a second, more accurate scoring pass."
+explanation: |
+  A common, practical RAG pattern runs retrieval in two stages: a fast,
+  approximate first pass (the initial vector search) pulls a broader
+  set of candidates, and a slower but more accurate **cross-encoder**
+  re-ranker scores that smaller candidate set more precisely before
+  the final top-k gets used. The whole reason to run that second,
+  expensive pass is to get a better ordering than the fast first pass
+  alone could produce -- which only works if the pipeline actually
+  *uses* the re-ranker's output to reorder the results.
+
+  The bug this exercise fixes calls the re-ranker, computes its scores,
+  and then returns the candidates in their *original* first-pass order
+  anyway -- the re-ranking work happened, but its result was thrown
+  away, making the entire second pass pure wasted computation. The fix
+  actually sorts the candidates by the re-ranker's own scores before
+  returning them.
+example_code: |
+  # The trap: calls the re-ranker, gets its scores, then returns
+  # candidates in their ORIGINAL order anyway -- wasting the whole pass.
+  def rerank_trap(candidates, rerank_scores):
+      scored = list(zip(candidates, rerank_scores))   # computed, but never used to reorder!
+      return candidates   # bug: just returns the original order
+
+  candidates = ["doc_b", "doc_a", "doc_c"]
+  rerank_scores = [0.5, 0.9, 0.3]   # doc_a is actually the best match, per the more precise re-ranker
+  print(rerank_trap(candidates, rerank_scores))   # ['doc_b', 'doc_a', 'doc_c'] -- unchanged, ignoring the re-ranker
+
+  # The fix: actually sort by the re-ranker's scores before returning.
+  def rerank(candidates, rerank_scores):
+      scored = list(zip(candidates, rerank_scores))
+      scored.sort(key=lambda pair: pair[1], reverse=True)
+      return [doc for doc, score in scored]
+
+  print(rerank(candidates, rerank_scores))   # ['doc_a', 'doc_b', 'doc_c'] -- correctly reordered by the re-ranker
+starter_code: |
+  def rerank(candidates, rerank_scores):
+      scored = list(zip(candidates, rerank_scores))
+      return candidates
+
+  candidates = ["doc_b", "doc_a", "doc_c"]
+  rerank_scores = [0.5, 0.9, 0.3]
+  print(rerank(candidates, rerank_scores))
+challenge: |
+  Fix `rerank` so it sorts `scored` by each pair's rerank score
+  (descending) and returns the documents in that new order, instead of
+  returning `candidates` unchanged. It should print
+  `['doc_a', 'doc_b', 'doc_c']`.
+expected_output: |
+  ['doc_a', 'doc_b', 'doc_c']
+hints:
+  - "Sort scored in place: scored.sort(key=lambda pair: pair[1], reverse=True)."
+  - "Return [doc for doc, score in scored] -- extracting just the documents, now in the re-ranked order."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 12
+difficulty: gotcha
+contains_patterns:
+  - "scored\\.sort\\(key=lambda pair: pair\\[1\\]"
+concept_tags: [rag, reranking, cross_encoder]

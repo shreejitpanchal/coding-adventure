@@ -71,7 +71,7 @@ hints:
   - "from contextlib import suppress"
   - "Set value = 0 first, then `with suppress(ValueError): value = int(...)`."
 xp_reward: 15
-achievement: stdlib_deep_dive_master
+achievement: null
 category: stdlib_deep_dive
 category_level: 6
 difficulty: core

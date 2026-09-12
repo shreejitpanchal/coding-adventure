@@ -1,0 +1,64 @@
+id: ai_81
+title: "Log-Loss Punishes a Confident Wrong Answer Much More Than Accuracy Does"
+language: ai
+level: 81
+objective: "Fix a scoring function that only checks whether a rounded prediction matches the true label, missing that log-loss should penalize a confidently wrong probability far more harshly than a hesitant wrong one."
+explanation: |
+  Accuracy only cares whether the rounded prediction matches the true
+  label -- a model that says `0.51` and a model that says `0.99` for
+  the same wrong case both just count as "one wrong prediction." **Log-
+  loss** (cross-entropy) captures something accuracy can't: it
+  penalizes a confidently wrong prediction (`0.99` when the true label
+  was `0`) far more harshly than a barely-wrong one (`0.51` when the
+  true label was `0`), because log-loss's formula grows sharply as a
+  predicted probability approaches the wrong extreme.
+
+  The bug this exercise fixes rounds predictions to `0`/`1` before
+  scoring, throwing away exactly the confidence information log-loss
+  needs -- a wildly overconfident wrong prediction and a barely-wrong
+  one become indistinguishable. The fix computes real log-loss directly
+  on the raw probability, correctly reflecting that being *very*
+  confidently wrong is a much bigger problem than being *barely* wrong.
+example_code: |
+  # The trap: rounds to 0/1 first, throwing away exactly the confidence
+  # information that distinguishes "barely wrong" from "wildly overconfident wrong."
+  def score_trap(y_true, predicted_prob):
+      predicted_label = round(predicted_prob)
+      return 0 if predicted_label == y_true else 1
+
+  print(score_trap(0, 0.51))   # 1 -- barely wrong
+  print(score_trap(0, 0.99))   # 1 -- IDENTICAL score, even though this is wildly overconfident
+
+  # The fix: real log-loss, computed directly from the probability.
+  import math
+
+  def log_loss(y_true, predicted_prob):
+      p = min(max(predicted_prob, 1e-15), 1 - 1e-15)   # avoid log(0)
+      return -(y_true * math.log(p) + (1 - y_true) * math.log(1 - p))
+
+  print(round(log_loss(0, 0.51), 2))   # 0.71 -- a real, meaningful penalty
+  print(round(log_loss(0, 0.99), 2))   # 4.61 -- MUCH harsher, correctly reflecting the overconfidence
+starter_code: |
+  def log_loss(y_true, predicted_prob):
+      predicted_label = round(predicted_prob)
+      return 0 if predicted_label == y_true else 1
+
+  print(round(log_loss(0, 0.51), 2) < round(log_loss(0, 0.99), 2))
+challenge: |
+  Replace the rounded-accuracy check with real log-loss (`-(y_true *
+  log(p) + (1 - y_true) * log(1 - p))`), so a more confidently wrong
+  prediction scores a strictly higher (worse) loss than a barely wrong
+  one. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add `import math`, and compute p = min(max(predicted_prob, 1e-15), 1 - 1e-15) to avoid log(0)."
+  - "Return -(y_true * math.log(p) + (1 - y_true) * math.log(1 - p)) -- this grows sharply as p moves toward the wrong extreme, unlike the flat 0/1 accuracy check."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 41
+difficulty: deep_dive
+contains_patterns:
+  - "math\\.log\\("
+concept_tags: [ml_fundamentals, log_loss, cross_entropy, evaluation_metrics]

@@ -1,0 +1,82 @@
+id: ai_151
+title: "A Retried Tool Call Must Not Repeat a Side Effect That Already Happened"
+language: ai
+level: 151
+objective: "Fix a tool-call retry wrapper that re-runs a payment tool from scratch on retry with no idempotency protection, risking a duplicate charge if the first attempt actually succeeded but its confirmation was lost -- the same idempotency-key concern this app's Architecture track covers generally, applied to agent tool calls specifically."
+explanation: |
+  This category's retry lesson makes retrying a failed call the
+  correct default response to an ambiguous failure -- but for a tool
+  with a genuine side effect (charging a card, sending an email), a
+  timeout is exactly the ambiguous case this app's Architecture track
+  covers: it might mean the call never happened, or it might mean it
+  succeeded and only the confirmation was lost. Retrying such a tool
+  call without any idempotency protection risks repeating a side effect
+  that already occurred once.
+
+  The bug this exercise fixes retries the payment tool with no
+  idempotency key at all -- a retried call is indistinguishable from a
+  genuinely new charge. The fix generates one idempotency key per
+  logical request and passes the *same* key on every retry, letting the
+  tool itself recognize a retry and return the already-recorded result
+  instead of charging again.
+example_code: |
+  # The trap: retries with NO idempotency key -- a retried call looks
+  # identical to a brand new charge, risking a duplicate.
+  def charge_with_retry_trap(charge_fn, amount, max_attempts=2):
+      for _ in range(max_attempts):
+          try:
+              return charge_fn(amount)   # bug: no idempotency key passed at all
+          except TimeoutError:
+              continue
+
+  # The fix: generate ONE idempotency key, reuse it on every retry.
+  def charge_with_retry(charge_fn, amount, max_attempts=2):
+      idempotency_key = "req-12345"   # generated ONCE per logical request
+      for _ in range(max_attempts):
+          try:
+              return charge_fn(amount, idempotency_key)
+          except TimeoutError:
+              continue
+
+  processed = {}
+  def idempotent_charge(amount, idempotency_key):
+      if idempotency_key in processed:
+          return processed[idempotency_key]   # already handled -- returns the SAME result, no re-charge
+      processed[idempotency_key] = f"charged ${amount}"
+      return processed[idempotency_key]
+
+  print(charge_with_retry(idempotent_charge, 100))
+  print(len(processed))   # 1 -- only ONE actual charge was recorded, regardless of how many retries occur
+starter_code: |
+  processed = {}
+  def idempotent_charge(amount, idempotency_key):
+      if idempotency_key in processed:
+          return processed[idempotency_key]
+      processed[idempotency_key] = f"charged ${amount}"
+      return processed[idempotency_key]
+
+  def charge_with_retry(charge_fn, amount, max_attempts=2):
+      results = []
+      for i in range(max_attempts):
+          results.append(charge_fn(amount, f"req-{i}"))
+      return results
+
+  charge_with_retry(idempotent_charge, 100)
+  print(len(processed))
+challenge: |
+  Fix `charge_with_retry` so it generates ONE idempotency key before the
+  retry loop and reuses that SAME key on every attempt, instead of
+  generating a different key each time. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Generate idempotency_key = \"req-12345\" (or similar) once, BEFORE the loop starts."
+  - "Pass that same idempotency_key on every attempt inside the loop, instead of a different one (like f\"req-{i}\") each time."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 21
+difficulty: deep_dive
+contains_patterns:
+  - "idempotency_key = "
+concept_tags: [agentic_frameworks, idempotency, tool_calling, retry]

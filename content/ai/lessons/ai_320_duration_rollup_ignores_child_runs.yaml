@@ -1,0 +1,54 @@
+id: ai_320
+title: "A Trace's Total Duration Must Roll Up Every Child Run Too"
+language: ai
+level: 320
+objective: "Fix a duration-rollup function that only reports a run's own measured time, ignoring how long every nested child run took, when the trace's true total latency has to reflect everything that ran underneath it."
+explanation: |
+  This category's earlier lesson covered the same rollup mistake for
+  cost -- this is the identical shape of bug applied to duration
+  instead: a parent's own measured time might be small (a thin
+  orchestration wrapper), while the real time is spent entirely inside
+  its nested children. Reporting only the parent's own duration
+  radically understates how long the trace actually took to run.
+
+  The bug this exercise fixes returns `run["own_duration"]` alone. The
+  fix recursively adds every child's rolled-up duration too.
+example_code: |
+  # The trap: only counts the run's OWN duration -- every child's
+  # duration is completely ignored.
+  def total_duration_trap(run):
+      return run["own_duration"]
+
+  run = {"own_duration": 10, "children": [{"own_duration": 20, "children": []}, {"own_duration": 15, "children": []}]}
+  print(total_duration_trap(run))
+  # 10 -- ignored both children's durations
+
+  # The fix: recursively add every child's rolled-up duration too.
+  def total_duration(run):
+      return run["own_duration"] + sum(total_duration(child) for child in run["children"])
+
+  print(total_duration(run))
+  # 45 -- correctly rolled up the parent's own duration plus both children's
+starter_code: |
+  def total_duration(run):
+      return run["own_duration"]
+
+  run = {"own_duration": 10, "children": [{"own_duration": 20, "children": []}, {"own_duration": 15, "children": []}]}
+  print(total_duration(run))
+challenge: |
+  Fix `total_duration` so it returns `run["own_duration"] +
+  sum(total_duration(child) for child in run["children"])`, instead of
+  just `run["own_duration"]` alone. It should print `45`, not `10`.
+expected_output: |
+  45
+hints:
+  - "Add sum(total_duration(child) for child in run[\"children\"]) to run[\"own_duration\"] in the return statement."
+  - "The same recursive rollup pattern applies here as it does for cost -- a child's own children need to be included too."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "sum\\(total_duration\\(child\\) for child in run\\[\"children\"\\]\\)"
+concept_tags: [langsmith, latency, run_tree]

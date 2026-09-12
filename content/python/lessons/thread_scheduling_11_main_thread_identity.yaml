@@ -1,0 +1,61 @@
+id: thread_scheduling_11
+title: "Checking a Thread's Name Is Fragile -- threading.main_thread() Checks Real Identity"
+language: python
+level: 431
+objective: "Fix a check for 'is this the main thread' that compares the thread's NAME against the string 'MainThread', which breaks the instant that name is changed, when threading.main_thread() gives back the actual main Thread object -- comparing identity with 'is' is robust regardless of what the thread happens to be named."
+explanation: |
+  `threading.current_thread().name == "MainThread"` only works because
+  `"MainThread"` happens to be the *default* name Python gives the
+  main thread -- nothing stops that name from being reassigned
+  (`current_thread().name = "renamed"`), and the moment it is, a
+  name-based check breaks even though it's still genuinely the exact
+  same main thread underneath. `threading.main_thread()` returns the
+  real, actual main `Thread` object directly -- comparing it with `is`
+  checks genuine object identity, which is completely unaffected by
+  whatever the thread happens to be named at the time.
+
+  The fix compares `threading.current_thread() is threading.
+  main_thread()`, instead of comparing against a name string.
+example_code: |
+  # The trap: compares against the DEFAULT name -- breaks if it's ever renamed.
+  import threading
+
+  def is_main_thread_trap():
+      return threading.current_thread().name == "MainThread"
+
+  threading.current_thread().name = "renamed"
+  print(is_main_thread_trap())
+  # False -- WRONG, this is genuinely still the main thread, just renamed
+
+  # The fix: compare actual object IDENTITY, unaffected by naming at all.
+  def is_main_thread():
+      return threading.current_thread() is threading.main_thread()
+
+  print(is_main_thread())
+  # True -- correctly identified, regardless of what the thread is named
+starter_code: |
+  import threading
+
+  def is_main_thread():
+      return threading.current_thread().name == "MainThread"
+
+  threading.current_thread().name = "renamed"
+  print(is_main_thread())
+challenge: |
+  Fix `is_main_thread` so it returns
+  `threading.current_thread() is threading.main_thread()`, instead of
+  comparing the thread's name against `"MainThread"`. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "return threading.current_thread() is threading.main_thread()."
+  - "A thread's name can be reassigned at any time -- threading.main_thread() gives back the actual main Thread object, so an identity check with `is` is unaffected by any renaming."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 11
+difficulty: gotcha
+contains_patterns:
+  - "threading\\.current_thread\\(\\) is threading\\.main_thread\\(\\)"
+concept_tags: [threading, main_thread, gotchas]

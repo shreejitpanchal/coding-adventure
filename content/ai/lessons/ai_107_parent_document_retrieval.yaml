@@ -1,0 +1,60 @@
+id: ai_107
+title: "A Matched Chunk Sometimes Needs Its Full Parent Document, Not Just Itself"
+language: ai
+level: 107
+objective: "Fix a retrieval function that returns only the small chunk that matched, instead of looking up and returning that chunk's full parent document when more complete context is actually needed."
+explanation: |
+  Small chunks retrieve well -- a focused, specific chunk is more
+  likely to score highly against a specific query than an entire long
+  document would. But a small chunk alone sometimes isn't enough
+  context to actually answer the question well, even with this
+  category's sentence-window technique applied. **Parent-document
+  retrieval** matches on the small chunk (for retrieval precision) but
+  returns that chunk's full parent document (for generation context) --
+  getting the best of both: precise matching, complete context.
+
+  The bug this exercise fixes returns the small matched chunk directly,
+  never looking up which parent document it actually belongs to. The
+  fix uses the chunk's own `parent_id` to look up and return the full
+  parent document instead, once the chunk has already done its job of
+  finding the right match.
+example_code: |
+  # The trap: returns the small matched CHUNK directly -- never looks
+  # up the full parent document it actually belongs to.
+  def retrieve_trap(matched_chunk, parent_documents):
+      return matched_chunk["text"]
+
+  matched_chunk = {"text": "...revenue grew 12%...", "parent_id": "Q3-report"}
+  parent_documents = {"Q3-report": "Full Q3 report: revenue grew 12% due to strong holiday sales across all regions."}
+  print(len(retrieve_trap(matched_chunk, parent_documents)))   # 21 -- just the tiny matched snippet
+
+  # The fix: look up and return the FULL parent document via parent_id.
+  def retrieve_parent(matched_chunk, parent_documents):
+      return parent_documents[matched_chunk["parent_id"]]
+
+  print(len(retrieve_parent(matched_chunk, parent_documents)))   # 87 -- the full, more complete context
+starter_code: |
+  def retrieve_parent(matched_chunk, parent_documents):
+      return matched_chunk["text"]
+
+  matched_chunk = {"text": "...revenue grew 12%...", "parent_id": "Q3-report"}
+  parent_documents = {"Q3-report": "Full Q3 report: revenue grew 12% due to strong holiday sales across all regions."}
+  print(len(retrieve_parent(matched_chunk, parent_documents)) > 50)
+challenge: |
+  Fix `retrieve_parent` so it looks up and returns the full parent
+  document via `parent_documents[matched_chunk["parent_id"]]`, instead
+  of returning the small matched chunk's own text. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change the return statement to: return parent_documents[matched_chunk[\"parent_id\"]]."
+  - "The full parent document text is much longer than the tiny matched chunk -- the length check confirms the full document was actually returned."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 22
+difficulty: warmup
+contains_patterns:
+  - "parent_documents\\[matched_chunk\\[.parent_id.\\]\\]"
+concept_tags: [rag, parent_document_retrieval, chunking]

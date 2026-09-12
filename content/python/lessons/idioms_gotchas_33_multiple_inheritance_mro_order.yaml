@@ -1,0 +1,95 @@
+id: idioms_gotchas_33
+title: "Base Class Order in Multiple Inheritance Decides Which Method Wins"
+language: python
+level: 102
+objective: "Fix a class definition whose base-class order raises an MRO error, when a common ancestor must always come AFTER its own subclasses in the inheritance list -- listing it first makes a consistent method resolution order impossible."
+explanation: |
+  When a class inherits from two classes that share a common ancestor,
+  Python computes a Method Resolution Order (MRO) that has to respect
+  a strict rule: a subclass must always come before the class it
+  inherits from, in the linearized order. Listing the shared ancestor
+  *before* its own subclasses in the base-class list makes it
+  impossible to satisfy that rule -- Python can't build any consistent
+  ordering at all, and raises a `TypeError` right at class-definition
+  time, before the class can even be created.
+
+  The bug this exercise fixes writes `class C(Base, A, B)`, listing the
+  shared ancestor first. The fix lists the actual subclasses (`A, B`)
+  and lets `Base` be found through them.
+example_code: |
+  # The trap: lists the shared ancestor Base FIRST -- impossible to
+  # build a consistent MRO, since A and B (Base's own subclasses) would
+  # then have to come AFTER their own ancestor.
+  class Base:
+      def greet(self):
+          return "base"
+
+  class A(Base):
+      def greet(self):
+          return "A"
+
+  class B(Base):
+      def greet(self):
+          return "B"
+
+  def build_trap():
+      class C(Base, A, B):
+          pass
+      return C()
+
+  try:
+      build_trap()
+      print("created")
+  except TypeError:
+      print("mro_error")
+  # "mro_error" -- can't build a consistent MRO with Base listed first
+
+  # The fix: list the actual subclasses -- Base is found through them.
+  def build():
+      class C(A, B):
+          pass
+      return C()
+
+  c = build()
+  print(c.greet())
+  # "A" -- correctly resolves through C -> A -> B -> Base, A's greet wins
+starter_code: |
+  class Base:
+      def greet(self):
+          return "base"
+
+  class A(Base):
+      def greet(self):
+          return "A"
+
+  class B(Base):
+      def greet(self):
+          return "B"
+
+  def build():
+      class C(Base, A, B):
+          pass
+      return C()
+
+  try:
+      c = build()
+      print(c.greet())
+  except TypeError:
+      print("mro_error")
+challenge: |
+  Fix `build` so `C` inherits from `(A, B)`, instead of `(Base, A,
+  B)` (which makes a consistent MRO impossible). It should print `A`,
+  not `mro_error`.
+expected_output: |
+  A
+hints:
+  - "Change class C(Base, A, B): to class C(A, B):."
+  - "A subclass must always come before the class it inherits from in the linearized order -- listing Base first violates that for both A and B at once."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 33
+difficulty: gotcha
+contains_patterns:
+  - "class C\\(A, B\\):"
+concept_tags: [idioms, multiple_inheritance, mro]

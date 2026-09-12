@@ -1,0 +1,53 @@
+id: gotcha_gauntlet_32
+title: "The Total That Was Always A Little Bit Low"
+language: python
+level: 277
+objective: "Fix a report that uses int() to convert a float total to a whole number, which truncates toward zero (always rounding down for a positive value) instead of rounding to the nearest whole number."
+explanation: |
+  `int(x)` on a float doesn't round -- it truncates, simply discarding
+  everything after the decimal point, which for a positive number
+  always rounds *down*, never to the nearest whole number. `int
+  (2.9)` is `2`, not `3`, even though `2.9` is obviously closer to `3`.
+  A report that converts a computed average or total to a whole number
+  with `int(...)`, expecting normal "round to nearest" behavior,
+  quietly under-reports by up to almost a full unit on every single
+  value, with nothing about the code signaling that it's truncating
+  rather than rounding.
+
+  The fix is using `round(x)` instead, which correctly rounds to the
+  nearest whole number rather than always truncating toward zero.
+example_code: |
+  # The trap: int() truncates toward zero -- it never rounds UP.
+  def whole_units_trap(amount):
+      return int(amount)
+
+  print(whole_units_trap(2.9))
+  # 2 -- WRONG, 2.9 is obviously closer to 3
+
+  # The fix: round() rounds to the nearest whole number correctly.
+  def whole_units(amount):
+      return round(amount)
+
+  print(whole_units(2.9))
+  # 3 -- correctly rounded to the nearest whole number
+starter_code: |
+  def whole_units(amount):
+      return int(amount)
+
+  print(whole_units(2.9))
+challenge: |
+  Fix `whole_units` so it uses `round(amount)` instead of
+  `int(amount)`. It should print `3`, not `2`.
+expected_output: |
+  3
+hints:
+  - "return round(amount)."
+  - "int() always truncates toward zero -- it never rounds to the nearest whole number the way round() does."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 32
+difficulty: gotcha
+contains_patterns:
+  - "return round\\(amount\\)"
+concept_tags: [numbers, rounding, gotchas]

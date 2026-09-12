@@ -1,0 +1,53 @@
+id: ai_398
+title: "Reconnecting to the Broker Must Restore Every Previous Subscription"
+language: ai
+level: 398
+objective: "Fix a reconnect function that comes back with no subscriptions at all, when a dropped and restored broker connection needs to resubscribe to everything it was listening to before -- otherwise a reconnect silently turns into a total, permanent loss of that agent's ability to receive anything."
+explanation: |
+  A broker connection can drop for all sorts of ordinary reasons -- a
+  network blip, a broker-side restart -- and reconnecting is only
+  useful if it actually restores every topic the agent was previously
+  subscribed to. Coming back with an empty subscription list means the
+  agent is technically connected again but functionally deaf: no
+  delegated task, no A2A message, nothing it used to receive will ever
+  reach it again until something notices and manually resubscribes it.
+
+  The bug this exercise fixes returns an empty list regardless of
+  `previous_subscriptions`. The fix returns every one of them.
+example_code: |
+  # The trap: comes back with NO subscriptions at all after
+  # reconnecting -- every previously subscribed topic is silently lost.
+  def reconnect_trap(previous_subscriptions):
+      return []
+
+  print(len(reconnect_trap(["orders", "billing", "shipping"])))
+  # 0 -- lost every subscription on reconnect
+
+  # The fix: restore every previously subscribed topic.
+  def reconnect(previous_subscriptions):
+      return list(previous_subscriptions)
+
+  print(len(reconnect(["orders", "billing", "shipping"])))
+  # 3 -- correctly restored all three subscriptions
+starter_code: |
+  def reconnect(previous_subscriptions):
+      return []
+
+  print(len(reconnect(["orders", "billing", "shipping"])))
+challenge: |
+  Fix `reconnect` so it returns `list(previous_subscriptions)`,
+  restoring every previous subscription, instead of always returning
+  `[]`. It should print `3`, not `0`.
+expected_output: |
+  3
+hints:
+  - "Replace return [] with return list(previous_subscriptions)."
+  - "A dropped connection that comes back with zero subscriptions is technically \"reconnected\" while being functionally deaf to everything it used to hear."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 43
+difficulty: warmup
+contains_patterns:
+  - "return list\\(previous_subscriptions\\)"
+concept_tags: [solace_agent_mesh, event_broker, reconnection]

@@ -1,0 +1,72 @@
+id: ai_311
+title: "Two Routers' Route Names Need Their Own Namespace, Not a Shared One"
+language: ai
+level: 311
+objective: "Fix a route-table merge that lets two different routers' same-named routes collide, when combining routing tables from separate routers needs each one's route names kept distinct -- otherwise one router's 'approve' route silently overwrites the other's."
+explanation: |
+  Two independently-written routers might both happen to use the same
+  route name (`"approve"`) for entirely different purposes -- one
+  router's approval flow, another's unrelated approval-shaped decision.
+  Merging their routing tables directly, with no namespacing, means
+  whichever one gets merged in last simply wins, silently discarding
+  the first router's entry for that name with nothing to indicate a
+  collision ever happened.
+
+  The bug this exercise fixes merges both routers' tables with plain
+  `.update()`, using each router's route names unchanged. The fix
+  prefixes each router's route names with its own identifier first, so
+  a shared name from two different routers can never collide.
+example_code: |
+  # The trap: merges tables directly -- a shared route name between
+  # two DIFFERENT routers silently collides.
+  def merge_routes_trap(router_a_routes, router_b_routes):
+      merged = dict(router_a_routes)
+      merged.update(router_b_routes)
+      return merged
+
+  router_a_routes = {"approve": "approve_fn_a"}
+  router_b_routes = {"approve": "approve_fn_b"}
+  merged_trap = merge_routes_trap(router_a_routes, router_b_routes)
+  print(merged_trap.get("a:approve") == "approve_fn_a")
+  # False -- there's no "a:approve" key at all; router_a's route was silently overwritten under the plain "approve" key instead
+
+  # The fix: prefix each router's route names with its own identifier.
+  def merge_routes(router_a_routes, router_b_routes):
+      merged = {}
+      for name, target in router_a_routes.items():
+          merged[f"a:{name}"] = target
+      for name, target in router_b_routes.items():
+          merged[f"b:{name}"] = target
+      return merged
+
+  merged = merge_routes(router_a_routes, router_b_routes)
+  print(merged.get("a:approve") == "approve_fn_a")
+  # True -- correctly namespaced, no collision between the two routers' route names
+starter_code: |
+  def merge_routes(router_a_routes, router_b_routes):
+      merged = dict(router_a_routes)
+      merged.update(router_b_routes)
+      return merged
+
+  router_a_routes = {"approve": "approve_fn_a"}
+  router_b_routes = {"approve": "approve_fn_b"}
+  merged = merge_routes(router_a_routes, router_b_routes)
+  print(merged.get("a:approve") == "approve_fn_a")
+challenge: |
+  Fix `merge_routes` so it prefixes each router's route names
+  (`f"a:{name}"` and `f"b:{name}"` respectively) before merging,
+  instead of merging the raw route names directly with `.update()`. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Build merged as an empty dict, then loop over each router's routes separately, writing merged[f\"a:{name}\"] = target and merged[f\"b:{name}\"] = target."
+  - "Namespacing turns two different routers' coincidentally identical route names into two genuinely distinct keys."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 46
+difficulty: core
+contains_patterns:
+  - "f\"a:\\{name\\}\""
+concept_tags: [langgraph, conditional_edges, route_namespacing]

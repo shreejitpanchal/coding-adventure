@@ -1,0 +1,61 @@
+id: ai_132
+title: "Precision@K Measures How Much of Top-K Was Actually Relevant"
+language: ai
+level: 132
+objective: "Fix a precision calculation that divides by the total number of relevant documents in existence, when Precision@K should divide by k itself -- the question is what fraction of what was actually retrieved and shown to the user was relevant."
+explanation: |
+  This category's Recall@K lesson asked whether the relevant document
+  was found anywhere in the top k. **Precision@K** asks a related but
+  genuinely different question: of the k results actually shown to the
+  user, how many were relevant? A retrieval that returns 10 results
+  with only 2 genuinely relevant ones has poor precision even if
+  recall is perfect (both relevant documents that exist happened to be
+  among those 10) -- the user still had to wade through 8 irrelevant
+  results to find them.
+
+  The bug this exercise fixes divides the number of relevant hits by
+  the *total number of relevant documents that exist* -- that's
+  actually how recall is computed, not precision. The fix divides by
+  `k` (how many results were actually retrieved and shown), correctly
+  answering "what fraction of what was shown was actually useful."
+example_code: |
+  # The trap: divides by the TOTAL relevant documents in existence --
+  # this is recall's formula, not precision's.
+  def precision_at_k_trap(retrieved_top_k, relevant_docs, k):
+      hits = sum(1 for doc in retrieved_top_k if doc in relevant_docs)
+      return hits / len(relevant_docs)
+
+  retrieved_top_k = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+  relevant_docs = {"doc1", "doc3", "doc9", "doc10"}   # 4 relevant docs exist in total, only 2 are in top_k
+  print(round(precision_at_k_trap(retrieved_top_k, relevant_docs, k=5), 2))   # 0.5 -- that's actually recall, not precision
+
+  # The fix: divide by k -- how many results were actually shown.
+  def precision_at_k(retrieved_top_k, relevant_docs, k):
+      hits = sum(1 for doc in retrieved_top_k if doc in relevant_docs)
+      return hits / k
+
+  print(round(precision_at_k(retrieved_top_k, relevant_docs, k=5), 2))   # 0.4 -- correctly reflects 2 of the 5 shown results being relevant
+starter_code: |
+  def precision_at_k(retrieved_top_k, relevant_docs, k):
+      hits = sum(1 for doc in retrieved_top_k if doc in relevant_docs)
+      return hits / len(relevant_docs)
+
+  retrieved_top_k = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+  relevant_docs = {"doc1", "doc3", "doc9", "doc10"}
+  print(round(precision_at_k(retrieved_top_k, relevant_docs, k=5), 2))
+challenge: |
+  Fix `precision_at_k` so it divides `hits` by `k`, instead of by
+  `len(relevant_docs)`. It should print `0.4`, not `0.5`.
+expected_output: |
+  0.4
+hints:
+  - "Change the divisor to k: return hits / k."
+  - "2 of the 4 relevant docs (doc1, doc3) are in the top 5 shown -- dividing by 5 (what was shown) gives 0.4, the actual precision; dividing by 4 (total relevant) gives 0.5, which is recall instead."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 47
+difficulty: gotcha
+contains_patterns:
+  - "hits / k"
+concept_tags: [rag, precision_at_k, retrieval_evaluation]

@@ -1,0 +1,52 @@
+id: idioms_gotchas_09
+title: "A Legitimate Zero Isn't the Same as 'Nothing Was Provided'"
+language: python
+level: 78
+objective: "Fix a default-substitution function that treats a genuinely provided value of 0 the same as 'no value was given,' when only an explicit None should trigger the default -- a falsy-but-valid value like 0 needs to be respected, not silently overridden."
+explanation: |
+  `x or default` is a common shorthand for "use x, or fall back to a
+  default if x wasn't given" -- and it works fine as long as every
+  falsy value genuinely means "not given." The moment a legitimate,
+  intentional value happens to also be falsy (a discount of exactly
+  `0`, an empty string meaning "no notes"), this idiom silently
+  overrides it with the default, treating "the caller explicitly chose
+  zero" identically to "the caller didn't specify anything at all."
+
+  The bug this exercise fixes uses `discount or 10`. The fix checks
+  `discount is not None` specifically, so an explicit `0` is respected.
+example_code: |
+  # The trap: treats a legitimate 0 the SAME as "not provided,"
+  # silently overriding it with the default.
+  def get_discount_trap(discount):
+      return discount or 10
+
+  print(get_discount_trap(0))
+  # 10 -- wrong, a discount of exactly 0 was explicitly provided but got overridden
+
+  # The fix: check specifically for None, respecting an explicit 0.
+  def get_discount(discount):
+      return discount if discount is not None else 10
+
+  print(get_discount(0))
+  # 0 -- correctly respected the caller's explicit choice
+starter_code: |
+  def get_discount(discount):
+      return discount or 10
+
+  print(get_discount(0))
+challenge: |
+  Fix `get_discount` so it returns `discount if discount is not None
+  else 10`, instead of `discount or 10`. It should print `0`, not `10`.
+expected_output: |
+  0
+hints:
+  - "Replace discount or 10 with discount if discount is not None else 10."
+  - "\"or\" can't tell \"a genuine, intentional 0\" apart from \"nothing was given at all\" -- only an explicit None check can."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 9
+difficulty: gotcha
+contains_patterns:
+  - "discount if discount is not None else 10"
+concept_tags: [idioms, truthiness, none_checking]

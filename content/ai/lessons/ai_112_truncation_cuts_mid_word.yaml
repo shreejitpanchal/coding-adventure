@@ -1,0 +1,60 @@
+id: ai_112
+title: "Truncating Context by Raw Character Count Can Cut a Word in Half"
+language: ai
+level: 112
+objective: "Fix a context-truncation function that slices text at a fixed character count with no regard for word boundaries, leaving a mangled partial word dangling at the very end of the truncated context."
+explanation: |
+  When retrieved context exceeds the available budget (this category's
+  own context-window-budget lesson), it has to be cut down somehow --
+  but cutting at an exact character count, with no awareness of where
+  words actually end, can slice straight through the middle of a word,
+  leaving a nonsensical fragment (`"...brown fo"`) right at the
+  boundary that the model then has to somehow make sense of. Truncating
+  at the last complete word boundary instead keeps the cut context at
+  least grammatically clean, even though it's still incomplete.
+
+  The bug this exercise fixes slices at an exact character index with
+  no regard for word boundaries. The fix finds the last space at or
+  before that character limit and truncates there instead, guaranteeing
+  the result never ends mid-word.
+example_code: |
+  # The trap: slices at an EXACT character count -- can cut straight
+  # through the middle of a word.
+  def truncate_trap(text, max_chars):
+      return text[:max_chars]
+
+  text = "The quick brown fox jumps over the lazy dog"
+  print(repr(truncate_trap(text, max_chars=18)))   # 'The quick brown fo' -- cut mid-word, right through "fox"
+
+  # The fix: truncate at the LAST complete word boundary at or before the limit.
+  def truncate_at_word_boundary(text, max_chars):
+      if len(text) <= max_chars:
+          return text
+      cut = text.rfind(" ", 0, max_chars)
+      return text[:cut] if cut != -1 else text[:max_chars]
+
+  print(repr(truncate_at_word_boundary(text, max_chars=18)))   # 'The quick brown' -- cleanly ends at a real word
+starter_code: |
+  def truncate_at_word_boundary(text, max_chars):
+      return text[:max_chars]
+
+  text = "The quick brown fox jumps over the lazy dog"
+  print(truncate_at_word_boundary(text, max_chars=18).endswith("fo"))
+challenge: |
+  Fix `truncate_at_word_boundary` so it finds the last space at or
+  before `max_chars` (via `text.rfind(" ", 0, max_chars)`) and cuts
+  there instead, guaranteeing the result never ends mid-word. It should
+  print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Use cut = text.rfind(\" \", 0, max_chars) to find the last space within the limit, then return text[:cut] (falling back to text[:max_chars] if no space was found at all)."
+  - "With max_chars=18, the raw slice text[:18] cuts through \"fox\" leaving \"...brown fo\" -- finding the last space before that point instead lands cleanly after \"brown\"."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "text\\.rfind\\(. ., 0, max_chars\\)"
+concept_tags: [rag, context_truncation, context_window]

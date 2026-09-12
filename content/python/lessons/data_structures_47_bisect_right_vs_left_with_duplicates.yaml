@@ -1,0 +1,64 @@
+id: data_structures_47
+title: "bisect_right Inserts After Duplicates -- bisect_left Inserts Before Them"
+language: python
+level: 204
+objective: "Fix an insertion-position lookup using bisect_right, when the intent was to find the position BEFORE any existing equal elements -- bisect_left is the one that does that; bisect_right inserts after them instead."
+explanation: |
+  When a sorted list contains duplicates of the value being searched
+  for, `bisect_left` and `bisect_right` genuinely disagree on where to
+  insert: `bisect_left` returns the position *before* the first
+  existing equal element, `bisect_right` returns the position *after*
+  the last one. For a list like `[1, 2, 2, 2, 3]`, searching for `2`
+  gives index `1` from `bisect_left` (right before the run of 2s) but
+  index `4` from `bisect_right` (right after all of them) -- picking
+  the wrong one silently inserts (or reports a position) on the wrong
+  side of an existing run of equal values.
+
+  The bug this exercise fixes uses `bisect_right`, intending "before
+  the duplicates." The fix uses `bisect_left`, which actually does
+  that.
+example_code: |
+  # The trap: bisect_right inserts AFTER all existing duplicates --
+  # the opposite of "before the run of equal values."
+  import bisect
+
+  nums = [1, 2, 2, 2, 3]
+
+  def insert_position_trap(nums, x):
+      return bisect.bisect_right(nums, x)
+
+  print(insert_position_trap(nums, 2))
+  # 4 -- after all the 2s, not before them
+
+  # The fix: bisect_left inserts BEFORE all existing duplicates.
+  def insert_position(nums, x):
+      return bisect.bisect_left(nums, x)
+
+  print(insert_position(nums, 2))
+  # 1 -- correctly before the run of 2s
+starter_code: |
+  import bisect
+
+  nums = [1, 2, 2, 2, 3]
+
+  def insert_position(nums, x):
+      return bisect.bisect_right(nums, x)
+
+  print(insert_position(nums, 2))
+challenge: |
+  Fix `insert_position` so it uses `bisect.bisect_left(nums, x)`,
+  instead of `bisect.bisect_right(nums, x)`. It should print `1`, not
+  `4`.
+expected_output: |
+  1
+hints:
+  - "Replace bisect_right with bisect_left."
+  - "bisect_left and bisect_right only genuinely disagree when duplicates of the searched value already exist -- otherwise they return the exact same position."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 47
+difficulty: gotcha
+contains_patterns:
+  - "bisect\\.bisect_left\\(nums, x\\)"
+concept_tags: [bisect, duplicates]

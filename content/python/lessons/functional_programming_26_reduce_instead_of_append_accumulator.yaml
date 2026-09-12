@@ -1,0 +1,64 @@
+id: functional_programming_26
+title: "Expressing an Accumulator Loop as a Fold Instead of Mutating a List"
+language: python
+level: 361
+objective: "Rewrite a loop that mutates an external accumulator list with .append() as a single functools.reduce fold, expressing the same accumulation as one declarative expression instead of imperative mutation."
+explanation: |
+  A `for` loop that builds up a result by mutating an accumulator
+  variable (`.append(...)`, `+=`, ...) is imperative: it describes
+  *how* to build the result, step by step. `functools.reduce` (this
+  category's own namesake tool, used throughout) expresses the exact
+  same accumulation *declaratively*, as a single fold over the input --
+  "combine everything using this rule" -- without an explicit mutable
+  accumulator variable ever appearing in the calling code at all. The
+  loop version and the `reduce` version compute the same result; the
+  difference is entirely about whether the accumulation is spelled out
+  as a sequence of mutating steps, or as one expression describing the
+  combining rule.
+
+  This exercise rewrites a running-total loop as a single `reduce`
+  call.
+example_code: |
+  # The imperative loop: mutates an accumulator step by step.
+  def total_loop(prices):
+      total = 0
+      for price in prices:
+          total += price
+      return total
+
+  print(total_loop([10, 20, 30]))
+  # 60
+
+  # The declarative fold: one expression, no mutable accumulator variable.
+  from functools import reduce
+
+  def total(prices):
+      return reduce(lambda acc, price: acc + price, prices, 0)
+
+  print(total([10, 20, 30]))
+  # 60 -- same result, expressed as a single fold instead of a mutating loop
+starter_code: |
+  def total(prices):
+      result = 0
+      for price in prices:
+          result += price
+      return result
+
+  print(total([10, 20, 30]))
+challenge: |
+  Rewrite `total` using
+  `reduce(lambda acc, price: acc + price, prices, 0)` instead of a
+  mutating loop. Keep the same output: 60.
+expected_output: |
+  60
+hints:
+  - "from functools import reduce, then: return reduce(lambda acc, price: acc + price, prices, 0)."
+  - "reduce expresses the SAME accumulation as the loop, just as one declarative fold instead of a step-by-step mutating accumulator."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "reduce\\(lambda acc, price: acc \\+ price, prices, 0\\)"
+concept_tags: [functional_programming, reduce, fold]

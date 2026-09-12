@@ -1,0 +1,76 @@
+id: ai_91
+title: "Comparing Embeddings from Two Different Models Is Meaningless"
+language: ai
+level: 91
+objective: "Fix a similarity function that happily computes cosine similarity between two embedding vectors of different lengths, instead of detecting that mismatched dimensions mean they came from incompatible embedding models entirely."
+explanation: |
+  An embedding vector's dimensionality is fixed by whichever model
+  produced it -- one model might output 384-dimensional vectors,
+  another 1536-dimensional ones, and the numbers at each position mean
+  something specific to that model's own learned representation. Two
+  embeddings from *different* models aren't just "different vectors" --
+  they're not even expressed in the same coordinate system, so
+  computing a similarity score between them isn't meaningfully wrong in
+  the way a bad score is wrong, it's meaningless in the way comparing a
+  temperature in Celsius to a distance in miles would be.
+
+  The bug this exercise fixes computes cosine similarity between two
+  vectors without ever checking that they're even the same length --
+  Python's own `zip()` will silently truncate to the shorter vector's
+  length rather than raising an error, hiding a mismatch that should
+  have been caught immediately. The fix checks dimensions match first
+  and raises a clear, specific error naming both lengths if they don't.
+example_code: |
+  # The trap: zip() silently truncates on a length mismatch -- comparing
+  # embeddings from two DIFFERENT models produces a number, not an error.
+  def cosine_similarity_trap(a, b):
+      dot = sum(x * y for x, y in zip(a, b))   # silently stops at the shorter vector's length
+      norm_a = sum(x ** 2 for x in a) ** 0.5
+      norm_b = sum(y ** 2 for y in b) ** 0.5
+      return dot / (norm_a * norm_b)
+
+  vec_a = [0.1, 0.2, 0.3]        # from model A (3 dimensions)
+  vec_b = [0.1, 0.2]              # from model B (2 dimensions) -- INCOMPATIBLE, not just "different"
+  print(cosine_similarity_trap(vec_a, vec_b))   # produces a number -- silently wrong, not caught at all
+
+  # The fix: check dimensions match FIRST, raise a specific error if not.
+  def cosine_similarity(a, b):
+      if len(a) != len(b):
+          raise ValueError(f"embedding dimension mismatch: {len(a)} vs {len(b)}")
+      dot = sum(x * y for x, y in zip(a, b))
+      norm_a = sum(x ** 2 for x in a) ** 0.5
+      norm_b = sum(y ** 2 for y in b) ** 0.5
+      return dot / (norm_a * norm_b)
+
+  try:
+      cosine_similarity(vec_a, vec_b)
+  except ValueError as e:
+      print(e)   # embedding dimension mismatch: 3 vs 2
+starter_code: |
+  def cosine_similarity(a, b):
+      dot = sum(x * y for x, y in zip(a, b))
+      norm_a = sum(x ** 2 for x in a) ** 0.5
+      norm_b = sum(y ** 2 for y in b) ** 0.5
+      return dot / (norm_a * norm_b)
+
+  vec_a = [0.1, 0.2, 0.3]
+  vec_b = [0.1, 0.2]
+  print(cosine_similarity(vec_a, vec_b))
+challenge: |
+  Fix `cosine_similarity` so it raises `ValueError(f"embedding dimension
+  mismatch: {len(a)} vs {len(b)}")` when the two vectors' lengths
+  differ, instead of silently truncating via `zip()`. Catch it and print
+  the message: `embedding dimension mismatch: 3 vs 2`
+expected_output: |
+  embedding dimension mismatch: 3 vs 2
+hints:
+  - "Add a check at the top of the function: if len(a) != len(b): raise ValueError(f\"embedding dimension mismatch: {len(a)} vs {len(b)}\")."
+  - "Wrap the call in a try/except ValueError as e, printing str(e) (or just `e`, since print() calls str() on it automatically)."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 6
+difficulty: gotcha
+contains_patterns:
+  - "raise ValueError"
+concept_tags: [rag, embeddings, error_handling]

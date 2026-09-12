@@ -1,0 +1,61 @@
+id: ai_294
+title: "A Compiled Graph Should Be Independent of the Live Edges Dict, Not Share It"
+language: ai
+level: 294
+objective: "Fix a graph-compilation function that returns the exact same edges dict object it was given, when compiling a graph is supposed to produce something independent of whatever the caller does to the original edges afterward."
+explanation: |
+  Compiling a graph is meant to freeze its structure at that point in
+  time -- once compiled, later mutating the original edges dict
+  shouldn't silently change how the already-compiled graph behaves.
+  Returning the same live dict object instead of a copy means the
+  "compiled" graph is really just an alias for whatever the caller's
+  own edges variable currently holds, so any mutation to that variable
+  after compilation reaches into the compiled graph too.
+
+  The bug this exercise fixes returns `edges` directly, the same
+  object. The fix returns an independent copy.
+example_code: |
+  # The trap: returns the SAME live dict -- a later mutation to the
+  # original edges silently affects the "compiled" graph too.
+  def compile_graph_trap(edges):
+      return edges
+
+  edges = {"a": "b"}
+  compiled_trap = compile_graph_trap(edges)
+  edges["a"] = "c"   # mutate the original AFTER "compiling"
+  print(compiled_trap["a"])
+  # "c" -- the compiled graph was never actually independent of the live edges dict
+
+  # The fix: return an independent copy.
+  def compile_graph(edges):
+      return dict(edges)
+
+  edges2 = {"a": "b"}
+  compiled = compile_graph(edges2)
+  edges2["a"] = "c"
+  print(compiled["a"])
+  # "b" -- correctly independent, unaffected by the later mutation
+starter_code: |
+  def compile_graph(edges):
+      return edges
+
+  edges = {"a": "b"}
+  compiled = compile_graph(edges)
+  edges["a"] = "c"
+  print(compiled["a"])
+challenge: |
+  Fix `compile_graph` so it returns `dict(edges)` -- an independent
+  copy -- instead of `edges` itself. It should print `b`, not `c`.
+expected_output: |
+  b
+hints:
+  - "Replace return edges with return dict(edges)."
+  - "Compiling should freeze the graph's structure at that moment -- a shared reference means it can still change later without anyone touching the \"compiled\" graph directly."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 29
+difficulty: gotcha
+contains_patterns:
+  - "return dict\\(edges\\)"
+concept_tags: [langgraph, graph_compilation, immutability]

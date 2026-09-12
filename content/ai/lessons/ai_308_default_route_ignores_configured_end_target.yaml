@@ -1,0 +1,60 @@
+id: ai_308
+title: "A Router's Default Should Use the Configured Fallback, Not a Made-Up Route Name"
+language: ai
+level: 308
+objective: "Fix a router that falls back to a hardcoded, made-up route name when nothing else matches, when it should use whatever default route was actually configured for this graph -- which might legitimately be END rather than some other node."
+explanation: |
+  This category's earlier fallback lesson covered adding an explicit
+  else branch at all -- this one is about what that else branch should
+  actually route to: not a hardcoded guess baked into the router's own
+  code, but whatever `default_route` the graph's configuration actually
+  specifies, since different graphs legitimately want different
+  fallback behavior (some want a dedicated review node, others just
+  want to stop cleanly at `END`).
+
+  The bug this exercise fixes falls back to the literal string
+  `"unrouted"`, ignoring whatever `default_route` was actually
+  configured. The fix returns `default_route` itself.
+example_code: |
+  # The trap: falls back to a hardcoded, made-up route name --
+  # ignoring the configured default_route entirely.
+  def route_trap(state, default_route):
+      if state.get("category"):
+          return state["category"]
+      return "unrouted"
+
+  print(route_trap({}, default_route="END"))
+  # "unrouted" -- ignored the configured default entirely
+
+  # The fix: use the configured default_route directly.
+  def route(state, default_route):
+      if state.get("category"):
+          return state["category"]
+      return default_route
+
+  print(route({}, default_route="END"))
+  # "END" -- correctly used the configured default
+starter_code: |
+  def route(state, default_route):
+      if state.get("category"):
+          return state["category"]
+      return "unrouted"
+
+  print(route({}, default_route="END"))
+challenge: |
+  Fix `route` so its fallback branch returns `default_route` directly,
+  instead of the hardcoded literal `"unrouted"`. It should print `END`,
+  not `unrouted`.
+expected_output: |
+  END
+hints:
+  - "Replace return \"unrouted\" with return default_route."
+  - "The configured default might legitimately be END for this particular graph -- a hardcoded fallback name has no way to reflect that."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 43
+difficulty: warmup
+contains_patterns:
+  - "return default_route"
+concept_tags: [langgraph, conditional_edges, default_routing]

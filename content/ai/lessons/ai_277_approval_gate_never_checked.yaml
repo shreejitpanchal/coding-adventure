@@ -1,0 +1,69 @@
+id: ai_277
+title: "A Node Requiring Human Approval Must Not Run Until It's Actually Approved"
+language: ai
+level: 277
+objective: "Fix a node runner that runs a sensitive node regardless of whether it actually requires approval and whether that approval was ever given, when an interrupt-before gate is supposed to genuinely block execution until a human has signed off."
+explanation: |
+  LangGraph's interrupt-before mechanism pauses a graph right before a
+  sensitive node runs, waiting for explicit human approval -- charging
+  a card, sending an irreversible email -- rather than letting the
+  agent act unilaterally. A runner that ignores the approval flag
+  entirely and calls the node anyway turns the "approval gate" into
+  pure theater: the flag exists, the check that's supposed to enforce
+  it just never runs.
+
+  The bug this exercise fixes calls `node_fn(state)` unconditionally.
+  The fix checks whether the node requires approval and, if so, that
+  approval was actually given, before ever calling it.
+example_code: |
+  # The trap: runs the node regardless of approval -- even when it
+  # requires approval and approval was never given.
+  def run_node_trap(node_fn, state, requires_approval, approved):
+      return node_fn(state)
+
+  def charge_card(state):
+      new_state = dict(state)
+      new_state["charged"] = True
+      return new_state
+
+  result_trap = run_node_trap(charge_card, {}, requires_approval=True, approved=False)
+  print(result_trap.get("charged", False))
+  # True -- charged the card despite approval never being given!
+
+  # The fix: block the node until approval is actually given.
+  def run_node(node_fn, state, requires_approval, approved):
+      if requires_approval and not approved:
+          return state
+      return node_fn(state)
+
+  result = run_node(charge_card, {}, requires_approval=True, approved=False)
+  print(result.get("charged", False))
+  # False -- correctly blocked until approval is actually given
+starter_code: |
+  def charge_card(state):
+      new_state = dict(state)
+      new_state["charged"] = True
+      return new_state
+
+  def run_node(node_fn, state, requires_approval, approved):
+      return node_fn(state)
+
+  result = run_node(charge_card, {}, requires_approval=True, approved=False)
+  print(result.get("charged", False))
+challenge: |
+  Fix `run_node` so it checks `if requires_approval and not approved:
+  return state` before ever calling `node_fn`. It should print `False`,
+  not `True`.
+expected_output: |
+  False
+hints:
+  - "Add the check as the very first line of the function: if requires_approval and not approved: return state."
+  - "The unaltered state (returned unchanged) is what \"blocked, waiting on approval\" looks like -- the node genuinely never runs at all."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "requires_approval and not approved"
+concept_tags: [langgraph, human_in_the_loop, interrupt_before]

@@ -1,0 +1,55 @@
+id: stdlib_deep_dive_08
+title: "zip_longest Pairs Up Iterables of Different Lengths, Filling In a Default"
+language: python
+level: 209
+objective: "Fix a pairing function that uses plain zip(), which silently drops extra elements from the longer iterable, when itertools.zip_longest fills in a default instead of losing them."
+explanation: |
+  Plain `zip()` stops the instant the *shorter* of its inputs runs
+  out, silently dropping anything the longer input still had left --
+  this is the exact same truncation behavior this app's idioms lesson
+  covers for `zip()`. `itertools.zip_longest(a, b, fillvalue=...)` is
+  the fix when that data loss is actually a problem: it keeps going
+  until the *longer* iterable is exhausted, filling in the given
+  `fillvalue` for whichever side ran out first, so nothing from either
+  input is ever silently discarded.
+
+  The bug this exercise fixes uses plain `zip()`, losing the extra
+  name. The fix uses `zip_longest` with an explicit `fillvalue`.
+example_code: |
+  # The trap: plain zip() stops at the SHORTER iterable, silently
+  # dropping the extra name.
+  names = ["Ada", "Bo", "Cy"]
+  scores = [90, 85]
+
+  pairs_loop = list(zip(names, scores))
+  print(len(pairs_loop))
+  # 2 -- "Cy" was silently dropped
+
+  # The fix: zip_longest keeps going, filling in a default.
+  from itertools import zip_longest
+
+  pairs = list(zip_longest(names, scores, fillvalue=None))
+  print(len(pairs))
+  # 3 -- correctly kept "Cy", paired with the fillvalue
+starter_code: |
+  names = ["Ada", "Bo", "Cy"]
+  scores = [90, 85]
+  pairs = list(zip(names, scores))
+  print(len(pairs))
+challenge: |
+  Rewrite this using `itertools.zip_longest(names, scores,
+  fillvalue=None)`, instead of plain `zip()`. It should print `3`,
+  not `2`.
+expected_output: |
+  3
+hints:
+  - "from itertools import zip_longest, then: pairs = list(zip_longest(names, scores, fillvalue=None))."
+  - "fillvalue is what gets paired with the extra elements from the longer iterable, once the shorter one has run out."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "zip_longest\\(names, scores, fillvalue=None\\)"
+concept_tags: [itertools, zip_longest]

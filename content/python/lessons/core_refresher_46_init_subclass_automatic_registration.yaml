@@ -1,0 +1,72 @@
+id: core_refresher_46
+title: "__init_subclass__ Registers Every Subclass Automatically -- No Manual Step to Forget"
+language: python
+level: 159
+objective: "Replace a manual 'register this subclass' line written after every subclass definition with __init_subclass__, which runs automatically for every subclass, with nothing to remember."
+explanation: |
+  Manually appending each new subclass to a registry list right after
+  defining it works, until someone adds a new subclass and forgets that
+  one extra line -- an easy, silent omission, since nothing about
+  defining a class hints that a registration step was also required
+  somewhere else. `__init_subclass__` is a hook that runs automatically
+  every time a subclass of the defining class is created, with no
+  separate call needed anywhere -- the registration becomes structural,
+  not a manual step that has to be remembered for every new subclass.
+
+  The bug this exercise fixes registers a subclass with a manual
+  `.append()` call after defining it. The fix uses
+  `__init_subclass__`, which runs automatically for every subclass.
+example_code: |
+  # A manual registration step -- easy to forget for a new subclass.
+  registry_loop = []
+
+  class PluginLoop:
+      pass
+
+  class FooPluginLoop(PluginLoop):
+      pass
+
+  registry_loop.append(FooPluginLoop)      # easy to forget this line entirely
+  print(len(registry_loop))                # 1
+
+  # __init_subclass__ registers every subclass automatically.
+  registry = []
+
+  class Plugin:
+      def __init_subclass__(cls, **kwargs):
+          super().__init_subclass__(**kwargs)
+          registry.append(cls)
+
+  class FooPlugin(Plugin):
+      pass
+
+  print(len(registry))
+  # 1 -- registered automatically, with no manual step to forget
+starter_code: |
+  registry = []
+
+  class Plugin:
+      pass
+
+  class FooPlugin(Plugin):
+      pass
+
+  registry.append(FooPlugin)
+  print(len(registry))
+challenge: |
+  Fix this so `Plugin` registers every subclass automatically via
+  `__init_subclass__`, instead of a manual `.append()` call after
+  defining `FooPlugin`. Keep the same output: 1.
+expected_output: |
+  1
+hints:
+  - "Add def __init_subclass__(cls, **kwargs): super().__init_subclass__(**kwargs); registry.append(cls) to Plugin, and remove the manual append() line."
+  - "__init_subclass__ runs automatically for EVERY subclass, with no separate call needed anywhere else in the code."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 46
+difficulty: core
+contains_patterns:
+  - "def __init_subclass__\\(cls, \\*\\*kwargs\\):"
+concept_tags: [init_subclass, metaprogramming]

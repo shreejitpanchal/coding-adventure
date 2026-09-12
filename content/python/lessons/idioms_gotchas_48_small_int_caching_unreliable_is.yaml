@@ -1,0 +1,56 @@
+id: idioms_gotchas_48
+title: "Small-Integer Caching Makes 'is' Look Like It Works -- Until It Doesn't"
+language: python
+level: 117
+objective: "Fix an equality check using 'is' on plain integers, when CPython happens to cache and reuse small integers (roughly -5 to 256) -- making 'is' seem to work by coincidence for small values, while silently breaking the instant either number falls outside that cached range."
+explanation: |
+  CPython, as a memory optimization, pre-creates and reuses integer
+  objects in a small range (roughly -5 to 256), so two separate
+  expressions producing the same small integer often end up pointing
+  at the literal same object -- making `a is b` "happen to work" for
+  those values specifically. This is purely an implementation detail,
+  never a language guarantee, and it evaporates the instant either
+  value exceeds that cached range: two separately-computed `1000`s are
+  *not* guaranteed to be the same object, so `is` silently gives the
+  wrong answer despite the numbers being genuinely equal.
+
+  The bug this exercise fixes checks equality with `is`, which happens
+  to work only for the cached range. The fix uses `==`, which reliably
+  checks value equality regardless of magnitude.
+example_code: |
+  # The trap: "is" happens to work for SMALL integers due to CPython's
+  # caching -- but that's an implementation detail, not a guarantee.
+  def check_trap(a, b):
+      return a is b
+
+  print(check_trap(1000, 1000))
+  # False -- WRONG intention (these ARE equal), "is" only "works" by
+  # coincidence for small cached integers, and 1000 is outside that range
+
+  # The fix: use == to reliably check value equality, regardless of magnitude.
+  def check(a, b):
+      return a == b
+
+  print(check(1000, 1000))
+  # True -- correctly and reliably checks equality
+starter_code: |
+  def check(a, b):
+      return a is b
+
+  print(check(1000, 1000))
+challenge: |
+  Fix `check` so it returns `a == b`, instead of `a is b`. It should
+  print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace a is b with a == b."
+  - "CPython's small-integer caching is an internal memory optimization, never a documented language guarantee -- relying on it breaks the instant a value falls outside the cached range."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 48
+difficulty: gotcha
+contains_patterns:
+  - "return a == b"
+concept_tags: [idioms, is_vs_equals, integer_caching]

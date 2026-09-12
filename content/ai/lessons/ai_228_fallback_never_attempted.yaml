@@ -1,0 +1,68 @@
+id: ai_228
+title: "with_fallbacks Needs to Actually Catch the Primary's Failure"
+language: ai
+level: 228
+objective: "Fix a fallback wrapper that never catches the primary's exception at all, when the whole point of a fallback is to step in specifically when the primary fails, not to let its failure propagate unhandled."
+explanation: |
+  `with_fallbacks` lets a chain declare a backup to use when its
+  primary implementation fails -- a cheaper or more reliable model to
+  fall back to if the main one errors out, say. That only works if the
+  wrapper actually catches the primary's failure; calling the primary
+  with no exception handling at all means the fallback is really just
+  dead code that never runs, and the caller sees the exact same
+  unhandled crash it would have without any fallback wired up.
+
+  The bug this exercise fixes calls the primary directly, with no
+  try/except at all. The fix catches the primary's failure and calls
+  the fallback in its place.
+example_code: |
+  # The trap: no exception handling at all -- the fallback is
+  # completely unreachable, the primary's failure just propagates.
+  def call_with_fallback_trap(primary, fallback, x):
+      return primary(x)
+
+  def primary_fn(x):
+      raise RuntimeError("primary unavailable")
+  fallback_fn = lambda x: f"fallback: {x}"
+
+  # call_with_fallback_trap(primary_fn, fallback_fn, "hello")  # RuntimeError -- fallback never even attempted
+
+  # The fix: catch the primary's failure, call the fallback instead.
+  def call_with_fallback(primary, fallback, x):
+      try:
+          return primary(x)
+      except RuntimeError:
+          return fallback(x)
+
+  print(call_with_fallback(primary_fn, fallback_fn, "hello"))   # "fallback: hello" -- correctly caught and used the fallback
+starter_code: |
+  def call_with_fallback(primary, fallback, x):
+      return primary(x)
+
+  def primary_fn(x):
+      raise RuntimeError("primary unavailable")
+
+  fallback_fn = lambda x: f"fallback: {x}"
+
+  try:
+      print(call_with_fallback(primary_fn, fallback_fn, "hello"))
+  except RuntimeError as e:
+      print(f"unhandled: {e}")
+challenge: |
+  Fix `call_with_fallback` so it wraps `primary(x)` in a
+  `try/except RuntimeError` and calls `fallback(x)` on failure, instead
+  of letting the exception propagate unhandled. It should print
+  `fallback: hello`, not `unhandled: primary unavailable`.
+expected_output: |
+  fallback: hello
+hints:
+  - "Wrap return primary(x) in a try block, and add except RuntimeError: return fallback(x)."
+  - "Without the try/except, the fallback function is defined but never actually reachable -- the primary's exception has nowhere else to go."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "except RuntimeError:"
+concept_tags: [langchain, fallbacks, error_handling]

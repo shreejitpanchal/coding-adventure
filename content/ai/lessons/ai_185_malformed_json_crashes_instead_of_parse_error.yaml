@@ -1,0 +1,65 @@
+id: ai_185
+title: "Malformed JSON Should Produce a Parse-Error Response, Not a Crash"
+language: ai
+level: 185
+objective: "Fix a message handler that lets a JSON decode failure crash the whole process, instead of catching it and returning a proper JSON-RPC parse-error response (code -32700) -- a malformed incoming message is an expected possibility, not a reason to take the whole server down."
+explanation: |
+  A message arriving over the wire can simply be malformed -- truncated
+  by a network issue, corrupted, or sent by a buggy client -- and this
+  is exactly the kind of realistic failure a protocol implementation
+  needs to handle gracefully rather than crash on. JSON-RPC reserves
+  `-32700` specifically for this: **parse error**, meaning the server
+  couldn't even parse the incoming message as valid JSON in the first
+  place, before any of the method/params logic even had a chance to
+  run.
+
+  The bug this exercise fixes calls `json.loads()` directly with no
+  exception handling, letting a malformed message crash the whole
+  handler. The fix catches the parse failure and returns a proper
+  `-32700` error response instead, keeping the server running.
+example_code: |
+  # The trap: NO exception handling around JSON parsing -- a malformed
+  # message crashes the whole handler, not just that one request.
+  import json
+
+  def handle_raw_message_trap(raw_text):
+      message = json.loads(raw_text)   # crashes on malformed input, with no recovery at all
+      return {"jsonrpc": "2.0", "id": message.get("id"), "result": "ok"}
+
+  # handle_raw_message_trap("{not valid json")  # json.decoder.JSONDecodeError -- takes the whole handler down
+
+  # The fix: catch the parse failure, return a proper -32700 error response.
+  def handle_raw_message(raw_text):
+      try:
+          message = json.loads(raw_text)
+      except json.JSONDecodeError:
+          return {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+      return {"jsonrpc": "2.0", "id": message.get("id"), "result": "ok"}
+
+  print(handle_raw_message("{not valid json")["error"]["code"])   # -32700 -- correctly handled, server keeps running
+starter_code: |
+  import json
+
+  def handle_raw_message(raw_text):
+      message = json.loads(raw_text)
+      return {"jsonrpc": "2.0", "id": message.get("id"), "result": "ok"}
+
+  print(handle_raw_message("{not valid json")["error"]["code"])
+challenge: |
+  Fix `handle_raw_message` so it catches a `json.JSONDecodeError` and
+  returns a `-32700` parse-error response, instead of letting the
+  exception crash the handler. It should print `-32700`, not raise a
+  `JSONDecodeError`.
+expected_output: |
+  -32700
+hints:
+  - "Wrap the json.loads(raw_text) call in a try/except json.JSONDecodeError: block."
+  - "On the parse error, return {\"jsonrpc\": \"2.0\", \"id\": None, \"error\": {\"code\": -32700, \"message\": \"Parse error\"}} -- id is None since a malformed message might not even have one to extract."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 10
+difficulty: gotcha
+contains_patterns:
+  - "-32700"
+concept_tags: [mcp, json_rpc, error_codes, error_handling]

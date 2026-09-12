@@ -1,0 +1,74 @@
+id: ai_239
+title: "A Callback Handler Needs to Actually Be Called at the Right Points"
+language: ai
+level: 239
+objective: "Fix a chain runner that never invokes its on_start/on_end callbacks at all, when callback hooks only work if the runner actually calls them at the moments they're meant to observe."
+explanation: |
+  Callback handlers let external code observe a chain's execution --
+  logging when a step starts, recording its result when it ends --
+  without the chain's own logic needing to know anything about logging
+  or metrics. That only works if the runner actually calls the hooks it
+  was given; a runner that accepts `on_start`/`on_end` parameters but
+  never invokes them still runs correctly from the caller's point of
+  view (the return value is right), while silently providing zero
+  observability into what happened.
+
+  The bug this exercise fixes calls `fn(x)` directly, never touching
+  `on_start`/`on_end`. The fix calls `on_start` before, and `on_end`
+  after, running the function.
+example_code: |
+  # The trap: never calls on_start or on_end at all -- the function
+  # runs, but nothing observes it happening.
+  def run_with_callback_trap(fn, x, on_start, on_end):
+      return fn(x)
+
+  calls = []
+  def on_start(x): calls.append(f"start:{x}")
+  def on_end(result): calls.append(f"end:{result}")
+
+  run_with_callback_trap(lambda x: x + 1, 5, on_start, on_end)
+  print(len(calls))   # 0 -- neither callback ever fired
+
+  # The fix: call on_start before, on_end after, running the function.
+  def run_with_callback(fn, x, on_start, on_end):
+      on_start(x)
+      result = fn(x)
+      on_end(result)
+      return result
+
+  calls2 = []
+  def on_start2(x): calls2.append(f"start:{x}")
+  def on_end2(result): calls2.append(f"end:{result}")
+  run_with_callback(lambda x: x + 1, 5, on_start2, on_end2)
+  print(len(calls2))   # 2 -- both callbacks correctly fired
+starter_code: |
+  calls = []
+
+  def on_start(x):
+      calls.append(f"start:{x}")
+
+  def on_end(result):
+      calls.append(f"end:{result}")
+
+  def run_with_callback(fn, x, on_start, on_end):
+      return fn(x)
+
+  run_with_callback(lambda x: x + 1, 5, on_start, on_end)
+  print(len(calls))
+challenge: |
+  Fix `run_with_callback` so it calls `on_start(x)` before running
+  `fn(x)`, and `on_end(result)` after, instead of just calling `fn(x)`
+  with no callbacks at all. It should print `2`, not `0`.
+expected_output: |
+  2
+hints:
+  - "on_start(x), then result = fn(x), then on_end(result), then return result."
+  - "A callback hook that's accepted as a parameter but never called provides zero actual observability, even though the function itself still runs correctly."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "on_start\\(x\\)"
+concept_tags: [langchain, callbacks, observability]

@@ -1,0 +1,61 @@
+id: ai_58
+title: "Early Stopping Watches Validation Loss, Not Training Loss"
+language: ai
+level: 58
+objective: "Fix an early-stopping check that picks the best epoch from the training loss curve, which keeps decreasing indefinitely and therefore always points at the very last epoch -- never actually stopping anything early."
+explanation: |
+  Training loss almost always keeps decreasing the longer training
+  continues, simply because the model keeps fitting the training data
+  more and more closely -- that's exactly the overfitting risk this
+  category's earlier lessons cover. **Early stopping** exists
+  specifically to stop training at the point where *validation* loss
+  is lowest, since validation loss is what actually reflects
+  generalization -- it typically decreases for a while and then starts
+  rising again once the model begins overfitting, giving a genuine
+  signal about when to stop that training loss alone can never provide.
+
+  The bug this exercise fixes picks the "best" epoch by finding where
+  *training* loss is lowest -- which, since training loss keeps falling
+  the whole time, is always just the very last epoch trained, making
+  the whole mechanism a no-op that never actually triggers early
+  stopping at all. The fix looks at *validation* loss instead, correctly
+  identifying the epoch where the model had actually stopped improving
+  on unseen data, even while training loss was still dropping.
+example_code: |
+  # The trap: finds the best epoch from TRAINING loss -- which keeps
+  # falling, so this always points at the last epoch, defeating the point.
+  def best_epoch_trap(train_losses, val_losses):
+      return train_losses.index(min(train_losses))
+
+  train_losses = [0.5, 0.3, 0.2, 0.15, 0.1]
+  val_losses = [0.5, 0.4, 0.35, 0.36, 0.38]
+  print(best_epoch_trap(train_losses, val_losses))   # 4 -- the last epoch, never stops early at all
+
+  # The fix: find the best epoch from VALIDATION loss instead.
+  def best_epoch(train_losses, val_losses):
+      return val_losses.index(min(val_losses))
+
+  print(best_epoch(train_losses, val_losses))   # 2 -- correctly identifies where val loss actually bottomed out
+starter_code: |
+  def best_epoch(train_losses, val_losses):
+      return train_losses.index(min(train_losses))
+
+  train_losses = [0.5, 0.3, 0.2, 0.15, 0.1]
+  val_losses = [0.5, 0.4, 0.35, 0.36, 0.38]
+  print(best_epoch(train_losses, val_losses))
+challenge: |
+  Fix `best_epoch` so it finds the index of the minimum value in
+  `val_losses`, not `train_losses`. It should print `2`, not `4`.
+expected_output: |
+  2
+hints:
+  - "Change the lookup to: return val_losses.index(min(val_losses))."
+  - "val_losses hits its minimum (0.35) at index 2, then rises afterward -- that's the epoch to stop at, even though train_losses is still falling."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "val_losses\\.index\\(min\\(val_losses\\)\\)"
+concept_tags: [ml_fundamentals, early_stopping, overfitting]

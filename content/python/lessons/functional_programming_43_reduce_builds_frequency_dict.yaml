@@ -1,0 +1,61 @@
+id: functional_programming_43
+title: "Building a Frequency Count Is Also Just a Fold"
+language: python
+level: 378
+objective: "Rewrite a loop that builds a word-frequency dict with counts[w] = counts.get(w, 0) + 1 as a single functools.reduce fold, building up a new dict at each step instead of mutating an accumulator dict in place."
+explanation: |
+  Counting how many times each word appears with a loop mutates a
+  dict accumulator step by step -- functional enough already, but
+  still imperative. Expressing it as a `reduce` fold makes the
+  accumulation fully declarative: at each step, build a *new* dict
+  (via `{**acc, w: acc.get(w, 0) + 1}`, spreading the previous
+  accumulator and overriding just the current word's count) instead of
+  mutating the existing one in place. The result is identical either
+  way -- this is purely about expressing the same fold as one
+  expression instead of a mutating loop, the same idea this category's
+  other `reduce`-based rewrites cover for sums and flattening.
+example_code: |
+  # The loop: mutates the accumulator dict in place, step by step.
+  def word_counts_loop(words):
+      counts = {}
+      for w in words:
+          counts[w] = counts.get(w, 0) + 1
+      return counts
+
+  print(word_counts_loop(["a", "b", "a", "c", "b", "a"]))
+  # {'a': 3, 'b': 2, 'c': 1}
+
+  # The fold: builds a NEW dict at each step, no in-place mutation.
+  from functools import reduce
+
+  def word_counts(words):
+      return reduce(lambda acc, w: {**acc, w: acc.get(w, 0) + 1}, words, {})
+
+  print(word_counts(["a", "b", "a", "c", "b", "a"]))
+  # {'a': 3, 'b': 2, 'c': 1} -- same result, expressed as a single fold
+starter_code: |
+  def word_counts(words):
+      counts = {}
+      for w in words:
+          counts[w] = counts.get(w, 0) + 1
+      return counts
+
+  print(word_counts(["a", "b", "a", "c", "b", "a"]))
+challenge: |
+  Rewrite `word_counts` using
+  `reduce(lambda acc, w: {**acc, w: acc.get(w, 0) + 1}, words, {})`,
+  instead of a mutating loop. Keep the same output:
+  {'a': 3, 'b': 2, 'c': 1}.
+expected_output: |
+  {'a': 3, 'b': 2, 'c': 1}
+hints:
+  - "from functools import reduce, then: return reduce(lambda acc, w: {**acc, w: acc.get(w, 0) + 1}, words, {})."
+  - "Each step spreads the PREVIOUS accumulator into a brand-new dict, overriding just the current word's count -- no in-place mutation anywhere."
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 43
+difficulty: deep_dive
+contains_patterns:
+  - "reduce\\(lambda acc, w: \\{\\*\\*acc, w: acc\\.get\\(w, 0\\) \\+ 1\\}, words, \\{\\}\\)"
+concept_tags: [functional_programming, reduce, fold, immutability]

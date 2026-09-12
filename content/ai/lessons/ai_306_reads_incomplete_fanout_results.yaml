@@ -1,0 +1,66 @@
+id: ai_306
+title: "Reading a Fan-Out's Combined Result Requires All Branches to Have Actually Finished"
+language: ai
+level: 306
+objective: "Fix a result reader that computes over whatever branch results have arrived so far, when it should verify the full expected set has actually reported in before treating the fan-out's combined result as meaningful."
+explanation: |
+  This category's earlier join lesson covered refusing to *proceed*
+  past a fan-out before every branch reports in -- this is the same
+  idea applied to *reading* the fan-out's aggregate result specifically:
+  summing, averaging, or otherwise combining branch results is
+  meaningless if some of those branches haven't actually reported in
+  yet. A function that happily computes over a partial set produces a
+  number that looks entirely legitimate while actually representing an
+  incomplete, still-in-progress fan-out.
+
+  The bug this exercise fixes sums `branch_results` with no check
+  against `expected_count`. The fix verifies the count matches before
+  computing anything at all.
+example_code: |
+  # The trap: sums whatever's arrived so far -- no check that every
+  # branch actually reported in.
+  def read_fanout_result_trap(branch_results, expected_count):
+      return sum(branch_results)
+
+  branch_results = [10, 20]   # only 2 of the expected 3 branches have reported in
+  print(read_fanout_result_trap(branch_results, 3))
+  # 30 -- silently computed from an INCOMPLETE set of branches
+
+  # The fix: verify the count matches before computing anything.
+  def read_fanout_result(branch_results, expected_count):
+      if len(branch_results) != expected_count:
+          raise ValueError(f"expected {expected_count} branch results, got {len(branch_results)}")
+      return sum(branch_results)
+
+  try:
+      print(read_fanout_result(branch_results, 3))
+  except ValueError as e:
+      print(str(e))
+  # "expected 3 branch results, got 2" -- correctly refused to compute over an incomplete set
+starter_code: |
+  def read_fanout_result(branch_results, expected_count):
+      return sum(branch_results)
+
+  branch_results = [10, 20]
+  try:
+      print(read_fanout_result(branch_results, 3))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `read_fanout_result` so it raises `ValueError(f"expected
+  {expected_count} branch results, got {len(branch_results)}")` when
+  the count doesn't match, instead of always summing whatever's there.
+  It should print `expected 3 branch results, got 2`, not `30`.
+expected_output: |
+  expected 3 branch results, got 2
+hints:
+  - "Add: if len(branch_results) != expected_count: raise ValueError(...), before the sum() call."
+  - "A sum computed over a partial set of branches is a real number that looks entirely legitimate -- there's nothing about it that hints the fan-out wasn't actually complete."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 41
+difficulty: core
+contains_patterns:
+  - "len\\(branch_results\\) != expected_count"
+concept_tags: [langgraph, fan_out, join]

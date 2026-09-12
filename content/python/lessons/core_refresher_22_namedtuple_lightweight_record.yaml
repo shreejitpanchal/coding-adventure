@@ -1,0 +1,53 @@
+id: core_refresher_22
+title: "namedtuple Gives You a Lightweight Record Without a Full Class"
+language: python
+level: 135
+objective: "Replace a small hand-written class that only holds a couple of fields with collections.namedtuple."
+explanation: |
+  A class whose entire job is holding a couple of named fields, with
+  no real behavior of its own, is exactly what `collections.namedtuple`
+  exists to replace -- `Point = namedtuple("Point", ["x", "y"])`
+  generates a real tuple subclass whose elements can be accessed by
+  name (`p.x`, `p.y`) as well as by position (`p[0]`, `p[1]`), with a
+  generated `__repr__` and value-based equality already included, all
+  without writing an `__init__` by hand.
+example_code: |
+  # A hand-written class purely to hold two fields.
+  class PointClass:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  p_loop = PointClass(1, 2)
+  print(p_loop.x, p_loop.y)                # 1 2
+
+  # namedtuple generates the same thing, with no __init__ to write.
+  from collections import namedtuple
+
+  Point = namedtuple("Point", ["x", "y"])
+  p = Point(1, 2)
+  print(p.x, p.y)                          # 1 2
+starter_code: |
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  p = Point(1, 2)
+  print(p.x, p.y)
+challenge: |
+  Replace the hand-written `Point` class with `Point = namedtuple
+  ("Point", ["x", "y"])`. Keep the same output: 1 2.
+expected_output: |
+  1 2
+hints:
+  - "from collections import namedtuple, then: Point = namedtuple(\"Point\", [\"x\", \"y\"])."
+  - "A namedtuple instance's fields are accessed the same way as a regular object's attributes: p.x, p.y."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 22
+difficulty: core
+contains_patterns:
+  - "namedtuple\\(\"Point\", \\[\"x\", \"y\"\\]\\)"
+concept_tags: [namedtuple, collections]

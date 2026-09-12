@@ -1,0 +1,71 @@
+id: ai_67
+title: "Boosting Increases Weight on Misclassified Examples, Not Correct Ones"
+language: ai
+level: 67
+objective: "Fix a boosting-style reweighting step that increases the weight of examples the current model already got right, instead of the ones it got wrong -- inverting the entire mechanism that makes boosting work."
+explanation: |
+  Unlike bagging's independent, parallel resamples (this category's
+  previous two lessons), **boosting** trains models sequentially, each
+  one specifically focused on the mistakes the previous one made:
+  after each round, examples the current model got *wrong* have their
+  weight increased, so the next round's model is trained to pay more
+  attention to exactly the cases that were failing -- gradually
+  covering the dataset's hard cases one round at a time.
+
+  The bug this exercise fixes increases weight on examples the model
+  got *correct* instead of the ones it got wrong -- exactly backward.
+  Boosted this way, the next round would double down on cases already
+  handled well while continuing to neglect the actual hard cases,
+  achieving the opposite of what boosting is supposed to do: instead of
+  progressively fixing weaknesses, it would progressively reinforce
+  existing strengths and never address the mistakes at all.
+example_code: |
+  # The trap: increases weight on examples the model got RIGHT --
+  # exactly backward from what boosting needs.
+  def reweight_trap(weights, y_true, y_pred, boost_factor=2.0):
+      new_weights = []
+      for w, t, p in zip(weights, y_true, y_pred):
+          new_weights.append(w * boost_factor if t == p else w)
+      return new_weights
+
+  weights = [1.0, 1.0, 1.0, 1.0]
+  y_true = [1, 0, 1, 0]
+  y_pred = [1, 0, 0, 1]      # examples 2 and 3 (index 2, 3) are WRONG
+  print(reweight_trap(weights, y_true, y_pred))   # [2.0, 2.0, 1.0, 1.0] -- boosted the CORRECT ones!
+
+  # The fix: increase weight on examples the model got WRONG.
+  def reweight(weights, y_true, y_pred, boost_factor=2.0):
+      new_weights = []
+      for w, t, p in zip(weights, y_true, y_pred):
+          new_weights.append(w * boost_factor if t != p else w)
+      return new_weights
+
+  print(reweight(weights, y_true, y_pred))   # [1.0, 1.0, 2.0, 2.0] -- correctly boosts the MISCLASSIFIED ones
+starter_code: |
+  def reweight(weights, y_true, y_pred, boost_factor=2.0):
+      new_weights = []
+      for w, t, p in zip(weights, y_true, y_pred):
+          new_weights.append(w * boost_factor if t == p else w)
+      return new_weights
+
+  weights = [1.0, 1.0, 1.0, 1.0]
+  y_true = [1, 0, 1, 0]
+  y_pred = [1, 0, 0, 1]
+  print(reweight(weights, y_true, y_pred))
+challenge: |
+  Fix `reweight` so it boosts the weight of examples where `t != p`
+  (misclassified), instead of where `t == p` (correctly classified). It
+  should print `[1.0, 1.0, 2.0, 2.0]`, not `[2.0, 2.0, 1.0, 1.0]`.
+expected_output: |
+  [1.0, 1.0, 2.0, 2.0]
+hints:
+  - "Change the condition to: w * boost_factor if t != p else w."
+  - "Only the misclassified examples (index 2 and 3, where y_true and y_pred disagree) should get their weight boosted."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "if t != p else w"
+concept_tags: [ml_fundamentals, boosting, ensemble_methods]

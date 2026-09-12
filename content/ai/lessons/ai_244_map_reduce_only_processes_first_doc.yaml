@@ -1,0 +1,60 @@
+id: ai_244
+title: "Map-Reduce Summarization Must Map Every Document, Not Just the First"
+language: ai
+level: 244
+objective: "Fix a map-reduce summarizer that only maps the first document and reduces a single-item list, when the whole point of the map step is to run across every document before the reduce step combines them."
+explanation: |
+  Map-reduce summarization handles a document set too large to fit in
+  one prompt by summarizing each document individually (the map step),
+  then combining those individual summaries into one final result (the
+  reduce step). Mapping only the first document and skipping the rest
+  produces something that runs without error and returns a
+  plausible-looking string, while silently ignoring every document
+  after the first -- the reduce step has nothing to combine because the
+  map step never gave it anything from the rest of the set.
+
+  The bug this exercise fixes calls `map_fn` on just `docs[0]`. The fix
+  maps every document in `docs`, then reduces the full list of mapped
+  results.
+example_code: |
+  # The trap: maps only the FIRST doc -- every other document is
+  # completely ignored.
+  def map_reduce_trap(docs, map_fn, reduce_fn):
+      return reduce_fn([map_fn(docs[0])])
+
+  docs = ["doc one text", "doc two text", "doc three text"]
+  map_fn = lambda d: d.split()[0]
+  reduce_fn = lambda parts: " | ".join(parts)
+
+  print(map_reduce_trap(docs, map_fn, reduce_fn))   # "doc" -- only the first doc was ever processed
+
+  # The fix: map every document, then reduce the full list.
+  def map_reduce(docs, map_fn, reduce_fn):
+      return reduce_fn([map_fn(d) for d in docs])
+
+  print(map_reduce(docs, map_fn, reduce_fn))   # "doc | doc | doc" -- all three documents were mapped
+starter_code: |
+  def map_reduce(docs, map_fn, reduce_fn):
+      return reduce_fn([map_fn(docs[0])])
+
+  docs = ["doc one text", "doc two text", "doc three text"]
+  map_fn = lambda d: d.split()[0]
+  reduce_fn = lambda parts: " | ".join(parts)
+  print(map_reduce(docs, map_fn, reduce_fn))
+challenge: |
+  Fix `map_reduce` so it maps `map_fn` over every document in `docs`
+  (`[map_fn(d) for d in docs]`) before reducing, instead of mapping just
+  `docs[0]`. It should print `doc | doc | doc`, not `doc`.
+expected_output: |
+  doc | doc | doc
+hints:
+  - "Replace [map_fn(docs[0])] with [map_fn(d) for d in docs]."
+  - "The reduce step can only combine what the map step actually produced -- if map only ran on one document, reduce has nothing else to work with."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "\\[map_fn\\(d\\) for d in docs\\]"
+concept_tags: [langchain, map_reduce, summarization]

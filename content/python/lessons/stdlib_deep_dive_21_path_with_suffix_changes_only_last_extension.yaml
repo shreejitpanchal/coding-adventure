@@ -1,0 +1,57 @@
+id: stdlib_deep_dive_21
+title: "Path.with_suffix() Replaces Only the Last Extension, Correctly"
+language: python
+level: 222
+objective: "Fix a filename-extension-changer using naive string splitting, when a filename with multiple dots (like 'archive.tar.gz') needs only its LAST extension replaced -- Path.with_suffix() does exactly that, correctly."
+explanation: |
+  Splitting a filename on `.` and keeping only the first piece
+  (`filename.split(".")[0]`) throws away *everything* after the first
+  dot -- which happens to work for a simple `name.ext` filename, but
+  breaks the moment there's more than one dot, like `archive.tar.gz`,
+  where the intended extension to replace is just the last `.gz`, not
+  the whole `.tar.gz`. `Path.with_suffix()` correctly identifies only
+  the *last* suffix as "the extension," leaving everything before it
+  -- including any earlier dots -- untouched.
+
+  The bug this exercise fixes splits on the first dot, losing
+  everything after it. The fix uses `Path(filename).with_suffix
+  (new_ext)`, which only ever touches the last suffix.
+example_code: |
+  # The trap: splits on the FIRST dot -- loses everything after it,
+  # not just the actual extension.
+  def change_ext_trap(filename, new_ext):
+      return filename.split(".")[0] + new_ext
+
+  print(change_ext_trap("archive.tar.gz", ".zip"))
+  # "archive.zip" -- WRONG, lost ".tar" entirely, which was never part of the extension
+
+  # The fix: Path.with_suffix() only replaces the LAST suffix.
+  from pathlib import Path
+
+  def change_ext(filename, new_ext):
+      return str(Path(filename).with_suffix(new_ext))
+
+  print(change_ext("archive.tar.gz", ".zip"))
+  # "archive.tar.zip" -- correctly kept ".tar", only replaced the actual last extension
+starter_code: |
+  def change_ext(filename, new_ext):
+      return filename.split(".")[0] + new_ext
+
+  print(change_ext("archive.tar.gz", ".zip"))
+challenge: |
+  Fix `change_ext` so it uses `Path(filename).with_suffix(new_ext)`
+  (imported from `pathlib`), instead of splitting on the first dot. It
+  should print `archive.tar.zip`, not `archive.zip`.
+expected_output: |
+  archive.tar.zip
+hints:
+  - "from pathlib import Path, then: return str(Path(filename).with_suffix(new_ext))."
+  - "with_suffix() only ever identifies the LAST dot-segment as \"the extension\" -- everything before it, dots included, stays untouched."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 21
+difficulty: gotcha
+contains_patterns:
+  - "Path\\(filename\\)\\.with_suffix\\(new_ext\\)"
+concept_tags: [pathlib, file_extensions]

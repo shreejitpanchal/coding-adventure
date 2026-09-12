@@ -1,0 +1,98 @@
+id: concurrency_async_22
+title: "A Blocking Call Inside a Coroutine Freezes Every Other Task Too"
+language: python
+level: 312
+objective: "Fix a coroutine that calls a genuinely blocking synchronous function directly, which freezes the entire event loop (and every other task waiting on it) for the whole duration -- asyncio.to_thread offloads the blocking call to a real thread, letting other coroutines keep running meanwhile."
+explanation: |
+  `asyncio` achieves concurrency cooperatively: a coroutine only ever
+  yields control back to the event loop at an `await` point, so other
+  coroutines only get a chance to run *between* those points, never
+  during a stretch of code with no `await` in it at all. A genuinely
+  blocking call -- a real `time.sleep(...)`, not `await asyncio.sleep
+  (...)`, or any other synchronous call that doesn't yield -- has no
+  such `await` point inside it, so it freezes the *entire* event loop
+  for its whole duration: every other task waiting to run, no matter
+  how ready they are, simply doesn't get a turn until the blocking
+  call finally returns.
+
+  `asyncio.to_thread(func, *args)` runs a genuinely blocking function
+  in a separate real thread and awaits its result, correctly yielding
+  control back to the event loop for the whole duration -- other
+  coroutines get to run normally while the blocking work happens
+  elsewhere.
+example_code: |
+  # The trap: a real blocking call inside a coroutine freezes EVERYTHING.
+  import asyncio, time
+
+  async def other_task_trap(log):
+      log.append("other started")
+      await asyncio.sleep(0.001)
+      log.append("other finished")
+
+  async def blocked_trap(log):
+      time.sleep(0.05)                  # BLOCKS the whole event loop -- no await here
+      log.append("blocking done")
+
+  async def main_trap():
+      log = []
+      await asyncio.gather(blocked_trap(log), other_task_trap(log))
+      print(log)
+
+  asyncio.run(main_trap())
+  # ['blocking done', 'other started', 'other finished'] -- WRONG if other_task
+  # was supposed to interleave DURING the blocking call, not only after it
+
+  # The fix: to_thread offloads the blocking call, freeing the event loop.
+  async def other_task(log):
+      log.append("other started")
+      await asyncio.sleep(0.001)
+      log.append("other finished")
+
+  async def blocked(log):
+      await asyncio.to_thread(time.sleep, 0.05)
+      log.append("blocking done")
+
+  async def main():
+      log = []
+      await asyncio.gather(blocked(log), other_task(log))
+      print(log)
+
+  asyncio.run(main())
+  # ['other started', 'other finished', 'blocking done'] -- correctly interleaved,
+  # since the event loop was free to run other_task while the blocking sleep happened elsewhere
+starter_code: |
+  import asyncio, time
+
+  async def other_task(log):
+      log.append("other started")
+      await asyncio.sleep(0.001)
+      log.append("other finished")
+
+  async def blocked(log):
+      time.sleep(0.05)
+      log.append("blocking done")
+
+  async def main():
+      log = []
+      await asyncio.gather(blocked(log), other_task(log))
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Fix `blocked` so it uses `await asyncio.to_thread(time.sleep, 0.05)`
+  instead of calling `time.sleep(0.05)` directly. It should print
+  `['other started', 'other finished', 'blocking done']`, not
+  `['blocking done', 'other started', 'other finished']`.
+expected_output: |
+  ['other started', 'other finished', 'blocking done']
+hints:
+  - "await asyncio.to_thread(time.sleep, 0.05), instead of a direct, unawaited time.sleep(0.05) call."
+  - "A coroutine only yields control at an await point -- a genuinely blocking call has none, so it freezes the WHOLE event loop, not just the one coroutine running it."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 22
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.to_thread\\(time\\.sleep, 0\\.05\\)"
+concept_tags: [asyncio, to_thread, event_loop, concurrency]

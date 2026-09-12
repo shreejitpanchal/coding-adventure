@@ -1,0 +1,67 @@
+id: gotcha_gauntlet_50
+title: "Capstone: The Config Merge Where the Wrong Dict Silently Won"
+language: python
+level: 295
+objective: "Fix a {**defaults, **overrides} merge written in the wrong order, so the defaults silently win over the overrides instead of the other way around -- in double-star dict merging, whichever dict is unpacked LAST wins any overlapping key."
+explanation: |
+  `{**a, **b}` merges two dicts into a new one, and for any key present
+  in both, the value from whichever dict is unpacked *last* wins --
+  `**b` overwrites whatever `**a` already set for a shared key, since
+  dict literal construction processes each `**` in the order it's
+  written, later entries overwriting earlier ones for the same key.
+  Writing `{**overrides, **defaults}` when the actual intent was
+  "defaults, with overrides taking precedence" gets the order
+  backward: `defaults` being unpacked *last* means it silently wins
+  over `overrides` for every key they share, which is the exact
+  opposite of what a config-merging function is supposed to do.
+
+  This exercise pulls together several things this app's Python track
+  covers across many lessons -- dict semantics, keyword-argument-style
+  precedence, and the kind of subtly-backward logic that produces a
+  plausible-looking but wrong result with no error at all -- into one
+  final, realistic config-merging bug.
+example_code: |
+  # The trap: defaults unpacked LAST -- it silently wins over overrides.
+  def merge_config_trap(overrides, defaults):
+      return {**overrides, **defaults}
+
+  defaults = {"timeout": 30, "retries": 3}
+  overrides = {"timeout": 5}
+
+  print(merge_config_trap(overrides, defaults))
+  # {'timeout': 30, 'retries': 3} -- WRONG, the override was completely ignored
+
+  # The fix: overrides unpacked LAST -- it correctly wins for shared keys.
+  def merge_config(defaults, overrides):
+      return {**defaults, **overrides}
+
+  print(merge_config(defaults, overrides))
+  # {'timeout': 5, 'retries': 3} -- correctly took the override, kept the rest
+starter_code: |
+  def merge_config(overrides, defaults):
+      return {**overrides, **defaults}
+
+  defaults = {"timeout": 30, "retries": 3}
+  overrides = {"timeout": 5}
+
+  print(merge_config(overrides, defaults))
+challenge: |
+  Fix `merge_config` so it takes `(defaults, overrides)` and returns
+  `{**defaults, **overrides}`, with `overrides` unpacked LAST so it
+  correctly wins for any shared key. Call it as
+  `merge_config(defaults, overrides)`. It should print
+  `{'timeout': 5, 'retries': 3}`, not `{'timeout': 30, 'retries': 3}`.
+expected_output: |
+  {'timeout': 5, 'retries': 3}
+hints:
+  - "def merge_config(defaults, overrides): return {**defaults, **overrides}, called as merge_config(defaults, overrides)."
+  - "In {**a, **b}, whichever dict is unpacked LAST wins any shared key -- overrides needs to come second, not first, for it to actually override anything."
+xp_reward: 20
+achievement: gotcha_gauntlet_master
+category: gotcha_gauntlet
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "return \\{\\*\\*defaults, \\*\\*overrides\\}"
+  - "merge_config\\(defaults, overrides\\)"
+concept_tags: [dictionaries, merging, unpacking, capstone]

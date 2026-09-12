@@ -1,0 +1,55 @@
+id: ai_255
+title: "A Concurrency-Limited Batch Needs to Actually Compute How Many Batches It Takes"
+language: ai
+level: 255
+objective: "Fix a batch-count calculator that always reports a single batch regardless of the concurrency cap, when respecting max_concurrency means splitting the work into however many batches are actually needed to keep each one at or under the limit."
+explanation: |
+  `.batch()`'s `max_concurrency` option caps how many items are
+  processed at once, which means a large input list has to be split
+  into multiple sequential batches once it exceeds that cap -- five
+  items with a concurrency cap of two genuinely need three separate
+  batches, not one. A function that always reports "one batch" no
+  matter how many items there are or how low the cap is isn't
+  respecting the concurrency limit at all; it's just describing
+  unlimited concurrency with extra steps.
+
+  The bug this exercise fixes always returns `1`. The fix computes the
+  actual number of batches needed via a ceiling division.
+example_code: |
+  # The trap: always reports ONE batch, regardless of max_concurrency.
+  def count_batches_trap(inputs, max_concurrency):
+      return 1
+
+  inputs = [1, 2, 3, 4, 5]
+  print(count_batches_trap(inputs, 2))   # 1 -- wrong, 5 items with a cap of 2 genuinely need more than one batch
+
+  # The fix: compute the actual number of batches via ceiling division.
+  import math
+
+  def count_batches(inputs, max_concurrency):
+      return math.ceil(len(inputs) / max_concurrency)
+
+  print(count_batches(inputs, 2))   # 3 -- correctly needs 3 batches to respect the cap of 2
+starter_code: |
+  def count_batches(inputs, max_concurrency):
+      return 1
+
+  inputs = [1, 2, 3, 4, 5]
+  print(count_batches(inputs, 2))
+challenge: |
+  Fix `count_batches` so it computes `math.ceil(len(inputs) /
+  max_concurrency)` instead of always returning `1`. It should print
+  `3`, not `1`.
+expected_output: |
+  3
+hints:
+  - "import math, then: return math.ceil(len(inputs) / max_concurrency)."
+  - "5 items with a cap of 2 per batch needs ceil(5/2) = 3 batches -- two full batches of 2 plus one final batch of 1."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 35
+difficulty: core
+contains_patterns:
+  - "math\\.ceil\\(len\\(inputs\\) / max_concurrency\\)"
+concept_tags: [langchain, batch, concurrency_limit]

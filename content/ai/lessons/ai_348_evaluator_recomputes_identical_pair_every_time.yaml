@@ -1,0 +1,77 @@
+id: ai_348
+title: "An Evaluator Should Skip Recomputing an Identical (run, example) Pair"
+language: ai
+level: 348
+objective: "Fix an evaluation-caching wrapper that never checks a cache at all, when evaluating the exact same run against the exact same example twice should hit a cache the second time instead of recomputing from scratch."
+explanation: |
+  Re-running an evaluator against a (run, example) pair it's already
+  scored wastes whatever the evaluator itself costs to run -- a model
+  call for an LLM-as-judge evaluator, real computation for anything
+  more elaborate than a bare string comparison. A wrapper that never
+  checks whether this exact pair was already evaluated recomputes
+  every single time, even when nothing about either the run or the
+  example has changed since the last time.
+
+  The bug this exercise fixes calls `evaluator_fn` unconditionally,
+  with no cache check at all. The fix checks a cache keyed by the
+  `(run_id, example_id)` pair first.
+example_code: |
+  # The trap: never checks a cache at all -- recomputes every single
+  # time, even for an identical pair.
+  _eval_calls_trap = {"n": 0}
+  def evaluate_pair_trap(run_id, example_id, evaluator_fn):
+      _eval_calls_trap["n"] += 1
+      return evaluator_fn(run_id, example_id)
+
+  evaluator_fn = lambda r, e: r == e
+  evaluate_pair_trap("r1", "e1", evaluator_fn)
+  evaluate_pair_trap("r1", "e1", evaluator_fn)
+  print(_eval_calls_trap["n"])
+  # 2 -- recomputed both times despite the identical (run, example) pair
+
+  # The fix: check a cache keyed by the (run_id, example_id) pair first.
+  _eval_calls = {"n": 0}
+  def evaluate_pair(run_id, example_id, evaluator_fn, cache):
+      key = (run_id, example_id)
+      if key in cache:
+          return cache[key]
+      _eval_calls["n"] += 1
+      result = evaluator_fn(run_id, example_id)
+      cache[key] = result
+      return result
+
+  cache = {}
+  evaluate_pair("r1", "e1", evaluator_fn, cache)
+  evaluate_pair("r1", "e1", evaluator_fn, cache)
+  print(_eval_calls["n"])
+  # 1 -- the second call correctly hit the cache
+starter_code: |
+  _eval_calls = {"n": 0}
+
+  def evaluate_pair(run_id, example_id, evaluator_fn, cache):
+      _eval_calls["n"] += 1
+      return evaluator_fn(run_id, example_id)
+
+  evaluator_fn = lambda r, e: r == e
+  cache = {}
+  evaluate_pair("r1", "e1", evaluator_fn, cache)
+  evaluate_pair("r1", "e1", evaluator_fn, cache)
+  print(_eval_calls["n"])
+challenge: |
+  Fix `evaluate_pair` so it checks `key = (run_id, example_id)`
+  against `cache` first, returning the cached result on a hit instead
+  of always calling `evaluator_fn` and incrementing the counter. It
+  should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "key = (run_id, example_id), then: if key in cache: return cache[key] -- check this BEFORE incrementing _eval_calls or calling evaluator_fn."
+  - "Store the result with cache[key] = result on a miss, so the next identical call actually hits."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "key = \\(run_id, example_id\\)"
+concept_tags: [langsmith, evaluators, caching]

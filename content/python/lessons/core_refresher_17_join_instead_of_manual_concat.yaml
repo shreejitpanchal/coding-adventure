@@ -1,0 +1,50 @@
+id: core_refresher_17
+title: "str.join() Builds a Delimited String Without a Manual Loop"
+language: python
+level: 130
+objective: "Replace a hand-written loop that concatenates strings with a comma between them, using str.join() instead."
+explanation: |
+  Building a delimited string by hand -- looping over items and
+  deciding whether to prepend a separator based on whether this is the
+  first item -- is exactly what `str.join()` exists to replace.
+  `",".join(fields)` places the separator string between every pair of
+  adjacent elements automatically, with no special-casing needed for
+  the first element, and no risk of an off-by-one in the "is this the
+  first item" check.
+example_code: |
+  # A manual loop, special-casing the first item to avoid a leading comma.
+  fields = ["a", "b", "c"]
+  line_loop = ""
+  for i, f in enumerate(fields):
+      if i > 0:
+          line_loop += ","
+      line_loop += f
+  print(line_loop)                         # "a,b,c"
+
+  # str.join() does this directly, with no special-casing needed.
+  line = ",".join(fields)
+  print(line)                              # "a,b,c"
+starter_code: |
+  fields = ["a", "b", "c"]
+  line = ""
+  for i, f in enumerate(fields):
+      if i > 0:
+          line += ","
+      line += f
+  print(line)
+challenge: |
+  Rewrite this as a single call to `",".join(fields)`, instead of the
+  manual loop. Keep the same output: "a,b,c".
+expected_output: |
+  a,b,c
+hints:
+  - "Replace the whole loop with: line = \",\".join(fields)."
+  - "join() is called on the SEPARATOR string, with the list of pieces passed as its argument -- \",\".join(fields), not fields.join(\",\")."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 17
+difficulty: core
+contains_patterns:
+  - "\",\"\\.join\\(fields\\)"
+concept_tags: [string_methods, join]

@@ -1,0 +1,79 @@
+id: sync_vs_async_11
+title: "A Value That Might or Might Not Be a Coroutine Needs a Check Before Awaiting"
+language: python
+level: 441
+objective: "Fix a generic helper that returns whatever value it's given unchanged, without checking whether it's actually a coroutine object that still needs to be awaited -- asyncio.iscoroutine() checks that directly, letting the helper await it only when it genuinely is one."
+explanation: |
+  A generic helper that might receive either a plain value or a
+  not-yet-awaited coroutine object (depending on what the caller
+  passed in) can't just return whatever it got unchanged -- if it's a
+  coroutine object, returning it as-is silently hands back an
+  unawaited coroutine instead of the real value it represents, exactly
+  like this category's earlier never-awaited lesson covers.
+  `asyncio.iscoroutine(value)` checks directly whether something is
+  genuinely a coroutine object, letting a helper branch correctly:
+  `await` it if it is one, return it unchanged otherwise.
+
+  The fix checks `asyncio.iscoroutine(value)` before deciding whether
+  to await it.
+example_code: |
+  # The trap: returns whatever it's given, never checking if it needs awaiting.
+  def maybe_await_trap(value):
+      return value
+
+  async def compute():
+      return 42
+
+  async def main_trap():
+      result = maybe_await_trap(compute())
+      print(type(result).__name__)
+
+  asyncio.run(main_trap())
+  # "coroutine" -- WRONG, this is an unawaited coroutine object, not 42
+
+  # The fix: check iscoroutine() first, await only when it's genuinely one.
+  import asyncio
+
+  async def maybe_await(value):
+      if asyncio.iscoroutine(value):
+          return await value
+      return value
+
+  async def main():
+      result = await maybe_await(compute())
+      print(result)
+
+  asyncio.run(main())
+  # 42 -- correctly detected the coroutine and awaited it
+starter_code: |
+  import asyncio
+
+  async def compute():
+      return 42
+
+  async def maybe_await(value):
+      return value
+
+  async def main():
+      result = await maybe_await(compute())
+      print(result)
+
+  asyncio.run(main())
+challenge: |
+  Fix `maybe_await` (an `async def` function) so it checks
+  `if asyncio.iscoroutine(value): return await value`, falling back to
+  returning `value` unchanged otherwise. It should print `42`, not a
+  coroutine object.
+expected_output: |
+  42
+hints:
+  - "async def maybe_await(value): if asyncio.iscoroutine(value): return await value; return value."
+  - "asyncio.iscoroutine() checks directly whether something is genuinely a coroutine object still needing to be awaited."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "asyncio\\.iscoroutine\\(value\\)"
+concept_tags: [asyncio, sync_vs_async]

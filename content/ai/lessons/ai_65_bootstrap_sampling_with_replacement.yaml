@@ -1,0 +1,65 @@
+id: ai_65
+title: "A Bootstrap Resample Must Keep Its Repeated Draws, Not Deduplicate Them"
+language: ai
+level: 65
+objective: "Fix a bootstrap resampler that deduplicates its drawn indices, silently discarding the repeated draws that sampling WITH replacement is specifically supposed to allow."
+explanation: |
+  **Bootstrapping** estimates how much a statistic (a mean, a model's
+  accuracy) might vary by drawing many resampled datasets from the
+  original data and recomputing the statistic on each -- and its
+  defining mechanic is sampling **with replacement**: each draw picks
+  from the *entire* original dataset again, so the same row can be
+  drawn more than once in one resample, while other rows might not be
+  drawn at all. That's not an incidental detail -- it's the entire
+  reason a resample can differ from the original data at all, which is
+  what lets bootstrapping estimate variability across many different
+  resamples in the first place.
+
+  The bug this exercise fixes takes a list of drawn indices (some
+  repeated, exactly as a real with-replacement draw would produce) and
+  deduplicates them before building the resample -- silently discarding
+  the repeat information and shrinking a 5-draw resample down to
+  however many *distinct* indices happened to be drawn. The fix simply
+  keeps every draw exactly as given, repeats included, which is what
+  correctly reflects what sampling with replacement actually produced.
+example_code: |
+  # The trap: deduplicates the drawn indices -- losing the repeats that
+  # sampling WITH replacement is specifically supposed to produce.
+  def bootstrap_resample_trap(data, drawn_indices):
+      unique_indices = list(set(drawn_indices))   # bug: discards repeat information
+      return [data[i] for i in unique_indices]
+
+  data = [10, 20, 30, 40, 50]
+  drawn_indices = [0, 0, 2, 4, 4]   # a real with-replacement draw: index 0 and 4 each drawn twice
+  print(len(bootstrap_resample_trap(data, drawn_indices)))   # 3 -- WRONG, should still be 5 draws
+
+  # The fix: keep every draw exactly as given, repeats included.
+  def bootstrap_resample(data, drawn_indices):
+      return [data[i] for i in drawn_indices]
+
+  print(len(bootstrap_resample(data, drawn_indices)))   # 5 -- correctly preserves all 5 draws
+starter_code: |
+  def bootstrap_resample(data, drawn_indices):
+      unique_indices = list(set(drawn_indices))
+      return [data[i] for i in unique_indices]
+
+  data = [10, 20, 30, 40, 50]
+  drawn_indices = [0, 0, 2, 4, 4]
+  print(len(bootstrap_resample(data, drawn_indices)))
+challenge: |
+  Fix `bootstrap_resample` so it builds the resample directly from
+  `drawn_indices` in order, preserving repeats, instead of deduplicating
+  them first. It should print `5`, not `3`.
+expected_output: |
+  5
+hints:
+  - "Remove the deduplication step entirely -- just return [data[i] for i in drawn_indices], iterating over the original list as given."
+  - "A real with-replacement draw of 5 indices should always produce a resample of exactly 5 elements, repeats and all -- deduplicating breaks that guarantee."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "for i in drawn_indices"
+concept_tags: [ml_fundamentals, bootstrapping, resampling]

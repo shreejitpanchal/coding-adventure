@@ -1,0 +1,53 @@
+id: ai_240
+title: "Message History Needs to Be Trimmed to Fit the Budget, Not Left to Grow Forever"
+language: ai
+level: 240
+objective: "Fix a message-trimming function that returns the full history unchanged regardless of the requested budget, when a growing conversation eventually has to be trimmed to the most recent messages to stay within the model's context window."
+explanation: |
+  A long-running conversation accumulates messages faster than any
+  fixed context window can hold, so a chain needs a trimming step that
+  keeps the most recent messages (the ones most likely to matter for
+  the current turn) and drops the rest once the history grows past a
+  budget. A trimming function that just returns everything, with no
+  regard for the requested limit, means the history grows unbounded
+  until it eventually blows straight through the model's real context
+  window with no warning.
+
+  The bug this exercise fixes returns `messages` unchanged, ignoring
+  `max_messages` entirely. The fix keeps only the most recent
+  `max_messages` entries.
+example_code: |
+  # The trap: returns EVERYTHING, ignoring the budget entirely.
+  def trim_messages_trap(messages, max_messages):
+      return messages
+
+  messages = ["m1", "m2", "m3", "m4", "m5"]
+  print(len(trim_messages_trap(messages, 3)))   # 5 -- ignored the budget entirely
+
+  # The fix: keep only the most recent max_messages entries.
+  def trim_messages(messages, max_messages):
+      return messages[-max_messages:]
+
+  print(len(trim_messages(messages, 3)))   # 3 -- correctly bounded to the budget
+starter_code: |
+  def trim_messages(messages, max_messages):
+      return messages
+
+  messages = ["m1", "m2", "m3", "m4", "m5"]
+  print(len(trim_messages(messages, 3)))
+challenge: |
+  Fix `trim_messages` so it returns `messages[-max_messages:]` instead
+  of `messages` unchanged. It should print `3`, not `5`.
+expected_output: |
+  3
+hints:
+  - "Replace return messages with return messages[-max_messages:]."
+  - "A negative slice index counts from the end -- this keeps the most RECENT messages, not the oldest ones."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 20
+difficulty: warmup
+contains_patterns:
+  - "messages\\[-max_messages:\\]"
+concept_tags: [langchain, message_history, context_window]

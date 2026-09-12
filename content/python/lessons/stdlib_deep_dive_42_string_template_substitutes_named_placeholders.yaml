@@ -1,0 +1,67 @@
+id: stdlib_deep_dive_42
+title: "string.Template Substitutes Named Placeholders From a Dict -- % Formatting Needs Positional Care"
+language: python
+level: 243
+objective: "Fix code using %-style formatting with a dict that accidentally supplies values in the wrong shape for %s, when string.Template's substitute() maps named $placeholders directly from dict keys, which is clearer for user-supplied template strings."
+explanation: |
+  `string.Template` is built specifically for substituting named
+  `$placeholder` values from a mapping -- `Template("Hello $name, you
+  are $age").substitute(name="Ann", age=30)` reads naturally and maps
+  each named placeholder to its dict key directly. `%`-style formatting
+  with a dict (`"Hello %(name)s, you are %(age)s" % values`) can do the
+  same thing, but requires getting the `%(key)s` syntax exactly right;
+  a common slip is writing plain `%s` instead of the named
+  `%(name)s` form, which then expects a tuple, not a dict, and raises
+  `TypeError` when given one.
+
+  The bug this exercise fixes uses plain `%s` with a dict argument,
+  which raises `TypeError` since `%s` alone expects a single value or
+  tuple, not a mapping. The fix uses `string.Template`, whose named
+  substitution avoids this mismatch entirely.
+example_code: |
+  # The trap: plain %s with a dict argument raises TypeError.
+  def greet_trap(values):
+      return "Hello %s, you are %s" % values
+
+  values = {"name": "Ann", "age": 30}
+  try:
+      greet_trap(values)
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- %s expects a tuple or single value, not a dict
+
+  # The fix: Template substitutes named placeholders straight from a dict.
+  from string import Template
+
+  def greet(values):
+      return Template("Hello $name, you are $age").substitute(values)
+
+  print(greet(values))
+  # "Hello Ann, you are 30" -- correctly substituted by name, no dict/tuple mismatch
+starter_code: |
+  def greet(values):
+      return "Hello %s, you are %s" % values
+
+  values = {"name": "Ann", "age": 30}
+  try:
+      print(greet(values))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `greet` so it uses `Template("Hello $name, you are $age").
+  substitute(values)` (imported from `string`) instead of `%s`
+  formatting. It should print `Hello Ann, you are 30`, not `crashed`.
+expected_output: |
+  Hello Ann, you are 30
+hints:
+  - "from string import Template, then: return Template(\"Hello $name, you are $age\").substitute(values)."
+  - "%s alone expects a positional tuple or single value -- it doesn't know how to pull named fields out of a dict the way $placeholder syntax does."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "Template\\(\"Hello \\$name, you are \\$age\"\\)\\.substitute\\(values\\)"
+concept_tags: [string_template, formatting]

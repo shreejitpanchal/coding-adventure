@@ -1,0 +1,55 @@
+id: ai_371
+title: "An A2A Message Needs Its Sender's ID, or a Response Has Nowhere to Go"
+language: ai
+level: 371
+objective: "Fix an A2A message builder that never records which agent sent it, when the receiving agent needs a return address to actually publish its response back to whoever delegated the task."
+explanation: |
+  Agent-to-agent delegation is genuinely two-way -- the delegating
+  agent expects a response eventually, which means the receiving agent
+  needs to know exactly who to send that response to. A message built
+  with no record of its own sender leaves the recipient with a task to
+  perform and nowhere to publish the result once it's done: there's no
+  return address anywhere in the message at all.
+
+  The bug this exercise fixes builds the message with `task` and
+  `target` only. The fix also includes the sender's own agent id.
+example_code: |
+  # The trap: never records WHO sent it -- the recipient has no return
+  # address for its eventual response.
+  def build_a2a_message_trap(task, target_agent):
+      return {"task": task, "target": target_agent}
+
+  msg_trap = build_a2a_message_trap("summarize doc", "summarizer-agent")
+  print("sender" in msg_trap)
+  # False
+
+  # The fix: include the sender's own agent id.
+  def build_a2a_message(task, target_agent, sender_agent_id):
+      return {"task": task, "target": target_agent, "sender": sender_agent_id}
+
+  msg = build_a2a_message("summarize doc", "summarizer-agent", "router-agent")
+  print("sender" in msg)
+  # True -- correctly includes a return address
+starter_code: |
+  def build_a2a_message(task, target_agent, sender_agent_id):
+      return {"task": task, "target": target_agent}
+
+  msg = build_a2a_message("summarize doc", "summarizer-agent", "router-agent")
+  print("sender" in msg)
+challenge: |
+  Fix `build_a2a_message` so it also includes `"sender":
+  sender_agent_id` in the returned dict. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"sender\": sender_agent_id as a third key in the returned dict, alongside \"task\" and \"target\"."
+  - "Without a sender field, the recipient has no way to know where its eventual response should even be published."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 16
+difficulty: warmup
+contains_patterns:
+  - "\"sender\": sender_agent_id"
+concept_tags: [solace_agent_mesh, a2a_protocol, message_routing]

@@ -1,0 +1,61 @@
+id: idioms_gotchas_30
+title: "Removing Items From a List While Iterating Over It Skips Elements"
+language: python
+level: 99
+objective: "Fix a function that calls list.remove() from inside a for loop over that same list, when removing an item shifts every later element's index down by one -- silently causing the loop's next step to skip whatever just slid into the position it already passed."
+explanation: |
+  A `for` loop over a list tracks its position by index internally,
+  and removing an item shifts every element after it down by one
+  position. The loop's internal index then advances to the *next*
+  position as normal -- but because everything shifted, that position
+  now holds an element that was never actually visited, silently
+  skipping it. Nothing crashes and nothing warns you; the loop just
+  quietly processes fewer elements than the list actually contains.
+
+  The bug this exercise fixes calls `numbers.remove(n)` while iterating
+  over `numbers` directly. The fix builds a new list via a
+  comprehension instead of mutating the original while iterating over
+  it.
+example_code: |
+  # The trap: removes items from `numbers` WHILE iterating over it --
+  # every removal shifts later elements, silently skipping the next one.
+  def remove_negatives_trap(numbers):
+      for n in numbers:
+          if n < 0:
+              numbers.remove(n)
+      return numbers
+
+  print(remove_negatives_trap([1, -2, -3, 4]))
+  # [1, -3, 4] -- WRONG, -3 should also have been removed but got skipped
+
+  # The fix: build a new list instead of mutating the one being iterated.
+  def remove_negatives(numbers):
+      return [n for n in numbers if n >= 0]
+
+  print(remove_negatives([1, -2, -3, 4]))
+  # [1, 4] -- correctly removed every negative number
+starter_code: |
+  def remove_negatives(numbers):
+      for n in numbers:
+          if n < 0:
+              numbers.remove(n)
+      return numbers
+
+  print(remove_negatives([1, -2, -3, 4]))
+challenge: |
+  Fix `remove_negatives` so it returns `[n for n in numbers if n >=
+  0]`, building a new list, instead of mutating `numbers` while
+  iterating over it. It should print `[1, 4]`, not `[1, -3, 4]`.
+expected_output: |
+  [1, 4]
+hints:
+  - "Replace the whole for-loop-and-remove approach with a single list comprehension: [n for n in numbers if n >= 0]."
+  - "Removing an item shifts every later element's index down by one -- the loop's next step then lands on an element that was already shifted into the position it just passed."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 30
+difficulty: gotcha
+contains_patterns:
+  - "\\[n for n in numbers if n >= 0\\]"
+concept_tags: [idioms, list_mutation, iteration]

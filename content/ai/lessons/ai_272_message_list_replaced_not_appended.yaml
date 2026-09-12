@@ -1,0 +1,63 @@
+id: ai_272
+title: "A Message-List State Field Needs a Reducer That Appends, Not Replaces"
+language: ai
+level: 272
+objective: "Fix a state update that replaces the entire messages list with whatever a node just produced, when a message history field should accumulate -- every new message added to what's already there, not overwriting the conversation so far."
+explanation: |
+  Some state fields (a running conversation, an accumulating log) are
+  meant to grow over the course of a graph run rather than be
+  overwritten wholesale on every node that touches them -- LangGraph
+  calls the function that governs this an `add_messages`-style
+  *reducer*. A node that just assigns `state["messages"] = new_messages`
+  treats the field like any other overwritable value, silently erasing
+  the entire conversation history accumulated by every earlier node.
+
+  The bug this exercise fixes assigns `new_messages` directly,
+  discarding whatever was already in `state["messages"]`. The fix
+  concatenates the new messages onto the existing list instead.
+example_code: |
+  # The trap: REPLACES the list instead of appending to what's
+  # already there.
+  def add_messages_trap(state, new_messages):
+      state["messages"] = new_messages
+      return state
+
+  state = {"messages": ["hi"]}
+  state = add_messages_trap(state, ["how are you?"])
+  print(len(state["messages"]))   # 1 -- the earlier message was overwritten, not appended to
+
+  # The fix: concatenate onto the existing list.
+  def add_messages(state, new_messages):
+      state = dict(state)
+      state["messages"] = state.get("messages", []) + new_messages
+      return state
+
+  state2 = {"messages": ["hi"]}
+  state2 = add_messages(state2, ["how are you?"])
+  print(len(state2["messages"]))   # 2 -- correctly accumulated instead of replaced
+starter_code: |
+  def add_messages(state, new_messages):
+      state["messages"] = new_messages
+      return state
+
+  state = {"messages": ["hi"]}
+  state = add_messages(state, ["how are you?"])
+  print(len(state["messages"]))
+challenge: |
+  Fix `add_messages` so it sets `state["messages"]` to
+  `state.get("messages", []) + new_messages`, concatenating onto what
+  was already there, instead of replacing it outright. It should print
+  `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Change state[\"messages\"] = new_messages to state[\"messages\"] = state.get(\"messages\", []) + new_messages."
+  - "This is exactly what a LangGraph reducer does for a messages-shaped field -- accumulate, rather than overwrite, on every update."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "state\\.get\\(\"messages\", \\[\\]\\) \\+ new_messages"
+concept_tags: [langgraph, state_reducer, message_accumulation]

@@ -1,0 +1,98 @@
+id: concurrency_async_42
+title: "threading.Barrier Holds Every Thread Until They've ALL Arrived"
+language: python
+level: 332
+objective: "Fix code where one thread proceeds immediately without waiting for a slower thread to catch up, when threading.Barrier(n) makes every one of n threads block at .wait() until all n have actually arrived, before releasing any of them."
+explanation: |
+  Sometimes several threads each need to complete an independent
+  setup phase, and none of them should move on to the next phase
+  until *every* one of them has finished theirs -- a rendezvous point,
+  not just a single completion signal. `threading.Barrier(n)` is built
+  exactly for this: each thread calls `barrier.wait()` once it's
+  ready, and that call *blocks* until all `n` participating threads
+  have called it too -- only then are all of them released together,
+  none proceeding ahead of the others.
+
+  The bug this exercise fixes has no synchronization at all -- a fast
+  thread proceeds immediately, ahead of a slower one still arriving.
+  The fix has both threads call `barrier.wait()` before proceeding,
+  correctly holding the fast one back until the slow one catches up.
+example_code: |
+  # The trap: no synchronization -- the fast thread proceeds immediately.
+  import threading, time
+
+  def worker_a_trap(log):
+      log.append("A-arrived")
+      log.append("A-passed")          # proceeds immediately, doesn't wait for B
+
+  def worker_b_trap(log):
+      time.sleep(0.05)
+      log.append("B-arrived")
+      log.append("B-passed")
+
+  log_trap = []
+  ta_trap = threading.Thread(target=worker_a_trap, args=(log_trap,))
+  tb_trap = threading.Thread(target=worker_b_trap, args=(log_trap,))
+  ta_trap.start(); tb_trap.start()
+  ta_trap.join(); tb_trap.join()
+  print(log_trap.index("A-passed") < log_trap.index("B-arrived"))
+  # True -- WRONG if A was supposed to wait for B before proceeding
+
+  # The fix: Barrier(2) holds BOTH threads until they've both arrived.
+  barrier = threading.Barrier(2)
+
+  def worker_a(log):
+      log.append("A-arrived")
+      barrier.wait()
+      log.append("A-passed")
+
+  def worker_b(log):
+      time.sleep(0.05)
+      log.append("B-arrived")
+      barrier.wait()
+      log.append("B-passed")
+
+  log = []
+  ta = threading.Thread(target=worker_a, args=(log,))
+  tb = threading.Thread(target=worker_b, args=(log,))
+  ta.start(); tb.start()
+  ta.join(); tb.join()
+  print(log.index("A-passed") < log.index("B-arrived"))
+  # False -- correctly held A back until B had also arrived
+starter_code: |
+  import threading, time
+
+  def worker_a(log):
+      log.append("A-arrived")
+      log.append("A-passed")
+
+  def worker_b(log):
+      time.sleep(0.05)
+      log.append("B-arrived")
+      log.append("B-passed")
+
+  log = []
+  ta = threading.Thread(target=worker_a, args=(log,))
+  tb = threading.Thread(target=worker_b, args=(log,))
+  ta.start(); tb.start()
+  ta.join(); tb.join()
+  print(log.index("A-passed") < log.index("B-arrived"))
+challenge: |
+  Fix this by creating `barrier = threading.Barrier(2)` and having
+  both `worker_a` and `worker_b` call `barrier.wait()` right before
+  appending their `"-passed"` entry. It should print `False`, not
+  `True`.
+expected_output: |
+  False
+hints:
+  - "barrier = threading.Barrier(2), then add barrier.wait() right before each \"-passed\" append in both workers."
+  - "barrier.wait() blocks the calling thread until every one of the Barrier's n parties has also called it -- none proceed ahead of the others."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 42
+difficulty: deep_dive
+contains_patterns:
+  - "threading\\.Barrier\\(2\\)"
+  - "barrier\\.wait\\(\\)"
+concept_tags: [threading, barrier, concurrency]

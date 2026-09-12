@@ -1,0 +1,66 @@
+id: ai_316
+title: "A Span's End Time Must Actually Be Recorded When It Finishes"
+language: ai
+level: 316
+objective: "Fix a span-ending function that does nothing at all, when a span's end time needs to actually be set for its duration to ever be computable -- a span that never records when it finished can't tell anyone how long it took."
+explanation: |
+  A span starts with a known start time and an `end` field left `None`
+  until the wrapped work actually finishes -- and something has to
+  genuinely set that field when the work completes, or the span is
+  permanently stuck looking like it's still running, with no way to
+  ever compute how long it actually took.
+
+  The bug this exercise fixes has an `end_span` function that does
+  nothing at all. The fix actually assigns the end time onto the span.
+example_code: |
+  # The trap: end_span does NOTHING -- the span's end time is never
+  # actually recorded.
+  def start_span_trap():
+      return {"start": 100, "end": None}
+
+  def end_span_trap(span):
+      pass
+
+  span_trap = start_span_trap()
+  end_span_trap(span_trap)
+  print(span_trap["end"] is None)
+  # True -- the span's end time was never actually recorded
+
+  # The fix: actually assign the end time onto the span.
+  def start_span():
+      return {"start": 100, "end": None}
+
+  def end_span(span, end_time):
+      span["end"] = end_time
+
+  span = start_span()
+  end_span(span, 150)
+  print(span["end"] is None)
+  # False -- correctly recorded
+starter_code: |
+  def start_span():
+      return {"start": 100, "end": None}
+
+  def end_span(span):
+      pass
+
+  span = start_span()
+  end_span(span)
+  print(span["end"] is None)
+challenge: |
+  Fix `end_span` so it accepts an `end_time` parameter and sets
+  `span["end"] = end_time`, instead of doing nothing at all. It should
+  print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add end_time as a parameter to end_span, and set span[\"end\"] = end_time inside it."
+  - "A span whose end field is never actually set can't have its duration computed -- it looks like it's still running forever."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 6
+difficulty: warmup
+contains_patterns:
+  - "span\\[\"end\"\\] = end_time"
+concept_tags: [langsmith, tracing, spans]

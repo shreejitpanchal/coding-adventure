@@ -1,0 +1,61 @@
+id: ai_71
+title: "PCA's Variance-Explained Ratio Tells You What You Actually Kept"
+language: ai
+level: 71
+objective: "Fix a dimensionality-reduction summary that reports how many components were kept, without ever computing what fraction of the original variance those components actually retained."
+explanation: |
+  Reducing data down to, say, 2 principal components is meaningless on
+  its own without knowing how much of the original information those 2
+  components actually captured. **PCA**'s components are ordered by how
+  much variance each one explains, so the **variance-explained ratio**
+  -- each kept component's variance divided by the *total* variance
+  across all original components -- tells you concretely whether "2
+  components" means "we kept 95% of the real signal" or "we kept 40%
+  of it and threw away most of the actual information," two very
+  different outcomes that "we kept 2 components" alone can't distinguish.
+
+  The bug this exercise fixes reports the *count* of kept components
+  as if that were a meaningful summary on its own. The fix computes the
+  actual variance-explained ratio -- summing the variances of the kept
+  components and dividing by the sum of *all* components' variances --
+  giving a real, comparable measure of how much signal was actually
+  retained.
+example_code: |
+  # The trap: reports how many components were kept -- says nothing
+  # about how much actual variance/information that represents.
+  def summarize_trap(component_variances, n_kept):
+      return n_kept
+
+  component_variances = [8.0, 1.0, 0.5, 0.3, 0.2]   # first component dominates
+  print(summarize_trap(component_variances, n_kept=2))   # 2 -- tells you nothing about information retained
+
+  # The fix: compute the actual variance-explained ratio for the kept components.
+  def variance_explained_ratio(component_variances, n_kept):
+      kept = component_variances[:n_kept]
+      return sum(kept) / sum(component_variances)
+
+  print(round(variance_explained_ratio(component_variances, n_kept=2), 3))   # 0.9 -- the real, comparable number
+starter_code: |
+  def variance_explained_ratio(component_variances, n_kept):
+      return n_kept
+
+  component_variances = [8.0, 1.0, 0.5, 0.3, 0.2]
+  print(round(variance_explained_ratio(component_variances, n_kept=2), 3))
+challenge: |
+  Fix `variance_explained_ratio` so it sums the first `n_kept`
+  components' variances and divides by the total variance across all
+  components, instead of just returning `n_kept`. It should print
+  `0.9`, not `2`.
+expected_output: |
+  0.9
+hints:
+  - "kept = component_variances[:n_kept] -- the first n_kept components (PCA orders them by variance, largest first)."
+  - "Return sum(kept) / sum(component_variances) -- the fraction of TOTAL variance the kept components account for."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 31
+difficulty: core
+contains_patterns:
+  - "sum\\(kept\\) / sum\\(component_variances\\)"
+concept_tags: [ml_fundamentals, pca, dimensionality_reduction]

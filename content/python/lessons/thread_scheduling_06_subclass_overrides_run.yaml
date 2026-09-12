@@ -1,0 +1,86 @@
+id: thread_scheduling_06
+title: "A Thread Subclass Runs Its Own run() Method -- Not Whatever You Pass as target="
+language: python
+level: 426
+objective: "Fix a Thread subclass that also passes target= to super().__init__ (a mix-up between the two ways of defining a thread's work), when subclassing means the work belongs in an overridden run() method instead -- target= is for the OTHER approach, using plain Thread directly."
+explanation: |
+  `threading.Thread` supports two genuinely different ways to define
+  what a thread actually does: pass a `target=` function to a plain
+  `Thread(...)` instance, or subclass `Thread` and override its
+  `run()` method. Mixing the two -- subclassing `Thread` *and* still
+  passing `target=` to `super().__init__()` -- means `run()`'s default
+  implementation (inherited, unoverridden) is what actually executes,
+  calling whatever `target` was passed; overriding `run()` with new
+  logic while *also* passing a `target` that does something different
+  creates confusion about which one actually runs, and forgetting to
+  override `run()` at all means subclassing bought nothing over just
+  using `target=` directly.
+
+  The fix picks one approach cleanly: override `run()` with the actual
+  work, and drop `target=` entirely.
+example_code: |
+  # The trap: subclasses Thread AND passes target= -- mixing both approaches.
+  import threading
+
+  class WorkerTrap(threading.Thread):
+      def __init__(self, log):
+          super().__init__(target=lambda: log.append("target ran"))
+          self.log = log
+      def run(self):
+          self.log.append("run() ran")
+          super().run()          # confusingly ALSO calls whatever target was
+
+  log_trap = []
+  t_trap = WorkerTrap(log_trap)
+  t_trap.start()
+  t_trap.join()
+  print(log_trap)
+  # ['run() ran', 'target ran'] -- confusing: BOTH mechanisms fired
+
+  # The fix: subclassing means the work belongs in run() -- no target= at all.
+  class Worker(threading.Thread):
+      def __init__(self, log):
+          super().__init__()
+          self.log = log
+      def run(self):
+          self.log.append("run() ran")
+
+  log = []
+  t = Worker(log)
+  t.start()
+  t.join()
+  print(log)
+  # ['run() ran'] -- correctly just ONE clear mechanism doing the work
+starter_code: |
+  import threading
+
+  class Worker(threading.Thread):
+      def __init__(self, log):
+          super().__init__(target=lambda: log.append("target ran"))
+          self.log = log
+      def run(self):
+          self.log.append("run() ran")
+          super().run()
+
+  log = []
+  t = Worker(log)
+  t.start()
+  t.join()
+  print(log)
+challenge: |
+  Fix `Worker` so `super().__init__()` is called with no `target=` at
+  all, and `run()` doesn't call `super().run()`. It should print
+  `['run() ran']`, not `['run() ran', 'target ran']`.
+expected_output: |
+  ['run() ran']
+hints:
+  - "super().__init__() with no target= argument, and just self.log.append(\"run() ran\") inside run() with no super().run() call."
+  - "Subclassing Thread means the work belongs in an overridden run() -- target= is for the OTHER approach (a plain Thread instance), not something to mix in alongside subclassing."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "super\\(\\)\\.__init__\\(\\)"
+concept_tags: [threading, thread_subclass]

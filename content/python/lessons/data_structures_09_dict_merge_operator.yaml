@@ -1,0 +1,46 @@
+id: data_structures_09
+title: "The | Operator Merges Two Dicts Without Double-Splatting"
+language: python
+level: 166
+objective: "Replace the {**a, **b} merge pattern with Python 3.9's dict union operator, a | b."
+explanation: |
+  Merging two dicts via `{**a, **b}` works, but it reads more like a
+  workaround than a direct statement of intent -- double-unpacking two
+  dicts into a fresh literal to combine them. Python 3.9 added a real
+  `|` operator between dicts specifically for this: `a | b` returns a
+  new dict with `a`'s entries overridden by any matching keys in `b`,
+  reading exactly like the set union operator this category's earlier
+  lesson covers, just for dicts instead of sets.
+example_code: |
+  # The double-splat merge pattern.
+  defaults_loop = {"timeout": 30, "retries": 3}
+  overrides_loop = {"timeout": 5}
+  merged_loop = {**defaults_loop, **overrides_loop}
+  print(merged_loop)                        # {'timeout': 5, 'retries': 3}
+
+  # The | operator merges directly.
+  defaults = {"timeout": 30, "retries": 3}
+  overrides = {"timeout": 5}
+  merged = defaults | overrides
+  print(merged)                             # {'timeout': 5, 'retries': 3}
+starter_code: |
+  defaults = {"timeout": 30, "retries": 3}
+  overrides = {"timeout": 5}
+  merged = {**defaults, **overrides}
+  print(merged)
+challenge: |
+  Rewrite the merge as `defaults | overrides`, instead of `{**defaults,
+  **overrides}`. Keep the same output: {'timeout': 5, 'retries': 3}.
+expected_output: |
+  {'timeout': 5, 'retries': 3}
+hints:
+  - "Replace {**defaults, **overrides} with defaults | overrides."
+  - "Like set union, the right-hand side's keys win on any collision -- overrides needs to be on the right for its values to take priority."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "defaults \\| overrides"
+concept_tags: [dicts, merge_operator]

@@ -1,0 +1,68 @@
+id: ai_63
+title: "A Single Leverage Point Can Drag a Fitted Line Far Off Course"
+language: ai
+level: 63
+objective: "Fix a simple linear fit that includes an extreme outlier point in its slope calculation, letting that one point drag the fitted line badly off the pattern the rest of the data actually shows."
+explanation: |
+  Ordinary least-squares fitting minimizes total squared error across
+  every point -- which means a single point far from the others (a
+  **leverage point**) can contribute a disproportionately large share
+  of that total error, pulling the fitted line toward itself at the
+  expense of fitting the rest of the data well. Unlike a random noisy
+  point that's just "a bit off," a true leverage point sits far out
+  along the x-axis too, giving it outsized influence on the slope
+  specifically, not just the intercept.
+
+  The bug this exercise fixes computes a slope using every point,
+  including one extreme leverage point that doesn't follow the rest of
+  the pattern at all. The fix simply excludes that one identified
+  outlier before fitting, letting the slope reflect the genuine
+  relationship in the remaining, well-behaved data.
+example_code: |
+  # The trap: fits a slope using EVERY point, including one extreme
+  # leverage point that doesn't follow the rest of the pattern.
+  def slope_trap(points):
+      xs = [p[0] for p in points]
+      ys = [p[1] for p in points]
+      x_mean, y_mean = sum(xs) / len(xs), sum(ys) / len(ys)
+      num = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
+      den = sum((x - x_mean) ** 2 for x in xs)
+      return num / den
+
+  points = [(1, 2), (2, 4), (3, 6), (4, 8), (50, 1)]   # last point is a leverage outlier
+  print(round(slope_trap(points), 2))   # a badly distorted slope, far from the real pattern's slope of 2
+
+  # The fix: exclude the identified outlier before fitting.
+  def slope_without_outlier(points, outlier):
+      cleaned = [p for p in points if p != outlier]
+      return slope_trap(cleaned)
+
+  print(round(slope_without_outlier(points, (50, 1)), 2))   # 2.0 -- correctly recovers the real pattern
+starter_code: |
+  def slope(points):
+      xs = [p[0] for p in points]
+      ys = [p[1] for p in points]
+      x_mean, y_mean = sum(xs) / len(xs), sum(ys) / len(ys)
+      num = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
+      den = sum((x - x_mean) ** 2 for x in xs)
+      return num / den
+
+  points = [(1, 2), (2, 4), (3, 6), (4, 8), (50, 1)]
+  print(round(slope(points), 2) == 2.0)
+challenge: |
+  Fix the code so it excludes the leverage point `(50, 1)` before
+  computing the slope, instead of fitting on all 5 points including it.
+  It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Build a cleaned list first: cleaned = [p for p in points if p != (50, 1)], then compute slope on cleaned, not on the original points."
+  - "Excluding the leverage point recovers the real underlying slope (2.0) from the well-behaved points (1,2), (2,4), (3,6), (4,8)."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 23
+difficulty: core
+contains_patterns:
+  - "if p != \\(50, 1\\)"
+concept_tags: [ml_fundamentals, outliers, linear_regression, leverage_points]

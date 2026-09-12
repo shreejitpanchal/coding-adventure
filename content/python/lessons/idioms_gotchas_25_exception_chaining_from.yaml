@@ -1,0 +1,73 @@
+id: idioms_gotchas_25
+title: "Raising a New Exception Should Chain to the Original With 'from'"
+language: python
+level: 94
+objective: "Fix an exception handler that raises a new exception with no link back to the original one, when 'raise ... from original' explicitly preserves that connection -- without it, whatever actually caused the failure is much harder to trace."
+explanation: |
+  When one exception is caught and a different, more meaningful one is
+  raised in its place (turning a low-level `ValueError` into a
+  higher-level `RuntimeError` that better describes what the caller was
+  actually trying to do), `raise NewError(...) from original` links the
+  two explicitly via the new exception's `__cause__` attribute --
+  preserving the full trail for anyone debugging later. Raising the new
+  exception with no `from` clause loses that explicit link, making the
+  new exception look self-contained when it actually has a very
+  specific, traceable root cause.
+
+  The bug this exercise fixes raises `RuntimeError(...)` with no `from`
+  clause. The fix chains it explicitly to the original exception.
+example_code: |
+  # The trap: raises a new exception with NO link back to what
+  # actually caused it.
+  def process_trap(data):
+      try:
+          return int(data)
+      except ValueError:
+          raise RuntimeError("processing failed")
+
+  try:
+      process_trap("not a number")
+  except RuntimeError as e:
+      print(e.__cause__ is None)
+  # True -- the original ValueError's details were never explicitly linked
+
+  # The fix: chain explicitly with "from".
+  def process(data):
+      try:
+          return int(data)
+      except ValueError as original:
+          raise RuntimeError("processing failed") from original
+
+  try:
+      process("not a number")
+  except RuntimeError as e:
+      print(e.__cause__ is None)
+  # False -- correctly linked to the original ValueError
+starter_code: |
+  def process(data):
+      try:
+          return int(data)
+      except ValueError:
+          raise RuntimeError("processing failed")
+
+  try:
+      process("not a number")
+  except RuntimeError as e:
+      print(e.__cause__ is None)
+challenge: |
+  Fix `process` so it catches the `ValueError` as `original` and does
+  `raise RuntimeError("processing failed") from original`, instead of
+  raising with no explicit chain. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Catch the exception as a named variable (except ValueError as original:) and add \"from original\" to the raise statement."
+  - "e.__cause__ is only set when the new exception is explicitly chained via \"from\" -- without it, the link has to be reconstructed manually from context."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "raise RuntimeError\\(\"processing failed\"\\) from original"
+concept_tags: [idioms, exception_chaining, raise_from]

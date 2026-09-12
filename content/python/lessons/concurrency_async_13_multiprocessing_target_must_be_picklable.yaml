@@ -1,0 +1,81 @@
+id: concurrency_async_13
+title: "The Lambda That Couldn't Cross Over Into a Worker Process"
+language: python
+level: 303
+objective: "Fix code passing a lambda to a multiprocessing Pool, which can't be sent to a separate worker process at all (lambdas aren't picklable), when a plain top-level named function works correctly, since it CAN be pickled and sent across the process boundary."
+explanation: |
+  Unlike threads, which share the same memory space as the process
+  that created them, each worker in a `multiprocessing.Pool` is a
+  genuinely separate OS process with its own memory -- the function
+  being mapped has to be *serialized* (pickled) and sent across to the
+  worker process, then reconstructed there before it can actually run.
+  A `lambda` can't be pickled at all -- Python's `pickle` module can
+  only serialize something it can look up again by its
+  module-and-qualified-name, and a lambda has no real name of its own
+  to be looked up by. Passing one to `pool.map()` fails immediately
+  with a pickling error, well before any actual work happens.
+
+  The fix is defining the function as a plain, top-level named
+  function instead of a lambda -- something `pickle` can genuinely
+  serialize by reference and reconstruct correctly inside the worker
+  process.
+example_code: |
+  # The trap: a lambda can't be pickled -- can't cross the process boundary.
+  from multiprocessing import Pool
+
+  def run_trap():
+      with Pool(2) as pool:
+          try:
+              print(pool.map(lambda x: x * 2, [1, 2, 3]))
+              print("ok")
+          except Exception:
+              print("crashed")
+
+  if __name__ == "__main__":
+      run_trap()
+  # "crashed" -- the lambda can't be pickled and sent to a worker process
+
+  # The fix: a plain top-level named function IS picklable.
+  from multiprocessing import Pool
+
+  def double(x):
+      return x * 2
+
+  def run():
+      with Pool(2) as pool:
+          return pool.map(double, [1, 2, 3])
+
+  if __name__ == "__main__":
+      print(run())
+  # [2, 4, 6] -- correctly ran in worker processes, since double() is picklable
+starter_code: |
+  from multiprocessing import Pool
+
+  def run():
+      with Pool(2) as pool:
+          try:
+              print(pool.map(lambda x: x * 2, [1, 2, 3]))
+              print("ok")
+          except Exception:
+              print("crashed")
+
+  if __name__ == "__main__":
+      run()
+challenge: |
+  Fix this by defining a plain top-level function `double(x): return x
+  * 2` and mapping that instead of a `lambda`. It should print
+  `[2, 4, 6]`, not `crashed`.
+expected_output: |
+  [2, 4, 6]
+hints:
+  - "def double(x): return x * 2, defined at module (top) level, then pool.map(double, [1, 2, 3])."
+  - "A worker process needs the function pickled and sent across -- pickle can only serialize something it can look up by name, which a lambda genuinely doesn't have."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 13
+difficulty: deep_dive
+contains_patterns:
+  - "def double\\(x\\):"
+  - "pool\\.map\\(double, \\[1, 2, 3\\]\\)"
+concept_tags: [multiprocessing, pickling, concurrency]

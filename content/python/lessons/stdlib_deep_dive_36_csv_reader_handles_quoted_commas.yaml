@@ -1,0 +1,59 @@
+id: stdlib_deep_dive_36
+title: "csv.reader Handles Quoted Commas Correctly -- A Naive split(',') Doesn't"
+language: python
+level: 237
+objective: "Fix code that parses CSV lines with a naive line.split(','), which breaks a quoted field's internal comma into an extra column, when csv.reader correctly treats a quoted comma as part of the field, not a delimiter."
+explanation: |
+  A naive `line.split(",")` treats every comma as a field separator,
+  with no notion of quoting at all -- a field like `"Smith, John"`
+  (a single value containing a comma, wrapped in quotes per the CSV
+  spec) gets split into two columns instead of staying one. The `csv`
+  module's `csv.reader` implements the actual CSV quoting rules,
+  correctly treating a comma inside a quoted field as part of that
+  field's content rather than a delimiter.
+
+  The bug this exercise fixes uses `split(",")` and gets an extra,
+  wrong column count on a quoted field. The fix uses `csv.reader`.
+example_code: |
+  # The trap: split(',') has no concept of quoting -- breaks quoted commas.
+  def parse_row_trap(line):
+      return line.split(",")
+
+  row = '"Smith, John",42'
+  print(len(parse_row_trap(row)))
+  # 3 -- WRONG, the quoted comma inside "Smith, John" was treated as a
+  # delimiter, splitting one field into two
+
+  # The fix: csv.reader understands CSV quoting rules correctly.
+  import csv
+  import io
+
+  def parse_row(line):
+      return next(csv.reader(io.StringIO(line)))
+
+  print(len(parse_row(row)))
+  # 2 -- correctly kept "Smith, John" as one field, despite its internal comma
+starter_code: |
+  row = '"Smith, John",42'
+
+  def parse_row(line):
+      return line.split(",")
+
+  print(len(parse_row(row)))
+challenge: |
+  Fix `parse_row` so it uses `csv.reader` (with `io.StringIO(line)`,
+  taking the first row via `next(...)`) instead of a naive
+  `line.split(",")`. It should print `2`, not `3`.
+expected_output: |
+  2
+hints:
+  - "import csv, io, then: return next(csv.reader(io.StringIO(line)))."
+  - "split(',') has no notion of quoting -- csv.reader correctly treats a comma inside quotes as part of the field, not a delimiter."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 36
+difficulty: gotcha
+contains_patterns:
+  - "csv\\.reader\\(io\\.StringIO\\(line\\)\\)"
+concept_tags: [csv, parsing]

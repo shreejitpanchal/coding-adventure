@@ -93,7 +93,7 @@ hints:
   - "Overriding __init__ replaces the parent's entirely unless you call super().__init__()."
   - "Add super().__init__(name) as the first line of Dog.__init__."
 xp_reward: 15
-achievement: gotcha_gauntlet_master
+achievement: null
 category: gotcha_gauntlet
 category_level: 6
 difficulty: gotcha

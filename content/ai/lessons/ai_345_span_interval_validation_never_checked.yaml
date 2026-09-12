@@ -1,0 +1,60 @@
+id: ai_345
+title: "A Child Span's Interval Must Actually Fall Within Its Parent's"
+language: ai
+level: 345
+objective: "Fix a span-validation function that always reports a span as valid regardless of its actual timing, when a genuinely nested call can never legitimately end after its own parent already finished -- and a validator should catch that structurally impossible case."
+explanation: |
+  A child span represents work that happened *during* its parent's own
+  execution, which means its start and end times have to fall entirely
+  within the parent's own interval -- a child that supposedly ends
+  after its parent already finished describes something that couldn't
+  actually have happened, and points at a bug in how spans are being
+  recorded (a missing end-time update, a mismatched parent) rather than
+  a legitimate trace. A validator that never actually checks this lets
+  that kind of structurally broken trace pass through as if everything
+  were fine.
+
+  The bug this exercise fixes always returns `True`, with no check at
+  all. The fix verifies the child's start and end both fall within the
+  parent's interval.
+example_code: |
+  # The trap: never actually checks the child's interval against the
+  # parent's at all.
+  def validate_span_trap(parent, child):
+      return True
+
+  parent = {"start": 0, "end": 10}
+  child = {"start": 5, "end": 20}   # ends AFTER its own parent -- structurally impossible
+  print(validate_span_trap(parent, child))
+  # True -- wrongly claims a structurally impossible span is valid
+
+  # The fix: verify the child's interval actually falls within the parent's.
+  def validate_span(parent, child):
+      return child["start"] >= parent["start"] and child["end"] <= parent["end"]
+
+  print(validate_span(parent, child))
+  # False -- correctly flagged as structurally invalid
+starter_code: |
+  def validate_span(parent, child):
+      return True
+
+  parent = {"start": 0, "end": 10}
+  child = {"start": 5, "end": 20}
+  print(validate_span(parent, child))
+challenge: |
+  Fix `validate_span` so it returns `child["start"] >= parent["start"]
+  and child["end"] <= parent["end"]`, instead of always `True`. It
+  should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace return True with a real check comparing both the child's start and end against the parent's interval."
+  - "A child span ending after its parent already finished describes something that couldn't legitimately have happened -- that's exactly what this check should catch."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 35
+difficulty: core
+contains_patterns:
+  - "child\\[\"end\"\\] <= parent\\[\"end\"\\]"
+concept_tags: [langsmith, span_validation, tracing]

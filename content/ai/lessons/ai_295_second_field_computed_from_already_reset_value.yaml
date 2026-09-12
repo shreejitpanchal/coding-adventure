@@ -1,0 +1,72 @@
+id: ai_295
+title: "Every Derived Field Should Read the Original Value, Not One Another's Leftovers"
+language: ai
+level: 295
+objective: "Fix a node that resets a field to zero before a later computation in the same node still needed its original value, when every derived value should be computed from the original input, not from whatever an earlier line in the same function already overwrote."
+explanation: |
+  Inside a single node, the order operations happen in matters just as
+  much as it does across nodes -- if one line resets a field and a
+  later line still needs that field's original value to compute
+  something else, the order those two lines run in silently determines
+  whether the second computation is correct or garbage. This is an
+  easy mistake to miss precisely because nothing crashes: the function
+  runs to completion and returns a plausible-looking number, just the
+  wrong one.
+
+  The bug this exercise fixes resets `new_state["count"]` to `0` before
+  using it (post-reset) to compute `"tripled"`. The fix captures the
+  original value first, uses it for every derived computation, and only
+  resets the field afterward.
+example_code: |
+  # The trap: resets count to 0 BEFORE using it to compute "tripled" --
+  # so "tripled" is derived from the wrong, already-reset value.
+  def process_trap(state):
+      new_state = dict(state)
+      new_state["doubled"] = new_state["count"] * 2
+      new_state["count"] = 0
+      new_state["tripled"] = new_state["count"] * 3
+      return new_state
+
+  state = {"count": 5}
+  print(process_trap(state)["tripled"])
+  # 0 -- computed from the already-overwritten count, not the original 5
+
+  # The fix: capture the original value first, derive everything from it.
+  def process(state):
+      new_state = dict(state)
+      original_count = state["count"]
+      new_state["doubled"] = original_count * 2
+      new_state["tripled"] = original_count * 3
+      new_state["count"] = 0
+      return new_state
+
+  print(process(state)["tripled"])
+  # 15 -- correctly computed from the original value before it was ever reset
+starter_code: |
+  def process(state):
+      new_state = dict(state)
+      new_state["doubled"] = new_state["count"] * 2
+      new_state["count"] = 0
+      new_state["tripled"] = new_state["count"] * 3
+      return new_state
+
+  state = {"count": 5}
+  print(process(state)["tripled"])
+challenge: |
+  Fix `process` so it captures `original_count = state["count"]` up
+  front and computes both `"doubled"` and `"tripled"` from that,
+  resetting `"count"` to `0` only afterward. It should print `15`,
+  not `0`.
+expected_output: |
+  15
+hints:
+  - "original_count = state[\"count\"] -- capture this BEFORE any resetting happens, then use it for both doubled and tripled."
+  - "Move the new_state[\"count\"] = 0 line to the very end, after every computation that still needs the original value."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 30
+difficulty: gotcha
+contains_patterns:
+  - "original_count = state\\[\"count\"\\]"
+concept_tags: [langgraph, node_logic, computation_order]

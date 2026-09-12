@@ -1,0 +1,59 @@
+id: dependency_management_10
+title: "Picking the 'Latest' Version Without Checking If It Was Yanked"
+language: python
+level: 420
+objective: "Fix a 'pick the latest version' function that considers every version equally, including one that's been yanked (published, then pulled from the index because of a serious bug), when filtering out yanked versions BEFORE picking the latest correctly avoids ever selecting one."
+explanation: |
+  A "yanked" release is a version that was published and later pulled
+  by its maintainers -- almost always because of a serious bug or
+  security issue discovered after the fact -- but it isn't fully
+  deleted; existing installs that already pinned it keep working,
+  while a *fresh* resolution is supposed to skip it entirely unless
+  explicitly requested by its exact version. A "pick the latest"
+  function that just compares every available version numerically,
+  with no awareness of yanked status, can happily select a yanked
+  release simply because it's numerically the newest -- exactly the
+  version the maintainers pulled specifically because something was
+  wrong with it.
+
+  The fix filters out yanked versions first, only picking the latest
+  from what's left.
+example_code: |
+  # The trap: picks the numerically latest version, yanked or not.
+  def pick_latest_trap(versions):
+      return max(versions, key=lambda v: tuple(int(p) for p in v.split(".")))
+
+  versions = {"1.0.0": False, "1.1.0": False, "1.2.0": True}   # True means yanked
+  print(pick_latest_trap(versions))
+  # "1.2.0" -- WRONG, this version was pulled by its own maintainers
+
+  # The fix: filter out yanked versions BEFORE picking the latest.
+  def pick_latest(versions):
+      candidates = [v for v, yanked in versions.items() if not yanked]
+      return max(candidates, key=lambda v: tuple(int(p) for p in v.split(".")))
+
+  print(pick_latest(versions))
+  # "1.1.0" -- correctly skipped the yanked 1.2.0, picked the latest safe version
+starter_code: |
+  def pick_latest(versions):
+      return max(versions, key=lambda v: tuple(int(p) for p in v.split(".")))
+
+  versions = {"1.0.0": False, "1.1.0": False, "1.2.0": True}
+  print(pick_latest(versions))
+challenge: |
+  Fix `pick_latest` so it first builds `candidates = [v for v, yanked
+  in versions.items() if not yanked]`, then picks the max from that
+  filtered list. It should print `1.1.0`, not `1.2.0`.
+expected_output: |
+  1.1.0
+hints:
+  - "candidates = [v for v, yanked in versions.items() if not yanked], then return max(candidates, key=...)."
+  - "A yanked release is still technically present, but a fresh resolution should never select it just because it happens to be numerically newest."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 10
+difficulty: gotcha
+contains_patterns:
+  - "if not yanked"
+concept_tags: [dependency_management, yanked_releases, resolution]

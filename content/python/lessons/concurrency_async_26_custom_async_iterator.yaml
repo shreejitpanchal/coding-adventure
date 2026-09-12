@@ -1,0 +1,117 @@
+id: concurrency_async_26
+title: "A Regular Iterator Can't Await Between Items -- __aiter__/__anext__ Can"
+language: python
+level: 316
+objective: "Fix a class meant to be driven with 'async for' that only defines __iter__/__next__ (the synchronous iterator protocol), when async for specifically requires __aiter__/__anext__ -- the async versions, needed when producing the next item involves an await."
+explanation: |
+  `async for` looks for `__aiter__`/`__anext__` on the object it's
+  iterating -- the async counterparts of the regular `__iter__`/
+  `__next__` protocol -- specifically because `__anext__` is a
+  coroutine method that can `await` something (like fetching the next
+  page over the network) while producing each item. A class with only
+  the synchronous `__iter__`/`__next__` methods raises `TypeError:
+  'async for' requires an object with __aiter__ method` the instant
+  it's used with `async for`.
+
+  The fix implements `__aiter__` (returning `self`) and `__anext__` (an
+  `async def` method, raising `StopAsyncIteration` -- not
+  `StopIteration` -- once exhausted) instead of the synchronous
+  protocol.
+example_code: |
+  # The trap: only __iter__/__next__ -- async for looks for __aiter__/__anext__.
+  import asyncio
+
+  class CounterTrap:
+      def __init__(self, limit):
+          self.n = 0
+          self.limit = limit
+
+      def __iter__(self):
+          return self
+
+      def __next__(self):
+          if self.n >= self.limit:
+              raise StopIteration
+          self.n += 1
+          return self.n
+
+  async def main_trap():
+      try:
+          async for n in CounterTrap(3):
+              print(n)
+      except TypeError:
+          print("crashed")
+
+  asyncio.run(main_trap())
+  # "crashed" -- CounterTrap doesn't support the async iterator protocol
+
+  # The fix: __aiter__/__anext__ are the async versions async for needs.
+  class Counter:
+      def __init__(self, limit):
+          self.n = 0
+          self.limit = limit
+
+      def __aiter__(self):
+          return self
+
+      async def __anext__(self):
+          if self.n >= self.limit:
+              raise StopAsyncIteration
+          await asyncio.sleep(0)           # producing the next item could genuinely await here
+          self.n += 1
+          return self.n
+
+  async def main():
+      results = []
+      async for n in Counter(3):
+          results.append(n)
+      print(results)
+
+  asyncio.run(main())
+  # [1, 2, 3] -- correctly supports async for
+starter_code: |
+  import asyncio
+
+  class Counter:
+      def __init__(self, limit):
+          self.n = 0
+          self.limit = limit
+
+      def __iter__(self):
+          return self
+
+      def __next__(self):
+          if self.n >= self.limit:
+              raise StopIteration
+          self.n += 1
+          return self.n
+
+  async def main():
+      try:
+          results = []
+          async for n in Counter(3):
+              results.append(n)
+          print(results)
+      except TypeError:
+          print("crashed")
+
+  asyncio.run(main())
+challenge: |
+  Fix `Counter` so it defines `__aiter__(self):` (returning `self`) and
+  `async def __anext__(self):` (raising `StopAsyncIteration` when
+  exhausted), instead of the synchronous `__iter__`/`__next__`. It
+  should print `[1, 2, 3]`, not `crashed`.
+expected_output: |
+  [1, 2, 3]
+hints:
+  - "def __aiter__(self): return self, and async def __anext__(self): ... raise StopAsyncIteration."
+  - "async for specifically requires __aiter__/__anext__ -- __anext__ being a coroutine is what lets it await something while producing each item."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 26
+difficulty: deep_dive
+contains_patterns:
+  - "async def __anext__\\(self\\):"
+  - "raise StopAsyncIteration"
+concept_tags: [asyncio, async_iterator, concurrency]

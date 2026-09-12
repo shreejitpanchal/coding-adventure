@@ -1,0 +1,57 @@
+id: recursion_10
+title: "Reversing a String Recursively: The Rest, Reversed, Plus the First Character Last"
+language: python
+level: 450
+objective: "Fix a stub that returns a string unchanged, when reversing it recursively means reversing everything AFTER the first character, then appending that first character at the very end -- the base case being a string of length 0 or 1, which is already its own reverse."
+explanation: |
+  A string is a sequence, just like the lists this category's other
+  recursive exercises process -- reversing it recursively follows the
+  same "smaller problem, plus one piece" shape: `reverse(s)` is
+  `reverse(s[1:])` (everything except the first character, itself
+  reversed) with the original first character appended at the very
+  end, since reversing puts what was first last. The base case is a
+  string short enough to already be its own reverse -- length 0 (empty)
+  or 1 (a single character), where there's nothing left to reverse at
+  all.
+
+  The fix implements exactly this: recurse on `s[1:]`, then append
+  `s[0]` at the end.
+example_code: |
+  # The trap: doesn't reverse anything at all -- just returns the input unchanged.
+  def reverse_string_trap(s):
+      return s
+
+  print(reverse_string_trap("hello"))
+  # "hello" -- WRONG, this isn't reversed at all
+
+  # The fix: reverse everything AFTER the first character, then append it last.
+  def reverse_string(s):
+      if len(s) <= 1:
+          return s
+      return reverse_string(s[1:]) + s[0]
+
+  print(reverse_string("hello"))
+  # "olleh" -- correctly reversed, one character moved to the end per recursive call
+starter_code: |
+  def reverse_string(s):
+      return s
+
+  print(reverse_string("hello"))
+challenge: |
+  Fix `reverse_string` so its base case (`len(s) <= 1`) returns `s`
+  unchanged, and otherwise returns
+  `reverse_string(s[1:]) + s[0]`, instead of always returning `s`
+  unchanged. It should print `olleh`, not `hello`.
+expected_output: |
+  olleh
+hints:
+  - "if len(s) <= 1: return s, then: return reverse_string(s[1:]) + s[0]."
+  - "The first character needs to end up LAST -- recurse on everything after it, then append it at the very end of the result."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "reverse_string\\(s\\[1:\\]\\) \\+ s\\[0\\]"
+concept_tags: [recursion, strings]

@@ -1,0 +1,62 @@
+id: core_refresher_23
+title: "@property Lets a Computed Value Be Accessed Like a Plain Attribute"
+language: python
+level: 136
+objective: "Replace a get_area() method with an @property so the computed value is accessed without parentheses, like a plain attribute."
+explanation: |
+  A method like `get_area()` that takes no arguments and just computes
+  a value from existing attributes is exactly what `@property` exists
+  to turn into attribute-style access -- decorating it with `@property`
+  lets callers write `circle.area` instead of `circle.get_area()`,
+  with no parentheses at all, while the value is still computed fresh
+  on every access rather than stored. This matters for how the class
+  reads from the outside: `area` looking like a plain attribute
+  signals "this is just a value you can read," even though it's
+  actually recomputed underneath.
+example_code: |
+  # A method that has to be called explicitly with parentheses.
+  class CircleMethod:
+      def __init__(self, r):
+          self.r = r
+      def get_area(self):
+          return 3.14 * self.r * self.r
+
+  c_loop = CircleMethod(1)
+  print(c_loop.get_area())                 # 3.14
+
+  # @property makes it accessible like a plain attribute, no parens.
+  class Circle:
+      def __init__(self, r):
+          self.r = r
+      @property
+      def area(self):
+          return 3.14 * self.r * self.r
+
+  c = Circle(1)
+  print(c.area)                            # 3.14
+starter_code: |
+  class Circle:
+      def __init__(self, r):
+          self.r = r
+      def get_area(self):
+          return 3.14 * self.r * self.r
+
+  c = Circle(1)
+  print(c.get_area())
+challenge: |
+  Fix `Circle` so `area` is a `@property` instead of a `get_area()`
+  method, and access it without parentheses as `c.area`. Keep the same
+  output: 3.14.
+expected_output: |
+  3.14
+hints:
+  - "Rename get_area to area, add @property above it, and call it as c.area (no parentheses) instead of c.get_area()."
+  - "@property turns a zero-argument method into something accessed exactly like a plain attribute."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 23
+difficulty: core
+contains_patterns:
+  - "@property"
+concept_tags: [property, classes]

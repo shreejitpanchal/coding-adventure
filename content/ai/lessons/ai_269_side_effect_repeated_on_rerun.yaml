@@ -1,0 +1,71 @@
+id: ai_269
+title: "A Side Effect Like Sending an Email Shouldn't Repeat for an Already-Handled Input"
+language: ai
+level: 269
+objective: "Fix a side-effecting step that fires every single time regardless of whether it already ran for this exact input, when a genuinely idempotent chain step should recognize a repeat and skip the side effect the second time."
+explanation: |
+  A chain step with a real-world side effect (sending an email, issuing
+  a charge) needs to be idempotent with respect to its own input --
+  running it twice for the same recipient shouldn't actually send twice,
+  the same way retrying a payment API call shouldn't double-charge a
+  customer. A step with no memory of what it's already done fires the
+  side effect every single time it's called, with no way to tell "this
+  exact input was already handled" from "this is genuinely new."
+
+  The bug this exercise fixes appends to `_sent` unconditionally on
+  every call, with no check against a cache. The fix checks whether the
+  recipient has already been handled before firing the side effect
+  again.
+example_code: |
+  # The trap: fires the side effect EVERY TIME, even for a recipient
+  # that was already handled.
+  _sent_trap = []
+  def send_email_trap(recipient, cache):
+      _sent_trap.append(recipient)
+      return "sent"
+
+  send_email_trap("ada@example.com", {})
+  send_email_trap("ada@example.com", {})
+  print(len(_sent_trap))   # 2 -- sent twice to the same recipient, an unintended duplicate
+
+  # The fix: check the cache first, only fire the side effect once.
+  _sent = []
+  def send_email(recipient, cache):
+      if recipient in cache:
+          return "already_sent"
+      cache[recipient] = True
+      _sent.append(recipient)
+      return "sent"
+
+  cache = {}
+  send_email("ada@example.com", cache)
+  send_email("ada@example.com", cache)
+  print(len(_sent))   # 1 -- correctly sent only once
+starter_code: |
+  _sent = []
+
+  def send_email(recipient, cache):
+      _sent.append(recipient)
+      return "sent"
+
+  cache = {}
+  send_email("ada@example.com", cache)
+  send_email("ada@example.com", cache)
+  print(len(_sent))
+challenge: |
+  Fix `send_email` so it checks `if recipient in cache: return
+  "already_sent"` before doing anything else, and records the recipient
+  in `cache` once it actually sends. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Add: if recipient in cache: return \"already_sent\", as the first line -- then cache[recipient] = True right before appending to _sent."
+  - "The cache is what gives the function memory of what it's already done -- without it, every call looks identical and \"new\" to the function."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "if recipient in cache:"
+concept_tags: [langchain, idempotency, side_effects]

@@ -1,0 +1,80 @@
+id: gotcha_gauntlet_34
+title: "The Decorator That Worked Fine Until Someone Called It With an Argument"
+language: python
+level: 279
+objective: "Fix a decorator whose inner wrapper takes no parameters at all, which works fine on a zero-argument function but crashes the moment it's applied to a function that actually takes arguments -- *args/**kwargs on the wrapper forwards whatever the caller passes."
+explanation: |
+  A decorator's inner `wrapper` function is what actually gets called
+  in place of the original -- if `wrapper` is defined with no
+  parameters at all, it can only ever decorate functions that are also
+  called with zero arguments. The moment it's applied to a function
+  that needs a real argument, calling the decorated version raises
+  `TypeError: wrapper() takes 0 positional arguments but 1 was given`,
+  even though the decorator itself looked perfectly correct when it
+  was only ever tested against a zero-argument function.
+
+  The fix is giving `wrapper` a fully generic signature -- `*args,
+  **kwargs` -- and forwarding both straight through to the wrapped
+  function, so the decorator works correctly regardless of what
+  arguments the function underneath it actually needs.
+example_code: |
+  # The trap: wrapper takes NO parameters -- breaks on any real argument.
+  def logged_trap(func):
+      def wrapper():
+          return func()
+      return wrapper
+
+  @logged_trap
+  def greet_trap(name):
+      return f"hi {name}"
+
+  try:
+      print(greet_trap("ada"))
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- wrapper() takes 0 positional arguments but 1 was given
+
+  # The fix: *args, **kwargs forwards whatever the caller actually passes.
+  def logged(func):
+      def wrapper(*args, **kwargs):
+          return func(*args, **kwargs)
+      return wrapper
+
+  @logged
+  def greet(name):
+      return f"hi {name}"
+
+  print(greet("ada"))
+  # "hi ada" -- correctly forwarded the argument through
+starter_code: |
+  def logged(func):
+      def wrapper():
+          return func()
+      return wrapper
+
+  @logged
+  def greet(name):
+      return f"hi {name}"
+
+  try:
+      print(greet("ada"))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `wrapper` so it accepts `*args, **kwargs` and forwards them to
+  `func(*args, **kwargs)`, instead of taking no parameters at all. It
+  should print `hi ada`, not `crashed`.
+expected_output: |
+  hi ada
+hints:
+  - "def wrapper(*args, **kwargs): return func(*args, **kwargs)."
+  - "A decorator's wrapper needs a fully generic signature to work on ANY function -- one with no parameters only ever works on a zero-argument function."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 34
+difficulty: gotcha
+contains_patterns:
+  - "def wrapper\\(\\*args, \\*\\*kwargs\\):"
+concept_tags: [decorators, args_kwargs, gotchas]

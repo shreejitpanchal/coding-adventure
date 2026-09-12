@@ -1,0 +1,72 @@
+id: gotcha_gauntlet_31
+title: "The Deduplication That Didn't, Because Two 'Equal' Objects Weren't Equal At All"
+language: python
+level: 276
+objective: "Fix a custom class used as a set element expecting value-based deduplication, when a class with no __eq__/__hash__ defined uses IDENTITY-based comparison by default -- two separately-constructed objects with identical fields are never treated as duplicates."
+explanation: |
+  A plain class with no `__eq__` override inherits `object`'s default
+  behavior: two instances are only ever equal if they're literally the
+  *same* object (`is`), regardless of what their attributes hold.
+  Putting instances of such a class into a `set` to "deduplicate
+  points with the same coordinates" doesn't work the way it would for
+  a `namedtuple` or a `dataclass` with generated equality -- two
+  separately-constructed `Point(1, 2)` objects are simply never
+  considered duplicates, since neither one is literally the other, no
+  matter how identical their `x`/`y` fields are.
+
+  The fix is defining `__eq__` (comparing the actual fields) and
+  `__hash__` (consistent with that equality, required for the class to
+  work correctly as a set element or dict key at all) so equal-content
+  instances are genuinely treated as duplicates.
+example_code: |
+  # The trap: no __eq__/__hash__ -- equality defaults to pure identity.
+  class PointTrap:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  points_trap = {PointTrap(1, 2), PointTrap(1, 2)}
+  print(len(points_trap))
+  # 2 -- WRONG, these look like duplicate points but were never deduplicated
+
+  # The fix: define __eq__ and __hash__ based on the actual fields.
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+      def __eq__(self, other):
+          return isinstance(other, Point) and self.x == other.x and self.y == other.y
+
+      def __hash__(self):
+          return hash((self.x, self.y))
+
+  points = {Point(1, 2), Point(1, 2)}
+  print(len(points))
+  # 1 -- correctly deduplicated, since both points have equal fields
+starter_code: |
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  points = {Point(1, 2), Point(1, 2)}
+  print(len(points))
+challenge: |
+  Fix `Point` by adding `__eq__` (comparing `x` and `y`) and
+  `__hash__` (based on `(self.x, self.y)`). It should print `1`, not
+  `2`.
+expected_output: |
+  1
+hints:
+  - "def __eq__(self, other): return isinstance(other, Point) and self.x == other.x and self.y == other.y."
+  - "def __hash__(self): return hash((self.x, self.y)) -- required alongside __eq__ for the class to work correctly in a set at all."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 31
+difficulty: gotcha
+contains_patterns:
+  - "def __eq__\\(self, other\\):"
+  - "def __hash__\\(self\\):"
+concept_tags: [equality, hashing, sets, gotchas]

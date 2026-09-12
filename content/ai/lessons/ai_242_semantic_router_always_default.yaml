@@ -1,0 +1,59 @@
+id: ai_242
+title: "A Semantic Router Needs to Actually Match Keywords, Not Always Fall to Default"
+language: ai
+level: 242
+objective: "Fix a query router that always returns the default route regardless of the query's content, when it should check the query against each route's keywords and pick the first one that actually matches."
+explanation: |
+  A semantic router directs an incoming query to whichever specialized
+  chain is best suited to handle it -- a billing chain for
+  payment-related questions, a support chain for error reports -- based
+  on keyword or intent matching. A router that never actually checks
+  any route's keywords and always falls to a generic default might
+  never error, but every query ends up handled by the same generic path
+  regardless of what it's actually about, defeating the purpose of
+  routing at all.
+
+  The bug this exercise fixes returns `default` unconditionally. The
+  fix checks each route's keywords against the query and returns the
+  first route that matches.
+example_code: |
+  # The trap: ALWAYS returns the default route -- never actually
+  # checks any route's keywords.
+  def route_query_trap(query, routes, default):
+      return default
+
+  routes = {"billing": ["invoice", "payment", "charge"], "support": ["error", "bug", "crash"]}
+  print(route_query_trap("I was charged twice", routes, "general"))   # "general" -- wrong, should match billing
+
+  # The fix: check each route's keywords, return the first match.
+  def route_query(query, routes, default):
+      for route_name, keywords in routes.items():
+          if any(kw in query for kw in keywords):
+              return route_name
+      return default
+
+  print(route_query("I was charged twice", routes, "general"))   # "billing" -- correctly matched via keyword
+starter_code: |
+  def route_query(query, routes, default):
+      return default
+
+  routes = {"billing": ["invoice", "payment", "charge"], "support": ["error", "bug", "crash"]}
+  print(route_query("I was charged twice", routes, "general"))
+challenge: |
+  Fix `route_query` so it loops over `routes`, returning the first
+  `route_name` whose `keywords` contain a substring of `query`, instead
+  of always returning `default`. It should print `billing`, not
+  `general`.
+expected_output: |
+  billing
+hints:
+  - "for route_name, keywords in routes.items(): if any(kw in query for kw in keywords): return route_name"
+  - "\"charge\" is a substring of \"charged\" -- the keyword doesn't need to be a whole separate word to match."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 22
+difficulty: core
+contains_patterns:
+  - "any\\(kw in query for kw in keywords\\)"
+concept_tags: [langchain, semantic_routing, keyword_matching]

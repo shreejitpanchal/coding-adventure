@@ -1,0 +1,63 @@
+id: ai_99
+title: "Empty Retrieval Results Need a Graceful Fallback, Not a Crash"
+language: ai
+level: 99
+objective: "Fix a prompt-building function that assumes at least one chunk was retrieved, crashing with an IndexError the moment a query genuinely has no relevant matches at all."
+explanation: |
+  Not every query will have relevant content in the index -- a user
+  might ask about something the corpus simply doesn't cover. A
+  retrieval pipeline that assumes there's always at least one result to
+  work with will crash the moment that assumption is wrong, which is a
+  real and entirely expected case, not a rare edge condition to shrug
+  off. The graceful behavior is to detect an empty result explicitly
+  and respond with something honest -- "no relevant information was
+  found" -- rather than either crashing or (worse) letting the model
+  generate an answer with no grounding at all.
+
+  The bug this exercise fixes indexes directly into the retrieved
+  chunks list without checking whether it's empty first, raising an
+  `IndexError` the moment retrieval genuinely finds nothing. The fix
+  checks for the empty case explicitly and returns a clear, honest
+  message instead of building a prompt around content that doesn't
+  exist.
+example_code: |
+  # The trap: assumes at least one chunk exists -- crashes on a
+  # genuinely empty retrieval result instead of handling it explicitly.
+  def build_prompt_trap(query, retrieved_chunks):
+      context = retrieved_chunks[0]["text"]   # IndexError if retrieved_chunks is empty
+      return f"Context: {context}\\nQuestion: {query}"
+
+  # print(build_prompt_trap("what is the refund policy?", []))  # IndexError: list index out of range
+
+  # The fix: check for the empty case explicitly, respond honestly instead.
+  def build_prompt(query, retrieved_chunks):
+      if not retrieved_chunks:
+          return "No relevant information was found for this question."
+      context = retrieved_chunks[0]["text"]
+      return f"Context: {context}\\nQuestion: {query}"
+
+  print(build_prompt("what is the refund policy?", []))
+starter_code: |
+  def build_prompt(query, retrieved_chunks):
+      context = retrieved_chunks[0]["text"]
+      return f"Context: {context}\nQuestion: {query}"
+
+  print(build_prompt("what is the refund policy?", []))
+challenge: |
+  Fix `build_prompt` so it checks `if not retrieved_chunks:` first and
+  returns `"No relevant information was found for this question."`
+  instead of indexing directly into an empty list. It should print that
+  message, not crash with an `IndexError`.
+expected_output: |
+  No relevant information was found for this question.
+hints:
+  - "Add a check at the very top of the function: if not retrieved_chunks: return \"No relevant information was found for this question.\""
+  - "Only fall through to context = retrieved_chunks[0][\"text\"] once you know the list is genuinely non-empty."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "if not retrieved_chunks"
+concept_tags: [rag, error_handling, empty_results]

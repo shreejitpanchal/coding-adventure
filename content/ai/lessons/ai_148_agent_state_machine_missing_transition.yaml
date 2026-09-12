@@ -1,0 +1,71 @@
+id: ai_148
+title: "An Explicit Agent State Machine Needs Every State to Have a Real Transition"
+language: ai
+level: 148
+objective: "Fix an agent state machine whose 'reviewing' state has no transition defined at all, leaving the agent stuck in that state forever instead of moving on to 'done' once review passes."
+explanation: |
+  Structuring an agent's control flow as an explicit state machine
+  (planning -> executing -> reviewing -> done) makes its behavior much
+  easier to reason about than one large, unstructured loop -- each
+  state has a clear job, and the transitions between them are explicit
+  and inspectable, rather than buried inside branching logic. That
+  clarity only holds if every state actually has a defined transition
+  out of it, though -- a state with no way forward is a state the agent
+  can get stuck in permanently.
+
+  The bug this exercise fixes defines transitions for `"planning"` and
+  `"executing"` but leaves `"reviewing"` with no transition rule at all
+  -- once the agent reaches that state, nothing ever moves it to
+  `"done"`. The fix adds the missing transition, correctly moving the
+  agent forward once review passes.
+example_code: |
+  # The trap: "reviewing" has NO transition defined -- the agent gets
+  # stuck there permanently, with nothing ever advancing it to "done".
+  def next_state_trap(current_state, review_passed):
+      if current_state == "planning":
+          return "executing"
+      elif current_state == "executing":
+          return "reviewing"
+      # bug: no branch at all for "reviewing" -- falls through to None
+      return None
+
+  print(next_state_trap("reviewing", review_passed=True))   # None -- stuck, no way forward
+
+  # The fix: add the missing transition out of "reviewing".
+  def next_state(current_state, review_passed):
+      if current_state == "planning":
+          return "executing"
+      elif current_state == "executing":
+          return "reviewing"
+      elif current_state == "reviewing":
+          return "done" if review_passed else "executing"
+      return current_state
+
+  print(next_state("reviewing", review_passed=True))   # "done" -- correctly advances once review passes
+starter_code: |
+  def next_state(current_state, review_passed):
+      if current_state == "planning":
+          return "executing"
+      elif current_state == "executing":
+          return "reviewing"
+      return None
+
+  print(next_state("reviewing", review_passed=True))
+challenge: |
+  Fix `next_state` so it adds an `elif current_state == "reviewing":`
+  branch returning `"done"` when `review_passed` is true (or back to
+  `"executing"` otherwise), instead of falling through to `None`. It
+  should print `done`, not `None`.
+expected_output: |
+  done
+hints:
+  - "Add: elif current_state == \"reviewing\": return \"done\" if review_passed else \"executing\"."
+  - "Every state the machine can be in needs an explicit transition -- \"reviewing\" was the one missing branch."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "current_state == .reviewing."
+concept_tags: [agentic_frameworks, state_machine, agent_architecture]

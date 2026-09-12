@@ -1,0 +1,81 @@
+id: sync_vs_async_09
+title: "iscoroutinefunction() Says 'No' for an Async Generator -- It's a Different Category Entirely"
+language: python
+level: 439
+objective: "Fix code checking inspect.iscoroutinefunction() to detect an async generator function (an async def containing yield), which always reports False for one -- async generator functions are a genuinely separate category from plain coroutine functions, detected with inspect.isasyncgenfunction() instead."
+explanation: |
+  An `async def` function containing `yield` (this category's async
+  generator lesson) isn't a coroutine function at all, even though it
+  starts with the same `async def` syntax -- calling it doesn't
+  return a coroutine object the way a plain `async def` function does;
+  it returns an async generator object, a genuinely distinct kind of
+  thing, iterated with `async for` rather than `await`ed directly.
+  `inspect.iscoroutinefunction(func)` specifically checks for the
+  plain-coroutine-function category and correctly returns `False` for
+  an async generator function, since it's a different thing entirely.
+  `inspect.isasyncgenfunction(func)` is the check built specifically
+  for the async-generator category.
+
+  The fix checks `isasyncgenfunction` first, since a function can only
+  be one category or the other, never both.
+example_code: |
+  # The trap: iscoroutinefunction() alone can't see an async generator at all.
+  import inspect
+
+  async def numbers_trap():
+      yield 1
+      yield 2
+
+  def describe_trap(func):
+      if inspect.iscoroutinefunction(func):
+          return "coroutine function"
+      return "something else"
+
+  print(describe_trap(numbers_trap))
+  # "something else" -- WRONG, iscoroutinefunction() always says False for this category
+
+  # The fix: isasyncgenfunction() checks the distinct async-generator category.
+  def describe(func):
+      if inspect.isasyncgenfunction(func):
+          return "async generator function"
+      if inspect.iscoroutinefunction(func):
+          return "coroutine function"
+      return "something else"
+
+  async def numbers():
+      yield 1
+      yield 2
+
+  print(describe(numbers))
+  # "async generator function" -- correctly identified as its own distinct category
+starter_code: |
+  import inspect
+
+  async def numbers():
+      yield 1
+      yield 2
+
+  def describe(func):
+      if inspect.iscoroutinefunction(func):
+          return "coroutine function"
+      return "something else"
+
+  print(describe(numbers))
+challenge: |
+  Fix `describe` by checking `inspect.isasyncgenfunction(func)` first,
+  returning `"async generator function"` when it's `True`, before
+  falling back to the `iscoroutinefunction` check. It should print
+  `async generator function`, not `something else`.
+expected_output: |
+  async generator function
+hints:
+  - "if inspect.isasyncgenfunction(func): return \"async generator function\", checked BEFORE the iscoroutinefunction branch."
+  - "An async def with yield is a genuinely separate category from a plain coroutine function -- iscoroutinefunction() always returns False for it."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 9
+difficulty: deep_dive
+contains_patterns:
+  - "inspect\\.isasyncgenfunction\\(func\\)"
+concept_tags: [asyncio, inspect, async_generators]

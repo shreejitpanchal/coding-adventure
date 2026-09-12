@@ -1,0 +1,67 @@
+id: functional_programming_20
+title: "An Idempotent Operation Is Safe to Retry -- One That Accumulates Isn't"
+language: python
+level: 355
+objective: "Fix an operation that adds to a running balance (unsafe to retry -- calling it twice after a failed first attempt double-applies the change), when an idempotent version -- setting the balance to an absolute target value -- can be safely retried any number of times with the same end result."
+explanation: |
+  An operation is idempotent when applying it more than once produces
+  the *same* result as applying it exactly once -- crucial for
+  anything that might need to be retried after a failure (a network
+  timeout where it's unclear whether the first attempt actually
+  succeeded). `balance += amount` is *not* idempotent: retrying it
+  after an ambiguous failure risks adding the amount twice, silently
+  corrupting the balance if the first attempt actually did succeed.
+  `balance = target_value` (setting an absolute value, rather than
+  applying a relative change) *is* idempotent -- calling it once or
+  five times in a row produces the exact same final balance either
+  way, since it always overwrites rather than accumulates.
+
+  The fix changes the operation from a relative adjustment to an
+  idempotent absolute assignment.
+example_code: |
+  # The trap: NOT idempotent -- retrying after an ambiguous failure
+  # risks double-applying the change.
+  def apply_credit_trap(account, amount):
+      account["balance"] += amount
+
+  account_trap = {"balance": 100}
+  apply_credit_trap(account_trap, 50)
+  apply_credit_trap(account_trap, 50)     # accidental retry of the SAME request
+  print(account_trap["balance"])
+  # 200 -- WRONG if this was meant to be one +50 credit, applied exactly once
+
+  # The fix: an idempotent absolute assignment -- safe to retry any number of times.
+  def apply_credit(account, target_balance):
+      account["balance"] = target_balance
+
+  account = {"balance": 100}
+  apply_credit(account, 150)
+  apply_credit(account, 150)              # retrying is now perfectly safe
+  print(account["balance"])
+  # 150 -- correctly the same result, no matter how many times it's retried
+starter_code: |
+  def apply_credit(account, amount):
+      account["balance"] += amount
+
+  account = {"balance": 100}
+  apply_credit(account, 50)
+  apply_credit(account, 50)
+  print(account["balance"])
+challenge: |
+  Fix `apply_credit` so it takes a `target_balance` and assigns
+  `account["balance"] = target_balance` directly, instead of adding a
+  relative `amount`. Call it twice with `150` (simulating a safe
+  retry). It should print `150`, not `200`.
+expected_output: |
+  150
+hints:
+  - "def apply_credit(account, target_balance): account[\"balance\"] = target_balance, then call apply_credit(account, 150) twice."
+  - "An idempotent operation produces the SAME result no matter how many times it's applied -- setting an absolute value is idempotent, adding a relative amount is not."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 20
+difficulty: core
+contains_patterns:
+  - "account\\[\"balance\"\\] = target_balance"
+concept_tags: [functional_programming, idempotency]

@@ -1,0 +1,56 @@
+id: ai_388
+title: "A Completed Task Should Record Which Agent Actually Handled It"
+language: ai
+level: 388
+objective: "Fix a delegation-completion function that never records which agent actually did the work, when an audit trail depends on every completed task naming the agent responsible -- without it, there's no way to trace a bad outcome back to whichever agent actually produced it."
+explanation: |
+  Once a task completes, knowing which specific agent handled it is
+  essential for debugging (which agent's behavior produced this
+  particular result?) and for basic accountability across a mesh with
+  many agents capable of the same kind of work. A completion record
+  with no reference to the handling agent at all makes every completed
+  task equally anonymous, regardless of which of potentially several
+  candidate agents actually did the work.
+
+  The bug this exercise fixes returns `{"task": task, "status":
+  "completed"}` with no reference to which agent handled it. The fix
+  includes `chosen_agent` in the result.
+example_code: |
+  # The trap: never records WHICH agent actually handled it -- no
+  # audit trail at all.
+  def delegate_trap(task, chosen_agent):
+      return {"task": task, "status": "completed"}
+
+  result_trap = delegate_trap("summarize doc", "summarizer-agent")
+  print("handled_by" in result_trap)
+  # False
+
+  # The fix: include the handling agent in the completion record.
+  def delegate(task, chosen_agent):
+      return {"task": task, "status": "completed", "handled_by": chosen_agent}
+
+  result = delegate("summarize doc", "summarizer-agent")
+  print("handled_by" in result)
+  # True -- correctly recorded for the audit trail
+starter_code: |
+  def delegate(task, chosen_agent):
+      return {"task": task, "status": "completed"}
+
+  result = delegate("summarize doc", "summarizer-agent")
+  print("handled_by" in result)
+challenge: |
+  Fix `delegate` so it also includes `"handled_by": chosen_agent` in
+  the returned dict. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"handled_by\": chosen_agent as a third key in the returned dict."
+  - "Without this field, a bad outcome can't be traced back to which specific agent actually produced it."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 33
+difficulty: warmup
+contains_patterns:
+  - "\"handled_by\": chosen_agent"
+concept_tags: [solace_agent_mesh, delegation, audit_trail]

@@ -1,0 +1,55 @@
+id: ai_230
+title: "batch() Must Apply the Function to Each Item, Not Once to the Whole List"
+language: ai
+level: 230
+objective: "Fix a batch runner that calls the function once with the entire input list, when it should call the function once PER item and collect the individual results."
+explanation: |
+  `.batch()` runs a Runnable across a whole list of inputs, producing
+  one output per input -- it's the plural form of `.invoke()`, not a
+  single call that happens to receive a list. Passing the entire list
+  to the underlying function in one call means that function is now
+  operating on the list itself (concatenating it, repeating it,
+  whatever a single value's operators happen to do to a list) instead
+  of on each individual item the caller actually meant to process.
+
+  The bug this exercise fixes calls `fn(inputs)` exactly once, on the
+  whole list. The fix calls `fn(x)` once per item and collects the
+  results.
+example_code: |
+  # The trap: calls fn ONCE on the entire list -- not once per item.
+  def batch_trap(fn, inputs):
+      return fn(inputs)
+
+  fn = lambda x: x * 2
+  inputs = [1, 2, 3]
+  print(batch_trap(fn, inputs))   # [1, 2, 3, 1, 2, 3] -- list * 2 duplicated the list, not "doubled each item"
+
+  # The fix: call fn once PER item, collecting the individual results.
+  def batch(fn, inputs):
+      return [fn(x) for x in inputs]
+
+  print(batch(fn, inputs))   # [2, 4, 6] -- correctly applied to each item independently
+starter_code: |
+  def batch(fn, inputs):
+      return fn(inputs)
+
+  fn = lambda x: x * 2
+  inputs = [1, 2, 3]
+  print(batch(fn, inputs))
+challenge: |
+  Fix `batch` so it returns `[fn(x) for x in inputs]`, applying `fn` to
+  each item individually, instead of calling `fn(inputs)` once on the
+  whole list. It should print `[2, 4, 6]`, not `[1, 2, 3, 1, 2, 3]`.
+expected_output: |
+  [2, 4, 6]
+hints:
+  - "Replace return fn(inputs) with return [fn(x) for x in inputs]."
+  - "list * 2 duplicates the list's contents -- it isn't the same operation as doubling each element individually."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 10
+difficulty: warmup
+contains_patterns:
+  - "\\[fn\\(x\\) for x in inputs\\]"
+concept_tags: [langchain, batch, per_item_processing]

@@ -1,0 +1,121 @@
+id: concurrency_async_30
+title: "notify() Without Holding the Condition's Lock Crashes Immediately"
+language: python
+level: 320
+objective: "Fix a producer that calls Condition.notify() without first acquiring the condition's own lock via 'with cond:', which raises RuntimeError -- both wait() and notify() require the calling thread to be holding the lock."
+explanation: |
+  A `threading.Condition` wraps a lock together with wait/notify
+  signaling -- both `cond.wait()` and `cond.notify()` require the
+  calling thread to already be holding that lock, entered via `with
+  cond:` (or manual `acquire()`/`release()`). This isn't optional:
+  calling either one without holding the lock raises `RuntimeError:
+  cannot wait on un-acquired lock` (or the equivalent for `notify()`)
+  immediately, since the whole mechanism depends on the lock being
+  held to safely coordinate access to whatever shared state the
+  producer and consumer are signaling about.
+
+  The fix wraps the producer's mutation and `notify()` call in `with
+  cond:`, exactly like the consumer's `wait()` already needs to be.
+example_code: |
+  # The trap: notify() called WITHOUT holding the condition's lock.
+  import threading, time
+
+  cond = threading.Condition()
+  items_trap = []
+
+  def producer_trap():
+      items_trap.append(1)
+      cond.notify()               # RuntimeError -- lock not held
+
+  def consumer_trap(log):
+      with cond:
+          while not items_trap:
+              cond.wait()
+          log.append(items_trap.pop())
+
+  def run_trap():
+      log = []
+      t = threading.Thread(target=consumer_trap, args=(log,))
+      t.start()
+      time.sleep(0.02)
+      try:
+          producer_trap()
+          t.join()
+          print(log)
+      except RuntimeError:
+          print("crashed")
+
+  run_trap()
+  # "crashed" -- cannot notify on an un-acquired lock
+
+  # The fix: producer also acquires the lock via "with cond:" first.
+  items = []
+
+  def producer():
+      with cond:
+          items.append(1)
+          cond.notify()
+
+  def consumer(log):
+      with cond:
+          while not items:
+              cond.wait()
+          log.append(items.pop())
+
+  def run():
+      log = []
+      t = threading.Thread(target=consumer, args=(log,))
+      t.start()
+      time.sleep(0.02)
+      producer()
+      t.join()
+      print(log)
+
+  run()
+  # [1] -- correctly signaled, since the lock was held for both wait and notify
+starter_code: |
+  import threading, time
+
+  cond = threading.Condition()
+  items = []
+
+  def producer():
+      items.append(1)
+      cond.notify()
+
+  def consumer(log):
+      with cond:
+          while not items:
+              cond.wait()
+          log.append(items.pop())
+
+  def run():
+      log = []
+      t = threading.Thread(target=consumer, args=(log,))
+      t.start()
+      time.sleep(0.02)
+      try:
+          producer()
+          t.join()
+          print(log)
+      except RuntimeError:
+          print("crashed")
+
+  run()
+challenge: |
+  Fix `producer` so it wraps `items.append(1)` and `cond.notify()` in
+  `with cond:`, instead of calling `notify()` without holding the
+  lock. It should print `[1]`, not `crashed`.
+expected_output: |
+  [1]
+hints:
+  - "def producer(): with cond: items.append(1); cond.notify()."
+  - "Both wait() and notify() require the calling thread to already hold the Condition's own lock -- notify() without it raises RuntimeError immediately."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 30
+difficulty: deep_dive
+contains_patterns:
+  - "def producer\\(\\):\\s*with cond:"
+concept_tags: [threading, condition, concurrency]

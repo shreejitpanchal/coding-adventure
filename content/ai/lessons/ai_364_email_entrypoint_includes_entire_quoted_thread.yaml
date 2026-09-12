@@ -1,0 +1,58 @@
+id: ai_364
+title: "An Email Entrypoint Should Extract Just the New Reply, Not the Whole Quoted Thread"
+language: ai
+level: 364
+objective: "Fix an email-body parser that returns the entire raw body, quoted history included, when only the new reply text -- everything before the quoted-reply marker -- is actually the message a user meant to send."
+explanation: |
+  Most email clients append the entire prior thread underneath a new
+  reply, marked off by something like `"On Mon, Ada wrote:"`. Passing
+  that whole blob downstream means every single reply in a long thread
+  re-sends the entire conversation history as if it were brand-new
+  content, growing without bound and burying the one new sentence the
+  user actually typed inside pages of quoted text.
+
+  The bug this exercise fixes returns the raw body unchanged. The fix
+  splits on the reply marker and keeps only the text that comes before
+  it.
+example_code: |
+  # The trap: returns the ENTIRE body, quoted history included --
+  # not just the new reply text.
+  def parse_email_body_trap(raw_body, reply_marker):
+      return raw_body
+
+  raw_body = "Sure, sounds good.\n\nOn Mon, Ada wrote:\n> original message here"
+  print(parse_email_body_trap(raw_body, reply_marker="\nOn "))
+  # "Sure, sounds good.\n\nOn Mon, Ada wrote:\n> original message here" -- includes the whole quoted thread
+
+  # The fix: split on the reply marker, keep only what comes before it.
+  def parse_email_body(raw_body, reply_marker):
+      if reply_marker in raw_body:
+          return raw_body.split(reply_marker)[0].strip()
+      return raw_body.strip()
+
+  print(parse_email_body(raw_body, reply_marker="\nOn "))
+  # "Sure, sounds good." -- correctly extracted just the new reply
+starter_code: |
+  def parse_email_body(raw_body, reply_marker):
+      return raw_body
+
+  raw_body = "Sure, sounds good.\n\nOn Mon, Ada wrote:\n> original message here"
+  print(parse_email_body(raw_body, reply_marker="\nOn "))
+challenge: |
+  Fix `parse_email_body` so it splits on `reply_marker` (when present)
+  and returns only `raw_body.split(reply_marker)[0].strip()`, instead
+  of the entire raw body. It should print `Sure, sounds good.`, not
+  the full quoted thread.
+expected_output: |
+  Sure, sounds good.
+hints:
+  - "if reply_marker in raw_body: return raw_body.split(reply_marker)[0].strip() -- otherwise fall back to raw_body.strip()."
+  - "Everything after the reply marker is quoted history the user didn't actually write in this message -- only the text before it is the real new reply."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "raw_body\\.split\\(reply_marker\\)\\[0\\]"
+concept_tags: [solace_agent_mesh, entrypoint, email_parsing]

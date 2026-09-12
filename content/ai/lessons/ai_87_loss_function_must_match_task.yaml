@@ -1,0 +1,70 @@
+id: ai_87
+title: "Mean Squared Error Is for Regression, Not Classification"
+language: ai
+level: 87
+objective: "Fix a training loop that uses mean squared error as the loss for a classification task, when cross-entropy is the loss actually shaped for comparing predicted class probabilities against a true class label."
+explanation: |
+  **Mean squared error (MSE)** measures how far a predicted *number* is
+  from a true *number* -- exactly right for regression, where the
+  target is a continuous value. Classification's targets aren't
+  continuous numbers to get numerically close to; they're categories,
+  and what actually matters is how much probability the model assigned
+  to the *correct* category. **Cross-entropy** (this category's earlier
+  log-loss lesson, generalized to more than two classes) is shaped
+  specifically for that job -- it only cares about the predicted
+  probability assigned to the true class, and penalizes low confidence
+  in the correct answer sharply, exactly the comparison MSE was never
+  designed to make.
+
+  The bug this exercise fixes computes MSE between a predicted
+  probability distribution and a one-hot true-label vector -- treating
+  a classification target as if it were a set of continuous numbers to
+  minimize squared distance from. The fix computes cross-entropy
+  instead: `-log` of whatever probability the model assigned to the
+  true class, which is the loss classification tasks are actually
+  built around.
+example_code: |
+  # The trap: MSE between predicted probabilities and a one-hot vector --
+  # treats a classification target as a set of numbers to get numerically close to.
+  def loss_trap(predicted_probs, true_class_index):
+      one_hot = [1.0 if i == true_class_index else 0.0 for i in range(len(predicted_probs))]
+      return sum((p - t) ** 2 for p, t in zip(predicted_probs, one_hot)) / len(predicted_probs)
+
+  predicted_probs = [0.7, 0.2, 0.1]
+  true_class_index = 0
+  print(round(loss_trap(predicted_probs, true_class_index), 4))   # a squared-distance number, not shaped for classification
+
+  # The fix: cross-entropy -- only cares about the probability assigned to the TRUE class.
+  import math
+
+  def loss(predicted_probs, true_class_index):
+      p = predicted_probs[true_class_index]
+      p = min(max(p, 1e-15), 1 - 1e-15)
+      return -math.log(p)
+
+  print(round(loss(predicted_probs, true_class_index), 4))   # 0.3567 -- directly reflects confidence in the CORRECT class
+starter_code: |
+  def loss(predicted_probs, true_class_index):
+      one_hot = [1.0 if i == true_class_index else 0.0 for i in range(len(predicted_probs))]
+      return sum((p - t) ** 2 for p, t in zip(predicted_probs, one_hot)) / len(predicted_probs)
+
+  predicted_probs = [0.7, 0.2, 0.1]
+  true_class_index = 0
+  print(round(loss(predicted_probs, true_class_index), 4))
+challenge: |
+  Replace the MSE-based `loss` with cross-entropy: `-log` of the
+  probability assigned to `true_class_index`, guarding against `log(0)`.
+  It should print `0.3567`, not the MSE value.
+expected_output: |
+  0.3567
+hints:
+  - "Add `import math`. Get p = predicted_probs[true_class_index], then clamp it: p = min(max(p, 1e-15), 1 - 1e-15)."
+  - "Return -math.log(p) -- cross-entropy only ever looks at the probability assigned to the TRUE class, ignoring the other classes' probabilities entirely."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 47
+difficulty: core
+contains_patterns:
+  - "-math\\.log\\(p\\)"
+concept_tags: [ml_fundamentals, cross_entropy, loss_functions, classification]

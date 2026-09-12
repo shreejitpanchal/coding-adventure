@@ -1,0 +1,54 @@
+id: ai_322
+title: "A Run's Tags Need to Actually Be Stored on the Record"
+language: ai
+level: 322
+objective: "Fix a run-building function that accepts tags but never stores them, when tags like 'prod' or a specific experiment name are how runs get filtered and grouped later -- accepting them and then discarding them defeats the entire point."
+explanation: |
+  Tags let someone filter a dashboard down to just the runs from a
+  specific experiment, or just the ones flagged `"prod"` versus
+  `"staging"` -- but only if the tags a caller actually passed in get
+  stored on the run record. A function that accepts a `tags` parameter
+  and then builds a run dict with no `tags` field at all discards that
+  information the moment the run is created, with no way to recover it
+  afterward.
+
+  The bug this exercise fixes builds the run dict with no `tags` field.
+  The fix includes the tags that were actually passed in.
+example_code: |
+  # The trap: never stores tags at all, even though they were passed in.
+  def build_run_trap(name, tags):
+      return {"name": name}
+
+  run_trap = build_run_trap("classify", tags=["prod", "experiment-42"])
+  print("tags" in run_trap)
+  # False -- the tags were accepted but never actually stored
+
+  # The fix: include the tags that were actually passed in.
+  def build_run(name, tags):
+      return {"name": name, "tags": tags}
+
+  run = build_run("classify", tags=["prod", "experiment-42"])
+  print("tags" in run)
+  # True -- correctly stored
+starter_code: |
+  def build_run(name, tags):
+      return {"name": name}
+
+  run = build_run("classify", tags=["prod", "experiment-42"])
+  print("tags" in run)
+challenge: |
+  Fix `build_run` so it also includes `"tags": tags` in the returned
+  dict. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"tags\": tags as a second key in the returned dict, alongside \"name\"."
+  - "A parameter that's accepted but never stored anywhere is functionally the same as not accepting it at all."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 12
+difficulty: warmup
+contains_patterns:
+  - "\"tags\": tags"
+concept_tags: [langsmith, run_metadata, tags]

@@ -1,0 +1,70 @@
+id: ai_387
+title: "A Tool's Internal Error Details Should Never Reach the End User Directly"
+language: ai
+level: 387
+objective: "Fix a tool-error handler that returns the raw internal exception message straight to the end user, when a failure inside a tool (an internal hostname, a database username) can carry details that were never meant to leave the system -- the user-facing response needs a safe, generic message instead."
+explanation: |
+  A tool's internal failure can carry genuinely sensitive
+  implementation details in its exception message -- an internal
+  hostname, a database username, a stack trace revealing exactly how
+  the system is wired together. Returning that raw message straight to
+  whoever's on the other end of the conversation leaks all of it, even
+  though the end user only ever needed to know that something went
+  wrong, not the specifics of what or where.
+
+  The bug this exercise fixes returns `str(e)` directly. The fix
+  returns a safe, generic message instead, regardless of what the
+  actual exception said.
+example_code: |
+  # The trap: returns the RAW internal exception message straight to
+  # the end user, potentially exposing internals.
+  def run_tool_trap(tool_fn):
+      try:
+          return tool_fn()
+      except Exception as e:
+          return str(e)
+
+  def db_tool():
+      raise RuntimeError("connection refused at internal-db-host:5432, password auth failed for user 'admin'")
+
+  print(run_tool_trap(db_tool))
+  # leaks the internal hostname and username straight to the end user
+
+  # The fix: return a safe, generic message instead.
+  def run_tool(tool_fn):
+      try:
+          return tool_fn()
+      except Exception:
+          return "This tool is temporarily unavailable. Please try again later."
+
+  print(run_tool(db_tool))
+  # "This tool is temporarily unavailable. Please try again later." -- no internal details leaked
+starter_code: |
+  def db_tool():
+      raise RuntimeError("connection refused at internal-db-host:5432, password auth failed for user 'admin'")
+
+  def run_tool(tool_fn):
+      try:
+          return tool_fn()
+      except Exception as e:
+          return str(e)
+
+  print(run_tool(db_tool))
+challenge: |
+  Fix `run_tool` so its `except` block returns
+  `"This tool is temporarily unavailable. Please try again later."`,
+  instead of `str(e)` (the raw internal exception message). It should
+  print the safe generic message, not the internal connection details.
+expected_output: |
+  This tool is temporarily unavailable. Please try again later.
+hints:
+  - "Replace return str(e) with the fixed, generic message string -- and it's fine to drop the \"as e\" binding entirely since it's no longer used."
+  - "The end user genuinely never needed to know the internal hostname or database username -- only that something went wrong."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "\"This tool is temporarily unavailable\\. Please try again later\\.\""
+concept_tags: [solace_agent_mesh, secure_tool_runtime, error_sanitization]

@@ -1,0 +1,51 @@
+id: ai_330
+title: "A Cost Budget Check Should Actually Alert When the Budget Is Exceeded"
+language: ai
+level: 330
+objective: "Fix a budget check that always returns False regardless of the actual total cost, when spending that's genuinely gone over budget needs to be flagged, not silently waved through."
+explanation: |
+  A cost budget alert exists to catch runaway spend -- a chain that
+  starts calling an expensive model far more than intended, an
+  unbounded retry loop quietly racking up API charges. A check that
+  never actually compares the total cost against the budget provides
+  no protection at all: spending could run ten times over budget and
+  the alert would look exactly the same as if everything were fine.
+
+  The bug this exercise fixes always returns `False`. The fix compares
+  `total_cost` against `budget` and returns `True` when it's exceeded.
+example_code: |
+  # The trap: NEVER alerts, no matter how far over budget the total
+  # cost actually is.
+  def check_budget_trap(total_cost, budget):
+      return False
+
+  print(check_budget_trap(150, budget=100))
+  # False -- wrongly claims everything is fine despite being way over budget
+
+  # The fix: actually compare total_cost against budget.
+  def check_budget(total_cost, budget):
+      return total_cost > budget
+
+  print(check_budget(150, budget=100))
+  # True -- correctly flagged as over budget
+starter_code: |
+  def check_budget(total_cost, budget):
+      return False
+
+  print(check_budget(150, budget=100))
+challenge: |
+  Fix `check_budget` so it returns `total_cost > budget`, instead of
+  always returning `False`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace return False with return total_cost > budget."
+  - "A budget check that never triggers regardless of the actual numbers involved provides the illusion of monitoring with none of the substance."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 20
+difficulty: warmup
+contains_patterns:
+  - "total_cost > budget"
+concept_tags: [langsmith, cost_tracking, alerting]

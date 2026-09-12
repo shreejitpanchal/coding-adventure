@@ -1,0 +1,69 @@
+id: idioms_gotchas_22
+title: "A Walrus Assignment Leaks Out of a Comprehension -- Its Loop Variable Doesn't"
+language: python
+level: 91
+objective: "Fix code that tries to read a comprehension's own loop variable after the comprehension finishes, when that name is properly scoped and never leaks -- only a name bound with the walrus operator (':=') inside the comprehension is deliberately designed to leak into the enclosing scope."
+explanation: |
+  A comprehension's own loop variable (the `x` in `[... for x in
+  items]`) is scoped to the comprehension itself and is never
+  accessible afterward -- trying to read it raises `NameError`, the
+  same as reading any other name that was never actually defined in
+  the enclosing scope. A name bound with the walrus operator (`:=`)
+  *inside* that same comprehension is the deliberate exception: it's
+  specifically designed to leak into the nearest enclosing function
+  scope, precisely so a value computed during the comprehension can
+  still be read afterward. Confusing the two -- expecting the loop
+  variable to leak the same way the walrus-bound name does -- reaches
+  for a name that was never actually available.
+
+  The bug this exercise fixes tries to read `x` (the loop variable)
+  after the comprehension. The fix reads `y` (the walrus-bound name)
+  instead, which genuinely does leak.
+example_code: |
+  # The trap: tries to read x, the comprehension's OWN loop variable --
+  # but that's properly scoped and never leaks out at all.
+  def last_seen_trap(items):
+      squares = [y := x * x for x in items]
+      try:
+          return x
+      except NameError:
+          return None
+
+  print(last_seen_trap([1, 2, 3]))
+  # None -- x was never actually accessible here
+
+  # The fix: read y, the walrus-bound name -- it genuinely does leak
+  # into the enclosing scope by design.
+  def last_seen(items):
+      squares = [y := x * x for x in items]
+      return y
+
+  print(last_seen([1, 2, 3]))
+  # 9 -- correctly available, since walrus assignments leak by design
+starter_code: |
+  def last_seen(items):
+      squares = [y := x * x for x in items]
+      try:
+          return x
+      except NameError:
+          return None
+
+  print(last_seen([1, 2, 3]))
+challenge: |
+  Fix `last_seen` so it returns `y` (the walrus-bound name, which
+  deliberately leaks into the enclosing scope), instead of `x` (the
+  comprehension's own loop variable, which never leaks). It should
+  print `9`, not `None`.
+expected_output: |
+  9
+hints:
+  - "Change return x to return y, and the try/except is no longer needed at all."
+  - "Only the walrus-bound name (y) leaks into the enclosing scope by design -- the comprehension's own loop variable (x) stays properly contained."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 22
+difficulty: gotcha
+contains_patterns:
+  - "return y"
+concept_tags: [idioms, walrus_operator, scoping]

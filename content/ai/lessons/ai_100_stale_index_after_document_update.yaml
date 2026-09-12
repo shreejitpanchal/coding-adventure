@@ -1,0 +1,62 @@
+id: ai_100
+title: "Updating a Document Doesn't Update Its Old Embedding Automatically"
+language: ai
+level: 100
+objective: "Fix an index-update function that adds a document's new embedding without removing its old one, leaving both the stale and current versions retrievable side by side -- exactly the kind of inconsistency a real vector index needs to guard against explicitly."
+explanation: |
+  A vector index doesn't know a document has changed unless it's told
+  -- re-embedding an updated document and simply adding the new vector
+  to the index leaves the *old* vector sitting there too, still fully
+  retrievable, still pointing at content that's no longer accurate.
+  From then on, a query might return either version depending purely on
+  which one happened to score higher, silently serving stale
+  information as if it were current.
+
+  The bug this exercise fixes adds a document's new embedding to the
+  index without first removing any existing entry for that same
+  document ID, leaving stale and current versions both present. The
+  fix removes any existing entries for that document ID before adding
+  the new one, guaranteeing only the current version is ever
+  retrievable afterward.
+example_code: |
+  # The trap: adds the NEW embedding without removing the OLD one --
+  # both versions stay retrievable, and either could be served.
+  def update_document_trap(index, doc_id, new_embedding):
+      index.append({"doc_id": doc_id, "embedding": new_embedding})
+
+  index = [{"doc_id": "policy.pdf", "embedding": "old_v1"}]
+  update_document_trap(index, "policy.pdf", "new_v2")
+  print(len(index))   # 2 -- the stale "old_v1" entry is still sitting right there
+
+  # The fix: remove any existing entries for this doc_id FIRST.
+  def update_document(index, doc_id, new_embedding):
+      index[:] = [entry for entry in index if entry["doc_id"] != doc_id]
+      index.append({"doc_id": doc_id, "embedding": new_embedding})
+
+  index2 = [{"doc_id": "policy.pdf", "embedding": "old_v1"}]
+  update_document(index2, "policy.pdf", "new_v2")
+  print(len(index2))   # 1 -- only the current version remains
+starter_code: |
+  def update_document(index, doc_id, new_embedding):
+      index.append({"doc_id": doc_id, "embedding": new_embedding})
+
+  index = [{"doc_id": "policy.pdf", "embedding": "old_v1"}]
+  update_document(index, "policy.pdf", "new_v2")
+  print(len(index))
+challenge: |
+  Fix `update_document` so it removes any existing entries for `doc_id`
+  before appending the new embedding, instead of just appending on top
+  of whatever's already there. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Filter the index in place first: index[:] = [entry for entry in index if entry[\"doc_id\"] != doc_id]."
+  - "Only append the new entry AFTER that filtering step has removed any stale entry for the same doc_id."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "entry\\[.doc_id.\\] != doc_id"
+concept_tags: [rag, index_consistency, stale_data]

@@ -1,0 +1,83 @@
+id: concurrency_async_19
+title: "One Failing Coroutine Doesn't Have to Sink the Whole gather() Call"
+language: python
+level: 309
+objective: "Fix a gather() call where one failing coroutine crashes the whole call and loses every other coroutine's successful result too, when return_exceptions=True collects exceptions as regular values in the results list instead of propagating immediately."
+explanation: |
+  By default, `asyncio.gather(*coros)` propagates the *first*
+  exception any of its coroutines raises immediately, and cancels
+  whichever others are still running -- which means one failing
+  coroutine among several loses every other coroutine's successful
+  result too, since the whole `gather()` call raises instead of
+  returning anything. `asyncio.gather(*coros, return_exceptions=True)`
+  changes this: instead of raising, any exception a coroutine raises is
+  placed directly into the results list, at that coroutine's position,
+  as a regular value -- every other coroutine's actual return value
+  still comes back too, alongside it.
+
+  The fix adds `return_exceptions=True`, so a failing coroutine's
+  exception is collected in the results list instead of tearing down
+  the whole `gather()` call.
+example_code: |
+  # The trap: one failure propagates immediately, losing the successful result too.
+  import asyncio
+
+  async def fail():
+      raise ValueError("bad")
+
+  async def ok():
+      return "fine"
+
+  async def main_trap():
+      try:
+          results = await asyncio.gather(fail(), ok())
+          print(results)
+      except ValueError:
+          print("crashed, lost the successful result too")
+
+  asyncio.run(main_trap())
+  # "crashed, lost the successful result too" -- WRONG if ok()'s result mattered
+
+  # The fix: return_exceptions=True collects the exception as a value instead.
+  async def main():
+      results = await asyncio.gather(fail(), ok(), return_exceptions=True)
+      print(isinstance(results[0], ValueError), results[1])
+
+  asyncio.run(main())
+  # True fine -- correctly kept BOTH the exception AND the successful result
+starter_code: |
+  import asyncio
+
+  async def fail():
+      raise ValueError("bad")
+
+  async def ok():
+      return "fine"
+
+  async def main():
+      try:
+          results = await asyncio.gather(fail(), ok())
+          print(results)
+      except ValueError:
+          print("crashed, lost the successful result too")
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it calls `asyncio.gather(fail(), ok(),
+  return_exceptions=True)`, then prints
+  `isinstance(results[0], ValueError), results[1]`, instead of letting
+  the exception propagate and crash the whole call. It should print
+  `True fine`, not `crashed, lost the successful result too`.
+expected_output: |
+  True fine
+hints:
+  - "results = await asyncio.gather(fail(), ok(), return_exceptions=True), then print(isinstance(results[0], ValueError), results[1])."
+  - "Without return_exceptions=True, gather() propagates the FIRST exception immediately and cancels the rest -- with it, every result (success or exception) comes back in the list."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 19
+difficulty: deep_dive
+contains_patterns:
+  - "return_exceptions=True"
+concept_tags: [asyncio, gather, exceptions, concurrency]

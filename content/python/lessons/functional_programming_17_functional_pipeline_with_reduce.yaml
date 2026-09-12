@@ -1,0 +1,74 @@
+id: functional_programming_17
+title: "Threading a Value Through a List of Functions With reduce"
+language: python
+level: 352
+objective: "Build a run_pipeline(value, steps) helper using functools.reduce that threads a value through a list of transformation functions in order, instead of writing out each step call manually."
+explanation: |
+  A sequence of transformations applied one after another -- strip,
+  then lowercase, then replace spaces -- can be written as nested or
+  sequential function calls, but hardcoding each step by name doesn't
+  scale if the actual list of steps is meant to be configurable or
+  built dynamically. `functools.reduce(lambda acc, func: func(acc),
+  steps, value)` expresses exactly "start with `value`, and for each
+  function in `steps`, feed the previous result into it" -- a generic
+  pipeline runner that works for *any* list of single-argument
+  functions, without the calling code needing to know how many steps
+  there are or hardcode their names.
+
+  This exercise builds `run_pipeline(value, steps)` using `reduce`.
+example_code: |
+  # Hardcoded steps -- works, but not reusable for a different list of steps.
+  def strip_step(s):
+      return s.strip()
+
+  def lower_step(s):
+      return s.lower()
+
+  def replace_step(s):
+      return s.replace(" ", "_")
+
+  text = "  Hello World  "
+  result_hardcoded = replace_step(lower_step(strip_step(text)))
+  print(result_hardcoded)
+  # "hello_world"
+
+  # The generic version: reduce threads the value through ANY list of steps.
+  from functools import reduce
+
+  def run_pipeline(value, steps):
+      return reduce(lambda acc, func: func(acc), steps, value)
+
+  pipeline = [strip_step, lower_step, replace_step]
+  print(run_pipeline(text, pipeline))
+  # "hello_world" -- same result, generic over however many steps are given
+starter_code: |
+  def strip_step(s):
+      return s.strip()
+
+  def lower_step(s):
+      return s.lower()
+
+  def replace_step(s):
+      return s.replace(" ", "_")
+
+  text = "  Hello World  "
+  result = replace_step(lower_step(strip_step(text)))
+  print(result)
+challenge: |
+  Write `run_pipeline(value, steps)` using
+  `reduce(lambda acc, func: func(acc), steps, value)`, then call it
+  with `[strip_step, lower_step, replace_step]` instead of nesting the
+  calls manually. Keep the same output: hello_world.
+expected_output: |
+  hello_world
+hints:
+  - "from functools import reduce, then: def run_pipeline(value, steps): return reduce(lambda acc, func: func(acc), steps, value)."
+  - "reduce feeds the running accumulator into each function in turn -- the pipeline works for any list of steps, without the caller needing to hardcode how many there are."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 17
+difficulty: deep_dive
+contains_patterns:
+  - "def run_pipeline\\(value, steps\\):"
+concept_tags: [functional_programming, reduce, pipelines]

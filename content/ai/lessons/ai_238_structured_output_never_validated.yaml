@@ -1,0 +1,54 @@
+id: ai_238
+title: "Structured Output Needs to Be Validated Against Its Required Fields"
+language: ai
+level: 238
+objective: "Fix a structured-output validator that always reports success regardless of what fields are actually present, when it should check every required field is genuinely there before treating the model's output as valid."
+explanation: |
+  Asking a model for structured output (a specific schema of fields) is
+  only half the job -- the other half is verifying the model actually
+  produced everything the schema requires, since a model can drop a
+  field, misname one, or just fail to include something even when
+  explicitly asked. A validator that reports success unconditionally
+  gives the rest of the chain false confidence that the data is
+  complete, when it might be missing exactly the field a later step
+  depends on.
+
+  The bug this exercise fixes always returns `True`. The fix checks
+  that every entry in `required_fields` is actually present in `data`.
+example_code: |
+  # The trap: ALWAYS reports valid, regardless of what's actually
+  # present in the data.
+  def validate_output_trap(data, required_fields):
+      return True
+
+  data = {"name": "Ada"}
+  print(validate_output_trap(data, ["name", "score"]))   # True -- wrongly valid despite missing "score"
+
+  # The fix: check every required field is genuinely present.
+  def validate_output(data, required_fields):
+      return all(f in data for f in required_fields)
+
+  print(validate_output(data, ["name", "score"]))   # False -- correctly caught the missing field
+starter_code: |
+  def validate_output(data, required_fields):
+      return True
+
+  data = {"name": "Ada"}
+  print(validate_output(data, ["name", "score"]))
+challenge: |
+  Fix `validate_output` so it returns `all(f in data for f in
+  required_fields)` instead of always `True`. It should print `False`,
+  not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace return True with return all(f in data for f in required_fields)."
+  - "\"score\" is genuinely missing from data, so a correct check has to report this as invalid."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 18
+difficulty: warmup
+contains_patterns:
+  - "all\\(f in data for f in required_fields\\)"
+concept_tags: [langchain, structured_output, validation]

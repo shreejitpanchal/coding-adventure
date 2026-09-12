@@ -1,0 +1,71 @@
+id: functional_programming_37
+title: "An Immutable Default Fails Loudly Instead of Silently Corrupting Shared State"
+language: python
+level: 372
+objective: "Fix a function with a mutable list default that gets accidentally mutated by calling code, silently corrupting every future call's default, when an immutable tuple default makes that exact mistake fail loudly and immediately instead."
+explanation: |
+  A mutable default argument (`def get_tags(tags=[]):`) is the same
+  single list object shared across every call that doesn't pass its
+  own -- if calling code ever accidentally mutates the value it got
+  back (`result.append(...)`, forgetting it might be the shared
+  default), that mutation corrupts the default for *every future
+  call*, not just the one that made the mistake. An immutable default
+  (`tags=()`, a tuple instead of a list) closes off this entire class
+  of mistake by design: a tuple has no `.append()` at all, so the
+  exact same accidental-mutation mistake raises `AttributeError`
+  immediately and loudly, right where the mistake actually happened,
+  instead of silently corrupting shared state that some *completely
+  different* call site discovers broken much later.
+
+  The fix changes the default from a mutable list (`[]`) to an
+  immutable tuple (`()`).
+example_code: |
+  # The trap: a mutable list default -- one accidental mutation corrupts it forever.
+  def get_tags_trap(tags=[]):
+      return tags
+
+  t1_trap = get_tags_trap()
+  t1_trap.append("bug")          # accidentally mutates the SHARED default
+  t2_trap = get_tags_trap()
+  print(t2_trap)
+  # ['bug'] -- WRONG, every future call now sees this corrupted default
+
+  # The fix: an immutable tuple default fails loudly instead.
+  def get_tags(tags=()):
+      return tags
+
+  t1 = get_tags()
+  try:
+      t1.append("bug")
+  except AttributeError:
+      pass
+  t2 = get_tags()
+  print(t2)
+  # () -- correctly protected; tuples have no .append at all, so the mistake
+  # crashes immediately instead of silently corrupting shared state
+starter_code: |
+  def get_tags(tags=[]):
+      return tags
+
+  t1 = get_tags()
+  t1.append("bug")
+  t2 = get_tags()
+  print(t2)
+challenge: |
+  Fix `get_tags` so its default is `tags=()` (a tuple) instead of
+  `tags=[]` (a list), and try/except the now-failing `.append()` call
+  with `except AttributeError: pass`. It should print `()`, not
+  `['bug']`.
+expected_output: |
+  ()
+hints:
+  - "def get_tags(tags=()): return tags, then wrap t1.append(\"bug\") in try/except AttributeError: pass."
+  - "A tuple has no .append() method at all -- an accidental mutation attempt on an immutable default crashes immediately, instead of silently corrupting the shared default forever."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "def get_tags\\(tags=\\(\\)\\):"
+concept_tags: [functional_programming, immutability, mutable_defaults, gotchas]

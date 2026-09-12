@@ -1,0 +1,79 @@
+id: dependency_management_07
+title: "Two Packages Silently Wanting Incompatible Versions of the Same Dependency"
+language: python
+level: 417
+objective: "Fix a dependency-merging function that just overwrites one package's required version with whatever comes later, silently picking one arbitrarily when two different packages require genuinely incompatible versions of the same shared dependency -- detecting the conflict and raising is the correct behavior instead."
+explanation: |
+  Two different packages in the same dependency tree can each declare
+  a requirement on the same shared package -- if package A needs
+  `requests==2.0.0` and package B needs `requests==3.0.0`, only ONE
+  version of `requests` can actually be installed at once, and
+  silently picking whichever requirement happened to be processed last
+  discards the other one's requirement entirely, with no signal that
+  anything was actually incompatible. A real dependency resolver has
+  to detect this conflict explicitly -- when two different required
+  versions for the same package genuinely disagree -- and raise a
+  clear error, rather than silently satisfying one requirement while
+  quietly violating the other.
+
+  The fix checks for an existing, *different* requirement before
+  overwriting, raising on a genuine conflict.
+example_code: |
+  # The trap: silently overwrites -- the earlier requirement just vanishes.
+  def merge_requirements_trap(requirements):
+      resolved = {}
+      for name, version in requirements:
+          resolved[name] = version          # later ones silently win, no conflict check
+      return resolved
+
+  reqs = [("requests", "2.0.0"), ("requests", "3.0.0")]
+  print(merge_requirements_trap(reqs))
+  # {'requests': '3.0.0'} -- WRONG, package A's requests==2.0.0 need was silently dropped
+
+  # The fix: detect a genuine conflict, raise instead of silently overwriting.
+  def merge_requirements(requirements):
+      resolved = {}
+      for name, version in requirements:
+          if name in resolved and resolved[name] != version:
+              raise ValueError(f"conflicting requirements for {name}: {resolved[name]} vs {version}")
+          resolved[name] = version
+      return resolved
+
+  try:
+      merge_requirements(reqs)
+      print("resolved")
+  except ValueError as e:
+      print(e)
+  # conflicting requirements for requests: 2.0.0 vs 3.0.0 -- correctly caught
+starter_code: |
+  def merge_requirements(requirements):
+      resolved = {}
+      for name, version in requirements:
+          resolved[name] = version
+      return resolved
+
+  reqs = [("requests", "2.0.0"), ("requests", "3.0.0")]
+  try:
+      print(merge_requirements(reqs))
+  except ValueError as e:
+      print(e)
+challenge: |
+  Fix `merge_requirements` so it raises
+  `ValueError(f"conflicting requirements for {name}: {resolved[name]}
+  vs {version}")` when `name` is already in `resolved` with a
+  *different* version, instead of silently overwriting it. It should
+  print `conflicting requirements for requests: 2.0.0 vs 3.0.0`, not
+  `{'requests': '3.0.0'}`.
+expected_output: |
+  conflicting requirements for requests: 2.0.0 vs 3.0.0
+hints:
+  - "if name in resolved and resolved[name] != version: raise ValueError(f\"conflicting requirements for {name}: {resolved[name]} vs {version}\")."
+  - "Silently letting a later requirement overwrite an earlier, DIFFERENT one for the same package hides a genuine incompatibility -- only one version can actually be installed."
+xp_reward: 15
+achievement: null
+category: dependency_management
+category_level: 7
+difficulty: deep_dive
+contains_patterns:
+  - "resolved\\[name\\] != version"
+concept_tags: [dependency_management, conflicts, resolution]

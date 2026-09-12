@@ -1,0 +1,60 @@
+id: stdlib_deep_dive_11
+title: "combinations Ignores Order -- permutations Is What Generates Every Ordering"
+language: python
+level: 212
+objective: "Fix code using combinations() to try to generate every possible ordering, when combinations ignores order entirely -- for a full-length group there's only ONE combination, but there are many distinct orderings -- permutations is the tool that actually accounts for order."
+explanation: |
+  `combinations(items, r)` treats `("a", "b")` and `("b", "a")` as the
+  *same* selection, since it only cares about which items were chosen,
+  never the order they came in -- which is exactly why asking for
+  combinations of the full length always produces exactly one result,
+  no matter how many items there are. `permutations(items)` is the
+  tool that actually accounts for order: it generates every distinct
+  arrangement, not just every distinct selection.
+
+  The bug this exercise fixes uses `combinations(items, len(items))`,
+  expecting every ordering but getting only one selection. The fix
+  uses `permutations(items)` instead.
+example_code: |
+  # The trap: combinations ignores ORDER -- for the full length,
+  # there's only ONE combination, not every possible ordering.
+  from itertools import combinations
+
+  def all_orderings_trap(items):
+      return list(combinations(items, len(items)))
+
+  print(len(all_orderings_trap(["a", "b", "c"])))
+  # 1 -- WRONG, there should be 3! = 6 distinct orderings
+
+  # The fix: permutations accounts for order, generating every arrangement.
+  from itertools import permutations
+
+  def all_orderings(items):
+      return list(permutations(items))
+
+  print(len(all_orderings(["a", "b", "c"])))
+  # 6 -- correctly every distinct ordering
+starter_code: |
+  from itertools import combinations
+
+  def all_orderings(items):
+      return list(combinations(items, len(items)))
+
+  print(len(all_orderings(["a", "b", "c"])))
+challenge: |
+  Fix `all_orderings` so it uses `permutations(items)` (imported from
+  `itertools`), instead of `combinations(items, len(items))`. It
+  should print `6`, not `1`.
+expected_output: |
+  6
+hints:
+  - "from itertools import permutations, then: return list(permutations(items))."
+  - "combinations only cares which items were chosen -- permutations additionally cares what order they came in."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 11
+difficulty: gotcha
+contains_patterns:
+  - "permutations\\(items\\)"
+concept_tags: [itertools, permutations]

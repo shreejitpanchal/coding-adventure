@@ -1,0 +1,79 @@
+id: ai_265
+title: "One Failing Item in a Batch Shouldn't Abort Every Other Item's Result"
+language: ai
+level: 265
+objective: "Fix a batch runner that lets a single item's exception crash the entire batch, losing every other item's already-computed result, when one failure should be captured in place while the rest of the batch continues to completion."
+explanation: |
+  Processing a batch of independent inputs only degrades gracefully if
+  one item's failure doesn't erase every other item's result along with
+  it -- the same per-item error isolation this category's earlier
+  `RunnableParallel` lesson covers for parallel branches, here applied
+  to sequential batch items instead. Running each item with no
+  exception handling means a single bad input (a division by zero, a
+  malformed value) throws away work that had nothing to do with the
+  actual failure.
+
+  The bug this exercise fixes has no error handling around each item at
+  all, so one exception propagates and aborts the whole batch. The fix
+  catches each item's failure individually, recording `None` in its
+  place while letting the rest of the batch continue.
+example_code: |
+  # The trap: no per-item error handling -- ONE failing item crashes
+  # the ENTIRE batch, losing every other item's result too.
+  def batch_with_errors_trap(fn, inputs):
+      return [fn(x) for x in inputs]
+
+  def risky(x):
+      if x == 0:
+          raise ZeroDivisionError("nope")
+      return 10 / x
+
+  inputs = [2, 0, 5]
+  # batch_with_errors_trap(risky, inputs)  # ZeroDivisionError -- results for 2 and 5 are lost too
+
+  # The fix: catch each item's failure individually, keep the batch going.
+  def batch_with_errors(fn, inputs):
+      results = []
+      for x in inputs:
+          try:
+              results.append(fn(x))
+          except ZeroDivisionError:
+              results.append(None)
+      return results
+
+  result = batch_with_errors(risky, inputs)
+  print(result[1] is None and len(result) == 3)   # True -- the bad item is None, but the batch still completed fully
+starter_code: |
+  def batch_with_errors(fn, inputs):
+      return [fn(x) for x in inputs]
+
+  def risky(x):
+      if x == 0:
+          raise ZeroDivisionError("nope")
+      return 10 / x
+
+  inputs = [2, 0, 5]
+
+  try:
+      result = batch_with_errors(risky, inputs)
+      print(result[1] is None and len(result) == 3)
+  except ZeroDivisionError:
+      print("crashed")
+challenge: |
+  Fix `batch_with_errors` so it loops over `inputs`, wrapping each
+  `fn(x)` call in its own `try/except ZeroDivisionError` (appending
+  `None` on failure), instead of using a plain list comprehension with
+  no error handling at all. It should print `True`, not `crashed`.
+expected_output: |
+  True
+hints:
+  - "Replace the list comprehension with an explicit loop: for x in inputs: try: results.append(fn(x)) except ZeroDivisionError: results.append(None)."
+  - "The batch as a whole should always finish and return a full-length list -- individual failures become None entries, not aborted runs."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "results\\.append\\(None\\)"
+concept_tags: [langchain, batch, error_isolation]

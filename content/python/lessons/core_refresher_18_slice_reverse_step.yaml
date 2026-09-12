@@ -1,0 +1,45 @@
+id: core_refresher_18
+title: "A Slice Step of -1 Reverses a Sequence in One Expression"
+language: python
+level: 131
+objective: "Replace a manual reverse-iteration loop with the slicing idiom lst[::-1]."
+explanation: |
+  A slice's third component is its *step* -- `lst[start:stop:step]` --
+  and a step of `-1` walks the sequence backward instead of forward.
+  `lst[::-1]` (empty start, empty stop, step -1) is the idiomatic way
+  to get a reversed copy of a whole sequence: it reads "every element,
+  from the end to the beginning," and does in one expression what a
+  manual loop counting `range(len(lst) - 1, -1, -1)` and appending each
+  element does much more verbosely.
+example_code: |
+  # A manual loop counting backward through the indices.
+  nums = [1, 2, 3, 4, 5]
+  reversed_loop = []
+  for i in range(len(nums) - 1, -1, -1):
+      reversed_loop.append(nums[i])
+  print(reversed_loop)                     # [5, 4, 3, 2, 1]
+
+  # The slicing idiom does this directly.
+  print(nums[::-1])                        # [5, 4, 3, 2, 1]
+starter_code: |
+  nums = [1, 2, 3, 4, 5]
+  reversed_nums = []
+  for i in range(len(nums) - 1, -1, -1):
+      reversed_nums.append(nums[i])
+  print(reversed_nums)
+challenge: |
+  Rewrite this as a single expression using slicing: `nums[::-1]`.
+  Keep the same output: [5, 4, 3, 2, 1].
+expected_output: |
+  [5, 4, 3, 2, 1]
+hints:
+  - "Replace the whole loop with: print(nums[::-1])."
+  - "An empty start and stop with a step of -1 means \"every element, walked backward from the end.\""
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 18
+difficulty: core
+contains_patterns:
+  - "nums\\[::-1\\]"
+concept_tags: [slicing, lists]

@@ -1,0 +1,54 @@
+id: ai_327
+title: "Curating Few-Shot Examples From Production Should Only Keep the Successful Runs"
+language: ai
+level: 327
+objective: "Fix a curation function that pulls every production run's output into the few-shot pool, failures included, when only genuinely successful runs are worth showing a model as an example of what good output looks like."
+explanation: |
+  Building a few-shot example set from real production logs is a
+  reasonable way to capture what "good" actually looks like -- but only
+  if the curation step filters down to runs that actually succeeded.
+  Including a failed run's output (a traceback, an error message, a
+  garbled partial response) teaches a model, quite literally, to
+  imitate a failure, since it now sits in the example pool looking
+  exactly like every genuinely good example around it.
+
+  The bug this exercise fixes includes every run's output unconditionally.
+  The fix keeps only runs whose status was actually `"success"`.
+example_code: |
+  # The trap: includes EVERY run's output, failures included.
+  def curate_examples_trap(runs):
+      return [r["output"] for r in runs]
+
+  runs = [{"status": "success", "output": "correct answer"}, {"status": "error", "output": "Traceback..."}]
+  print(len(curate_examples_trap(runs)))
+  # 2 -- included a failed run's output as though it were a good example
+
+  # The fix: only keep runs whose status was actually "success".
+  def curate_examples(runs):
+      return [r["output"] for r in runs if r["status"] == "success"]
+
+  print(len(curate_examples(runs)))
+  # 1 -- correctly excluded the failed run
+starter_code: |
+  def curate_examples(runs):
+      return [r["output"] for r in runs]
+
+  runs = [{"status": "success", "output": "correct answer"}, {"status": "error", "output": "Traceback..."}]
+  print(len(curate_examples(runs)))
+challenge: |
+  Fix `curate_examples` so it only includes a run's output when
+  `r["status"] == "success"`, instead of including every run
+  unconditionally. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Add a filter condition to the list comprehension: if r[\"status\"] == \"success\"."
+  - "A failed run's own output (an error message, a traceback) has no business being shown to a model as an example of correct behavior."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 17
+difficulty: warmup
+contains_patterns:
+  - "if r\\[\"status\"\\] == \"success\""
+concept_tags: [langsmith, few_shot_curation, production_logs]

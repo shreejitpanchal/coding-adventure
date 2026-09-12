@@ -1,0 +1,63 @@
+id: ai_247
+title: "A Rate Limit Only Works If Calls Beyond It Are Actually Rejected"
+language: ai
+level: 247
+objective: "Fix a rate-limiting wrapper that always calls through regardless of how many calls have already happened, when it should reject any call once the tracked count has reached the configured maximum."
+explanation: |
+  Rate limiting a Runnable protects a downstream resource (an API with
+  a quota, a paid model endpoint) from being called more often than a
+  configured budget allows. A wrapper that tracks a call count but never
+  actually checks it against the limit before calling through provides
+  the appearance of rate limiting -- a counter that goes up -- with none
+  of the actual protection, since nothing was ever gated on that count.
+
+  The bug this exercise fixes always increments the counter and calls
+  through, with no check against `max_calls` at all. The fix checks the
+  counter first and returns a rejection once the limit is reached.
+example_code: |
+  # The trap: never checks against max_calls at all -- every call goes
+  # through regardless of how many already happened.
+  def call_with_limit_trap(fn, x, state, max_calls):
+      state["n"] += 1
+      return fn(x)
+
+  state = {"n": 0}
+  results_trap = [call_with_limit_trap(lambda x: x, "ok", state, 3) for _ in range(5)]
+  print(results_trap.count("RATE_LIMITED"))   # 0 -- the limit of 3 was never enforced across 5 calls
+
+  # The fix: check the counter first, reject once the limit is reached.
+  def call_with_limit(fn, x, state, max_calls):
+      if state["n"] >= max_calls:
+          return "RATE_LIMITED"
+      state["n"] += 1
+      return fn(x)
+
+  state2 = {"n": 0}
+  results = [call_with_limit(lambda x: x, "ok", state2, 3) for _ in range(5)]
+  print(results.count("RATE_LIMITED"))   # 2 -- correctly rejected the 2 calls beyond the max
+starter_code: |
+  def call_with_limit(fn, x, state, max_calls):
+      state["n"] += 1
+      return fn(x)
+
+  state = {"n": 0}
+  results = [call_with_limit(lambda x: x, "ok", state, 3) for _ in range(5)]
+  print(results.count("RATE_LIMITED"))
+challenge: |
+  Fix `call_with_limit` so it checks `if state["n"] >= max_calls:
+  return "RATE_LIMITED"` before incrementing and calling through,
+  instead of always calling through unconditionally. It should print
+  `2`, not `0`.
+expected_output: |
+  2
+hints:
+  - "Add the check as the very first line of the function, before state[\"n\"] += 1 ever runs."
+  - "Once the limit is reached, the counter should stop incrementing too -- only successful calls should count against the budget."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 27
+difficulty: core
+contains_patterns:
+  - "state\\[\"n\"\\] >= max_calls"
+concept_tags: [langchain, rate_limiting, runnable]

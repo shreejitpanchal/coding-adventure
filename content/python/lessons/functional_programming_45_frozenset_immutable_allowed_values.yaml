@@ -1,0 +1,74 @@
+id: functional_programming_45
+title: "frozenset Protects a Fixed Set of Allowed Values From Accidental Mutation"
+language: python
+level: 380
+objective: "Fix a module-level 'set of allowed roles' defined as a plain, mutable set, which any code can silently add to or remove from, when frozenset makes that exact mistake raise AttributeError instead of silently corrupting the allowed-values set."
+explanation: |
+  A plain `set` used as a fixed, supposedly-constant collection of
+  allowed values -- valid user roles, say -- is still fully mutable:
+  `ALLOWED_ROLES.add("hacker")` anywhere in the codebase silently
+  succeeds, permanently expanding what's considered a valid role for
+  the rest of the program's lifetime, with no error or warning
+  anywhere. `frozenset` is the immutable counterpart to `set` -- it
+  supports every read operation a plain set does (`in`, iteration,
+  set operations like `|`/`&`), but has no `.add()`/`.remove()`/
+  `.discard()` at all, so an accidental mutation attempt raises
+  `AttributeError` immediately instead of silently corrupting the
+  allowed-values collection.
+
+  The fix changes `ALLOWED_ROLES` from a plain `set` to a `frozenset`.
+example_code: |
+  # The trap: a plain set -- silently mutable from anywhere.
+  ALLOWED_ROLES_TRAP = {"admin", "editor", "viewer"}
+
+  def grant_trap(role):
+      ALLOWED_ROLES_TRAP.add(role)          # silently expands the allowed set!
+
+  grant_trap("hacker")
+  print("hacker" in ALLOWED_ROLES_TRAP)
+  # True -- WRONG, this should never have been possible to add at all
+
+  # The fix: frozenset has no mutating methods -- the mistake crashes instead.
+  ALLOWED_ROLES = frozenset({"admin", "editor", "viewer"})
+
+  def try_grant(role):
+      try:
+          ALLOWED_ROLES.add(role)
+          return "mutated"
+      except AttributeError:
+          return "rejected"
+
+  print(try_grant("hacker"))
+  print("hacker" in ALLOWED_ROLES)
+  # rejected
+  # False -- correctly protected; frozenset has no way to add to it at all
+starter_code: |
+  ALLOWED_ROLES = {"admin", "editor", "viewer"}
+
+  def try_grant(role):
+      try:
+          ALLOWED_ROLES.add(role)
+          return "mutated"
+      except AttributeError:
+          return "rejected"
+
+  print(try_grant("hacker"))
+  print("hacker" in ALLOWED_ROLES)
+challenge: |
+  Fix this by changing `ALLOWED_ROLES` to `frozenset({"admin",
+  "editor", "viewer"})`, instead of a plain mutable `set`. It should
+  print `rejected` then `False`, not `mutated` then `True`.
+expected_output: |
+  rejected
+  False
+hints:
+  - "ALLOWED_ROLES = frozenset({\"admin\", \"editor\", \"viewer\"})."
+  - "frozenset supports every read operation a plain set does, but has no .add()/.remove() at all -- the exact same mistake that silently succeeds on a set crashes immediately on a frozenset."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "frozenset\\(\\{\"admin\", \"editor\", \"viewer\"\\}\\)"
+concept_tags: [functional_programming, frozenset, immutability]

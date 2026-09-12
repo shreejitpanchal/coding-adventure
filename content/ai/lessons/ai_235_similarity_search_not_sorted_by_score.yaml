@@ -1,0 +1,55 @@
+id: ai_235
+title: "Similarity Search Results Need to Be Sorted by Score, Not Left as Given"
+language: ai
+level: 235
+objective: "Fix a top-k selector that just slices the first k results in whatever order they arrived, when it should sort by similarity score first so the actually most-relevant results come back, not whichever happened to be listed earliest."
+explanation: |
+  A vector store's similarity search is only useful if the results it
+  hands back are ranked by actual relevance -- the whole reason to
+  compute a similarity score in the first place is to be able to say
+  which matches are best. A top-k selector that slices the first `k`
+  entries without ever sorting by score returns whatever order the
+  underlying results happened to arrive in, which has no guaranteed
+  relationship to how relevant each one actually is.
+
+  The bug this exercise fixes slices `results[:k]` directly, with no
+  sorting at all. The fix sorts by `score` descending first, then takes
+  the top `k`.
+example_code: |
+  # The trap: takes the first k results AS-GIVEN -- never sorts by
+  # score at all.
+  def top_k_trap(results, k):
+      return results[:k]
+
+  results = [{"doc": "a", "score": 0.2}, {"doc": "b", "score": 0.9}, {"doc": "c", "score": 0.5}]
+  print(top_k_trap(results, 2)[0]["doc"])   # "a" -- the LOWEST-scoring doc, not the most relevant
+
+  # The fix: sort by score descending first, then take the top k.
+  def top_k(results, k):
+      return sorted(results, key=lambda r: r["score"], reverse=True)[:k]
+
+  print(top_k(results, 2)[0]["doc"])   # "b" -- correctly the highest-scoring doc
+starter_code: |
+  def top_k(results, k):
+      return results[:k]
+
+  results = [{"doc": "a", "score": 0.2}, {"doc": "b", "score": 0.9}, {"doc": "c", "score": 0.5}]
+  print(top_k(results, 2)[0]["doc"])
+challenge: |
+  Fix `top_k` so it sorts `results` by `"score"` descending (via
+  `sorted(..., key=lambda r: r["score"], reverse=True)`) before slicing
+  the top `k`, instead of slicing the unsorted list directly. It should
+  print `b`, not `a`.
+expected_output: |
+  b
+hints:
+  - "Wrap results in sorted(results, key=lambda r: r[\"score\"], reverse=True) before applying [:k]."
+  - "reverse=True is what makes the HIGHEST scores come first -- without it, sorting alone would still put the lowest score first."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 15
+difficulty: warmup
+contains_patterns:
+  - "reverse=True"
+concept_tags: [langchain, vector_store, similarity_search]

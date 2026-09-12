@@ -1,0 +1,65 @@
+id: ai_333
+title: "A Success Count Over a Time Window Must Actually Respect That Window"
+language: ai
+level: 333
+objective: "Fix a success counter that counts every successful run regardless of when it happened, when a 'success rate over the last hour' metric needs to genuinely exclude runs from outside that window -- otherwise a metric labeled as recent is quietly reporting on the entire history instead."
+explanation: |
+  A monitoring dashboard showing "success rate in the last hour" is
+  meant to reflect what's happening *right now* -- if something just
+  broke, that number should drop quickly, which only works if runs
+  from outside the window are actually excluded. Counting every
+  success regardless of timestamp means an old, stale count of
+  successes from days ago keeps propping up a metric that's supposed
+  to be sensitive to recent changes, masking a genuinely fresh problem
+  behind a large historical total.
+
+  The bug this exercise fixes counts every run with `status ==
+  "success"`, ignoring `window_start` entirely. The fix also requires
+  the run's own timestamp to fall within the window.
+example_code: |
+  # The trap: counts successes across ALL time, ignoring window_start
+  # entirely.
+  def success_count_in_window_trap(runs, window_start):
+      return sum(1 for r in runs if r["status"] == "success")
+
+  runs = [
+      {"status": "success", "timestamp": 5},
+      {"status": "success", "timestamp": 50},
+      {"status": "error", "timestamp": 60},
+  ]
+  print(success_count_in_window_trap(runs, window_start=10))
+  # 2 -- included the success at timestamp=5, which is BEFORE the window even started
+
+  # The fix: also require the timestamp to fall within the window.
+  def success_count_in_window(runs, window_start):
+      return sum(1 for r in runs if r["status"] == "success" and r["timestamp"] >= window_start)
+
+  print(success_count_in_window(runs, window_start=10))
+  # 1 -- correctly excluded the success from before the window
+starter_code: |
+  def success_count_in_window(runs, window_start):
+      return sum(1 for r in runs if r["status"] == "success")
+
+  runs = [
+      {"status": "success", "timestamp": 5},
+      {"status": "success", "timestamp": 50},
+      {"status": "error", "timestamp": 60},
+  ]
+  print(success_count_in_window(runs, window_start=10))
+challenge: |
+  Fix `success_count_in_window` so its condition also checks
+  `r["timestamp"] >= window_start`, instead of only checking `status ==
+  "success"`. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Add \"and r[\\\"timestamp\\\"] >= window_start\" onto the existing status check inside the generator expression."
+  - "The success at timestamp=5 happened before window_start=10 -- a metric scoped to \"the last hour\" has no business including it."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 23
+difficulty: core
+contains_patterns:
+  - "r\\[\"timestamp\"\\] >= window_start"
+concept_tags: [langsmith, monitoring, time_windows]

@@ -1,0 +1,70 @@
+id: gotcha_gauntlet_36
+title: "The Specific Handler That Could Never Actually Run"
+language: python
+level: 281
+objective: "Fix a chain of except clauses where a broad exception type is listed BEFORE a narrower, more specific one, so the specific handler can never be reached at all -- Python checks except clauses in order and stops at the first match."
+explanation: |
+  Python checks `except` clauses top to bottom and runs the *first*
+  one whose exception type matches, then stops -- it never continues
+  checking later clauses even if a more specific one would also have
+  matched. Listing `except Exception:` before `except ValueError:`
+  means every `ValueError` (since it's a subclass of `Exception`)
+  already matches the first, broader clause and never even reaches the
+  second one -- the specific handler is dead code, silently never
+  executed, no matter how carefully it was written.
+
+  The fix is ordering `except` clauses from most specific to least
+  specific -- the narrow, specific type first, with any broader
+  catch-all listed after it, so each exception is handled by the most
+  precise clause that actually applies to it.
+example_code: |
+  # The trap: the BROAD clause is listed first -- the specific one is dead code.
+  def parse_trap(text):
+      try:
+          return int(text)
+      except Exception:
+          return "generic error"
+      except ValueError:
+          return "specific: not a number"
+
+  print(parse_trap("oops"))
+  # "generic error" -- WRONG, the specific ValueError handler never even runs
+
+  # The fix: specific exception types come BEFORE broader ones.
+  def parse(text):
+      try:
+          return int(text)
+      except ValueError:
+          return "specific: not a number"
+      except Exception:
+          return "generic error"
+
+  print(parse("oops"))
+  # "specific: not a number" -- correctly matched by the specific handler
+starter_code: |
+  def parse(text):
+      try:
+          return int(text)
+      except Exception:
+          return "generic error"
+      except ValueError:
+          return "specific: not a number"
+
+  print(parse("oops"))
+challenge: |
+  Fix `parse` by swapping the order of the two `except` clauses, so
+  `except ValueError:` comes before `except Exception:`. It should
+  print `specific: not a number`, not `generic error`.
+expected_output: |
+  specific: not a number
+hints:
+  - "Move except ValueError: (and its body) above except Exception:."
+  - "Python stops at the FIRST except clause that matches -- a broader type listed earlier makes every narrower clause after it unreachable dead code."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 36
+difficulty: gotcha
+contains_patterns:
+  - "specific: not a number"
+concept_tags: [exceptions, ordering, gotchas]

@@ -1,0 +1,92 @@
+id: observability_15
+title: "Capstone: One Decorator Combining Metrics, Timing, and Correlation IDs"
+language: python
+level: 415
+objective: "Combine this category's counter metric, timing context manager, and correlation-id contextvar into a single @instrument decorator that any function can use to get consistent request counting, duration measurement, and correlated logging, instead of writing all three by hand at every call site."
+explanation: |
+  This category has built up three separate observability primitives:
+  a counter metric (`metrics[name] = metrics.get(name, 0) + 1`), a
+  timing context manager (recording elapsed duration around a block),
+  and a correlation id threaded through a `contextvars.ContextVar` so
+  every log line in one logical call chain can be tied together. A
+  real instrumentation decorator combines all three into one reusable
+  wrapper: increment a call counter, time the wrapped function's
+  execution, and log a line carrying both the duration and the current
+  correlation id -- so any function can opt into full instrumentation
+  just by adding `@instrument`, instead of every call site
+  hand-rolling the same three pieces of bookkeeping separately.
+
+  The bug this exercise fixes is a bare decorator that does none of
+  this. The fix adds counting, timing, and correlation-id logging all
+  in one wrapper.
+example_code: |
+  # The trap: a decorator that does nothing but call the function.
+  def instrument_trap(func):
+      def wrapper(*args, **kwargs):
+          return func(*args, **kwargs)
+      return wrapper
+
+  # The fix: counting, timing, and correlation-id logging, all in one wrapper.
+  import time, contextvars
+
+  metrics = {}
+  request_id = contextvars.ContextVar("request_id", default="unknown")
+  log_lines = []
+
+  def instrument(func):
+      def wrapper(*args, **kwargs):
+          metrics[func.__name__] = metrics.get(func.__name__, 0) + 1
+          start = time.monotonic()
+          result = func(*args, **kwargs)
+          duration = time.monotonic() - start
+          log_lines.append(f"[{request_id.get()}] {func.__name__} took {duration >= 0}")
+          return result
+      return wrapper
+
+  @instrument
+  def handle():
+      return "done"
+
+  request_id.set("req-123")
+  print(handle())
+  print(metrics["handle"])
+  print(log_lines[0].startswith("[req-123] handle took True"))
+  # done
+  # 1
+  # True -- correctly counted, timed, and logged with the current correlation id
+starter_code: |
+  def instrument(func):
+      def wrapper(*args, **kwargs):
+          return func(*args, **kwargs)
+      return wrapper
+
+  @instrument
+  def handle():
+      return "done"
+
+  print(handle())
+challenge: |
+  Rewrite `instrument` so its `wrapper` increments a `metrics` counter
+  keyed by `func.__name__`, times the call with `time.monotonic()`,
+  and appends a log line to `log_lines` using the current `request_id
+  .get()` and whether the duration was non-negative. Set
+  `request_id.set("req-123")` before calling `handle()`, then print
+  `handle()`'s result, `metrics["handle"]`, and whether `log_lines[0]`
+  starts with `"[req-123] handle took True"`. It should print `done`,
+  `1`, then `True`.
+expected_output: |
+  done
+  1
+  True
+hints:
+  - "metrics[func.__name__] = metrics.get(func.__name__, 0) + 1; start = time.monotonic(); result = func(*args, **kwargs); duration = time.monotonic() - start."
+  - "log_lines.append(f\"[{request_id.get()}] {func.__name__} took {duration >= 0}\"), with request_id.set(\"req-123\") called before invoking handle()."
+xp_reward: 20
+achievement: observability_master
+category: observability
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "metrics\\[func\\.__name__\\] = metrics\\.get\\(func\\.__name__, 0\\) \\+ 1"
+  - "request_id\\.get\\(\\)"
+concept_tags: [observability, metrics, tracing, capstone]

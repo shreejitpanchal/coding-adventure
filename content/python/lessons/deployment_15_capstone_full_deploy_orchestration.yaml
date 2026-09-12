@@ -1,0 +1,93 @@
+id: deployment_15
+title: "Capstone: Validate, Deploy, Check Health, Roll Back If Needed"
+language: python
+level: 405
+objective: "Combine this category's config validation, idempotent deploy, health check, and rollback into one orchestration function -- validate config first, deploy only if it's idempotently new, check health afterward, and roll back automatically on failure -- instead of a bare deploy with none of those safety steps."
+explanation: |
+  This category has built up several independent safety mechanisms
+  separately: validating required config before doing anything,
+  making a deploy step idempotent (reporting "already deployed" rather
+  than repeating unnecessary work), checking health immediately after
+  switching versions, and rolling back automatically when that check
+  fails. A real deploy orchestration combines all of them into one
+  sequence: validate first (fail fast on bad config, before touching
+  anything live), skip actual work if this exact version is already
+  deployed (idempotency), check health right after switching, and
+  revert automatically the instant that check fails -- each step
+  doing its own job, composed together into one safe, repeatable
+  deploy function.
+
+  The bug this exercise fixes is a bare deploy with none of these
+  safety steps -- it validates nothing, is not idempotent, and never
+  checks health or rolls back. The fix adds every one of them.
+example_code: |
+  # The trap: a bare deploy -- no validation, no idempotency, no health check.
+  current_version_trap = "v1"
+
+  def deploy_trap(config, new_version):
+      global current_version_trap
+      current_version_trap = new_version
+      return "deployed"
+
+  print(deploy_trap({}, "v2-broken"))    # "deployed" -- no config check, no health check at all
+
+  # The fix: validate, check idempotency, deploy, verify health, roll back if needed.
+  current_version = "v1"
+
+  def validate_config(config, required_keys):
+      missing = [k for k in required_keys if k not in config]
+      if missing:
+          raise ValueError(f"missing required config keys: {missing}")
+
+  def check_health(version):
+      return version != "v2-broken"
+
+  def deploy(config, new_version, required_keys):
+      global current_version
+      validate_config(config, required_keys)
+      if current_version == new_version:
+          return "already deployed"
+      previous = current_version
+      current_version = new_version
+      if not check_health(current_version):
+          current_version = previous
+          return "rolled back"
+      return "deployed"
+
+  print(deploy({"DB_URL": "x"}, "v2-broken", ["DB_URL"]))
+  print(current_version)
+  # rolled back
+  # v1 -- correctly validated, attempted the switch, then reverted on failed health
+starter_code: |
+  current_version = "v1"
+
+  def deploy(config, new_version, required_keys):
+      global current_version
+      current_version = new_version
+      return "deployed"
+
+  print(deploy({"DB_URL": "x"}, "v2-broken", ["DB_URL"]))
+  print(current_version)
+challenge: |
+  Rewrite `deploy` to combine `validate_config` (raising on missing
+  required keys), an idempotency check (return `"already deployed"` if
+  `new_version == current_version`), a post-switch `check_health`
+  call, and an automatic rollback to the previous version if that
+  check fails. It should print `rolled back` then `v1`, not
+  `deployed` then `v2-broken`.
+expected_output: |
+  rolled back
+  v1
+hints:
+  - "def check_health(version): return version != \"v2-broken\", used the same way this category's health-check and rollback lessons already show."
+  - "validate_config(config, required_keys) first; then if current_version == new_version: return \"already deployed\"; then switch, check health, roll back to previous on failure."
+xp_reward: 20
+achievement: deployment_master
+category: deployment
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "validate_config\\(config, required_keys\\)"
+  - "check_health\\(current_version\\)"
+  - "current_version = previous"
+concept_tags: [deployment, orchestration, rollback, capstone]

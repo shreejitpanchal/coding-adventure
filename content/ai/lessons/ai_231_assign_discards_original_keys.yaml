@@ -1,0 +1,59 @@
+id: ai_231
+title: "RunnablePassthrough.assign Must Keep the Original Keys, Not Just the New One"
+language: ai
+level: 231
+objective: "Fix an assign-style merge that discards every existing key and keeps only the newly computed one, when the whole point of 'assign' (as opposed to 'replace') is to add a key while preserving everything already there."
+explanation: |
+  `RunnablePassthrough.assign` is specifically for *adding* a computed
+  field to a dict flowing through a chain -- taking the existing data,
+  computing one more value from it, and merging that value in alongside
+  everything that was already there. A merge that returns only the
+  newly computed key, throwing away the original data entirely, isn't
+  assigning anything -- it's replacing the whole payload, which breaks
+  every later step in the chain that still expected the original keys
+  to be present.
+
+  The bug this exercise fixes returns a brand-new dict containing only
+  the new key. The fix starts from a copy of the original data and adds
+  the new key to it.
+example_code: |
+  # The trap: DISCARDS every existing key, keeping only the new one.
+  def assign_trap(data, key, fn):
+      return {key: fn(data)}
+
+  data = {"question": "What's 2+2?"}
+  print(sorted(assign_trap(data, "answer", lambda d: "4").keys()))
+  # ['answer'] -- "question" is gone!
+
+  # The fix: start from a copy of the original data, add the new key.
+  def assign(data, key, fn):
+      result = dict(data)
+      result[key] = fn(data)
+      return result
+
+  print(sorted(assign(data, "answer", lambda d: "4").keys()))
+  # ['answer', 'question'] -- both preserved
+starter_code: |
+  def assign(data, key, fn):
+      return {key: fn(data)}
+
+  data = {"question": "What's 2+2?"}
+  print(sorted(assign(data, "answer", lambda d: "4").keys()))
+challenge: |
+  Fix `assign` so it copies `data` first (`result = dict(data)`) and
+  then adds the new key to that copy, instead of returning a dict with
+  only the new key. It should print `['answer', 'question']`, not
+  `['answer']`.
+expected_output: |
+  ['answer', 'question']
+hints:
+  - "result = dict(data), then result[key] = fn(data), then return result."
+  - "\"assign\" means ADD a field -- it should never cause any existing field to disappear."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "result = dict\\(data\\)"
+concept_tags: [langchain, runnable_passthrough, assign]

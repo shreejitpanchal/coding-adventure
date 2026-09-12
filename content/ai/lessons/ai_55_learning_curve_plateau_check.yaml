@@ -1,0 +1,63 @@
+id: ai_55
+title: "A Plateaued Learning Curve Means More Data Won't Help"
+language: ai
+level: 55
+objective: "Fix a function that always recommends collecting more training data, instead of checking whether the validation score has actually plateaued as training set size grew -- a plateau means the real problem is elsewhere."
+explanation: |
+  A **learning curve** plots validation score against how much training
+  data was used, at several increasing sizes. If the curve is still
+  climbing at the largest size tried, more data would likely help
+  further. If it has **plateaued** -- the last couple of points are
+  essentially flat -- collecting more of the same kind of data won't
+  move the needle at all, because the model has already extracted
+  everything that data shape can teach it; the real fix at that point
+  is a different model, different features, or addressing an
+  overfitting/underfitting gap (see this category's earlier lessons),
+  not gathering more rows.
+
+  The bug this exercise fixes is a function that recommends "collect
+  more data" unconditionally, without ever looking at whether the curve
+  is still rising or has already gone flat -- wasting real effort and
+  money collecting data that a quick look at the existing curve would
+  have shown wouldn't help at all. The fix compares the last two
+  points on the curve, only recommending more data when the score is
+  still genuinely improving.
+example_code: |
+  # The trap: always says "yes, get more data," regardless of the curve's shape.
+  def would_more_data_help_trap(val_scores_by_size):
+      return True
+
+  val_scores = [0.70, 0.75, 0.80, 0.80]   # plateaued: last two points are equal
+  print(would_more_data_help_trap(val_scores))   # True -- WRONG, this curve has already flattened
+
+  # The fix: only recommend more data if the score is STILL improving.
+  def would_more_data_help(val_scores_by_size):
+      if len(val_scores_by_size) < 2:
+          return True
+      return val_scores_by_size[-1] > val_scores_by_size[-2]
+
+  print(would_more_data_help(val_scores))   # False -- correctly recognizes the plateau
+starter_code: |
+  def would_more_data_help(val_scores_by_size):
+      return True
+
+  val_scores = [0.70, 0.75, 0.80, 0.80]
+  print(would_more_data_help(val_scores))
+challenge: |
+  Fix `would_more_data_help` so it compares the last two entries in
+  `val_scores_by_size`, only returning `True` if the score is still
+  genuinely improving. It should print `False` for this plateaued
+  curve, not `True`.
+expected_output: |
+  False
+hints:
+  - "Compare the last two elements: return val_scores_by_size[-1] > val_scores_by_size[-2]."
+  - "0.80 is not greater than 0.80 -- the curve has flattened, so more data at this point wouldn't be expected to help."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "val_scores_by_size\\[-1\\] > val_scores_by_size\\[-2\\]"
+concept_tags: [ml_fundamentals, learning_curves, model_evaluation]

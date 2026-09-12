@@ -1,0 +1,75 @@
+id: ai_116
+title: "Concatenating Contradictory Retrieved Chunks Hides the Conflict"
+language: ai
+level: 116
+objective: "Fix a context-assembly function that concatenates every retrieved chunk without checking whether any of them actually contradict each other, silently handing the model conflicting facts with no signal that a conflict exists at all."
+explanation: |
+  Retrieved chunks can come from documents written at different times,
+  by different authors, or covering an area where information
+  genuinely changed -- an old chunk might say one thing, a newer chunk
+  might say another, and both can legitimately show up in the same
+  top-k result if both are textually relevant to the query. Simply
+  concatenating them straight into the prompt hands the model
+  contradictory facts with no flag that a conflict exists at all,
+  leaving it to either silently pick one, blend them nonsensically, or
+  get confused -- when the *retrieval* layer is actually the place with
+  enough information to notice the numbers disagree before generation
+  ever happens.
+
+  The bug this exercise fixes concatenates every chunk's text with no
+  conflict check at all. The fix checks for chunks that share the same
+  labeled fact (e.g. price) but disagree on its value, flagging the
+  conflict explicitly rather than silently handing both numbers to the
+  model with no warning.
+example_code: |
+  # The trap: concatenates every chunk -- a genuine numeric conflict
+  # between two chunks is passed through with no flag at all.
+  def assemble_context_trap(chunks):
+      return " ".join(c["text"] for c in chunks)
+
+  chunks = [
+      {"text": "The subscription costs $9.99/month.", "fact": "price", "value": 9.99},
+      {"text": "The subscription costs $14.99/month.", "fact": "price", "value": 14.99},
+  ]
+  result_trap = assemble_context_trap(chunks)
+  print("CONFLICT" in result_trap)   # False -- both contradictory prices are silently concatenated
+
+  # The fix: detect chunks sharing a fact but disagreeing on its value.
+  def assemble_context(chunks):
+      by_fact = {}
+      for c in chunks:
+          by_fact.setdefault(c["fact"], set()).add(c["value"])
+      conflicts = [fact for fact, values in by_fact.items() if len(values) > 1]
+      context = " ".join(c["text"] for c in chunks)
+      if conflicts:
+          context = f"[CONFLICT DETECTED in: {conflicts}] " + context
+      return context
+
+  print("CONFLICT" in assemble_context(chunks))   # True -- correctly flags the disagreement
+starter_code: |
+  def assemble_context(chunks):
+      return " ".join(c["text"] for c in chunks)
+
+  chunks = [
+      {"text": "The subscription costs $9.99/month.", "fact": "price", "value": 9.99},
+      {"text": "The subscription costs $14.99/month.", "fact": "price", "value": 14.99},
+  ]
+  print("CONFLICT" in assemble_context(chunks))
+challenge: |
+  Fix `assemble_context` so it groups chunks by `fact`, detects any
+  fact with more than one distinct `value` among the retrieved chunks,
+  and prepends a `[CONFLICT DETECTED in: ...]` marker when one is found.
+  It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Build by_fact = {} and do by_fact.setdefault(c[\"fact\"], set()).add(c[\"value\"]) for each chunk."
+  - "conflicts = [fact for fact, values in by_fact.items() if len(values) > 1] -- any fact with more than one distinct value is a genuine conflict."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 31
+difficulty: deep_dive
+contains_patterns:
+  - "len\\(values\\) > 1"
+concept_tags: [rag, conflicting_information, context_assembly]

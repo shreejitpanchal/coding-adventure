@@ -1,0 +1,71 @@
+id: ai_278
+title: "Resuming From a Checkpoint Should Skip Nodes Already Recorded as Done"
+language: ai
+level: 278
+objective: "Fix a resume function that reruns every node from the start regardless of what's already checkpointed, when resuming from a checkpoint is supposed to pick up only from the nodes that haven't actually completed yet."
+explanation: |
+  The entire value of checkpointing a graph run is being able to resume
+  after a crash without redoing work that already finished
+  successfully -- reruns of a node with a real side effect (a charge, a
+  send) are exactly what checkpointing exists to avoid. A resume
+  function that reruns every node regardless of what's already recorded
+  as checkpointed provides zero actual resume benefit: it's just a full
+  restart wearing a "resume" label.
+
+  The bug this exercise fixes appends every node to the run list,
+  ignoring `checkpoints` entirely. The fix skips any node that's
+  already present in `checkpoints`.
+example_code: |
+  # The trap: always reruns EVERY node, even ones already recorded as
+  # done in checkpoints.
+  def resume_trap(edges, current, end, checkpoints):
+      ran = []
+      while current != end:
+          ran.append(current)
+          current = edges[current]
+      return ran
+
+  edges = {"a": "b", "b": "c", "c": "END"}
+  checkpoints = {"a": True}   # "a" already completed in a previous run
+  print(resume_trap(edges, "a", "END", checkpoints))
+  # ['a', 'b', 'c'] -- reran "a" even though it was already done
+
+  # The fix: skip any node already present in checkpoints.
+  def resume(edges, current, end, checkpoints):
+      ran = []
+      while current != end:
+          if current not in checkpoints:
+              ran.append(current)
+          current = edges[current]
+      return ran
+
+  print(resume(edges, "a", "END", checkpoints))
+  # ['b', 'c'] -- correctly skipped the already-checkpointed node
+starter_code: |
+  def resume(edges, current, end, checkpoints):
+      ran = []
+      while current != end:
+          ran.append(current)
+          current = edges[current]
+      return ran
+
+  edges = {"a": "b", "b": "c", "c": "END"}
+  checkpoints = {"a": True}
+  print(resume(edges, "a", "END", checkpoints))
+challenge: |
+  Fix `resume` so it only appends `current` to `ran` when `current not
+  in checkpoints`, instead of always appending every node. It should
+  print `['b', 'c']`, not `['a', 'b', 'c']`.
+expected_output: |
+  ['b', 'c']
+hints:
+  - "Wrap the append in a check: if current not in checkpoints: ran.append(current)."
+  - "The while loop still needs to walk past \"a\" via edges[current] either way -- only the appending (representing \"actually ran it\") should be skipped."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "if current not in checkpoints:"
+concept_tags: [langgraph, checkpointing, resume]

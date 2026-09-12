@@ -1,0 +1,66 @@
+id: stdlib_deep_dive_47
+title: "copy.deepcopy Actually Isolates Nested Structures -- copy.copy Only Copies One Level"
+language: python
+level: 248
+objective: "Fix code using copy.copy on a nested list (which only makes a shallow copy -- the inner lists are still the SAME shared objects), when copy.deepcopy recursively copies every nested level, producing genuinely independent inner objects."
+explanation: |
+  `copy.copy(x)` makes a shallow copy -- a new outer container whose
+  *elements* are still the exact same objects as the original's. For a
+  list of lists, that means the outer list is new, but each inner list
+  is shared, so mutating an inner list through the copy also mutates
+  the original's corresponding inner list. `copy.deepcopy(x)`
+  recursively copies every nested level, so the inner lists in the
+  copy are genuinely independent new objects, and mutating one through
+  the copy leaves the original completely untouched.
+
+  The bug this exercise fixes uses `copy.copy`, so mutating a nested
+  list through the "copy" also corrupts the original. The fix uses
+  `copy.deepcopy`, which correctly isolates every nested level.
+example_code: |
+  # The trap: copy.copy only copies the OUTER list -- inner lists are shared.
+  import copy
+
+  def duplicate_trap(matrix):
+      return copy.copy(matrix)
+
+  original = [[1, 2], [3, 4]]
+  dup_trap = duplicate_trap(original)
+  dup_trap[0].append(99)
+  print(original[0])
+  # [1, 2, 99] -- WRONG, mutating the "copy" corrupted the original's inner list
+
+  # The fix: deepcopy recursively copies every nested level.
+  def duplicate(matrix):
+      return copy.deepcopy(matrix)
+
+  original2 = [[1, 2], [3, 4]]
+  dup = duplicate(original2)
+  dup[0].append(99)
+  print(original2[0])
+  # [1, 2] -- correctly untouched, since the inner lists are genuinely independent
+starter_code: |
+  import copy
+
+  def duplicate(matrix):
+      return copy.copy(matrix)
+
+  original = [[1, 2], [3, 4]]
+  dup = duplicate(original)
+  dup[0].append(99)
+  print(original[0])
+challenge: |
+  Fix `duplicate` so it uses `copy.deepcopy(matrix)` instead of
+  `copy.copy(matrix)`. It should print `[1, 2]`, not `[1, 2, 99]`.
+expected_output: |
+  [1, 2]
+hints:
+  - "return copy.deepcopy(matrix)."
+  - "copy.copy only duplicates the outer container -- nested lists inside it are still the exact same shared objects, unlike deepcopy which recursively copies every level."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 47
+difficulty: gotcha
+contains_patterns:
+  - "copy\\.deepcopy\\(matrix\\)"
+concept_tags: [copy, deepcopy, shallow_copy]

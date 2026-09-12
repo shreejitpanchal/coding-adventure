@@ -1,0 +1,81 @@
+id: ai_46
+title: "Stratified Splitting: Keeping Class Ratios Consistent"
+language: ai
+level: 46
+objective: "Fix a train/test split that ignores class labels entirely, which can leave a rare class completely absent from the test set purely by chance."
+explanation: |
+  A plain random split shuffles all rows and cuts them at some index,
+  with no awareness of what each row's label actually is. On a
+  balanced dataset this is harmless, but once one class is rare (say,
+  5% fraud vs. 95% legitimate transactions), a small test set drawn
+  purely by chance can end up with zero examples of the rare class --
+  making it mathematically impossible to measure how well the model
+  detects fraud at all, even though the model itself might be fine.
+
+  **Stratified splitting** fixes this by splitting each class
+  separately, preserving each class's original proportion in both the
+  train and test sets. The fix here splits the minority and majority
+  rows independently in the same ratio, then combines them, guaranteeing
+  the test set always contains a representative sample of every class
+  present in the original data.
+example_code: |
+  # The trap: a plain shuffle-and-cut split with no regard for labels --
+  # a rare class can vanish from the test set entirely by chance.
+  import random
+
+  def split_naive(rows, labels, test_frac, seed):
+      rng = random.Random(seed)
+      indices = list(range(len(rows)))
+      rng.shuffle(indices)
+      cut = int(len(rows) * (1 - test_frac))
+      test_idx = indices[cut:]
+      return [labels[i] for i in test_idx]
+
+  labels = [0] * 19 + [1]   # 1 rare positive among 19 negatives
+  test_labels = split_naive(list(range(20)), labels, 0.2, seed=1)
+  print(1 in test_labels)   # can easily be False -- the rare class got unlucky
+
+  # The fix: split each class independently, preserving its own ratio.
+  def split_stratified(rows, labels, test_frac, seed):
+      rng = random.Random(seed)
+      test_idx = []
+      for cls in set(labels):
+          cls_idx = [i for i, l in enumerate(labels) if l == cls]
+          rng.shuffle(cls_idx)
+          cut = int(len(cls_idx) * (1 - test_frac))
+          test_idx.extend(cls_idx[cut:])
+      return [labels[i] for i in test_idx]
+
+  test_labels2 = split_stratified(list(range(20)), labels, 0.2, seed=1)
+  print(1 in test_labels2)   # True -- the rare class is guaranteed representation
+starter_code: |
+  import random
+
+  def split(rows, labels, test_frac, seed):
+      rng = random.Random(seed)
+      indices = list(range(len(rows)))
+      rng.shuffle(indices)
+      cut = int(len(rows) * (1 - test_frac))
+      test_idx = indices[cut:]
+      return [labels[i] for i in test_idx]
+
+  labels = [0] * 19 + [1]
+  test_labels = split(list(range(20)), labels, 0.2, seed=7)
+  print(1 in test_labels)
+challenge: |
+  Fix `split` so it splits each class independently (stratified),
+  guaranteeing the rare class (label `1`) always appears in the test
+  set regardless of seed. It should print `True`, not depend on luck.
+expected_output: |
+  True
+hints:
+  - "Loop over each unique class in `labels`, gather that class's own indices, shuffle and cut THOSE independently, then combine all classes' test indices."
+  - "This guarantees every class contributes its own proportional slice to the test set, instead of one shared shuffle-and-cut over everything."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "for cls in set\\(labels\\)"
+concept_tags: [ml_fundamentals, stratified_split, class_imbalance]

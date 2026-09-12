@@ -1,0 +1,62 @@
+id: ai_321
+title: "Feedback Needs to Attach to the Run It's Actually About, Not Always the Root"
+language: ai
+level: 321
+objective: "Fix a feedback-attachment function that always records feedback on the root run regardless of which specific run it was actually about, when feedback on a specific child run's behavior needs to land on that run, not get attributed to the whole trace."
+explanation: |
+  Feedback (a thumbs-up/down, a correction) is usually about one
+  specific run's output -- a particular tool call's result, one
+  intermediate step's answer -- not the trace as a whole. Attaching
+  every piece of feedback to the root run regardless of which run it
+  was actually about means a reviewer's specific, targeted correction
+  gets misattributed to the entire trace, losing exactly which step
+  they were actually reacting to.
+
+  The bug this exercise fixes always writes into the root run's
+  `feedback` field. The fix looks up the actual target run by its id
+  and attaches feedback there instead.
+example_code: |
+  # The trap: always attaches feedback to the ROOT, regardless of
+  # which run it was actually about.
+  def attach_feedback_trap(root_run, target_run_id, score):
+      root_run["feedback"] = score
+
+  root_trap = {"id": "root-1", "feedback": None}
+  attach_feedback_trap(root_trap, target_run_id="child-2", score=1)
+  print(root_trap.get("feedback"))
+  # 1 -- wrongly attached to the root, even though it was about "child-2"
+
+  # The fix: look up the actual target run, attach feedback there.
+  def attach_feedback(runs_by_id, target_run_id, score):
+      runs_by_id[target_run_id]["feedback"] = score
+
+  runs_by_id = {"root-1": {"id": "root-1", "feedback": None}, "child-2": {"id": "child-2", "feedback": None}}
+  attach_feedback(runs_by_id, "child-2", 1)
+  print(runs_by_id["root-1"]["feedback"])
+  # None -- correctly left untouched, since the feedback was actually about child-2
+starter_code: |
+  root_run = {"id": "root-1", "feedback": None}
+
+  def attach_feedback(root_run, target_run_id, score):
+      root_run["feedback"] = score
+
+  attach_feedback(root_run, target_run_id="child-2", score=1)
+  print(root_run.get("feedback"))
+challenge: |
+  Fix `attach_feedback` so it takes a `runs_by_id` dict and does
+  `runs_by_id[target_run_id]["feedback"] = score`, instead of always
+  writing into the root run. Checking `runs_by_id["root-1"]["feedback"]`
+  afterward should print `None`, not `1`.
+expected_output: |
+  None
+hints:
+  - "Change the function's signature to take runs_by_id instead of a single root_run, and index into it by target_run_id."
+  - "Feedback about a specific step should never leak onto the root run's own feedback field just because the root happened to be convenient to write to."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "runs_by_id\\[target_run_id\\]\\[\"feedback\"\\] = score"
+concept_tags: [langsmith, feedback, run_targeting]

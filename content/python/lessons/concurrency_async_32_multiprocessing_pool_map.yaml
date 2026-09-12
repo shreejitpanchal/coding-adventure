@@ -1,0 +1,67 @@
+id: concurrency_async_32
+title: "multiprocessing.Pool.map Is the Classic Way to Parallelize Across Processes"
+language: python
+level: 322
+objective: "Fix code processing a CPU-bound list sequentially with a plain list comprehension, when multiprocessing.Pool.map fans the work out across worker processes, running it genuinely in parallel across CPU cores."
+explanation: |
+  `multiprocessing.Pool` is the original, classic API for
+  process-based parallelism -- predating `concurrent.futures.
+  ProcessPoolExecutor`, which wraps a similar idea in the same
+  `Executor` interface threads use. `pool.map(func, iterable)` sends
+  each item out to a worker process, runs `func` on it there, and
+  collects the results back in the *same order as the input* -- the
+  process-pool analogue of `ThreadPoolExecutor.map`'s ordering
+  guarantee, just with real parallel execution across CPU cores
+  instead of GIL-limited threads, since each worker is a genuinely
+  separate process.
+
+  The fix replaces the sequential list comprehension with `Pool.map`,
+  guarded by `if __name__ == "__main__":` so worker processes
+  re-importing this module don't re-trigger the pool creation
+  themselves.
+example_code: |
+  # The trap: a plain list comprehension -- runs entirely sequentially.
+  def cpu_bound(n):
+      return sum(i * i for i in range(n))
+
+  def process_all_trap(nums):
+      return [cpu_bound(n) for n in nums]
+
+  # The fix: Pool.map fans the work out across worker PROCESSES.
+  from multiprocessing import Pool
+
+  def process_all(nums):
+      with Pool(2) as pool:
+          return pool.map(cpu_bound, nums)
+
+  if __name__ == "__main__":
+      print(process_all([100, 200]))
+      # [328350, 2646700] -- same correct results, computed across worker processes
+starter_code: |
+  def cpu_bound(n):
+      return sum(i * i for i in range(n))
+
+  def process_all(nums):
+      return [cpu_bound(n) for n in nums]
+
+  if __name__ == "__main__":
+      print(process_all([100, 200]))
+challenge: |
+  Fix `process_all` so it uses `multiprocessing.Pool(2).map(cpu_bound,
+  nums)` inside a `with Pool(2) as pool:` block, instead of a plain
+  sequential list comprehension. Keep the same output:
+  `[328350, 2646700]`.
+expected_output: |
+  [328350, 2646700]
+hints:
+  - "from multiprocessing import Pool, then: with Pool(2) as pool: return pool.map(cpu_bound, nums)."
+  - "Pool.map preserves input order in its results, just like ThreadPoolExecutor.map -- but runs each call in a genuinely separate process, sidestepping the GIL entirely."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 32
+difficulty: deep_dive
+contains_patterns:
+  - "Pool\\(2\\) as pool"
+  - "pool\\.map\\(cpu_bound, nums\\)"
+concept_tags: [multiprocessing, pool, concurrency]

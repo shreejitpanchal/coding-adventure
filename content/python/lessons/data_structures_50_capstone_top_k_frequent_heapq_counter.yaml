@@ -1,0 +1,67 @@
+id: data_structures_50
+title: "Capstone: Top-K Frequent Elements, Combining Counter and heapq"
+language: python
+level: 207
+objective: "Fix a top-k-frequent-elements function that sorts ascending by count and slices the front, when the correct approach ties together this category's Counter and heapq lessons: tally with Counter, then pick the top k by count with heapq.nlargest."
+explanation: |
+  Finding the k most frequent elements is a natural combination of two
+  ideas this category has covered separately: `Counter` for tallying
+  occurrences, and `heapq.nlargest` (with a `key` function, since a
+  `Counter`'s keys aren't directly comparable to each other) for
+  picking the top few by a derived value without a full sort. Sorting
+  ascending by count and slicing the front gets the *least* frequent
+  elements instead -- the exact opposite of what "top-k frequent"
+  means, and a mistake easy to make by reaching for a sort in the
+  wrong direction.
+
+  The bug this exercise fixes sorts ascending by count and takes the
+  first `k`. The fix tallies with `Counter` and selects with
+  `heapq.nlargest`.
+example_code: |
+  # The trap: sorts ASCENDING by count, then takes the first k -- the
+  # LEAST frequent elements, not the most frequent.
+  def top_k_frequent_trap(nums, k):
+      counts = {}
+      for n in nums:
+          counts[n] = counts.get(n, 0) + 1
+      return sorted(counts, key=lambda x: counts[x])[:k]
+
+  print(top_k_frequent_trap([1, 1, 1, 2, 2, 3], 2))
+  # [3, 2] -- WRONG, these are the LEAST frequent, not the most frequent
+
+  # The fix: Counter to tally, heapq.nlargest to pick the top k by count.
+  import heapq
+  from collections import Counter
+
+  def top_k_frequent(nums, k):
+      counts = Counter(nums)
+      return heapq.nlargest(k, counts, key=lambda x: counts[x])
+
+  print(top_k_frequent([1, 1, 1, 2, 2, 3], 2))
+  # [1, 2] -- correctly the two MOST frequent elements
+starter_code: |
+  def top_k_frequent(nums, k):
+      counts = {}
+      for n in nums:
+          counts[n] = counts.get(n, 0) + 1
+      return sorted(counts, key=lambda x: counts[x])[:k]
+
+  print(top_k_frequent([1, 1, 1, 2, 2, 3], 2))
+challenge: |
+  Rewrite `top_k_frequent` to tally with `Counter(nums)` and select the
+  top `k` with `heapq.nlargest(k, counts, key=lambda x: counts[x])`,
+  instead of sorting ascending and slicing the front. It should print
+  `[1, 2]`, not `[3, 2]`.
+expected_output: |
+  [1, 2]
+hints:
+  - "counts = Counter(nums), then return heapq.nlargest(k, counts, key=lambda x: counts[x])."
+  - "Sorting ascending and taking the front gives the SMALLEST counts -- exactly backward from \"most frequent,\" which needs the LARGEST counts."
+xp_reward: 20
+achievement: data_structures_master
+category: data_structures
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "heapq\\.nlargest\\(k, counts, key=lambda x: counts\\[x\\]\\)"
+concept_tags: [counter, heapq, capstone]

@@ -1,0 +1,70 @@
+id: ai_64
+title: "A Duplicated Feature Silently Doubles Its Own Importance"
+language: ai
+level: 64
+objective: "Fix a feature-importance summary that treats two perfectly correlated (duplicate) features as independent signals, silently double-counting the same underlying information."
+explanation: |
+  **Multicollinearity** happens when two or more features carry
+  essentially the same information -- the extreme case being an
+  accidentally duplicated column (the same feature included twice under
+  different names, or two features derived identically from the same
+  source). A naive feature-importance summary that just sums each
+  feature's individual importance score treats these as two separate,
+  independent signals, when they're really one signal counted twice --
+  inflating that underlying signal's apparent total contribution and
+  making it look more influential than it actually is on its own.
+
+  The bug this exercise fixes sums importances feature-by-feature with
+  no awareness that two features might be duplicates of each other. The
+  fix detects duplicate feature *values* across the whole dataset first
+  (comparing each feature's full column of values) and merges their
+  importance scores into one entry before summing -- so a duplicated
+  signal is represented once, honestly, instead of twice.
+example_code: |
+  # The trap: sums every feature's importance independently, even when
+  # two features are literally identical (a duplicate column).
+  def total_importance_trap(feature_values, importances):
+      return sum(importances.values())
+
+  feature_values = {"age": [25, 30, 35], "age_copy": [25, 30, 35], "income": [50000, 60000, 70000]}
+  importances = {"age": 0.4, "age_copy": 0.4, "income": 0.2}
+  print(total_importance_trap(feature_values, importances))   # 1.0 -- "age" effectively counted twice
+
+  # The fix: merge duplicate-valued features into ONE entry before summing.
+  def total_importance(feature_values, importances):
+      seen_values = {}
+      merged = {}
+      for name, values in feature_values.items():
+          key = tuple(values)
+          if key in seen_values:
+              continue   # a duplicate of an already-counted feature -- skip it
+          seen_values[key] = name
+          merged[name] = importances[name]
+      return sum(merged.values())
+
+  print(total_importance(feature_values, importances))   # 0.6 -- "age_copy" correctly excluded as a duplicate
+starter_code: |
+  def total_importance(feature_values, importances):
+      return sum(importances.values())
+
+  feature_values = {"age": [25, 30, 35], "age_copy": [25, 30, 35], "income": [50000, 60000, 70000]}
+  importances = {"age": 0.4, "age_copy": 0.4, "income": 0.2}
+  print(round(total_importance(feature_values, importances), 2))
+challenge: |
+  Fix `total_importance` so it detects features with identical value
+  lists and only counts one of each duplicate group, instead of summing
+  every feature's importance independently. It should print `0.6`, not
+  `1.0`.
+expected_output: |
+  0.6
+hints:
+  - "Track a seen_values dict keyed by tuple(values) (converted to a hashable tuple) -- if that exact value sequence has already been seen under a different feature name, skip it."
+  - "Only add a feature's importance into the running `merged` dict the FIRST time its value sequence is encountered."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 24
+difficulty: deep_dive
+contains_patterns:
+  - "seen_values"
+concept_tags: [ml_fundamentals, multicollinearity, feature_importance]

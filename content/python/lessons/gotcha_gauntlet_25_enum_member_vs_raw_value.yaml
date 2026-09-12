@@ -1,0 +1,72 @@
+id: gotcha_gauntlet_25
+title: "The Status Check That Failed Because an Enum Member Isn't Its Raw Value"
+language: python
+level: 270
+objective: "Fix a comparison between a plain Enum member and its underlying raw value (which is False, since a plain Enum member is not equal to its .value unless the Enum mixes in that value's own type), when comparing against .value directly is what actually works."
+explanation: |
+  A plain `Enum` member is its own distinct object -- `Status.ACTIVE`
+  is not considered equal to the string `"active"` it was defined
+  with, even though `Status.ACTIVE.value == "active"` is `True`. This
+  is different from an Enum that also mixes in the value's type
+  (`class Status(str, Enum):`), where membership in `str` makes the
+  member compare equal to plain strings directly -- a plain `Enum`
+  member offers no such comparison at all. Code migrating from bare
+  string constants to a plain `Enum` can easily end up comparing a
+  member against a raw string left over from the old code, silently
+  getting `False` every time.
+
+  The fix is comparing against `.value` explicitly (`status.value ==
+  "active"`), which reaches the actual underlying string the member
+  was defined with, rather than comparing the member object itself.
+example_code: |
+  # The trap: compares the Enum MEMBER directly against a raw string.
+  from enum import Enum
+
+  class StatusTrap(Enum):
+      ACTIVE = "active"
+      DONE = "done"
+
+  def is_active_trap(status):
+      return status == "active"
+
+  print(is_active_trap(StatusTrap.ACTIVE))
+  # False -- WRONG, a plain Enum member is never equal to a raw string
+
+  # The fix: compare against .value, the actual underlying string.
+  class Status(Enum):
+      ACTIVE = "active"
+      DONE = "done"
+
+  def is_active(status):
+      return status.value == "active"
+
+  print(is_active(Status.ACTIVE))
+  # True -- correctly compares the underlying value
+starter_code: |
+  from enum import Enum
+
+  class Status(Enum):
+      ACTIVE = "active"
+      DONE = "done"
+
+  def is_active(status):
+      return status == "active"
+
+  print(is_active(Status.ACTIVE))
+challenge: |
+  Fix `is_active` so it compares `status.value == "active"`, instead
+  of comparing `status` directly against `"active"`. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "return status.value == \"active\"."
+  - "A plain Enum member is its own distinct object -- it's never equal to its underlying raw value unless the Enum also mixes in that value's type (like str, Enum)."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 25
+difficulty: gotcha
+contains_patterns:
+  - "status\\.value == \"active\""
+concept_tags: [enum, comparison, gotchas]

@@ -1,0 +1,101 @@
+id: concurrency_async_21
+title: "Cancelling a Task Skips Its Cleanup -- Unless CancelledError Is Actually Caught"
+language: python
+level: 311
+objective: "Fix a cancelled task that never gets a chance to clean up, when the coroutine has no handling for CancelledError at all -- catching it (and re-raising, so cancellation still actually happens) is what lets cleanup code run before the task genuinely stops."
+explanation: |
+  `task.cancel()` raises `asyncio.CancelledError` inside the
+  coroutine, at whatever `await` point it's currently suspended on --
+  by default, that just unwinds the coroutine immediately, skipping
+  everything after that point, including any cleanup logic that
+  hasn't been specifically written to run during cancellation. A
+  coroutine that wants a chance to clean up (closing a connection,
+  logging that it was interrupted, releasing a resource) needs to
+  actually catch `CancelledError` around the awaited operation, do its
+  cleanup, and then **re-raise** it -- re-raising matters, since
+  swallowing `CancelledError` entirely would make the task look like
+  it finished normally instead of having been genuinely cancelled.
+
+  The fix wraps the long-running `await` in a `try/except
+  asyncio.CancelledError:`, running cleanup before re-raising.
+example_code: |
+  # The trap: no CancelledError handling at all -- cancellation skips cleanup entirely.
+  import asyncio
+
+  async def worker_trap(log):
+      await asyncio.sleep(10)
+      log.append("cleaned up")     # never reached -- cancelled before this line
+
+  async def main_trap():
+      log = []
+      task = asyncio.create_task(worker_trap(log))
+      await asyncio.sleep(0.01)
+      task.cancel()
+      try:
+          await task
+      except asyncio.CancelledError:
+          pass
+      print(log)
+
+  asyncio.run(main_trap())
+  # [] -- WRONG, cleanup never got a chance to run at all
+
+  # The fix: catch CancelledError, clean up, then re-raise it.
+  async def worker(log):
+      try:
+          await asyncio.sleep(10)
+      except asyncio.CancelledError:
+          log.append("cleaned up")
+          raise
+
+  async def main():
+      log = []
+      task = asyncio.create_task(worker(log))
+      await asyncio.sleep(0.01)
+      task.cancel()
+      try:
+          await task
+      except asyncio.CancelledError:
+          pass
+      print(log)
+
+  asyncio.run(main())
+  # ['cleaned up'] -- correctly got a chance to clean up before actually stopping
+starter_code: |
+  import asyncio
+
+  async def worker(log):
+      await asyncio.sleep(10)
+      log.append("cleaned up")
+
+  async def main():
+      log = []
+      task = asyncio.create_task(worker(log))
+      await asyncio.sleep(0.01)
+      task.cancel()
+      try:
+          await task
+      except asyncio.CancelledError:
+          pass
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Fix `worker` so it wraps `await asyncio.sleep(10)` in a `try/except
+  asyncio.CancelledError:`, appending `"cleaned up"` and then
+  re-raising, instead of having no cancellation handling at all. It
+  should print `['cleaned up']`, not `[]`.
+expected_output: |
+  ['cleaned up']
+hints:
+  - "try: await asyncio.sleep(10) except asyncio.CancelledError: log.append(\"cleaned up\"); raise."
+  - "Cancellation just unwinds the coroutine immediately unless it specifically catches CancelledError -- and re-raising afterward is essential, or the task looks like it finished normally instead of being cancelled."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 21
+difficulty: deep_dive
+contains_patterns:
+  - "except asyncio\\.CancelledError:"
+  - "log\\.append\\(\"cleaned up\"\\)"
+concept_tags: [asyncio, cancellation, concurrency]

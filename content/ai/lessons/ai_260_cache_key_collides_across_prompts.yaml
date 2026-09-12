@@ -1,0 +1,77 @@
+id: ai_260
+title: "A Prompt Cache Keyed by a Fixed Slot Collides Across Different Prompts"
+language: ai
+level: 260
+objective: "Fix a cache that stores every result under the same fixed key regardless of the actual prompt, so two completely different prompts wrongly end up sharing the identical cached response -- distinct from this category's earlier lesson about a cache never being checked at all."
+explanation: |
+  This category's earlier caching lesson covered a cache that was never
+  consulted at all -- this bug is the opposite failure mode: the cache
+  *is* checked and populated, but under one single fixed key instead of
+  the prompt's own text. That means a completely unrelated second
+  prompt "hits" the first prompt's cached response, since as far as the
+  cache is concerned there's only ever one slot -- every prompt, no
+  matter how different, collides into the same entry.
+
+  The bug this exercise fixes checks and stores against a fixed literal
+  key (`"result"`). The fix uses the prompt itself as the cache key, so
+  distinct prompts get distinct entries.
+example_code: |
+  # The trap: uses a FIXED key -- any prompt "hits" the same stale slot.
+  _calls_trap = {"n": 0}
+  def call_llm_trap(prompt):
+      _calls_trap["n"] += 1
+      return f"response to: {prompt}"
+
+  def cached_call_trap(prompt, cache):
+      if "result" in cache:
+          return cache["result"]
+      result = call_llm_trap(prompt)
+      cache["result"] = result
+      return result
+
+  cache = {}
+  r1 = cached_call_trap("prompt A", cache)
+  r2 = cached_call_trap("prompt B", cache)
+  print(r1 == r2)   # True -- WRONG, two different prompts got the same cached response
+
+  # The fix: use the prompt itself as the cache key.
+  def cached_call(prompt, cache):
+      if prompt in cache:
+          return cache[prompt]
+      result = f"response to: {prompt}"
+      cache[prompt] = result
+      return result
+
+  cache2 = {}
+  r1b = cached_call("prompt A", cache2)
+  r2b = cached_call("prompt B", cache2)
+  print(r1b == r2b)   # False -- correctly distinct responses for distinct prompts
+starter_code: |
+  def cached_call(prompt, cache):
+      if "result" in cache:
+          return cache["result"]
+      result = f"response to: {prompt}"
+      cache["result"] = result
+      return result
+
+  cache = {}
+  r1 = cached_call("prompt A", cache)
+  r2 = cached_call("prompt B", cache)
+  print(r1 == r2)
+challenge: |
+  Fix `cached_call` so it checks and stores against `cache[prompt]`
+  (keyed by the actual prompt), instead of the fixed literal key
+  `"result"`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace every \"result\" key with prompt: if prompt in cache: return cache[prompt] ... cache[prompt] = result."
+  - "A cache with only one possible key can never distinguish between two different things being cached -- it's really just a single-slot variable wearing a cache's clothing."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 40
+difficulty: gotcha
+contains_patterns:
+  - "if prompt in cache:"
+concept_tags: [langchain, caching, cache_key_collision]

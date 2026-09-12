@@ -1,0 +1,66 @@
+id: ai_142
+title: "A Tool That Keeps Failing Needs to Stop Being Called, Not Retried Forever"
+language: ai
+level: 142
+objective: "Fix an agent's tool-call wrapper that keeps calling a specific tool no matter how many times it has already failed, instead of tripping a per-tool circuit breaker (this app's Architecture track covers the same pattern generally) once failures cross a threshold."
+explanation: |
+  This category's retry/backoff lesson handles a single call's
+  transient failure -- but if one specific tool has failed many times
+  in a row across many different calls, continuing to call it at all
+  is a different problem backoff alone doesn't solve. A per-tool
+  **circuit breaker** tracks each tool's own recent failure count and,
+  once it crosses a threshold, stops calling that tool entirely for a
+  while -- exactly the same mechanism this app's Architecture track
+  covers in depth, applied here specifically to protect an agent from
+  wasting every remaining turn on a tool that's clearly not working
+  right now.
+
+  The bug this exercise fixes calls a tool regardless of how many
+  consecutive failures it has already recorded. The fix checks the
+  tool's own failure count against a threshold first, refusing to call
+  it (and returning a clear "circuit open" signal instead) once that
+  threshold is crossed.
+example_code: |
+  # The trap: calls the tool NO MATTER how many times it has already
+  # failed in a row -- no circuit breaker at all.
+  def call_tool_trap(tool_fn, failure_counts, tool_name, threshold=3):
+      return tool_fn()   # bug: never checks failure_counts at all
+
+  failure_counts = {"flaky_api": 5}   # already failed 5 times in a row
+  def flaky_api():
+      raise RuntimeError("still down")
+  # call_tool_trap(flaky_api, failure_counts, "flaky_api")  # crashes -- keeps trying a tool that's clearly broken
+
+  # The fix: check the failure count against a threshold BEFORE calling.
+  def call_tool(tool_fn, failure_counts, tool_name, threshold=3):
+      if failure_counts.get(tool_name, 0) >= threshold:
+          return "CIRCUIT_OPEN"
+      return tool_fn()
+
+  print(call_tool(flaky_api, failure_counts, "flaky_api"))   # 'CIRCUIT_OPEN' -- correctly refuses to call it at all
+starter_code: |
+  def call_tool(tool_fn, failure_counts, tool_name, threshold=3):
+      return tool_fn()
+
+  failure_counts = {"flaky_api": 5}
+  def flaky_api():
+      raise RuntimeError("still down")
+  print(call_tool(flaky_api, failure_counts, "flaky_api"))
+challenge: |
+  Fix `call_tool` so it checks `failure_counts.get(tool_name, 0) >=
+  threshold` first, returning `"CIRCUIT_OPEN"` without calling `tool_fn`
+  at all when the threshold is met. It should print `CIRCUIT_OPEN`, not
+  raise a `RuntimeError`.
+expected_output: |
+  CIRCUIT_OPEN
+hints:
+  - "Add a check at the top: if failure_counts.get(tool_name, 0) >= threshold: return \"CIRCUIT_OPEN\"."
+  - "Only call tool_fn() if that check doesn't trigger -- with 5 recorded failures already at or above the threshold of 3, the tool should never actually be called."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 12
+difficulty: gotcha
+contains_patterns:
+  - "CIRCUIT_OPEN"
+concept_tags: [agentic_frameworks, circuit_breaker, tool_calling]

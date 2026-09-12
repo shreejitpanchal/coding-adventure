@@ -1,0 +1,58 @@
+id: core_refresher_12
+title: "A Bare / in a Signature Forces Earlier Arguments to Be Positional-Only"
+language: python
+level: 125
+objective: "Add a bare '/' to a function signature so its parameters can no longer be passed by keyword -- useful when the parameter names themselves aren't meant to be part of the function's public contract."
+explanation: |
+  A lone `/` in a function signature marks the opposite boundary from
+  the bare `*` in this category's previous lesson: every parameter
+  *before* it can only be passed positionally, never by keyword name.
+  This matters when a parameter's name is really just an internal
+  implementation detail rather than something callers should rely on
+  -- allowing `calc(x=1, y=2)` to work today quietly locks in `x` and
+  `y` as part of the function's permanent public interface, since
+  renaming them later would break every caller using the keyword form.
+  Marking them positional-only keeps that freedom open.
+example_code: |
+  # No restriction -- x and y can be passed by keyword, locking their
+  # names into the function's public contract.
+  def calc_loose(x, y):
+      return x + y
+
+  print(calc_loose(x=1, y=2))              # 3 -- works, but now x/y are part of the API
+
+  # A bare / makes everything before it positional-only.
+  def calc(x, y, /):
+      return x + y
+
+  try:
+      calc(x=1, y=2)
+  except TypeError:
+      print("blocked")
+  # "blocked" -- x and y can no longer be passed by keyword at all
+
+  print(calc(1, 2))                        # 3 -- positional calls still work fine
+starter_code: |
+  def calc(x, y):
+      return x + y
+
+  try:
+      print(calc(x=1, y=2))
+  except TypeError:
+      print("blocked")
+challenge: |
+  Fix `calc` so it has a bare `/` after its parameters, making them
+  positional-only. It should print `blocked`, not `3`.
+expected_output: |
+  blocked
+hints:
+  - "Add a bare / as the last item in the parameter list: def calc(x, y, /):."
+  - "Anything before a bare / in the signature can only be passed positionally -- passing it by keyword now raises TypeError."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "def calc\\(x, y, /\\):"
+concept_tags: [positional_only_parameters, function_signatures]

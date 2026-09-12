@@ -1,0 +1,61 @@
+id: ai_72
+title: "K-Means Can Converge to Different Clusters from Different Starting Points"
+language: ai
+level: 72
+objective: "Fix a k-means runner that only tries one random centroid initialization and trusts whatever it converges to, instead of running multiple initializations and keeping the best result -- since k-means can genuinely land on different, unequally good clusterings depending on where it started."
+explanation: |
+  K-means is a **local** optimization: it starts from some initial
+  guess at cluster centers and repeatedly refines them, but it can
+  converge to a genuinely different final clustering (with a
+  meaningfully worse total within-cluster distance) depending purely on
+  where those initial centroids happened to land -- an unlucky starting
+  point can get stuck in a worse local arrangement than a luckier one
+  would have found on the exact same data. Running k-means only once
+  and trusting the result means silently accepting whatever quality
+  that one particular starting point happened to produce.
+
+  The bug this exercise fixes runs k-means exactly once and returns
+  that single result unconditionally. The fix runs it multiple times
+  from different starting points and keeps whichever run achieved the
+  lowest total within-cluster distance (inertia) -- a standard,
+  practical way to reduce the risk of settling for an unlucky
+  initialization's worse result.
+example_code: |
+  # The trap: runs k-means ONCE and trusts it, regardless of whether a
+  # different starting point might have found a meaningfully better result.
+  def best_clustering_trap(runs):
+      return runs[0]   # bug: only ever looks at the first run
+
+  # Each "run" here is a (inertia, labels) pair from one k-means attempt
+  # with a different random starting point.
+  runs = [(150.2, "run_a_labels"), (98.7, "run_b_labels"), (203.5, "run_c_labels")]
+  print(best_clustering_trap(runs))   # (150.2, 'run_a_labels') -- NOT the best available result
+
+  # The fix: run several times, keep whichever has the LOWEST inertia.
+  def best_clustering(runs):
+      return min(runs, key=lambda r: r[0])
+
+  print(best_clustering(runs))   # (98.7, 'run_b_labels') -- correctly picks the best of several attempts
+starter_code: |
+  def best_clustering(runs):
+      return runs[0]
+
+  runs = [(150.2, "run_a_labels"), (98.7, "run_b_labels"), (203.5, "run_c_labels")]
+  print(best_clustering(runs))
+challenge: |
+  Fix `best_clustering` so it returns whichever run has the lowest
+  inertia (the first element of each tuple), instead of just the first
+  run in the list. It should print `(98.7, 'run_b_labels')`.
+expected_output: |
+  (98.7, 'run_b_labels')
+hints:
+  - "Use min(runs, key=lambda r: r[0]) to find the run with the smallest inertia value."
+  - "Don't just return runs[0] -- that's whichever run happened to be listed first, not necessarily the best one."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "min\\(runs, key=lambda r: r\\[0\\]\\)"
+concept_tags: [ml_fundamentals, kmeans, clustering, initialization]

@@ -1,0 +1,61 @@
+id: idioms_gotchas_46
+title: "strip() Removes Any of the Given Characters -- Not a Literal Substring"
+language: python
+level: 115
+objective: "Fix a prefix-removal function that uses str.strip() with a multi-character argument, when strip() treats that argument as a SET of individual characters to remove from each end -- not the literal substring it looks like -- potentially stripping extra characters that happen to belong to that set."
+explanation: |
+  `text.strip(chars)` doesn't remove the literal substring `chars` --
+  it treats `chars` as a *set* of individual characters, repeatedly
+  removing any of them found at either end of the string, one
+  character at a time, until it hits one that isn't in the set. For a
+  prefix like `"http://"`, the set is `{'h', 't', 'p', ':', '/'}` --
+  and if the text right after that prefix happens to start with any of
+  those same characters (a domain starting with `"t"`, say), `strip()`
+  keeps eating into content it was never meant to touch.
+
+  The bug this exercise fixes uses `text.strip("http://")`, treating it
+  as a substring to remove. The fix checks for the literal prefix with
+  `startswith()` and slices it off explicitly.
+example_code: |
+  # The trap: strip() treats "http://" as a SET of characters to
+  # remove, not a literal substring -- it can eat extra characters
+  # that happen to belong to that set.
+  def clean_prefix_trap(text):
+      return text.strip("http://")
+
+  print(clean_prefix_trap("http://test.com"))
+  # "est.com" -- WRONG, stripped an extra leading "t" from "test" too,
+  # since 't' is one of the characters being stripped
+
+  # The fix: check for the literal prefix, slice it off explicitly.
+  def clean_prefix(text):
+      prefix = "http://"
+      if text.startswith(prefix):
+          return text[len(prefix):]
+      return text
+
+  print(clean_prefix("http://test.com"))
+  # "test.com" -- correctly removed only the actual literal prefix
+starter_code: |
+  def clean_prefix(text):
+      return text.strip("http://")
+
+  print(clean_prefix("http://test.com"))
+challenge: |
+  Fix `clean_prefix` so it checks `text.startswith(prefix)` and returns
+  `text[len(prefix):]`, instead of `text.strip("http://")` (which
+  removes characters, not a substring). It should print `test.com`,
+  not `est.com`.
+expected_output: |
+  test.com
+hints:
+  - "Define prefix = \"http://\", then: if text.startswith(prefix): return text[len(prefix):]."
+  - "strip()'s argument is always treated as a SET of characters to remove, one at a time from each end -- never as a literal substring to match."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 46
+difficulty: gotcha
+contains_patterns:
+  - "text\\[len\\(prefix\\):\\]"
+concept_tags: [idioms, string_strip, common_mistakes]

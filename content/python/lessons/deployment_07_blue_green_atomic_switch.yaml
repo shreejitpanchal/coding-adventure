@@ -1,0 +1,75 @@
+id: deployment_07
+title: "Blue-Green Deployment: Switch a Pointer, Don't Rebuild in Place"
+language: python
+level: 397
+objective: "Fix a deploy that upgrades the CURRENTLY live environment in place (leaving no safe rollback target if something goes wrong mid-upgrade), when blue-green deployment prepares the new version in the INACTIVE environment first, then switches an active pointer atomically -- the old environment stays intact as an instant rollback target."
+explanation: |
+  Upgrading whichever environment is currently serving live traffic,
+  in place, means there's no safe fallback the instant anything goes
+  wrong mid-upgrade -- the old, known-good version has already been
+  overwritten before the new one is confirmed working. Blue-green
+  deployment avoids this by keeping two complete environments
+  ("blue" and "green"), only ever deploying a new version into
+  whichever one is currently *inactive*, and switching a single
+  "active" pointer to it only once it's ready -- the previously-active
+  environment is left completely untouched, so rolling back is just
+  switching the pointer straight back, instantly, with the old version
+  still fully intact and ready.
+
+  The fix deploys into the inactive environment, then flips the
+  pointer, instead of overwriting the active one directly.
+example_code: |
+  # The trap: upgrades the ACTIVE environment directly -- no safe rollback target.
+  environments_trap = {"blue": "v1", "green": "v1"}
+  active_trap = "blue"
+
+  def deploy_trap(new_version):
+      environments_trap[active_trap] = new_version   # overwrites the LIVE one directly!
+
+  deploy_trap("v2")
+  print(environments_trap)
+  # {'blue': 'v2', 'green': 'v1'} -- "blue" is now the ONLY place v1 could be
+  # rolled back to would require an actual re-deploy, not an instant switch
+
+  # The fix: deploy into the INACTIVE environment, then switch the pointer.
+  environments = {"blue": "v1", "green": "v1"}
+  active = "blue"
+
+  def deploy(new_version):
+      global active
+      inactive = "green" if active == "blue" else "blue"
+      environments[inactive] = new_version
+      active = inactive
+
+  deploy("v2")
+  print(environments, active)
+  # {'blue': 'v1', 'green': 'v2'} green -- "blue" still holds v1, an instant
+  # rollback target; only the pointer moved, nothing live was overwritten
+starter_code: |
+  environments = {"blue": "v1", "green": "v1"}
+  active = "blue"
+
+  def deploy(new_version):
+      environments[active] = new_version
+
+  deploy("v2")
+  print(environments, active)
+challenge: |
+  Fix `deploy` so it computes `inactive` (the environment NOT
+  currently active), deploys the new version there instead of into
+  `active`, and then updates the global `active` to point at it. It
+  should print `{'blue': 'v1', 'green': 'v2'} green`, not
+  `{'blue': 'v2', 'green': 'v1'} blue`.
+expected_output: |
+  {'blue': 'v1', 'green': 'v2'} green
+hints:
+  - "global active, then: inactive = \"green\" if active == \"blue\" else \"blue\"; environments[inactive] = new_version; active = inactive."
+  - "Blue-green deployment never overwrites the currently-live environment -- it deploys into the INACTIVE one, then switches a pointer, leaving the old version fully intact as an instant rollback target."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 7
+difficulty: deep_dive
+contains_patterns:
+  - "inactive = \"green\" if active == \"blue\" else \"blue\""
+concept_tags: [deployment, blue_green, rollback]

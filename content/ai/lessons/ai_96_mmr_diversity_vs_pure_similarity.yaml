@@ -1,0 +1,80 @@
+id: ai_96
+title: "Pure Top-K Similarity Can Return Near-Duplicates Instead of Diverse Results"
+language: ai
+level: 96
+objective: "Fix a top-k selector that always picks the next-most-similar candidate regardless of how similar it already is to what's been selected, instead of balancing relevance against diversity the way Maximal Marginal Relevance (MMR) does."
+explanation: |
+  Selecting the top-k most similar chunks by similarity score alone
+  can produce a result set that's technically all highly relevant, but
+  redundant -- if three near-identical chunks all score highest, pure
+  top-k happily returns all three, wasting slots that could have gone
+  to a fourth, meaningfully different but still-relevant chunk. **MMR**
+  (Maximal Marginal Relevance) addresses this directly: after picking
+  the single most relevant candidate, each subsequent pick balances
+  its own relevance against how similar it already is to everything
+  already selected, penalizing near-duplicates of what's already in
+  the result.
+
+  The bug this exercise fixes always greedily picks the next-highest
+  relevance-scored candidate, with no penalty for redundancy against
+  what's already selected. The fix subtracts a redundancy penalty
+  (similarity to the most similar already-selected item) from each
+  candidate's relevance score before picking, correctly favoring a
+  diverse pick over another near-duplicate of what's already there.
+example_code: |
+  # The trap: always picks the next-highest RELEVANCE score, with no
+  # penalty for how redundant it is with what's already selected.
+  def select_topk_trap(candidates, k):
+      ranked = sorted(candidates, key=lambda c: c["relevance"], reverse=True)
+      return [c["id"] for c in ranked[:k]]
+
+  candidates = [
+      {"id": "a", "relevance": 0.95, "similarity_to_a": 1.0},
+      {"id": "b", "relevance": 0.94, "similarity_to_a": 0.98},   # near-duplicate of "a"
+      {"id": "c", "relevance": 0.80, "similarity_to_a": 0.10},   # genuinely different from "a"
+  ]
+  print(select_topk_trap(candidates, k=2))   # ['a', 'b'] -- b is nearly identical to a, wasting a slot
+
+  # The fix: penalize redundancy against what's already selected (MMR-style).
+  def select_mmr(candidates, k, lambda_param=0.7):
+      selected = [max(candidates, key=lambda c: c["relevance"])]
+      remaining = [c for c in candidates if c["id"] != selected[0]["id"]]
+      while len(selected) < k and remaining:
+          def mmr_score(c):
+              return lambda_param * c["relevance"] - (1 - lambda_param) * c["similarity_to_a"]
+          best = max(remaining, key=mmr_score)
+          selected.append(best)
+          remaining.remove(best)
+      return [c["id"] for c in selected]
+
+  print(select_mmr(candidates, k=2))   # ['a', 'c'] -- correctly favors the diverse pick over the near-duplicate
+starter_code: |
+  def select_mmr(candidates, k, lambda_param=0.7):
+      ranked = sorted(candidates, key=lambda c: c["relevance"], reverse=True)
+      return [c["id"] for c in ranked[:k]]
+
+  candidates = [
+      {"id": "a", "relevance": 0.95, "similarity_to_a": 1.0},
+      {"id": "b", "relevance": 0.94, "similarity_to_a": 0.98},
+      {"id": "c", "relevance": 0.80, "similarity_to_a": 0.10},
+  ]
+  print(select_mmr(candidates, k=2))
+challenge: |
+  Fix `select_mmr` so it picks the most relevant candidate first, then
+  for each subsequent pick, chooses whichever remaining candidate
+  maximizes `lambda_param * relevance - (1 - lambda_param) *
+  similarity_to_a`, instead of just taking the top-k by relevance alone.
+  It should print `['a', 'c']`, not `['a', 'b']`.
+expected_output: |
+  ['a', 'c']
+hints:
+  - "Start selected with the single highest-relevance candidate, then remove it from a `remaining` list."
+  - "Repeatedly pick from `remaining` using max(remaining, key=mmr_score) where mmr_score subtracts a redundancy penalty, until k items are selected."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 11
+difficulty: deep_dive
+contains_patterns:
+  - "lambda_param \\* c\\[.relevance.\\] - \\(1 - lambda_param\\)"
+concept_tags: [rag, mmr, diversity, retrieval]

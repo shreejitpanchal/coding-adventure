@@ -1,0 +1,63 @@
+id: idioms_gotchas_32
+title: "Formatting a Tuple With % Needs an Extra Layer of Tupling"
+language: python
+level: 101
+objective: "Fix a '%'-style format call that passes a tuple as the single value to substitute, when '%' treats any tuple on its right-hand side as MULTIPLE substitution values -- not one -- raising a TypeError the moment the value being formatted happens to itself be a tuple."
+explanation: |
+  The `%` string-formatting operator's right-hand side is special-cased:
+  if it's a tuple, each element is matched up with a separate `%`
+  placeholder in the format string, one for one. That's exactly the
+  behavior you want when formatting several values (`"%s is %d" % (name,
+  age)`) -- but it breaks the moment the *single* value you're actually
+  trying to format happens to itself be a tuple, since `%` can't tell
+  "one value that happens to be a tuple" apart from "several separate
+  values." Wrapping that single tuple in another, one-element tuple
+  (`(point,)`) tells `%` unambiguously "this is one value," resolving
+  the ambiguity.
+
+  The bug this exercise fixes passes the tuple directly. The fix wraps
+  it in an extra one-element tuple.
+example_code: |
+  # The trap: passes the tuple DIRECTLY -- % tries to unpack it as
+  # MULTIPLE substitution values instead of treating it as just one.
+  def format_coords_trap(point):
+      return "Point: %s" % point
+
+  try:
+      format_coords_trap((3, 4))
+  except TypeError:
+      print("unhandled")
+  # "unhandled" -- TypeError: not all arguments converted
+
+  # The fix: wrap it in an extra one-element tuple, telling % this is
+  # ONE value.
+  def format_coords(point):
+      return "Point: %s" % (point,)
+
+  print(format_coords((3, 4)))
+  # "Point: (3, 4)" -- correctly treated as a single value
+starter_code: |
+  def format_coords(point):
+      return "Point: %s" % point
+
+  try:
+      print(format_coords((3, 4)))
+  except TypeError:
+      print("unhandled")
+challenge: |
+  Fix `format_coords` so it uses `"Point: %s" % (point,)`, wrapping
+  `point` in an extra one-element tuple, instead of `"Point: %s" %
+  point` directly. It should print `Point: (3, 4)`, not `unhandled`.
+expected_output: |
+  Point: (3, 4)
+hints:
+  - "Wrap point in a one-element tuple: % (point,) -- note the trailing comma, which is what makes it a tuple."
+  - "% treats any tuple on its right side as a list of SEPARATE substitution values -- wrapping it again tells % \"this whole thing is just one value.\""
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 32
+difficulty: gotcha
+contains_patterns:
+  - "% \\(point,\\)"
+concept_tags: [idioms, string_formatting, percent_operator]

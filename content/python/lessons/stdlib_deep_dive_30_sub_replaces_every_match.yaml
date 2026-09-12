@@ -1,0 +1,56 @@
+id: stdlib_deep_dive_30
+title: "re.sub Replaces Every Match, Not Just the First -- Unless count Limits It"
+language: python
+level: 231
+objective: "Fix code using str.replace on a variable pattern (only works for a literal substring) when the target actually varies -- re.sub replaces every match of a real regex pattern."
+explanation: |
+  `str.replace(old, new)` only replaces an exact, literal substring --
+  it has no notion of a pattern with variable parts. Redacting "any
+  sequence of digits" isn't expressible as a literal substring at all,
+  since the actual digits differ every time. `re.sub(pattern, repl, s)`
+  replaces every match of a genuine regex pattern, handling exactly
+  this kind of "replace anything that looks like X" requirement that a
+  literal substring replace structurally cannot.
+
+  The bug this exercise fixes tries to redact digits with a hardcoded
+  literal substring, which only removes that one exact number if it
+  happens to appear. The fix uses `re.sub(r"\d+", "#", s)` to redact
+  every run of digits, whatever they are.
+example_code: |
+  # The trap: replace() only removes ONE exact literal substring.
+  def redact_trap(s):
+      return s.replace("123", "#")
+
+  print(redact_trap("id 123 and id 456"))
+  # "id # and id 456" -- WRONG, only the literal "123" was ever a target
+
+  # The fix: re.sub replaces every match of an actual pattern.
+  import re
+
+  def redact(s):
+      return re.sub(r"\d+", "#", s)
+
+  print(redact("id 123 and id 456"))
+  # "id # and id #" -- correctly redacts every run of digits, whatever they are
+starter_code: |
+  def redact(s):
+      return s.replace("123", "#")
+
+  print(redact("id 123 and id 456"))
+challenge: |
+  Fix `redact` so it uses `re.sub(r"\d+", "#", s)` (imported from `re`)
+  instead of a literal `str.replace`. It should print
+  `"id # and id #"`, not `"id # and id 456"`.
+expected_output: |
+  id # and id #
+hints:
+  - "import re, then: return re.sub(r\"\\d+\", \"#\", s)."
+  - "str.replace only matches one exact literal substring -- re.sub matches every occurrence of an actual pattern, whatever the digits are."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 30
+difficulty: gotcha
+contains_patterns:
+  - "re\\.sub\\(r\"\\\\d\\+\", \"#\", s\\)"
+concept_tags: [regex, re_module]

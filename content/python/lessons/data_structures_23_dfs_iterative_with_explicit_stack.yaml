@@ -1,0 +1,79 @@
+id: data_structures_23
+title: "An Explicit Stack Replaces Recursion for Depth-First Search"
+language: python
+level: 180
+objective: "Rewrite a recursive depth-first search as an iterative one using an explicit stack, avoiding Python's recursion depth limit on very deep graphs."
+explanation: |
+  Recursive depth-first search is a natural fit for the problem --
+  each recursive call handles one node, and the call stack itself
+  tracks where to backtrack to -- but Python's recursion depth limit
+  means a sufficiently deep graph can overflow it. An explicit stack
+  (a plain list, using `.append()`/`.pop()` from the same end) makes
+  the same backtracking mechanism visible and manual instead of
+  relying on the interpreter's own call stack, with no recursion depth
+  limit involved at all. Pushing each node's neighbors in *reversed*
+  order is what preserves the same left-to-right visiting order the
+  recursive version produces naturally -- the last neighbor pushed is
+  the first one popped and visited next.
+example_code: |
+  # Recursive DFS -- relies on the interpreter's own call stack.
+  graph = {"A": ["B", "C"], "B": ["D", "E"], "C": ["F"], "D": [], "E": [], "F": []}
+
+  def dfs_recursive(graph, node, visited=None):
+      if visited is None:
+          visited = []
+      visited.append(node)
+      for neighbor in graph[node]:
+          if neighbor not in visited:
+              dfs_recursive(graph, neighbor, visited)
+      return visited
+
+  print(dfs_recursive(graph, "A"))
+  # ['A', 'B', 'D', 'E', 'C', 'F']
+
+  # Iterative DFS -- an explicit stack, no recursion at all.
+  def dfs_iterative(graph, start):
+      visited = []
+      stack = [start]
+      while stack:
+          node = stack.pop()
+          if node not in visited:
+              visited.append(node)
+              for neighbor in reversed(graph[node]):
+                  if neighbor not in visited:
+                      stack.append(neighbor)
+      return visited
+
+  print(dfs_iterative(graph, "A"))
+  # ['A', 'B', 'D', 'E', 'C', 'F'] -- same order, no recursion needed
+starter_code: |
+  graph = {"A": ["B", "C"], "B": ["D", "E"], "C": ["F"], "D": [], "E": [], "F": []}
+
+  def dfs(graph, node, visited=None):
+      if visited is None:
+          visited = []
+      visited.append(node)
+      for neighbor in graph[node]:
+          if neighbor not in visited:
+              dfs(graph, neighbor, visited)
+      return visited
+
+  print(dfs(graph, "A"))
+challenge: |
+  Rewrite `dfs` as an iterative function using an explicit stack (list)
+  instead of recursion, pushing each node's neighbors in `reversed()`
+  order to preserve the same visiting order. Keep the same output:
+  ['A', 'B', 'D', 'E', 'C', 'F'].
+expected_output: |
+  ['A', 'B', 'D', 'E', 'C', 'F']
+hints:
+  - "stack = [start], then while stack: node = stack.pop(); if node not in visited: visited.append(node); push reversed(graph[node])'s unvisited neighbors."
+  - "Pushing neighbors in REVERSED order is what preserves left-to-right visiting order -- the last one pushed is the first one popped next."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 23
+difficulty: core
+contains_patterns:
+  - "for neighbor in reversed\\(graph\\[node\\]\\):"
+concept_tags: [dfs, stacks, graphs]

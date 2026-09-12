@@ -1,0 +1,106 @@
+id: ai_315
+title: "Capstone: Checkpoint Timing and State Merging, Fixed Together"
+language: ai
+level: 315
+objective: "Fix a pipeline runner that combines this category's checkpoint-timing lesson and its state-merging lesson into one composite bug -- a checkpoint taken before the node runs, feeding a node that replaces state instead of merging into it -- so only fixing both together produces a checkpoint that actually reflects the complete, accumulated state."
+explanation: |
+  This category opened with two of its most important lessons: a node
+  must merge its own contribution into a copy of the state it received,
+  not replace the whole thing, and a checkpoint must be taken *after*
+  a node finishes, not before. Either bug alone already breaks
+  checkpointing -- taking the snapshot too early misses whatever the
+  node was about to contribute, and a node that replaces state instead
+  of merging loses whatever came before it, regardless of when the
+  snapshot happens to be taken. This capstone combines both defects
+  into one function, and only fixing both together produces a
+  checkpoint that genuinely reflects the graph's accumulated state at
+  that point.
+
+  The bug this exercise fixes takes the checkpoint before the node
+  runs, and the node itself returns a brand-new dict with only its own
+  key. The fix takes the checkpoint after the node runs, and the node
+  merges its contribution into a copy of the state it received.
+example_code: |
+  # The trap: checkpoint taken BEFORE the node runs, AND the node
+  # REPLACES state instead of merging into it.
+  def classify_trap(state):
+      return {"category": "safe"}
+
+  nodes = {"classify": classify_trap}
+  edges = {"classify": "END"}
+
+  def run_pipeline_trap(nodes, edges, start, end, checkpoints):
+      current = start
+      state = {"order_id": "A1"}
+      while current != end:
+          checkpoints[current] = dict(state)
+          state = nodes[current](state)
+          current = edges[current]
+      return checkpoints
+
+  checkpoints = {}
+  run_pipeline_trap(nodes, edges, "classify", "END", checkpoints)
+  print(sorted(checkpoints["classify"].keys()))
+  # ['order_id'] -- missing "category" entirely (checkpoint taken too early)
+
+  # The fix: checkpoint taken AFTER the node runs, AND the node merges
+  # its contribution into a copy of the received state.
+  def classify(state):
+      new_state = dict(state)
+      new_state["category"] = "safe"
+      return new_state
+
+  nodes2 = {"classify": classify}
+  edges2 = {"classify": "END"}
+
+  def run_pipeline(nodes, edges, start, end, checkpoints):
+      current = start
+      state = {"order_id": "A1"}
+      while current != end:
+          state = nodes[current](state)
+          checkpoints[current] = dict(state)
+          current = edges[current]
+      return checkpoints
+
+  checkpoints2 = {}
+  run_pipeline(nodes2, edges2, "classify", "END", checkpoints2)
+  print(sorted(checkpoints2["classify"].keys()))
+  # ['category', 'order_id'] -- correctly reflects the complete, merged, post-node state
+starter_code: |
+  def classify(state):
+      return {"category": "safe"}
+
+  nodes = {"classify": classify}
+  edges = {"classify": "END"}
+
+  def run_pipeline(nodes, edges, start, end, checkpoints):
+      current = start
+      state = {"order_id": "A1"}
+      while current != end:
+          checkpoints[current] = dict(state)
+          state = nodes[current](state)
+          current = edges[current]
+      return checkpoints
+
+  checkpoints = {}
+  run_pipeline(nodes, edges, "classify", "END", checkpoints)
+  print(sorted(checkpoints["classify"].keys()))
+challenge: |
+  Fix both bugs together: make `classify` merge its own key into a copy
+  of the state it receives (`new_state = dict(state); new_state
+  ["category"] = "safe"`), and move `checkpoints[current] = dict(state)`
+  to after `state = nodes[current](state)` runs. It should print
+  `['category', 'order_id']`, not `['order_id']`.
+expected_output: |
+  ['category', 'order_id']
+hints:
+  - "Fix classify first: new_state = dict(state); new_state[\"category\"] = \"safe\"; return new_state."
+  - "Then reorder run_pipeline's loop body: state = nodes[current](state) has to run BEFORE checkpoints[current] = dict(state), not after."
+xp_reward: 20
+achievement: langgraph_master
+category: langgraph
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "new_state\\[\"category\"\\] = \"safe\""
+concept_tags: [langgraph, capstone, checkpointing, state_merging]

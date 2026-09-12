@@ -1,0 +1,54 @@
+id: ai_362
+title: "A Translated Task Needs Its Own Session ID to Track a Conversation"
+language: ai
+level: 362
+objective: "Fix a task builder that never attaches a session id, when a multi-turn conversation depends on every task carrying the id that ties it back to the specific session it belongs to -- without it, downstream code has no way to group related turns together."
+explanation: |
+  A single conversation spans several separate tasks over time -- one
+  per user message -- and grouping them back together into "this one
+  conversation" depends entirely on each task carrying its own
+  `session_id`. A task built with no session id at all can still be
+  processed on its own, but nothing downstream can tell it apart from
+  an unrelated task in a completely different conversation.
+
+  The bug this exercise fixes omits `session_id` from the built task
+  entirely. The fix includes it.
+example_code: |
+  # The trap: never attaches session_id at all -- downstream code
+  # can't tell which conversation this task belongs to.
+  def build_task_trap(raw_payload, session_id):
+      return {"text": raw_payload["message"]}
+
+  task_trap = build_task_trap({"message": "hi"}, session_id="sess-42")
+  print("session_id" in task_trap)
+  # False
+
+  # The fix: include the session id in the built task.
+  def build_task(raw_payload, session_id):
+      return {"text": raw_payload["message"], "session_id": session_id}
+
+  task = build_task({"message": "hi"}, session_id="sess-42")
+  print("session_id" in task)
+  # True -- correctly tagged with the session it belongs to
+starter_code: |
+  def build_task(raw_payload, session_id):
+      return {"text": raw_payload["message"]}
+
+  task = build_task({"message": "hi"}, session_id="sess-42")
+  print("session_id" in task)
+challenge: |
+  Fix `build_task` so it also includes `"session_id": session_id` in
+  the returned dict. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"session_id\": session_id as a second key in the returned dict, alongside \"text\"."
+  - "Without this field, nothing downstream can tell which conversation a given task is actually part of."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 7
+difficulty: warmup
+contains_patterns:
+  - "\"session_id\": session_id"
+concept_tags: [solace_agent_mesh, entrypoint, session_tracking]

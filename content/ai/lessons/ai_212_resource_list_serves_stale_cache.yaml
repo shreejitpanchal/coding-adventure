@@ -1,0 +1,51 @@
+id: ai_212
+title: "A Resource List Shouldn't Keep Serving a Stale Cache Forever"
+language: ai
+level: 212
+objective: "Fix a resource-listing function that always returns the cached list regardless of whether the live set of resources has actually changed, when it should reflect the current state instead of whatever was cached at some earlier point."
+explanation: |
+  Caching a resource list is a reasonable optimization, but only if
+  something invalidates it when the underlying set of resources
+  actually changes -- otherwise a client keeps seeing an outdated list
+  forever, missing anything added since the cache was built and still
+  seeing anything removed. A listing function that always hands back
+  the cache, with no path that ever refreshes it, is really just
+  permanently frozen rather than genuinely cached.
+
+  The bug this exercise fixes always returns the stale `cache`
+  parameter, ignoring the current live set entirely. The fix returns
+  the live set, reflecting what's actually there right now.
+example_code: |
+  # The trap: always returns the STALE cache, even after the live set
+  # of resources has changed.
+  def list_resources_trap(cache, live_resources):
+      return cache
+
+  print(len(list_resources_trap(["a"], ["a", "b"])))   # 1 -- missing "b", which was added since the cache was built
+
+  # The fix: reflect the current live set.
+  def list_resources(cache, live_resources):
+      return live_resources
+
+  print(len(list_resources(["a"], ["a", "b"])))   # 2 -- correctly reflects what's actually there right now
+starter_code: |
+  def list_resources(cache, live_resources):
+      return cache
+
+  print(len(list_resources(["a"], ["a", "b"])))
+challenge: |
+  Fix `list_resources` so it returns `live_resources` instead of the
+  stale `cache` parameter. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Just return live_resources instead of cache."
+  - "A cache with no invalidation path isn't actually a cache -- it's a permanently frozen snapshot."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 37
+difficulty: warmup
+contains_patterns:
+  - "return live_resources"
+concept_tags: [mcp, resources, cache_invalidation]

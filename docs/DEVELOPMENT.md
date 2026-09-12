@@ -18,8 +18,8 @@ own 6 topic categories (the same set as C++), executed directly against
 a local `node` toolchain with no separate compile step. AI is a full
 top-level track (not a Python category) with 9 topic categories —
 `ml_fundamentals`, `rag`, `agentic_frameworks`, `mcp`, `microsoft_agent_365`,
-`langchain`, `langgraph`, `langsmith`, `solace_agent_mesh`, 5 exercises
-each, 45 total — executing on the exact same Python engine instance as
+`langchain`, `langgraph`, `langsmith`, `solace_agent_mesh`, 50 exercises
+each except `microsoft_agent_365`'s 5, 405 total — executing on the exact same Python engine instance as
 the Python track, since its content is plain, dependency-free Python
 under the hood (including the LangChain/LangGraph/LangSmith/Solace
 Agent Mesh categories, which hand-roll each framework's core mechanic
@@ -241,64 +241,85 @@ dedicated top-level track was the better fit.
 
 `ai` (9 categories — `ml_fundamentals`, `rag`, `agentic_frameworks`,
 `mcp`, `microsoft_agent_365`, `langchain`, `langgraph`, `langsmith`,
-`solace_agent_mesh`, 5 exercises each, 45 exercises total) is plain,
+`solace_agent_mesh`, 50 exercises each except `microsoft_agent_365`'s
+5, 405 exercises total) is plain,
 hand-rolled, dependency-free Python under the hood (no numpy, no
 network access, no LLM API calls, and — for the four framework
 categories — no actual `langchain`/`langgraph`/`langsmith`/Solace
 Agent Mesh package installed either), since
 this app's "real execution, exact deterministic output" model has no
 way to verify a live model call or network response, and the app is
-explicitly 100% offline. `ml_fundamentals` covers a train/test split
-that owns its own seeded `random.Random` instead of depending on global
-state, data leakage from fitting a scaler on combined train+test data,
-thresholding probabilities before computing accuracy, gradient
-descent's sign convention, and evaluating on held-out data instead of
-training data; `rag` covers cosine similarity vs. raw dot product,
-top-k retrieval's sort direction, chunk overlap so a
-boundary-straddling phrase survives intact, a delimited prompt template
-instead of plain concatenation, and respecting a context-window
-character budget; `agentic_frameworks` covers a tool dispatcher that
-fails loudly instead of silently returning `None`, a `max_steps` guard
-against an unbounded loop, validating a tool call's required arguments
-before invoking it, preserving the system message when trimming
-conversation history, and checking the correct stop-condition key;
-`mcp` covers JSON-RPC's required `"jsonrpc": "2.0"` field,
-`result`/`error` mutual exclusivity, detecting a duplicate tool
+explicitly 100% offline. Each of these four categories runs 50 levels,
+with a `<category>_master` achievement on the final one; their first
+five levels (each category's original scope before being expanded from
+5 to 50) set up the foundational mechanics: `ml_fundamentals` covers a
+train/test split that owns its own seeded `random.Random` instead of
+depending on global state, data leakage from fitting a scaler on
+combined train+test data, thresholding probabilities before computing
+accuracy, gradient descent's sign convention, and evaluating on
+held-out data instead of training data; `rag` covers cosine similarity
+vs. raw dot product, top-k retrieval's sort direction, chunk overlap so
+a boundary-straddling phrase survives intact, a delimited prompt
+template instead of plain concatenation, and respecting a
+context-window character budget; `agentic_frameworks` covers a tool
+dispatcher that fails loudly instead of silently returning `None`, a
+`max_steps` guard against an unbounded loop, validating a tool call's
+required arguments before invoking it, preserving the system message
+when trimming conversation history, and checking the correct
+stop-condition key; `mcp` covers JSON-RPC's required `"jsonrpc": "2.0"`
+field, `result`/`error` mutual exclusivity, detecting a duplicate tool
 registration, checking a server's advertised capabilities before
 calling a method, and correlating responses to requests by `id` rather
-than arrival order.
+than arrival order. The remaining 45 levels in each category continue
+into further mechanics with increasing granularity (e.g.
+`ml_fundamentals` continues into cross-validation, regularization,
+ensembling, and calibration; `mcp` continues into pagination,
+resource/prompt/sampling mechanics, and connection-lifecycle handling)
+— see the individual lesson YAML files under `content/ai/lessons/` for
+the full list.
 
 `langchain`, `langgraph`, `langsmith`, and `solace_agent_mesh` each
 hand-roll that framework's own core mechanic in pure Python, high-level
-to low-level across their 5 exercises the same way `architecture`'s
+to low-level across their 50 levels the same way `architecture`'s
 categories run low-to-high (see below) — just labeled from the
 opposite end, since these start from "the framework's foundational
-idea" and end at "its most granular implementation detail." `langchain`
-covers a minimal `Runnable`/`__or__` chain-composition pipe, a
-`PromptTemplate` that fails loudly on a missing variable, extracting a
-JSON object embedded in surrounding prose, the mutable-default-argument
-trap resurfacing in a `ConversationMemory` class, and `RunnableParallel`
-branch merging without a key collision. `langgraph` covers a minimal
-node/edge graph executor, merging into shared state instead of
-replacing it, a conditional edge's fallback route, a retry cycle's
-max-iteration guard, and checkpoint timing (snapshot after a node
-completes, not before). `langsmith` covers a tracer's before/after
-timing pair, nesting spans into a real tree via an active-span stack,
-keeping a run's status field consistent with what actually happened in
-its exception handler, normalizing both sides of an exact-match
-evaluator, and per-example regression detection between two evaluation
-runs (not just comparing aggregate scores). `solace_agent_mesh` (based
-on https://docs.solace.com/Agent-Mesh/agent-mesh.htm) covers an
-entrypoint dispatcher that must translate every transport into one
-common task shape, agent-card capability matching for delegation
-(rather than picking any registered agent), hierarchical topic-based
-A2A message delivery (a parent-topic subscriber must still receive a
-more specific child topic's messages, not just an exact match), an
-agent reasoning loop that has to thread a tool's result back into the
-conversation or it re-requests the same tool call forever, and
-isolating one misbehaving tool call (via `try`/`except` per call) so it
-can't abort an entire batch — a hand-rolled stand-in for Solace's real
-Secure Tool Runtime's subprocess-level sandboxing.
+idea" and end at "its most granular implementation detail," with a
+`<category>_master` achievement on the final (`category_level=50`)
+exercise. Their first five levels (the category's original scope
+before each was expanded from 5 to 50) set up the framework's
+foundational mechanics: `langchain` covers a minimal `Runnable`/`__or__`
+chain-composition pipe, a `PromptTemplate` that fails loudly on a
+missing variable, extracting a JSON object embedded in surrounding
+prose, the mutable-default-argument trap resurfacing in a
+`ConversationMemory` class, and `RunnableParallel` branch merging
+without a key collision. `langgraph` covers a minimal node/edge graph
+executor, merging into shared state instead of replacing it, a
+conditional edge's fallback route, a retry cycle's max-iteration guard,
+and checkpoint timing (snapshot after a node completes, not before).
+`langsmith` covers a tracer's before/after timing pair, nesting spans
+into a real tree via an active-span stack, keeping a run's status field
+consistent with what actually happened in its exception handler,
+normalizing both sides of an exact-match evaluator, and per-example
+regression detection between two evaluation runs (not just comparing
+aggregate scores). `solace_agent_mesh` (based on
+https://docs.solace.com/Agent-Mesh/agent-mesh.htm) covers an entrypoint
+dispatcher that must translate every transport into one common task
+shape, agent-card capability matching for delegation (rather than
+picking any registered agent), hierarchical topic-based A2A message
+delivery (a parent-topic subscriber must still receive a more specific
+child topic's messages, not just an exact match), an agent reasoning
+loop that has to thread a tool's result back into the conversation or
+it re-requests the same tool call forever, and isolating one
+misbehaving tool call (via `try`/`except` per call) so it can't abort
+an entire batch — a hand-rolled stand-in for Solace's real Secure Tool
+Runtime's subprocess-level sandboxing. The remaining 45 levels in each
+category go on to cover further mechanics of that same framework in
+increasing granularity (e.g. `langchain` continues into retries,
+fallbacks, batching, streaming, caching, and tool-argument coercion;
+`solace_agent_mesh` continues into entrypoint auth, wildcard topic
+matching, delegation trust boundaries, and Secure Tool Runtime session
+isolation) — see the individual lesson YAML files under
+`content/ai/lessons/` for the full list.
 
 `microsoft_agent_365` is the one **`requires_code=False`** category in
 this track — Microsoft's Agent 365 and its AI Agent Control Tower are

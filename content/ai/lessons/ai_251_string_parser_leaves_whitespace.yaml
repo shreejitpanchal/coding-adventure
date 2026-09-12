@@ -1,0 +1,53 @@
+id: ai_251
+title: "A String Output Parser Should Clean Up Stray Whitespace"
+language: ai
+level: 251
+objective: "Fix a string output parser that returns the model's raw text completely untouched, when a real parser should at least strip the incidental leading/trailing whitespace and newlines models commonly pad their responses with."
+explanation: |
+  Even the simplest possible output parser -- one that just hands back
+  the model's raw text as a plain string -- earns its place by cleaning
+  up the small formatting noise models routinely add: a leading space,
+  a trailing newline, padding that has nothing to do with the actual
+  content. Returning the text completely untouched pushes that cleanup
+  onto every single caller instead of handling it once, in the one
+  place that's supposed to own turning raw output into a usable value.
+
+  The bug this exercise fixes returns `raw_text` unchanged. The fix
+  strips it before returning.
+example_code: |
+  # The trap: returns the raw text completely UNTOUCHED -- whitespace
+  # and all.
+  def parse_string_trap(raw_text):
+      return raw_text
+
+  print(repr(parse_string_trap("  The answer is 42.  \n")))
+  # '  The answer is 42.  \n' -- untouched
+
+  # The fix: strip incidental whitespace before returning.
+  def parse_string(raw_text):
+      return raw_text.strip()
+
+  print(repr(parse_string("  The answer is 42.  \n")))
+  # 'The answer is 42.' -- correctly cleaned up
+starter_code: |
+  def parse_string(raw_text):
+      return raw_text
+
+  print(repr(parse_string("  The answer is 42.  \n")))
+challenge: |
+  Fix `parse_string` so it returns `raw_text.strip()` instead of
+  `raw_text` unchanged. It should print `'The answer is 42.'`, not
+  `'  The answer is 42.  \n'`.
+expected_output: |
+  'The answer is 42.'
+hints:
+  - "Replace return raw_text with return raw_text.strip()."
+  - "strip() removes leading and trailing whitespace (including the trailing newline) but leaves the interior text untouched."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 31
+difficulty: warmup
+contains_patterns:
+  - "raw_text\\.strip\\(\\)"
+concept_tags: [langchain, output_parser, string_cleanup]

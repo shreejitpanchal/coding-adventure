@@ -1,0 +1,63 @@
+id: ai_252
+title: "A Sequential Pipeline's Steps Must Build on the Previous Step, Not the Original Input"
+language: ai
+level: 252
+objective: "Fix a named-step pipeline runner that feeds every step the same original input, when each step should receive whatever the previous step actually produced -- the entire point of a sequential pipeline."
+explanation: |
+  A sequential pipeline of named steps -- `[('double', ...), ('add_ten',
+  ...)]` -- is supposed to thread data through in order, each step
+  transforming what the previous one produced. Feeding every step the
+  same original input independently means the steps never actually
+  compose: each one runs in isolation, and whatever the last step
+  returns is unrelated to any transformation the earlier steps were
+  supposed to have already applied.
+
+  The bug this exercise fixes calls every `step_fn` on `initial_input`
+  directly. The fix threads the running `data` value through instead,
+  updating it after each step.
+example_code: |
+  # The trap: every step runs on the ORIGINAL input -- steps never
+  # actually build on each other.
+  def run_pipeline_trap(steps, initial_input):
+      data = initial_input
+      for step_name, step_fn in steps:
+          data = step_fn(initial_input)
+      return data
+
+  steps = [("double", lambda x: x * 2), ("add_ten", lambda x: x + 10)]
+  print(run_pipeline_trap(steps, 5))   # 15 -- add_ten ran on the ORIGINAL 5, not double's result
+
+  # The fix: thread the running data value through each step.
+  def run_pipeline(steps, initial_input):
+      data = initial_input
+      for step_name, step_fn in steps:
+          data = step_fn(data)
+      return data
+
+  print(run_pipeline(steps, 5))   # 20 -- double(5)=10, then add_ten(10)=20
+starter_code: |
+  def run_pipeline(steps, initial_input):
+      data = initial_input
+      for step_name, step_fn in steps:
+          data = step_fn(initial_input)
+      return data
+
+  steps = [("double", lambda x: x * 2), ("add_ten", lambda x: x + 10)]
+  print(run_pipeline(steps, 5))
+challenge: |
+  Fix `run_pipeline` so each `step_fn` is called on `data` (the running
+  value), not on `initial_input` directly. It should print `20`, not
+  `15`.
+expected_output: |
+  20
+hints:
+  - "Change data = step_fn(initial_input) to data = step_fn(data)."
+  - "double(5)=10, then add_ten(10)=20 -- but only if add_ten actually sees double's result rather than the raw original 5."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "step_fn\\(data\\)"
+concept_tags: [langchain, sequential_chain, data_threading]

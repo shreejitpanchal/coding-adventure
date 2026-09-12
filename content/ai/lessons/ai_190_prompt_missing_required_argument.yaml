@@ -1,0 +1,69 @@
+id: ai_190
+title: "A Prompt With a Missing Required Argument Needs a Clear Error, Not a Cryptic One"
+language: ai
+level: 190
+objective: "Fix a prompt-retrieval function that lets a missing required argument raise Python's own bare KeyError, instead of validating required arguments up front and raising a specific, named error a client can actually act on."
+explanation: |
+  This category's earlier lesson filled a prompt template's arguments
+  in successfully -- but what happens when a *required* argument is
+  missing entirely? Calling `.format(**arguments)` with a missing key
+  raises a bare `KeyError` naming just the placeholder name, with no
+  context about which prompt this was, or which arguments were actually
+  expected versus provided. A client trying to handle that error
+  programmatically gets very little to work with.
+
+  The bug this exercise fixes lets a missing argument propagate as an
+  unhandled `KeyError`. The fix validates that every declared required
+  argument is present *before* attempting to fill the template, raising
+  a specific, informative error naming exactly what's missing.
+example_code: |
+  # The trap: a missing argument raises a BARE KeyError -- no context
+  # about which prompt or which arguments were actually expected.
+  def get_prompt_trap(template, required_args, arguments):
+      return template.format(**arguments)   # KeyError: 'style' -- no useful context at all
+
+  template = "Summarize this document in a {style} tone."
+  # get_prompt_trap(template, ["style"], {})  # KeyError: 'style'
+
+  # The fix: validate required arguments FIRST, with a specific, named error.
+  def get_prompt(template, required_args, arguments):
+      missing = [a for a in required_args if a not in arguments]
+      if missing:
+          raise ValueError(f"prompt missing required argument(s): {missing}")
+      return template.format(**arguments)
+
+  try:
+      get_prompt(template, ["style"], {})
+  except ValueError as e:
+      print(e)   # correctly names exactly what's missing
+starter_code: |
+  def get_prompt(template, required_args, arguments):
+      return template.format(**arguments)
+
+  template = "Summarize this document in a {style} tone."
+  try:
+      get_prompt(template, ["style"], {})
+  except ValueError as e:
+      print(e)
+  except KeyError as e:
+      print(f"unhandled: {e}")
+challenge: |
+  Fix `get_prompt` so it checks `required_args` against `arguments`
+  first, raising `ValueError(f"prompt missing required argument(s):
+  {missing}")` when any are absent, instead of letting a bare
+  `KeyError` propagate. It should print
+  `prompt missing required argument(s): ['style']`, not
+  `unhandled: 'style'`.
+expected_output: |
+  prompt missing required argument(s): ['style']
+hints:
+  - "Compute missing = [a for a in required_args if a not in arguments], then raise ValueError(f\"prompt missing required argument(s): {missing}\") if it's non-empty."
+  - "This check needs to happen BEFORE the .format() call, so the specific ValueError is raised instead of Python's own generic KeyError."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 15
+difficulty: gotcha
+contains_patterns:
+  - "raise ValueError"
+concept_tags: [mcp, prompts, error_handling]

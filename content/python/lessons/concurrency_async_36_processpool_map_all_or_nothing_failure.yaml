@@ -1,0 +1,96 @@
+id: concurrency_async_36
+title: "One Failing Item Loses Every Other Worker's Result Too With map()"
+language: python
+level: 326
+objective: "Fix code using ProcessPoolExecutor.map(), where one item raising loses every other item's already-computed result when the exception propagates while collecting the list -- submitting individually and handling each Future's exception separately keeps the successful results."
+explanation: |
+  `pool.map(func, items)` returns a lazy iterator -- collecting it
+  into a list (`list(pool.map(...))`) walks through results in order,
+  and the *instant* it reaches an item whose worker raised, that
+  exception propagates out of the whole `list(...)` call, discarding
+  every result already collected and every one still pending, exactly
+  like this category's `asyncio.gather` lesson covers for coroutines
+  without `return_exceptions=True`. Submitting tasks individually with
+  `pool.submit(func, item)` and handling each resulting `Future`'s
+  exception *separately* -- via `as_completed` and a per-future
+  `try/except` -- keeps every successful result, only losing the one
+  that genuinely failed.
+
+  The fix replaces `pool.map(...)` with individual `submit()` calls
+  plus `as_completed`, catching each future's exception on its own.
+example_code: |
+  # The trap: map() -- ONE failing item loses every other result too.
+  from concurrent.futures import ProcessPoolExecutor
+
+  def risky(n):
+      if n == 2:
+          raise ValueError("bad")
+      return n * 10
+
+  def process_all_trap(nums):
+      with ProcessPoolExecutor(2) as pool:
+          return list(pool.map(risky, nums))
+
+  if __name__ == "__main__":
+      try:
+          print(process_all_trap([1, 2, 3]))
+          print("ok")
+      except ValueError:
+          print("crashed, lost the results for 1 and 3 too")
+
+  # The fix: submit individually, handle each future's exception separately.
+  from concurrent.futures import ProcessPoolExecutor, as_completed
+
+  def process_all(nums):
+      results = {}
+      with ProcessPoolExecutor(2) as pool:
+          futures = {pool.submit(risky, n): n for n in nums}
+          for future in as_completed(futures):
+              n = futures[future]
+              try:
+                  results[n] = future.result()
+              except ValueError:
+                  results[n] = None
+      return [results[n] for n in nums]
+
+  if __name__ == "__main__":
+      print(process_all([1, 2, 3]))
+      # [10, None, 30] -- correctly kept BOTH successful results, only 2 failed
+starter_code: |
+  from concurrent.futures import ProcessPoolExecutor
+
+  def risky(n):
+      if n == 2:
+          raise ValueError("bad")
+      return n * 10
+
+  def process_all(nums):
+      with ProcessPoolExecutor(2) as pool:
+          return list(pool.map(risky, nums))
+
+  if __name__ == "__main__":
+      try:
+          print(process_all([1, 2, 3]))
+          print("ok")
+      except ValueError:
+          print("crashed, lost the results for 1 and 3 too")
+challenge: |
+  Fix `process_all` so it submits each item individually with
+  `pool.submit(risky, n)`, then handles each future's exception
+  separately via `as_completed` and a per-future `try/except
+  ValueError:`, instead of using `pool.map(...)`. It should print
+  `[10, None, 30]`, not `crashed, lost the results for 1 and 3 too`.
+expected_output: |
+  [10, None, 30]
+hints:
+  - "futures = {pool.submit(risky, n): n for n in nums}, then for future in as_completed(futures): try: results[n] = future.result() except ValueError: results[n] = None."
+  - "map() collects results in order and propagates the FIRST exception it hits, discarding every other result -- submitting individually lets each future's success or failure be handled on its own."
+xp_reward: 20
+achievement: null
+category: concurrency_async
+category_level: 36
+difficulty: deep_dive
+contains_patterns:
+  - "pool\\.submit\\(risky, n\\)"
+  - "as_completed\\(futures\\)"
+concept_tags: [multiprocessing, futures, exceptions, concurrency]

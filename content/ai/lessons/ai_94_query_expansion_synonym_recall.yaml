@@ -1,0 +1,63 @@
+id: ai_94
+title: "Query Expansion Catches Matches the Literal Query Text Would Miss"
+language: ai
+level: 94
+objective: "Fix a keyword-based retrieval function that only matches a document containing the exact query words, missing documents that express the same idea using a synonym the literal query never mentioned."
+explanation: |
+  A user searching for `"car"` almost certainly also wants documents
+  that only ever say `"automobile"` -- the underlying need is the same,
+  but literal keyword matching has no way to know that, since it only
+  compares surface text. **Query expansion** addresses this by
+  expanding the original query with known synonyms *before* matching,
+  so a document matches if it contains the original term *or* any of
+  its synonyms, recovering relevant documents that literal matching
+  alone would silently miss entirely.
+
+  The bug this exercise fixes matches documents against the literal
+  query term only, missing a document that's entirely about the same
+  topic but happens to use a synonym instead. The fix expands the query
+  into a set including its known synonyms first, then matches a
+  document if it contains *any* term from that expanded set.
+example_code: |
+  # The trap: matches the LITERAL query term only -- misses a document
+  # that's clearly relevant but uses a synonym instead.
+  def matches_trap(document, query):
+      return query in document
+
+  documents = ["I need to buy a new automobile this year", "I love hiking in the mountains"]
+  print([d for d in documents if matches_trap(d, "car")])   # [] -- the relevant document uses "automobile," not "car"
+
+  # The fix: expand the query with known synonyms BEFORE matching.
+  synonyms = {"car": ["car", "automobile", "vehicle"]}
+
+  def matches(document, query, synonym_map):
+      expanded = synonym_map.get(query, [query])
+      return any(term in document for term in expanded)
+
+  print([d for d in documents if matches(d, "car", synonyms)])   # correctly finds the "automobile" document
+starter_code: |
+  synonyms = {"car": ["car", "automobile", "vehicle"]}
+
+  def matches(document, query, synonym_map):
+      return query in document
+
+  documents = ["I need to buy a new automobile this year", "I love hiking in the mountains"]
+  print(len([d for d in documents if matches(d, "car", synonyms)]))
+challenge: |
+  Fix `matches` so it expands `query` using `synonym_map` first, then
+  checks whether the document contains any of the expanded terms,
+  instead of only checking the literal query term. It should print `1`,
+  not `0`.
+expected_output: |
+  1
+hints:
+  - "Get the expanded term list: expanded = synonym_map.get(query, [query]) -- falling back to just the original query if it has no known synonyms."
+  - "Return any(term in document for term in expanded) instead of the single literal check `query in document`."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 9
+difficulty: warmup
+contains_patterns:
+  - "synonym_map\\.get\\(query"
+concept_tags: [rag, query_expansion, retrieval_recall]

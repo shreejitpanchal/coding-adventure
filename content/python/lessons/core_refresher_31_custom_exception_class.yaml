@@ -1,0 +1,68 @@
+id: core_refresher_31
+title: "A Custom Exception Class Is More Specific Than a Generic ValueError"
+language: python
+level: 144
+objective: "Replace a generic ValueError with a custom exception class, making the specific failure mode distinguishable from every other ValueError a caller might need to handle differently."
+explanation: |
+  Raising a plain `ValueError` for a domain-specific failure (a bank
+  withdrawal exceeding the available balance) works, but it's
+  indistinguishable from every *other* `ValueError` the same codebase
+  might raise for completely unrelated reasons -- a caller that wants
+  to handle "insufficient funds" specifically, differently from "bad
+  input format," has no way to tell them apart by exception type alone.
+  Defining a small custom exception class (`class
+  InsufficientFundsError(Exception): pass`) costs almost nothing to
+  write and gives callers a specific, catchable type to handle exactly
+  this failure and nothing else.
+example_code: |
+  # A generic ValueError -- indistinguishable from any other ValueError.
+  def withdraw_loop(balance, amount):
+      if amount > balance:
+          raise ValueError("insufficient funds")
+      return balance - amount
+
+  try:
+      withdraw_loop(100, 200)
+  except ValueError as e:
+      print(str(e))                        # insufficient funds
+
+  # A custom exception class -- specific and distinguishable.
+  class InsufficientFundsError(Exception):
+      pass
+
+  def withdraw(balance, amount):
+      if amount > balance:
+          raise InsufficientFundsError("insufficient funds")
+      return balance - amount
+
+  try:
+      withdraw(100, 200)
+  except InsufficientFundsError as e:
+      print(str(e))                        # insufficient funds
+starter_code: |
+  def withdraw(balance, amount):
+      if amount > balance:
+          raise ValueError("insufficient funds")
+      return balance - amount
+
+  try:
+      withdraw(100, 200)
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix this by defining `class InsufficientFundsError(Exception): pass`
+  and raising/catching that instead of the generic `ValueError`. Keep
+  the same output: insufficient funds.
+expected_output: |
+  insufficient funds
+hints:
+  - "class InsufficientFundsError(Exception): pass, then raise/except that instead of ValueError."
+  - "A custom exception class costs almost nothing to define and gives callers something specific to catch, instead of an indistinguishable generic type."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 31
+difficulty: core
+contains_patterns:
+  - "class InsufficientFundsError\\(Exception\\):"
+concept_tags: [custom_exceptions, exception_handling]

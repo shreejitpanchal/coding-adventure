@@ -1,0 +1,76 @@
+id: concurrency_async_12
+title: "Threads Don't Speed Up CPU-Bound Work -- Separate Processes Actually Do"
+language: python
+level: 302
+objective: "Fix code using ThreadPoolExecutor for genuinely CPU-bound work (which the GIL prevents from running truly in parallel), when ProcessPoolExecutor uses separate processes -- each with its own interpreter and GIL -- to achieve real parallelism for CPU-bound computation."
+explanation: |
+  This category's earlier lesson on threading and the GIL covers why
+  threads genuinely help I/O-bound work: the GIL is released while a
+  thread blocks on I/O, letting other threads run meanwhile. Pure
+  CPU-bound computation never blocks on anything, so that release
+  never happens -- every thread still has to take turns holding the
+  one GIL, meaning a `ThreadPoolExecutor` running CPU-heavy work
+  produces *correct* results, but with none of the real parallelism a
+  multi-core machine could otherwise provide. `ProcessPoolExecutor`
+  sidesteps the GIL entirely by using separate OS processes, each with
+  its own independent Python interpreter and its own GIL -- genuine
+  parallel execution across multiple CPU cores, which is exactly what
+  CPU-bound work actually needs to speed up.
+
+  The fix swaps `ThreadPoolExecutor` for `ProcessPoolExecutor`. Since
+  each worker is a separate process, the function being mapped must be
+  a plain top-level function (picklable, so it can be sent to the
+  worker process), and the call needs an `if __name__ == "__main__":`
+  guard so worker processes re-importing this module don't
+  re-trigger the pool creation themselves.
+example_code: |
+  # The trap: ThreadPoolExecutor for CPU-bound work -- correct results,
+  # but the GIL means no real parallelism across cores.
+  from concurrent.futures import ThreadPoolExecutor
+
+  def cpu_bound(n):
+      return sum(i * i for i in range(n))
+
+  def process_all_trap(nums):
+      with ThreadPoolExecutor(max_workers=2) as pool:
+          return list(pool.map(cpu_bound, nums))
+
+  # The fix: ProcessPoolExecutor uses separate processes -- real parallelism.
+  from concurrent.futures import ProcessPoolExecutor
+
+  def process_all(nums):
+      with ProcessPoolExecutor(max_workers=2) as pool:
+          return list(pool.map(cpu_bound, nums))
+
+  if __name__ == "__main__":
+      print(process_all([1000, 2000]))
+      # [332833500, 2664667000] -- same correct results, now with real parallelism
+starter_code: |
+  from concurrent.futures import ThreadPoolExecutor
+
+  def cpu_bound(n):
+      return sum(i * i for i in range(n))
+
+  def process_all(nums):
+      with ThreadPoolExecutor(max_workers=2) as pool:
+          return list(pool.map(cpu_bound, nums))
+
+  if __name__ == "__main__":
+      print(process_all([1000, 2000]))
+challenge: |
+  Fix `process_all` so it uses `ProcessPoolExecutor` (imported from
+  `concurrent.futures`) instead of `ThreadPoolExecutor`. Keep the same
+  output: `[332833500, 2664667000]`.
+expected_output: |
+  [332833500, 2664667000]
+hints:
+  - "from concurrent.futures import ProcessPoolExecutor, then use it in place of ThreadPoolExecutor inside process_all."
+  - "The GIL means threads never truly run Python bytecode in parallel -- ProcessPoolExecutor uses separate processes, each with its own interpreter and GIL, to get real parallelism for CPU-bound work."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 12
+difficulty: deep_dive
+contains_patterns:
+  - "ProcessPoolExecutor"
+concept_tags: [multiprocessing, gil, concurrency]

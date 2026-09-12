@@ -1,0 +1,95 @@
+id: recursion_07
+title: "A Recursive Binary Search That Forgot to Narrow the Range"
+language: python
+level: 447
+objective: "Fix a recursive binary search whose 'search the right half' branch recurses with the SAME low/high bounds instead of narrowing them, causing infinite recursion (and a RecursionError) instead of ever converging on an answer."
+explanation: |
+  Binary search's whole efficiency comes from cutting the search range
+  roughly in half on every recursive call -- each call needs to pass
+  *narrower* `low`/`high` bounds than the call before it, or the
+  recursion never actually makes progress toward its base case at
+  all. Recursing with the exact same `low`/`high` values it was
+  already called with means every subsequent call re-examines the
+  identical range, forever, since nothing about the problem ever
+  actually shrinks -- eventually hitting Python's recursion limit and
+  raising `RecursionError`, rather than looping forever silently (this
+  category's own recursion-limit lesson covers exactly why that's the
+  observed failure mode).
+
+  The fix passes `mid + 1` as the new `low` when searching the right
+  half, correctly narrowing the range on every call.
+example_code: |
+  # The trap: the "search right half" branch never narrows low at all.
+  def binary_search_trap(arr, target, low=0, high=None):
+      if high is None:
+          high = len(arr) - 1
+      if low > high:
+          return -1
+      mid = (low + high) // 2
+      if arr[mid] == target:
+          return mid
+      elif arr[mid] < target:
+          return binary_search_trap(arr, target, low, high)   # BUG: low never changes!
+      else:
+          return binary_search_trap(arr, target, low, mid - 1)
+
+  arr = [1, 3, 5, 7, 9, 11, 13]
+  try:
+      print(binary_search_trap(arr, 9))
+      print("ok")
+  except RecursionError:
+      print("crashed")
+  # "crashed" -- the range never actually narrows, so recursion never terminates
+
+  # The fix: mid + 1 correctly narrows the range when searching the right half.
+  def binary_search(arr, target, low=0, high=None):
+      if high is None:
+          high = len(arr) - 1
+      if low > high:
+          return -1
+      mid = (low + high) // 2
+      if arr[mid] == target:
+          return mid
+      elif arr[mid] < target:
+          return binary_search(arr, target, mid + 1, high)
+      else:
+          return binary_search(arr, target, low, mid - 1)
+
+  print(binary_search(arr, 9))
+  # 4 -- correctly converged, since the range narrowed on every recursive call
+starter_code: |
+  def binary_search(arr, target, low=0, high=None):
+      if high is None:
+          high = len(arr) - 1
+      if low > high:
+          return -1
+      mid = (low + high) // 2
+      if arr[mid] == target:
+          return mid
+      elif arr[mid] < target:
+          return binary_search(arr, target, low, high)
+      else:
+          return binary_search(arr, target, low, mid - 1)
+
+  arr = [1, 3, 5, 7, 9, 11, 13]
+  try:
+      print(binary_search(arr, 9))
+  except RecursionError:
+      print("crashed")
+challenge: |
+  Fix `binary_search`'s "search right half" branch so it recurses with
+  `mid + 1` as the new `low`, instead of the unchanged `low`. It should
+  print `4`, not `crashed`.
+expected_output: |
+  4
+hints:
+  - "Change binary_search(arr, target, low, high) in the elif branch to binary_search(arr, target, mid + 1, high)."
+  - "Every recursive call needs to narrow the range it's searching -- recursing with the exact same bounds it was already given means nothing ever converges toward the base case."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 7
+difficulty: gotcha
+contains_patterns:
+  - "binary_search\\(arr, target, mid \\+ 1, high\\)"
+concept_tags: [recursion, binary_search, gotchas]

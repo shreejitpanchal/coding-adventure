@@ -91,7 +91,7 @@ hints:
   - "An async generator (a `yield` inside `async def`) can only be driven by `async for`."
   - "Change `for n in numbers():` to `async for n in numbers():`."
 xp_reward: 10
-achievement: sync_vs_async_master
+achievement: null
 category: sync_vs_async
 category_level: 5
 difficulty: core

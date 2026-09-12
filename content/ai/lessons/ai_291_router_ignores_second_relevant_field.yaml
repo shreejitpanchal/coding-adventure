@@ -1,0 +1,66 @@
+id: ai_291
+title: "A Router Checking Only One Field Misses What a Second Field Would Have Changed"
+language: ai
+level: 291
+objective: "Fix a router that decides purely on one state field, ignoring a second field that should genuinely change the outcome, when a case that's both invalid AND urgent needs a distinct route from a case that's merely invalid."
+explanation: |
+  A routing decision sometimes has to depend on more than one field at
+  once -- an invalid-but-urgent request deserves different handling
+  than an invalid-and-routine one, even though both share the same
+  `is_valid` value. A router that only ever inspects `is_valid` treats
+  every invalid case identically, silently losing whatever a second,
+  equally relevant field (`is_urgent`) should have contributed to the
+  decision.
+
+  The bug this exercise fixes never reads `state["is_urgent"]` at all.
+  The fix checks both fields, in combination, before deciding.
+example_code: |
+  # The trap: never checks is_urgent at all -- an urgent-but-invalid
+  # case is routed exactly like any other invalid case.
+  def route_trap(state):
+      if state["is_valid"]:
+          return "approve_node"
+      return "reject_node"
+
+  state = {"is_valid": False, "is_urgent": True}
+  print(route_trap(state))
+  # "reject_node" -- ignored urgency entirely
+
+  # The fix: check BOTH relevant fields before deciding.
+  def route(state):
+      if state["is_valid"] and state["is_urgent"]:
+          return "expedited_approve_node"
+      if state["is_valid"]:
+          return "approve_node"
+      if state["is_urgent"]:
+          return "urgent_review_node"
+      return "reject_node"
+
+  print(route(state))
+  # "urgent_review_node" -- correctly considered BOTH fields, not just is_valid alone
+starter_code: |
+  def route(state):
+      if state["is_valid"]:
+          return "approve_node"
+      return "reject_node"
+
+  state = {"is_valid": False, "is_urgent": True}
+  print(route(state))
+challenge: |
+  Fix `route` so it also checks `state["is_urgent"]`, returning
+  `"urgent_review_node"` for an invalid-but-urgent case, instead of
+  routing it the same as any other invalid case. It should print
+  `urgent_review_node`, not `reject_node`.
+expected_output: |
+  urgent_review_node
+hints:
+  - "Add a check for state[\"is_urgent\"] before falling through to the plain \"reject_node\" case."
+  - "An invalid-and-urgent case should never be treated identically to an invalid-and-routine one -- urgency changes what happens next."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "state\\[\"is_urgent\"\\]"
+concept_tags: [langgraph, conditional_edges, compound_conditions]

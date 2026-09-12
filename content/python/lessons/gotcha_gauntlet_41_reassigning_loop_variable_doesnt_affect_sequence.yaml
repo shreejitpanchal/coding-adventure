@@ -1,0 +1,63 @@
+id: gotcha_gauntlet_41
+title: "The Loop That Reassigned Its Own Variable and Changed Nothing At All"
+language: python
+level: 286
+objective: "Fix a loop that tries to 'double every value' by reassigning the loop variable itself inside the loop body, which has no effect on the underlying list at all -- the loop variable is just a name, disconnected from the list once each iteration's value has been assigned to it."
+explanation: |
+  `for val in items: val = val * 2` reassigns the local name `val` to
+  a new value on each iteration -- it does *not* reach back into
+  `items` and update the element that `val` came from. The loop
+  variable is just an ordinary variable, freshly assigned from the
+  next element at the start of every iteration; rebinding it inside
+  the loop body only affects what that one name refers to for the
+  rest of that iteration, and is completely forgotten the moment the
+  next iteration reassigns it again from `items`. The original list
+  is never touched at all.
+
+  Actually modifying the list requires assigning back into it by
+  index -- `items[i] = items[i] * 2` -- which is why this needs
+  `enumerate()` (or an index-based `range(len(items))` loop) instead of
+  a plain `for val in items:`.
+example_code: |
+  # The trap: reassigning the loop variable doesn't touch the list at all.
+  def double_all_trap(items):
+      for val in items:
+          val = val * 2
+      return items
+
+  print(double_all_trap([1, 2, 3]))
+  # [1, 2, 3] -- WRONG, completely unchanged; val was reassigned, items wasn't
+
+  # The fix: assign back into the list BY INDEX.
+  def double_all(items):
+      for i, val in enumerate(items):
+          items[i] = val * 2
+      return items
+
+  print(double_all([1, 2, 3]))
+  # [2, 4, 6] -- correctly modified the actual list, by index
+starter_code: |
+  def double_all(items):
+      for val in items:
+          val = val * 2
+      return items
+
+  print(double_all([1, 2, 3]))
+challenge: |
+  Fix `double_all` so it loops with `for i, val in enumerate(items):`
+  and assigns back with `items[i] = val * 2`, instead of reassigning
+  the loop variable itself. It should print `[2, 4, 6]`, not
+  `[1, 2, 3]`.
+expected_output: |
+  [2, 4, 6]
+hints:
+  - "for i, val in enumerate(items): items[i] = val * 2."
+  - "A loop variable is just a name, freshly assigned from the next element every iteration -- reassigning it never reaches back into the list it came from."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 41
+difficulty: gotcha
+contains_patterns:
+  - "items\\[i\\] = val \\* 2"
+concept_tags: [loops, mutation, gotchas]

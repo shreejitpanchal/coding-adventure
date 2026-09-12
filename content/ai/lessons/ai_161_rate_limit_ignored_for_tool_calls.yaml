@@ -1,0 +1,57 @@
+id: ai_161
+title: "An Agent Must Respect an External API's Rate Limit, Not Just Its Own Patience"
+language: ai
+level: 161
+objective: "Fix a tool-call loop that fires every call as fast as possible with no rate limiting at all, ignoring an external API's stated limit and risking getting the agent's whole integration throttled or banned."
+explanation: |
+  An external API's rate limit is a hard constraint the calling side
+  doesn't get to negotiate around -- an agent that fires tool calls as
+  fast as it can generate them, with no awareness of how many calls per
+  second (or minute) the API actually allows, risks tripping that
+  limit and getting throttled or temporarily banned, which can break
+  every *other* agent run relying on that same API too, not just the
+  one that caused it.
+
+  The bug this exercise fixes issues every call immediately with no
+  spacing at all. The fix tracks how many calls have been made and
+  enforces a minimum interval between them, respecting the API's
+  declared rate limit.
+example_code: |
+  # The trap: fires every call with NO spacing at all -- ignores
+  # whatever rate limit the external API actually enforces.
+  def calls_within_limit_trap(num_calls, calls_per_second_limit, elapsed_seconds):
+      return True   # bug: doesn't check anything at all
+
+  print(calls_within_limit_trap(num_calls=50, calls_per_second_limit=5, elapsed_seconds=1))
+  # True -- claims this is fine, but 50 calls in 1 second is WAY over a 5-per-second limit
+
+  # The fix: check the actual call rate against the declared limit.
+  def calls_within_limit(num_calls, calls_per_second_limit, elapsed_seconds):
+      actual_rate = num_calls / elapsed_seconds
+      return actual_rate <= calls_per_second_limit
+
+  print(calls_within_limit(num_calls=50, calls_per_second_limit=5, elapsed_seconds=1))
+  # False -- correctly flags that this rate exceeds the declared limit
+starter_code: |
+  def calls_within_limit(num_calls, calls_per_second_limit, elapsed_seconds):
+      return True
+
+  print(calls_within_limit(num_calls=50, calls_per_second_limit=5, elapsed_seconds=1))
+challenge: |
+  Fix `calls_within_limit` so it computes the actual call rate
+  (`num_calls / elapsed_seconds`) and compares it against
+  `calls_per_second_limit`, instead of always returning `True`. It
+  should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Compute actual_rate = num_calls / elapsed_seconds, then return actual_rate <= calls_per_second_limit."
+  - "50 calls in 1 second is a rate of 50 calls/second, far exceeding the 5-calls-per-second limit."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 31
+difficulty: warmup
+contains_patterns:
+  - "num_calls / elapsed_seconds"
+concept_tags: [agentic_frameworks, rate_limiting, tool_calling]

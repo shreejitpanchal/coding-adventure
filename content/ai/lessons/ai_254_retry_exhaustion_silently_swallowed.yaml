@@ -1,0 +1,77 @@
+id: ai_254
+title: "Once Every Retry Is Exhausted, the Failure Must Actually Propagate"
+language: ai
+level: 254
+objective: "Fix a retry loop that quietly returns None once every attempt has failed, when a caller needs the real exception raised so it actually knows the operation never succeeded -- not a silent, ambiguous None that looks the same as a legitimate empty result."
+explanation: |
+  This category's earlier retry lesson covered retrying up to a limit
+  when an attempt succeeds partway through -- the other half of that
+  same mechanism is what happens when every single attempt fails. A
+  retry loop that just falls through to `return None` after exhausting
+  its attempts is indistinguishable, from the caller's point of view,
+  from an operation that genuinely succeeded and legitimately returned
+  `None` -- the failure is silently swallowed instead of surfaced.
+
+  The bug this exercise fixes returns `None` once the loop finishes with
+  no success. The fix re-raises the last captured exception instead,
+  so the caller genuinely learns the operation never succeeded.
+example_code: |
+  # The trap: swallows the failure -- returns None once every attempt
+  # is exhausted, indistinguishable from a legitimate empty result.
+  def call_with_retry_trap(fn, max_attempts):
+      for _ in range(max_attempts):
+          try:
+              return fn()
+          except RuntimeError:
+              pass
+      return None
+
+  def always_fails():
+      raise RuntimeError("permanent failure")
+
+  result = call_with_retry_trap(always_fails, 3)
+  print(result is None)   # True -- the failure was silently swallowed, caller has no idea anything went wrong
+
+  # The fix: re-raise the last captured exception once attempts are exhausted.
+  def call_with_retry(fn, max_attempts):
+      last_error = None
+      for _ in range(max_attempts):
+          try:
+              return fn()
+          except RuntimeError as e:
+              last_error = e
+      raise last_error
+starter_code: |
+  def call_with_retry(fn, max_attempts):
+      for _ in range(max_attempts):
+          try:
+              return fn()
+          except RuntimeError:
+              pass
+      return None
+
+  def always_fails():
+      raise RuntimeError("permanent failure")
+
+  try:
+      result = call_with_retry(always_fails, 3)
+      print("swallowed" if result is None else "unexpected")
+  except RuntimeError:
+      print("raised")
+challenge: |
+  Fix `call_with_retry` so it tracks `last_error` and, once every
+  attempt has failed, does `raise last_error` instead of `return None`.
+  It should print `raised`, not `swallowed`.
+expected_output: |
+  raised
+hints:
+  - "Track last_error = e inside the except block, then replace return None with raise last_error at the end of the function."
+  - "A caller checking \"did this succeed?\" can't tell a swallowed failure apart from a legitimate None result -- only a genuinely raised exception makes the failure visible."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 34
+difficulty: gotcha
+contains_patterns:
+  - "raise last_error"
+concept_tags: [langchain, retry, error_propagation]

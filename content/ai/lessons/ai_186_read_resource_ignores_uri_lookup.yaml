@@ -1,0 +1,64 @@
+id: ai_186
+title: "Reading a Resource Means Looking It Up by Its Own URI, Not by Position"
+language: ai
+level: 186
+objective: "Fix a resource-reading function that always returns the first resource in the list regardless of which URI was actually requested, ignoring the whole point of addressing a resource by its own unique identifier."
+explanation: |
+  MCP's resource model exposes a list of resources, each with its own
+  URI, and a `resources/read` request is supposed to fetch the one
+  resource whose URI matches what was actually requested -- the URI
+  *is* the addressing mechanism, the same way a request's `id` (this
+  category's earlier lesson) is what correlates a response to its
+  request, not the position either happens to occupy in some list.
+  Ignoring the requested URI and just returning "a" resource defeats
+  addressing entirely.
+
+  The bug this exercise fixes returns the first resource in the list
+  unconditionally, regardless of which URI was actually requested. The
+  fix searches for the resource whose URI actually matches the request.
+example_code: |
+  # The trap: always returns the FIRST resource -- ignores which URI
+  # was actually requested entirely.
+  def read_resource_trap(uri, resources):
+      return resources[0]
+
+  resources = [
+      {"uri": "file:///readme.md", "content": "# README"},
+      {"uri": "file:///config.json", "content": '{"setting": true}'},
+  ]
+  print(read_resource_trap("file:///config.json", resources)["content"])   # "# README" -- WRONG resource entirely!
+
+  # The fix: search for the resource whose URI actually matches.
+  def read_resource(uri, resources):
+      for resource in resources:
+          if resource["uri"] == uri:
+              return resource
+      raise ValueError(f"resource not found: {uri}")
+
+  print(read_resource("file:///config.json", resources)["content"])   # '{"setting": true}' -- correctly addressed by URI
+starter_code: |
+  def read_resource(uri, resources):
+      return resources[0]
+
+  resources = [
+      {"uri": "file:///readme.md", "content": "# README"},
+      {"uri": "file:///config.json", "content": '{"setting": true}'},
+  ]
+  print(read_resource("file:///config.json", resources)["content"])
+challenge: |
+  Fix `read_resource` so it searches `resources` for the one whose
+  `"uri"` matches the requested `uri`, instead of always returning
+  `resources[0]`. It should print `{"setting": true}`, not `# README`.
+expected_output: |
+  {"setting": true}
+hints:
+  - "Loop over resources, checking `if resource[\"uri\"] == uri: return resource`."
+  - "Raise a ValueError naming the missing URI if the loop completes with no match found, instead of falling through silently."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 11
+difficulty: warmup
+contains_patterns:
+  - "resource\\[.uri.\\] == uri"
+concept_tags: [mcp, resources, uri_addressing]

@@ -1,0 +1,77 @@
+id: concurrency_async_47
+title: "A Plain Dict Doesn't Share Across Processes -- Manager().dict() Does"
+language: python
+level: 337
+objective: "Fix code passing a plain dict to a worker process expecting the parent to see its updates, when each process has its own separate memory (as this category's Value lesson covers for a single number) -- multiprocessing.Manager().dict() provides a genuinely shared, proxy-backed dict instead."
+explanation: |
+  `multiprocessing.Value` (this category's earlier lesson) covers
+  sharing a single number across processes via real shared memory --
+  but a `dict` is a much richer structure that shared memory alone
+  can't represent directly. `multiprocessing.Manager()` solves this
+  differently: it runs a small separate server process that actually
+  owns the real dict, and `manager.dict()` hands back a *proxy* object
+  that looks and behaves like a dict, but every read and write is
+  transparently forwarded to that server process -- genuinely shared
+  across every process holding a proxy to it, unlike a plain dict
+  passed as an argument, which each worker process just gets its own
+  independent copy of.
+
+  The fix replaces the plain dict with `Manager().dict()`.
+example_code: |
+  # The trap: a plain dict -- each worker process gets its OWN separate copy.
+  from multiprocessing import Process
+
+  def worker_trap(d, key, value):
+      d[key] = value
+
+  if __name__ == "__main__":
+      plain_dict = {}
+      p = Process(target=worker_trap, args=(plain_dict, "a", 1))
+      p.start()
+      p.join()
+      print(dict(plain_dict))
+      # {} -- WRONG, the worker's write only ever affected its own copy
+
+  # The fix: Manager().dict() is a real, shared proxy dict.
+  from multiprocessing import Process, Manager
+
+  def worker(d, key, value):
+      d[key] = value
+
+  if __name__ == "__main__":
+      manager = Manager()
+      shared_dict = manager.dict()
+      p = Process(target=worker, args=(shared_dict, "a", 1))
+      p.start()
+      p.join()
+      print(dict(shared_dict))
+      # {'a': 1} -- correctly visible, since both processes share the same proxy
+starter_code: |
+  from multiprocessing import Process
+
+  def worker(d, key, value):
+      d[key] = value
+
+  if __name__ == "__main__":
+      plain_dict = {}
+      p = Process(target=worker, args=(plain_dict, "a", 1))
+      p.start()
+      p.join()
+      print(dict(plain_dict))
+challenge: |
+  Fix this using `Manager().dict()` (imported `Manager` from
+  `multiprocessing`) instead of a plain `dict`. It should print
+  `{'a': 1}`, not `{}`.
+expected_output: |
+  {'a': 1}
+hints:
+  - "from multiprocessing import Process, Manager, then: manager = Manager(); shared_dict = manager.dict()."
+  - "A plain dict passed to a worker process is copied into that process's own separate memory -- Manager().dict() is a proxy to a real, shared dict owned by a separate server process."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 47
+difficulty: deep_dive
+contains_patterns:
+  - "Manager\\(\\)\\.dict\\(\\)"
+concept_tags: [multiprocessing, manager, shared_memory, concurrency]

@@ -1,0 +1,57 @@
+id: ai_135
+title: "End to End: An Answer Is Only Trustworthy If It's Both Grounded AND Cited"
+language: ai
+level: 135
+objective: "Fix an end-to-end RAG quality check that only verifies an answer is grounded in the retrieved context (this category's faithfulness lesson) without also verifying it carries a citation back to a source (this category's citation lesson) -- a complete answer needs both, not just one."
+explanation: |
+  This category has covered grounding (does the answer's claim actually
+  trace back to retrieved content) and citation (does retrieved text
+  carry its source document along with it) as separate lessons -- but a
+  genuinely trustworthy RAG answer needs *both* checks to pass
+  together, not either one alone. An answer can be perfectly grounded
+  in real retrieved content while still failing to cite where that
+  content came from, leaving a user with no way to verify the claim
+  themselves. An answer can carry a citation-shaped reference while
+  actually being unrelated to what that source says. Only checking one
+  half misses exactly the failure the other half was designed to catch.
+
+  The bug this exercise fixes only checks groundedness, treating a
+  grounded-but-uncited answer as fully acceptable. The fix requires
+  both groundedness *and* the presence of a citation before considering
+  an answer complete -- tying this whole category's grounding and
+  citation lessons together into one final quality gate.
+example_code: |
+  # The trap: only checks GROUNDEDNESS -- an answer with no citation at
+  # all still passes, even though it can't be independently verified.
+  def is_trustworthy_trap(is_grounded, has_citation):
+      return is_grounded
+
+  print(is_trustworthy_trap(is_grounded=True, has_citation=False))   # True -- accepted despite having no citation at all
+
+  # The fix: require BOTH groundedness AND a citation.
+  def is_trustworthy(is_grounded, has_citation):
+      return is_grounded and has_citation
+
+  print(is_trustworthy(is_grounded=True, has_citation=False))   # False -- correctly rejected for missing a citation
+starter_code: |
+  def is_trustworthy(is_grounded, has_citation):
+      return is_grounded
+
+  print(is_trustworthy(is_grounded=True, has_citation=False))
+challenge: |
+  Fix `is_trustworthy` so it requires BOTH `is_grounded` and
+  `has_citation` to be `True`, instead of only checking `is_grounded`.
+  It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change the return statement to: return is_grounded and has_citation."
+  - "An answer that's grounded but carries no citation still fails this stricter, combined check -- both properties are required together."
+xp_reward: 15
+achievement: rag_master
+category: rag
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "is_grounded and has_citation"
+concept_tags: [rag, faithfulness, citation, evaluation]

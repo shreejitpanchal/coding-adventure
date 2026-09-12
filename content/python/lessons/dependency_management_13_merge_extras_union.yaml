@@ -1,0 +1,63 @@
+id: dependency_management_13
+title: "Two Sources Wanting Different Extras Need BOTH, Not Just One"
+language: python
+level: 423
+objective: "Fix a requirement-merging function that keeps only the first source's extras, silently dropping a second source's different extras for the same package, when the correct behavior is the UNION of both -- unlike version conflicts, different extras for the same package aren't incompatible at all, they just both need installing."
+explanation: |
+  Unlike a genuine version conflict (this category's earlier lesson,
+  where two different required versions for the same package really
+  are incompatible and need to raise), two different sources wanting
+  different *extras* for the same package aren't in conflict at all --
+  `requests[socks]` and `requests[security]` both need to be
+  satisfied simultaneously, which just means installing `requests`
+  with *both* extras enabled. Keeping only the first source's extras
+  list and discarding the second's silently drops a genuinely needed
+  optional dependency group, with nothing signaling that anything was
+  lost.
+
+  The fix unions both sources' extras together, instead of keeping
+  only one.
+example_code: |
+  # The trap: keeps only the FIRST source's extras -- the second's are silently lost.
+  def merge_extras_trap(req1, req2):
+      return req1
+
+  req1 = ("requests", ["socks"])
+  req2 = ("requests", ["security"])
+  print(merge_extras_trap(req1, req2))
+  # ('requests', ['socks']) -- WRONG, "security" was silently dropped entirely
+
+  # The fix: union BOTH sources' extras together.
+  def merge_extras(req1, req2):
+      name = req1[0]
+      combined_extras = sorted(set(req1[1]) | set(req2[1]))
+      return name, combined_extras
+
+  print(merge_extras(req1, req2))
+  # ('requests', ['security', 'socks']) -- correctly kept BOTH needed extras
+starter_code: |
+  def merge_extras(req1, req2):
+      return req1
+
+  req1 = ("requests", ["socks"])
+  req2 = ("requests", ["security"])
+  print(merge_extras(req1, req2))
+challenge: |
+  Fix `merge_extras` so it computes
+  `combined_extras = sorted(set(req1[1]) | set(req2[1]))` and returns
+  `(req1[0], combined_extras)`, instead of keeping only `req1`. It
+  should print `('requests', ['security', 'socks'])`, not
+  `('requests', ['socks'])`.
+expected_output: |
+  ('requests', ['security', 'socks'])
+hints:
+  - "combined_extras = sorted(set(req1[1]) | set(req2[1])), then return req1[0], combined_extras."
+  - "Different extras for the same package aren't a conflict -- both are genuinely needed, so they should be UNIONED, not have one silently discarded."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "set\\(req1\\[1\\]\\) \\| set\\(req2\\[1\\]\\)"
+concept_tags: [dependency_management, extras, merging]

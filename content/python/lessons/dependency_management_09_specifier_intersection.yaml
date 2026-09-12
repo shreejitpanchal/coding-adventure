@@ -1,0 +1,66 @@
+id: dependency_management_09
+title: "Combining Two Version Ranges Means Taking the Tighter Bound From Each"
+language: python
+level: 419
+objective: "Fix a function that combines two version-range requirements by just returning the first one, ignoring the second entirely, when the actual intersection of two ranges needs the TIGHTER lower bound and the TIGHTER upper bound from the two, not either range alone."
+explanation: |
+  When two different sources each require a version range for the same
+  package -- source A needs `>=1.0.0,<3.0.0`, source B needs
+  `>=2.0.0,<4.0.0` -- the version that actually satisfies *both*
+  requirements has to fall within the *intersection* of the two
+  ranges: whichever lower bound is higher (the tighter floor,
+  `2.0.0`), and whichever upper bound is lower (the tighter ceiling,
+  `3.0.0`). Just returning one range and ignoring the other silently
+  drops half the actual constraint -- a version chosen from the
+  un-intersected range could easily violate the requirement that was
+  discarded.
+
+  The fix computes the intersection: `max` of the two lower bounds,
+  `min` of the two upper bounds.
+example_code: |
+  # The trap: returns the FIRST range, ignoring the second entirely.
+  def combine_specs_trap(spec1, spec2):
+      return spec1
+
+  spec1 = ("1.0.0", "3.0.0")
+  spec2 = ("2.0.0", "4.0.0")
+  print(combine_specs_trap(spec1, spec2))
+  # ('1.0.0', '3.0.0') -- WRONG, ignores spec2's tighter lower bound of 2.0.0
+
+  # The fix: intersect -- tighter lower bound, tighter upper bound.
+  def parse(v):
+      return tuple(int(p) for p in v.split("."))
+
+  def combine_specs(spec1, spec2):
+      low = max(parse(spec1[0]), parse(spec2[0]))
+      high = min(parse(spec1[1]), parse(spec2[1]))
+      return low, high
+
+  print(combine_specs(spec1, spec2))
+  # ((2, 0, 0), (3, 0, 0)) -- correctly intersected both ranges
+starter_code: |
+  def combine_specs(spec1, spec2):
+      return spec1
+
+  spec1 = ("1.0.0", "3.0.0")
+  spec2 = ("2.0.0", "4.0.0")
+  print(combine_specs(spec1, spec2))
+challenge: |
+  Fix `combine_specs` so it computes `low = max(parse(spec1[0]),
+  parse(spec2[0]))` and `high = min(parse(spec1[1]), parse(spec2[1]))`
+  (using a `parse` helper converting each version to a tuple of ints),
+  returning `(low, high)`. It should print
+  `((2, 0, 0), (3, 0, 0))`, not `('1.0.0', '3.0.0')`.
+expected_output: |
+  ((2, 0, 0), (3, 0, 0))
+hints:
+  - "def parse(v): return tuple(int(p) for p in v.split(\".\")), then low = max(parse(spec1[0]), parse(spec2[0])) and high = min(parse(spec1[1]), parse(spec2[1]))."
+  - "The version that satisfies BOTH requirements has to respect the tighter bound from each side -- ignoring one range entirely drops half of the real constraint."
+xp_reward: 15
+achievement: null
+category: dependency_management
+category_level: 9
+difficulty: deep_dive
+contains_patterns:
+  - "low = max\\(parse\\(spec1\\[0\\]\\), parse\\(spec2\\[0\\]\\)\\)"
+concept_tags: [dependency_management, version_specifiers, resolution]

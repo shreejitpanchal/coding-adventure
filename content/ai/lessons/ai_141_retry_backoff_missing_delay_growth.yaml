@@ -1,0 +1,59 @@
+id: ai_141
+title: "Exponential Backoff Needs the Delay to Actually Grow Each Retry"
+language: ai
+level: 141
+objective: "Fix a retry helper that uses the exact same fixed delay on every attempt, when exponential backoff specifically means each retry waits longer than the last -- giving a struggling dependency progressively more room to recover instead of hammering it at a constant rate."
+explanation: |
+  Retrying a failed tool call immediately, over and over at a constant
+  rate, can make a struggling dependency's situation worse -- the same
+  cascading-failure risk this app's Architecture track covers for
+  circuit breakers applies here too. **Exponential backoff** spaces
+  retries out with a growing delay (1s, then 2s, then 4s, then 8s...)
+  specifically so a transient problem gets progressively more breathing
+  room to resolve itself, instead of being hit at the same constant
+  rate that may have contributed to the problem in the first place.
+
+  The bug this exercise fixes uses the same fixed delay for every
+  retry attempt, regardless of how many attempts have already failed.
+  The fix doubles the delay after each failed attempt, correctly
+  implementing the "exponential" part of exponential backoff.
+example_code: |
+  # The trap: the SAME fixed delay every single attempt -- not
+  # exponential at all, just a constant retry rate.
+  def compute_delays_trap(base_delay, num_retries):
+      return [base_delay for _ in range(num_retries)]
+
+  print(compute_delays_trap(1, 4))   # [1, 1, 1, 1] -- never actually grows
+
+  # The fix: DOUBLE the delay after each attempt.
+  def compute_delays(base_delay, num_retries):
+      delays = []
+      delay = base_delay
+      for _ in range(num_retries):
+          delays.append(delay)
+          delay *= 2
+      return delays
+
+  print(compute_delays(1, 4))   # [1, 2, 4, 8] -- correctly grows exponentially with each retry
+starter_code: |
+  def compute_delays(base_delay, num_retries):
+      return [base_delay for _ in range(num_retries)]
+
+  print(compute_delays(1, 4))
+challenge: |
+  Fix `compute_delays` so each successive delay doubles the previous
+  one, instead of repeating the same fixed `base_delay` every time. It
+  should print `[1, 2, 4, 8]`, not `[1, 1, 1, 1]`.
+expected_output: |
+  [1, 2, 4, 8]
+hints:
+  - "Track a running `delay` variable starting at base_delay, appending it to the list and then doing `delay *= 2` after each append."
+  - "The loop should build up the list one delay at a time, doubling between each -- not just repeat the same base_delay num_retries times."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 11
+difficulty: warmup
+contains_patterns:
+  - "delay \\*= 2"
+concept_tags: [agentic_frameworks, retry, exponential_backoff]

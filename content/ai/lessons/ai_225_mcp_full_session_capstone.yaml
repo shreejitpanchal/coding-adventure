@@ -1,0 +1,68 @@
+id: ai_225
+title: "Capstone: The Full Handshake Must Happen Before a Tool Can Be Called"
+language: ai
+level: 225
+objective: "Fix a session runner that lets a tool call through regardless of what steps actually happened before it, tying together this category's handshake, ordering, and validation lessons into one check that the full initialize -> initialized -> list_tools -> call_tool sequence happened, in order, before any tool result is produced."
+explanation: |
+  Across this category: a connection isn't ready for normal requests
+  until `initialize` and `initialized` have both happened, a client
+  should discover what's callable via `tools/list` before calling
+  anything, and a server should never skip straight to acting on a
+  request as if the setup that's supposed to precede it was optional.
+  This capstone ties all of that into one check: a session is only
+  allowed to reach `call_tool` if the full sequence -- `initialize`,
+  `initialized`, `list_tools`, `call_tool`, in that exact order -- is
+  what actually happened, not just that a `call_tool` step exists
+  somewhere in the history.
+
+  The bug this exercise fixes accepts any sequence of steps at all and
+  reports success regardless. The fix checks the recorded steps against
+  the required order exactly, rejecting anything that skipped or
+  reordered a step.
+example_code: |
+  # The trap: doesn't verify the steps happened in the correct order at
+  # all -- calling a tool "succeeds" even with the handshake skipped.
+  def run_session_trap(steps):
+      return "tools_called"
+
+  print(run_session_trap(["call_tool"]))
+  # "tools_called" -- even though initialize/initialized/list_tools were all skipped!
+
+  # The fix: require the full sequence, in order, before a tool call
+  # is allowed to succeed.
+  def run_session(steps):
+      required_order = ["initialize", "initialized", "list_tools", "call_tool"]
+      if steps != required_order:
+          return "rejected"
+      return "tools_called"
+
+  print(run_session(["call_tool"]))
+  # "rejected" -- the full handshake must happen in order before a tool can be called
+
+  print(run_session(["initialize", "initialized", "list_tools", "call_tool"]))
+  # "tools_called" -- the complete, correctly-ordered sequence succeeds
+starter_code: |
+  def run_session(steps):
+      return "tools_called"
+
+  print(run_session(["call_tool"]))
+challenge: |
+  Fix `run_session` so it defines `required_order = ["initialize",
+  "initialized", "list_tools", "call_tool"]` and returns `"rejected"`
+  when `steps` doesn't match it exactly, only returning
+  `"tools_called"` when the full sequence happened in order. Given
+  `["call_tool"]` alone, it should print `rejected`, not
+  `tools_called`.
+expected_output: |
+  rejected
+hints:
+  - "required_order = [\"initialize\", \"initialized\", \"list_tools\", \"call_tool\"], then: if steps != required_order: return \"rejected\"."
+  - "This ties together the whole category: handshake-before-requests, discovery-before-calling, and validating the full expected order, not just that the right elements are present somewhere."
+xp_reward: 20
+achievement: mcp_master
+category: mcp
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "required_order = \\[\"initialize\", \"initialized\", \"list_tools\", \"call_tool\"\\]"
+concept_tags: [mcp, handshake, capstone]

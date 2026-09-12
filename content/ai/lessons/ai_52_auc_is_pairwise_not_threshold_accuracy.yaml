@@ -1,0 +1,72 @@
+id: ai_52
+title: "AUC Is a Pairwise Ranking Score, Not Accuracy at One Threshold"
+language: ai
+level: 52
+objective: "Fix a function mislabeled as AUC that actually just computes accuracy at a single fixed threshold, instead of the real threshold-independent pairwise concordance AUC represents."
+explanation: |
+  **AUC** (area under the ROC curve) measures something specifically
+  different from accuracy at any one threshold: it's the probability
+  that a randomly chosen positive example gets a higher predicted score
+  than a randomly chosen negative example -- computed by checking every
+  positive/negative pair for exactly that ordering (**concordant** if
+  the positive scored higher, discordant otherwise), then dividing
+  concordant pairs by the total number of pairs. This makes AUC
+  threshold-independent: it evaluates the *ranking* the model produces
+  across the whole scale, not whether one particular cutoff happens to
+  classify things correctly.
+
+  The bug this exercise fixes is code that computes ordinary accuracy
+  at a fixed threshold (0.5) and calls the result "AUC" -- a
+  fundamentally different question, and one that depends entirely on
+  which threshold happened to be chosen. On this exercise's example
+  data, threshold-0.5 accuracy and the real AUC diverge sharply (0.5 vs
+  0.75), showing concretely that a model can already be ranking
+  positives above negatives quite well overall, even while a
+  specific, badly-chosen threshold makes it look mediocre.
+example_code: |
+  # The trap: accuracy at a single fixed threshold, mislabeled as AUC.
+  def auc_trap(y_true, y_scores, threshold=0.5):
+      preds = [1 if s > threshold else 0 for s in y_scores]
+      correct = sum(p == t for p, t in zip(preds, y_true))
+      return correct / len(y_true)
+
+  y_true = [0, 0, 1, 1]
+  y_scores = [0.3, 0.6, 0.4, 0.7]
+  print(round(auc_trap(y_true, y_scores), 3))   # 0.5 -- just one threshold's accuracy
+
+  # The fix: the real AUC -- fraction of positive/negative pairs correctly ranked.
+  def auc(y_true, y_scores):
+      positives = [s for s, t in zip(y_scores, y_true) if t == 1]
+      negatives = [s for s, t in zip(y_scores, y_true) if t == 0]
+      concordant = sum(1 for p in positives for n in negatives if p > n)
+      total_pairs = len(positives) * len(negatives)
+      return concordant / total_pairs if total_pairs else 0.0
+
+  print(round(auc(y_true, y_scores), 3))   # 0.75 -- the model ranks 3 of 4 pos/neg pairs correctly
+starter_code: |
+  def auc(y_true, y_scores, threshold=0.5):
+      preds = [1 if s > threshold else 0 for s in y_scores]
+      correct = sum(p == t for p, t in zip(preds, y_true))
+      return correct / len(y_true)
+
+  y_true = [0, 0, 1, 1]
+  y_scores = [0.3, 0.6, 0.4, 0.7]
+  print(round(auc(y_true, y_scores), 3))
+challenge: |
+  Fix `auc` so it computes the real pairwise-concordance AUC (fraction
+  of positive/negative pairs where the positive scores higher), instead
+  of accuracy at a single fixed threshold. It should print `0.75`, not
+  `0.5`.
+expected_output: |
+  0.75
+hints:
+  - "Split y_scores into `positives` (where y_true is 1) and `negatives` (where y_true is 0)."
+  - "Count concordant pairs with a nested comparison: sum(1 for p in positives for n in negatives if p > n), then divide by len(positives) * len(negatives)."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 12
+difficulty: deep_dive
+contains_patterns:
+  - "for p in positives for n in negatives"
+concept_tags: [ml_fundamentals, auc, roc_curve, evaluation_metrics]

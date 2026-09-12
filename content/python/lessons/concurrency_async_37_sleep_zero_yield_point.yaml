@@ -1,0 +1,95 @@
+id: concurrency_async_37
+title: "await asyncio.sleep(0) Is a Deliberate 'Let Someone Else Run' Signal"
+language: python
+level: 327
+objective: "Fix a tight loop of pure computation inside a coroutine that never yields control, starving every other scheduled task, when a deliberate await asyncio.sleep(0) inside the loop gives the event loop a chance to run other ready tasks between iterations."
+explanation: |
+  A coroutine only yields control back to the event loop at an `await`
+  point -- a loop doing pure computation with no `await` inside it at
+  all runs to completion in one uninterrupted stretch, exactly like
+  this category's blocking-call lesson covers, just caused by CPU work
+  instead of a real blocking call. `await asyncio.sleep(0)` doesn't
+  actually pause for any real time -- it's a deliberate, zero-cost
+  signal to the event loop: "you can run something else now if
+  anything else is ready," then immediately resumes on the next event
+  loop tick. Sprinkling one into a long, CPU-heavy loop lets other
+  scheduled tasks get a fair turn to run interleaved with it, instead
+  of being starved until the whole loop finishes.
+
+  The fix adds `await asyncio.sleep(0)` inside the loop, letting
+  `other_task` interleave instead of being completely starved.
+example_code: |
+  # The trap: a tight loop with NO await point -- starves every other task.
+  import asyncio
+
+  async def other_task_trap(log):
+      log.append("other ran")
+
+  async def cpu_loop_trap(log):
+      total = 0
+      for i in range(3):
+          total += i
+      log.append("loop done")
+      return total
+
+  async def main_trap():
+      log = []
+      await asyncio.gather(cpu_loop_trap(log), other_task_trap(log))
+      print(log)
+  # ['loop done', 'other ran'] -- WRONG if other_task was supposed to interleave
+
+  # The fix: a deliberate sleep(0) yields control between iterations.
+  async def other_task(log):
+      log.append("other ran")
+
+  async def cpu_loop(log):
+      total = 0
+      for i in range(3):
+          total += i
+          await asyncio.sleep(0)
+      log.append("loop done")
+      return total
+
+  async def main():
+      log = []
+      await asyncio.gather(cpu_loop(log), other_task(log))
+      print(log)
+
+  asyncio.run(main())
+  # ['other ran', 'loop done'] -- correctly gave other_task a chance to run first
+starter_code: |
+  import asyncio
+
+  async def other_task(log):
+      log.append("other ran")
+
+  async def cpu_loop(log):
+      total = 0
+      for i in range(3):
+          total += i
+      log.append("loop done")
+      return total
+
+  async def main():
+      log = []
+      await asyncio.gather(cpu_loop(log), other_task(log))
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Fix `cpu_loop` by adding `await asyncio.sleep(0)` inside the `for`
+  loop. It should print `['other ran', 'loop done']`, not
+  `['loop done', 'other ran']`.
+expected_output: |
+  ['other ran', 'loop done']
+hints:
+  - "Add await asyncio.sleep(0) as a line inside the for loop body."
+  - "asyncio.sleep(0) doesn't actually pause for any time -- it's a deliberate signal letting the event loop run other ready tasks before resuming."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 37
+difficulty: core
+contains_patterns:
+  - "await asyncio\\.sleep\\(0\\)"
+concept_tags: [asyncio, event_loop, concurrency]

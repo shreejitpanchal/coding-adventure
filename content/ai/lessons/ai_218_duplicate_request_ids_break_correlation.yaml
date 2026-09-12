@@ -1,0 +1,55 @@
+id: ai_218
+title: "Concurrent Requests Need Genuinely Unique IDs, Not a Repeated One"
+language: ai
+level: 218
+objective: "Fix a request-sending function that assigns the exact same id to every request it builds, when concurrent requests each need a genuinely unique id or their responses become impossible to tell apart."
+explanation: |
+  Correlating a response to its request only works if the id used to
+  correlate is actually unique among everything currently in flight --
+  an id-based lookup is meaningless if two different pending requests
+  share the same id, since a response naming that id could belong to
+  either one. A function that always assigns the same fixed id to every
+  request it builds guarantees exactly that collision the moment more
+  than one request is in flight at once.
+
+  The bug this exercise fixes hardcodes `"id": 1` for every request
+  regardless of how many are built. The fix assigns each request a
+  distinct id, one per position.
+example_code: |
+  # The trap: every request gets the SAME id -- concurrent requests
+  # become indistinguishable.
+  def send_requests_trap(payloads):
+      return [{"id": 1, "payload": p} for p in payloads]
+
+  results_trap = send_requests_trap(["a", "b"])
+  print(len(set(r["id"] for r in results_trap)))   # 1 -- both requests collided on the same id
+
+  # The fix: assign each request a distinct id.
+  def send_requests(payloads):
+      return [{"id": i, "payload": p} for i, p in enumerate(payloads)]
+
+  results = send_requests(["a", "b"])
+  print(len(set(r["id"] for r in results)))   # 2 -- each request has a unique id, correlation is unambiguous
+starter_code: |
+  def send_requests(payloads):
+      return [{"id": 1, "payload": p} for p in payloads]
+
+  results = send_requests(["a", "b"])
+  print(len(set(r["id"] for r in results)))
+challenge: |
+  Fix `send_requests` so it uses `enumerate(payloads)` to assign each
+  request a distinct `id`, instead of hardcoding `"id": 1` for every
+  one. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Use [{\"id\": i, \"payload\": p} for i, p in enumerate(payloads)] instead of a fixed id."
+  - "A response naming a duplicated id could belong to either pending request -- correlation breaks down entirely, not just for the one it happens to mismatch."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 43
+difficulty: core
+contains_patterns:
+  - "enumerate\\(payloads\\)"
+concept_tags: [mcp, request_ids, correlation]

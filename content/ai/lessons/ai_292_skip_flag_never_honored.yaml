@@ -1,0 +1,58 @@
+id: ai_292
+title: "An Explicit Skip Flag Should Actually Skip the Node, Not Run It Anyway"
+language: ai
+level: 292
+objective: "Fix a router that always routes to a notification node regardless of state, when a state flag explicitly requesting that notification be skipped should route straight to END instead."
+explanation: |
+  Sometimes a graph needs the ability to deliberately skip a node that
+  would normally run -- an earlier step might determine notifying the
+  user isn't appropriate this time (a duplicate event, a muted
+  preference) and set an explicit flag saying so. A router that always
+  routes to the notification node regardless of what that flag says
+  ignores an explicit, intentional instruction: the flag exists
+  precisely to prevent this node from running under some conditions,
+  and a router that never checks it can't honor that at all.
+
+  The bug this exercise fixes always returns `"notify_node"`. The fix
+  checks the skip flag first and routes to `"END"` when it's set.
+example_code: |
+  # The trap: always routes to notify_node, even when state explicitly
+  # says notification should be skipped entirely.
+  def route_trap(state):
+      return "notify_node"
+
+  state = {"skip_notification": True}
+  print(route_trap(state))
+  # "notify_node" -- ran anyway, ignoring the explicit skip flag
+
+  # The fix: check the skip flag first, route to END when it's set.
+  def route(state):
+      if state.get("skip_notification"):
+          return "END"
+      return "notify_node"
+
+  print(route(state))
+  # "END" -- correctly skipped, respecting the explicit flag
+starter_code: |
+  def route(state):
+      return "notify_node"
+
+  state = {"skip_notification": True}
+  print(route(state))
+challenge: |
+  Fix `route` so it checks `if state.get("skip_notification"): return
+  "END"` before falling through to `"notify_node"`. It should print
+  `END`, not `notify_node`.
+expected_output: |
+  END
+hints:
+  - "Add the check as the first line of the function: if state.get(\"skip_notification\"): return \"END\"."
+  - "state.get(...) rather than state[...] is the right choice here since most calls won't have this flag set at all."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 27
+difficulty: warmup
+contains_patterns:
+  - "state\\.get\\(\"skip_notification\"\\)"
+concept_tags: [langgraph, conditional_edges, skip_logic]

@@ -1,0 +1,60 @@
+id: ai_59
+title: "Label Encoding Implies a False Ordinal Relationship"
+language: ai
+level: 59
+objective: "Fix a categorical encoder that assigns plain integer codes to nominal categories, which implies a false ordering (e.g. 'blue is more different from red than green is') that one-hot encoding avoids entirely."
+explanation: |
+  **Label encoding** assigns each category an arbitrary integer --
+  `red=0, green=1, blue=2` -- which is fine when the categories genuinely
+  have an order (`small=0, medium=1, large=2`), but actively misleading
+  for **nominal** categories with no real order at all. Once encoded as
+  plain integers, a distance-based model (or any calculation treating
+  the numbers as numbers) sees `blue` as "2 away" from `red` but
+  `green` as only "1 away" -- implying red and green are more similar
+  than red and blue, a relationship that was never actually true about
+  the underlying colors.
+
+  The bug this exercise fixes encodes categories as plain integer
+  labels regardless of whether an order exists. The fix uses **one-hot
+  encoding** instead -- a separate binary column per category, with
+  exactly one `1` marking which category a row belongs to -- so every
+  pair of distinct categories ends up equally different from each
+  other in the encoded space, with no false ordering implied at all.
+example_code: |
+  # The trap: plain integer codes -- implies a false ordering between
+  # categories that have no real order at all.
+  def encode_trap(categories, cat_list):
+      return [cat_list.index(c) for c in categories]
+
+  cat_list = ["red", "green", "blue"]
+  print(encode_trap(["red", "blue"], cat_list))   # [0, 2] -- implies blue is "farther" from red than green is
+
+  # The fix: one-hot encoding -- every distinct category is equally
+  # different from every other, with no implied order.
+  def encode(categories, cat_list):
+      return [[1 if c == cat else 0 for cat in cat_list] for c in categories]
+
+  print(encode(["red", "blue"], cat_list))   # [[1, 0, 0], [0, 0, 1]] -- no false ordering implied
+starter_code: |
+  def encode(categories, cat_list):
+      return [cat_list.index(c) for c in categories]
+
+  cat_list = ["red", "green", "blue"]
+  print(encode(["red", "blue"], cat_list))
+challenge: |
+  Fix `encode` so it produces a one-hot vector per category (a list with
+  a `1` at that category's position and `0`s elsewhere), instead of a
+  plain integer label. It should print `[[1, 0, 0], [0, 0, 1]]`.
+expected_output: |
+  [[1, 0, 0], [0, 0, 1]]
+hints:
+  - "For each category c, build a list comprehension over cat_list: [1 if c == cat else 0 for cat in cat_list]."
+  - "The overall result is a list of these one-hot lists, one per input category -- a list of lists, not a flat list of integers."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "1 if c == cat else 0"
+concept_tags: [ml_fundamentals, one_hot_encoding, categorical_features]

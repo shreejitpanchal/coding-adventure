@@ -1,0 +1,56 @@
+id: idioms_gotchas_23
+title: "f-strings Have a Built-In '=' Debug Specifier -- No Need to Spell It Out Manually"
+language: python
+level: 92
+objective: "Fix a debug print that manually spells out a variable's name alongside its value, when an f-string's own '=' specifier (added in Python 3.8) already produces exactly that -- the name, an equals sign, and the value -- from the expression alone."
+explanation: |
+  Writing `f"width={width}"` by hand duplicates the variable's name in
+  two places -- once as a literal string, once as the actual
+  expression -- which silently drifts out of sync the moment the
+  variable is renamed but the literal label isn't updated to match.
+  Python 3.8's f-string debug specifier (`f"{width=}"`) solves this by
+  deriving the label directly from the expression's own source text,
+  so the label can never fall out of sync with what it's actually
+  labeling.
+
+  The bug this exercise fixes manually writes `f"width={width}"`. The
+  fix uses the built-in debug specifier `f"{width=}"` instead.
+example_code: |
+  # The trap: manually duplicates the variable name as a literal
+  # string -- can silently drift out of sync if the variable is renamed.
+  def debug_width_trap(width):
+      return f"width={width}"
+
+  print(debug_width_trap(42))
+  # "width=42" -- looks right, but the label "width" is a separate,
+  # hand-typed string that has no actual connection to the variable name
+
+  # The fix: the built-in debug specifier derives the label from the
+  # expression's own source text.
+  def debug_width(width):
+      return f"{width=}"
+
+  print(debug_width(42))
+  # "width=42" -- same output, but the label can never drift out of sync
+starter_code: |
+  def debug_width(width):
+      return f"width={width}"
+
+  print(debug_width(42))
+challenge: |
+  Fix `debug_width` so it returns `f"{width=}"`, using the built-in
+  debug specifier, instead of manually writing `f"width={width}"`. It
+  should still print `width=42`.
+expected_output: |
+  width=42
+hints:
+  - "Replace f\"width={width}\" with f\"{width=}\" -- the = right after the expression, inside the braces."
+  - "The debug specifier derives its label directly from the expression's own text -- renaming the variable automatically updates the label too."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 23
+difficulty: warmup
+contains_patterns:
+  - "f\"\\{width=\\}\""
+concept_tags: [idioms, f_strings, debugging]

@@ -1,0 +1,75 @@
+id: ai_293
+title: "Streaming Intermediate States Means Keeping a Snapshot After Every Node"
+language: ai
+level: 293
+objective: "Fix a graph runner that only returns the final state, when streaming mode is supposed to collect a snapshot after every node completes so a caller can observe the run's progress, not just its end result."
+explanation: |
+  LangGraph's streaming mode lets a caller observe a graph run as it
+  happens -- a progress bar, a live log of what just completed -- by
+  emitting a snapshot of state after each node finishes, rather than
+  waiting silently until the very end and delivering just the final
+  result. A runner that only ever returns the last state throws away
+  everything that made streaming useful in the first place: there's
+  nothing left to observe along the way.
+
+  The bug this exercise fixes returns `[state]` -- just the final
+  snapshot, wrapped in a list. The fix appends a snapshot after every
+  node runs.
+example_code: |
+  # The trap: only keeps the FINAL state -- every intermediate
+  # snapshot along the way is lost.
+  def run_graph_trap(nodes, edges, start, end):
+      current = start
+      state = None
+      while current != end:
+          state = nodes[current](state)
+          current = edges[current]
+      return [state]
+
+  nodes = {"a": lambda s: "a-done", "b": lambda s: "b-done"}
+  edges = {"a": "b", "b": "END"}
+  print(len(run_graph_trap(nodes, edges, "a", "END")))
+  # 1 -- only the final snapshot, intermediate ones never streamed
+
+  # The fix: collect a snapshot after every node.
+  def run_graph(nodes, edges, start, end):
+      current = start
+      state = None
+      snapshots = []
+      while current != end:
+          state = nodes[current](state)
+          snapshots.append(state)
+          current = edges[current]
+      return snapshots
+
+  print(len(run_graph(nodes, edges, "a", "END")))
+  # 2 -- correctly streamed both intermediate snapshots
+starter_code: |
+  def run_graph(nodes, edges, start, end):
+      current = start
+      state = None
+      while current != end:
+          state = nodes[current](state)
+          current = edges[current]
+      return [state]
+
+  nodes = {"a": lambda s: "a-done", "b": lambda s: "b-done"}
+  edges = {"a": "b", "b": "END"}
+  print(len(run_graph(nodes, edges, "a", "END")))
+challenge: |
+  Fix `run_graph` so it builds a `snapshots` list and calls
+  `snapshots.append(state)` after every node runs, returning
+  `snapshots` instead of `[state]`. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "Initialize snapshots = [] before the loop, then append(state) right after each node runs, and return snapshots instead of [state]."
+  - "Streaming means a caller can observe progress as it happens -- a single final snapshot defeats that entirely."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 28
+difficulty: warmup
+contains_patterns:
+  - "snapshots\\.append\\(state\\)"
+concept_tags: [langgraph, streaming, observability]

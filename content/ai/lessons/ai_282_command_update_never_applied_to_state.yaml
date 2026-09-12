@@ -1,0 +1,68 @@
+id: ai_282
+title: "A Command's State Update Needs to Actually Be Applied, Not Just Carried Along"
+language: ai
+level: 282
+objective: "Fix a step runner that returns a node's raw Command object unchanged, when a Command bundling both a state update and a routing decision needs its update half actually merged into state -- not left sitting inside the returned object, unapplied."
+explanation: |
+  A `Command`-style return value lets a node express two things at
+  once: what to change in state, and where to go next -- bundling an
+  update and a routing decision into one object instead of two separate
+  mechanisms. That only works if the runner actually separates the two:
+  applying the update to state, and using the goto value to decide the
+  next node. Returning the raw command object as if it *were* the new
+  state leaves the update sitting unapplied, inert, inside a field
+  nobody ever reads.
+
+  The bug this exercise fixes returns the node's raw return value
+  directly. The fix pulls the `"update"` out of it and merges that into
+  state.
+example_code: |
+  # The trap: returns the raw Command object -- its update is never
+  # actually applied to state at all.
+  def run_step_trap(node_fn, state):
+      return node_fn(state)
+
+  def classify(state):
+      return {"update": {"category": "billing"}, "goto": "billing_node"}
+
+  result_trap = run_step_trap(classify, {})
+  print("category" in result_trap)
+  # False -- the command object itself has no "category" key; the update was never applied
+
+  # The fix: pull the update out, merge it into state.
+  def run_step(node_fn, state):
+      command = node_fn(state)
+      new_state = dict(state)
+      new_state.update(command["update"])
+      return new_state
+
+  result = run_step(classify, {})
+  print("category" in result)
+  # True -- correctly applied, separate from the goto instruction
+starter_code: |
+  def classify(state):
+      return {"update": {"category": "billing"}, "goto": "billing_node"}
+
+  def run_step(node_fn, state):
+      return node_fn(state)
+
+  result = run_step(classify, {})
+  print("category" in result)
+challenge: |
+  Fix `run_step` so it captures the node's return value as `command`,
+  then does `new_state = dict(state); new_state.update(command
+  ["update"])` before returning `new_state`, instead of returning the
+  raw command object. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "command = node_fn(state), then new_state = dict(state), then new_state.update(command[\"update\"]), then return new_state."
+  - "The \"goto\" key inside the command is a separate piece of information (where to go next) -- this exercise is only about actually applying the \"update\" half."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 17
+difficulty: core
+contains_patterns:
+  - "new_state\\.update\\(command\\[\"update\"\\]\\)"
+concept_tags: [langgraph, command, state_update]

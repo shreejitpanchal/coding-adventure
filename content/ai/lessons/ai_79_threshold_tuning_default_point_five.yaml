@@ -1,0 +1,58 @@
+id: ai_79
+title: "0.5 Isn't a Universal Decision Threshold"
+language: ai
+level: 79
+objective: "Fix a classifier wrapper that hardcodes 0.5 as the decision threshold regardless of what actually optimizes the metric that matters for the task, instead of accepting a threshold as a parameter and letting it be tuned."
+explanation: |
+  A model outputting probabilities doesn't have to classify anything at
+  the default `0.5` cutoff -- that's simply the point that maximizes
+  plain accuracy under certain assumptions, and it's often the wrong
+  choice once precision and recall matter differently for the task
+  (see this category's earlier lessons on that exact tradeoff). A fraud
+  detector might deliberately use a *lower* threshold (flagging more
+  transactions, accepting more false positives) specifically because
+  missing real fraud is far more costly than over-flagging, while a
+  spam filter might use a *higher* threshold to avoid burying real
+  emails.
+
+  The bug this exercise fixes hardcodes `0.5` inside the classification
+  function itself, giving the caller no way to use a different
+  threshold even when one has genuinely been chosen to optimize for the
+  task's real tradeoffs. The fix accepts `threshold` as a parameter
+  with `0.5` only as a *default*, letting a caller override it when a
+  different cutoff has been deliberately chosen.
+example_code: |
+  # The trap: 0.5 is hardcoded INSIDE the function -- no way to use a
+  # different, deliberately-chosen threshold at all.
+  def classify_trap(probability):
+      return 1 if probability > 0.5 else 0
+
+  print(classify_trap(0.3))   # 0 -- no way to use a lower threshold, even if one was deliberately chosen
+
+  # The fix: threshold is a parameter, with 0.5 only as the DEFAULT.
+  def classify(probability, threshold=0.5):
+      return 1 if probability > threshold else 0
+
+  print(classify(0.3, threshold=0.2))   # 1 -- correctly flags it, using the deliberately lower threshold
+starter_code: |
+  def classify(probability, threshold=0.5):
+      return 1 if probability > 0.5 else 0
+
+  print(classify(0.3, threshold=0.2))
+challenge: |
+  Fix `classify` so it compares `probability` against the `threshold`
+  parameter, instead of the hardcoded literal `0.5`. It should print
+  `1`, not `0`.
+expected_output: |
+  1
+hints:
+  - "Change the comparison to: return 1 if probability > threshold else 0."
+  - "The function already accepts `threshold` as a parameter -- the bug is that the comparison inside the function body never actually uses it."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 39
+difficulty: warmup
+contains_patterns:
+  - "probability > threshold"
+concept_tags: [ml_fundamentals, threshold_tuning, classification]

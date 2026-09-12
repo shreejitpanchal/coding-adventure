@@ -1,0 +1,60 @@
+id: ai_195
+title: "A Log Message's Severity Level Should Reflect What Actually Happened"
+language: ai
+level: 195
+objective: "Fix a logging helper that sends every message at the same fixed severity level regardless of what actually happened, when a genuine error should be logged as 'error,' not the same 'info' level as routine status updates."
+explanation: |
+  MCP lets a server send log messages to the client at different
+  severity levels (`debug`, `info`, `warning`, `error`, and others),
+  and a client typically uses that level to decide how prominently to
+  surface a message -- a client might display `error`-level messages to
+  the user immediately while quietly discarding `debug`-level ones. If
+  every message is sent at the same fixed level regardless of what
+  actually happened, that filtering becomes meaningless: a genuine
+  error gets buried at the same priority as routine informational
+  chatter, or floods the user with noise if everything is logged as
+  urgent instead.
+
+  The bug this exercise fixes always logs at `"info"` level, regardless
+  of whether the situation was actually an error. The fix picks the
+  severity level based on what actually happened, correctly escalating
+  a genuine failure.
+example_code: |
+  # The trap: ALWAYS logs at "info" -- a genuine failure gets buried
+  # at the same priority as routine status chatter.
+  def log_trap(message, is_error):
+      return {"method": "notifications/message", "params": {"level": "info", "data": message}}
+
+  entry_trap = log_trap("Database connection failed", is_error=True)
+  print(entry_trap["params"]["level"])   # "info" -- WRONG, this is a genuine error, not routine info
+
+  # The fix: pick the severity level based on what ACTUALLY happened.
+  def log(message, is_error):
+      level = "error" if is_error else "info"
+      return {"method": "notifications/message", "params": {"level": level, "data": message}}
+
+  entry = log("Database connection failed", is_error=True)
+  print(entry["params"]["level"])   # "error" -- correctly reflects the actual severity
+starter_code: |
+  def log(message, is_error):
+      return {"method": "notifications/message", "params": {"level": "info", "data": message}}
+
+  entry = log("Database connection failed", is_error=True)
+  print(entry["params"]["level"])
+challenge: |
+  Fix `log` so it uses `"error"` as the level when `is_error` is true,
+  and `"info"` otherwise, instead of always hardcoding `"info"`. It
+  should print `error`, not `info`.
+expected_output: |
+  error
+hints:
+  - "Compute level = \"error\" if is_error else \"info\", then use that variable instead of the hardcoded literal \"info\"."
+  - "The severity level should reflect what actually happened, not stay fixed regardless of the situation."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 20
+difficulty: warmup
+contains_patterns:
+  - "\"error\" if is_error else \"info\""
+concept_tags: [mcp, logging, severity_levels]

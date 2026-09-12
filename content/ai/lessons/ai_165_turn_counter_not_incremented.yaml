@@ -1,0 +1,71 @@
+id: ai_165
+title: "Multi-Turn State Needs the Turn Counter Actually Incremented Each Turn"
+language: ai
+level: 165
+objective: "Fix a conversation-state tracker that never actually increments its own turn counter, so every turn is permanently recorded as turn 1 -- breaking anything downstream that relies on knowing which turn of the conversation is currently active."
+explanation: |
+  Multi-turn conversation logic often needs to know which turn is
+  currently active -- limiting how many follow-up questions are
+  allowed, applying different behavior on the first turn versus later
+  ones, or simply logging accurately for later debugging. A turn
+  counter that's initialized but never actually incremented stays
+  frozen at its starting value forever, silently breaking any of that
+  turn-dependent logic even though the conversation itself is
+  genuinely progressing normally.
+
+  The bug this exercise fixes creates a state object with a turn
+  counter but never increments it when processing each new turn. The
+  fix increments the counter every time a new turn is processed,
+  correctly reflecting how many turns have actually occurred.
+example_code: |
+  # The trap: the turn counter is initialized, but NEVER actually
+  # incremented -- every turn stays frozen at turn 1 forever.
+  class ConversationStateTrap:
+      def __init__(self):
+          self.turn = 1
+      def process_turn(self, message):
+          return f"Turn {self.turn}: {message}"   # bug: self.turn never changes
+
+  state_trap = ConversationStateTrap()
+  state_trap.process_turn("hello")
+  print(state_trap.process_turn("how are you?"))   # "Turn 1: how are you?" -- still turn 1, even on the SECOND message
+
+  # The fix: increment the turn counter each time a turn is processed.
+  class ConversationState:
+      def __init__(self):
+          self.turn = 1
+      def process_turn(self, message):
+          result = f"Turn {self.turn}: {message}"
+          self.turn += 1
+          return result
+
+  state = ConversationState()
+  state.process_turn("hello")
+  print(state.process_turn("how are you?"))   # "Turn 2: how are you?" -- correctly reflects the second turn
+starter_code: |
+  class ConversationState:
+      def __init__(self):
+          self.turn = 1
+      def process_turn(self, message):
+          return f"Turn {self.turn}: {message}"
+
+  state = ConversationState()
+  state.process_turn("hello")
+  print(state.process_turn("how are you?"))
+challenge: |
+  Fix `process_turn` so it increments `self.turn` after building the
+  result string for each turn, instead of leaving it unchanged forever.
+  It should print `Turn 2: how are you?`, not `Turn 1: how are you?`.
+expected_output: |
+  Turn 2: how are you?
+hints:
+  - "Add `self.turn += 1` after computing `result`, right before returning it."
+  - "The first call to process_turn should leave self.turn at 2 afterward, so the SECOND call correctly reports \"Turn 2\"."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 35
+difficulty: warmup
+contains_patterns:
+  - "self\\.turn \\+= 1"
+concept_tags: [agentic_frameworks, conversation_state, multi_turn]

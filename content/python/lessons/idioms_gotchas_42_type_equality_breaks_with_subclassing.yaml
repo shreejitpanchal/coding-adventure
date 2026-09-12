@@ -1,0 +1,65 @@
+id: idioms_gotchas_42
+title: "type(obj) == SomeClass Breaks the Moment a Subclass Shows Up"
+language: python
+level: 111
+objective: "Fix a type check using 'type(obj) == Animal', when a Dog genuinely IS an Animal through inheritance -- but the exact-type check says no, since a Dog's type is literally Dog, not Animal -- isinstance() is what actually respects the inheritance relationship."
+explanation: |
+  `type(obj) == SomeClass` checks for an *exact* type match -- it has
+  no concept of inheritance at all, so a `Dog` instance (whose type is
+  literally `Dog`) fails a check against `Animal`, even though every
+  `Dog` genuinely *is* an `Animal` in every meaningful sense.
+  `isinstance(obj, SomeClass)` is what actually respects the class
+  hierarchy, returning `True` for an instance of `SomeClass` or any of
+  its subclasses -- which is almost always what a type check is
+  actually trying to express in the first place.
+
+  The bug this exercise fixes uses `type(obj) == Animal`. The fix uses
+  `isinstance(obj, Animal)`.
+example_code: |
+  # The trap: exact-type comparison -- fails for a subclass instance,
+  # even though it genuinely IS an Animal in every meaningful sense.
+  class Animal:
+      pass
+
+  class Dog(Animal):
+      pass
+
+  def is_animal_trap(obj):
+      return type(obj) == Animal
+
+  print(is_animal_trap(Dog()))
+  # False -- WRONG, a Dog is genuinely a kind of Animal
+
+  # The fix: isinstance() respects the class hierarchy.
+  def is_animal(obj):
+      return isinstance(obj, Animal)
+
+  print(is_animal(Dog()))
+  # True -- correctly recognized through the inheritance relationship
+starter_code: |
+  class Animal:
+      pass
+
+  class Dog(Animal):
+      pass
+
+  def is_animal(obj):
+      return type(obj) == Animal
+
+  print(is_animal(Dog()))
+challenge: |
+  Fix `is_animal` so it returns `isinstance(obj, Animal)`, instead of
+  `type(obj) == Animal`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace type(obj) == Animal with isinstance(obj, Animal)."
+  - "type() == comparison has no idea about inheritance at all -- it only ever matches the exact class, never a subclass."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 42
+difficulty: warmup
+contains_patterns:
+  - "return isinstance\\(obj, Animal\\)"
+concept_tags: [idioms, isinstance, inheritance]

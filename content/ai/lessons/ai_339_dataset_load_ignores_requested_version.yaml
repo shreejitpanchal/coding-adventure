@@ -1,0 +1,55 @@
+id: ai_339
+title: "Loading a Pinned Dataset Version Should Return That Version, Not Whatever's Latest"
+language: ai
+level: 339
+objective: "Fix a dataset loader that always returns the most recently added version regardless of which one was actually requested, when evaluating against a pinned older version -- specifically to keep a comparison fair against a fixed baseline -- needs to genuinely load that version, not silently substitute the newest one."
+explanation: |
+  Comparing two experiments fairly requires evaluating both against the
+  exact same dataset version -- if a dataset gets new examples added
+  over time, silently evaluating against "whatever's latest" instead of
+  the version a comparison actually pinned means the two runs might not
+  even be scored against the same set of examples, invalidating the
+  comparison without anyone necessarily noticing.
+
+  The bug this exercise fixes always returns the last entry in
+  `versions`, ignoring `requested_version` entirely. The fix looks up
+  the exact version that was actually asked for.
+example_code: |
+  # The trap: always returns whatever's LAST, ignoring
+  # requested_version entirely.
+  def load_dataset_trap(versions, requested_version):
+      return list(versions.values())[-1]
+
+  versions = {"v1": ["e1", "e2"], "v2": ["e1", "e2", "e3"]}
+  print(len(load_dataset_trap(versions, "v1")))
+  # 3 -- returned v2's examples despite v1 being requested
+
+  # The fix: look up the exact version that was actually requested.
+  def load_dataset(versions, requested_version):
+      return versions[requested_version]
+
+  print(len(load_dataset(versions, "v1")))
+  # 2 -- correctly loaded the pinned version
+starter_code: |
+  def load_dataset(versions, requested_version):
+      return list(versions.values())[-1]
+
+  versions = {"v1": ["e1", "e2"], "v2": ["e1", "e2", "e3"]}
+  print(len(load_dataset(versions, "v1")))
+challenge: |
+  Fix `load_dataset` so it returns `versions[requested_version]`,
+  instead of always the last entry in `versions`. It should print `2`,
+  not `3`.
+expected_output: |
+  2
+hints:
+  - "Replace list(versions.values())[-1] with versions[requested_version]."
+  - "A comparison between two experiments is only fair if both are evaluated against the exact same pinned dataset version."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 29
+difficulty: warmup
+contains_patterns:
+  - "return versions\\[requested_version\\]"
+concept_tags: [langsmith, dataset_versioning, experiments]

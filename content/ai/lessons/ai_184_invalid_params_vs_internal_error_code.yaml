@@ -1,0 +1,59 @@
+id: ai_184
+title: "Invalid Parameters and Internal Errors Have Different Codes for a Reason"
+language: ai
+level: 184
+objective: "Fix an error-classification function that always reports an internal-error code regardless of the actual failure type, when a missing or malformed argument should return -32602 (invalid params) -- a genuinely different situation from -32603 (internal error), and one the caller can actually act on differently."
+explanation: |
+  This category's previous lesson covered `-32601` for an unrecognized
+  method -- the same principle applies to the difference between
+  `-32602` (invalid params: the caller sent something malformed or
+  incomplete) and `-32603` (internal error: something broke on the
+  server's own side, unrelated to what the caller sent). These aren't
+  interchangeable: a caller receiving `-32602` knows the *fix* is on
+  their end (correct the arguments and retry); a caller receiving
+  `-32603` knows retrying with the same arguments might well succeed
+  once the server-side issue resolves. Collapsing both into the same
+  code throws away information the caller could have used to react
+  correctly.
+
+  The bug this exercise fixes always classifies a failure as an
+  internal error. The fix checks whether the failure was caused by a
+  missing/invalid argument specifically, returning `-32602` for that
+  case and reserving `-32603` for genuine internal failures.
+example_code: |
+  # The trap: EVERY failure gets classified as an internal error --
+  # a caller can't tell "fix your request" from "try again later."
+  def classify_error_trap(is_missing_argument):
+      return -32603   # bug: ignores is_missing_argument entirely
+
+  print(classify_error_trap(is_missing_argument=True))   # -32603 -- WRONG, this is an invalid-params situation
+
+  # The fix: distinguish invalid params from a genuine internal failure.
+  def classify_error(is_missing_argument):
+      if is_missing_argument:
+          return -32602
+      return -32603
+
+  print(classify_error(is_missing_argument=True))   # -32602 -- correctly tells the caller to fix their request
+starter_code: |
+  def classify_error(is_missing_argument):
+      return -32603
+
+  print(classify_error(is_missing_argument=True))
+challenge: |
+  Fix `classify_error` so it returns `-32602` when
+  `is_missing_argument` is true, and `-32603` otherwise, instead of
+  always returning `-32603`. It should print `-32602`, not `-32603`.
+expected_output: |
+  -32602
+hints:
+  - "Add: if is_missing_argument: return -32602, before the -32603 fallback."
+  - "A missing or malformed argument is specifically what -32602 (invalid params) represents -- not the same as a genuine server-side internal error."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 9
+difficulty: warmup
+contains_patterns:
+  - "-32602"
+concept_tags: [mcp, json_rpc, error_codes]

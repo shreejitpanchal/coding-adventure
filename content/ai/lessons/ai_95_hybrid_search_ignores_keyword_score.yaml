@@ -1,0 +1,67 @@
+id: ai_95
+title: "Hybrid Search Combines Keyword and Vector Scores -- It Doesn't Pick One"
+language: ai
+level: 95
+objective: "Fix a hybrid-search ranking function that ranks by vector similarity alone, ignoring the keyword-match score entirely, when hybrid search's whole point is combining both signals so an exact keyword hit and a semantic match both contribute."
+explanation: |
+  Pure vector similarity is excellent at catching semantically related
+  results (a synonym, a paraphrase) but can under-rank a document that
+  contains an *exact* keyword match a user specifically typed --
+  vector embeddings sometimes don't weigh exact term matches as heavily
+  as a keyword search naturally would. **Hybrid search** combines both
+  a keyword score (like BM25) and a vector similarity score into one
+  ranking, so a document strong on either signal -- an exact keyword
+  hit, or a semantically related passage with no literal keyword
+  overlap -- both get a fair chance to rank highly.
+
+  The bug this exercise fixes ranks purely by vector similarity,
+  discarding the keyword score entirely even though it was computed and
+  passed in. The fix combines both scores (a weighted sum) before
+  ranking, so a document with a strong exact-keyword match can rank
+  above one with slightly higher vector similarity but no keyword match
+  at all.
+example_code: |
+  # The trap: ranks by VECTOR score alone -- the keyword score is
+  # computed and passed in, but never actually used in the ranking.
+  def rank_trap(candidates):
+      return sorted(candidates, key=lambda c: c["vector_score"], reverse=True)
+
+  candidates = [
+      {"doc_id": "semantic_match", "vector_score": 0.85, "keyword_score": 0.0},
+      {"doc_id": "exact_keyword_hit", "vector_score": 0.70, "keyword_score": 0.9},
+  ]
+  print(rank_trap(candidates)[0]["doc_id"])   # "semantic_match" -- ignores the strong exact keyword hit entirely
+
+  # The fix: combine BOTH scores into one weighted ranking score.
+  def rank(candidates, keyword_weight=0.5, vector_weight=0.5):
+      def combined(c):
+          return keyword_weight * c["keyword_score"] + vector_weight * c["vector_score"]
+      return sorted(candidates, key=combined, reverse=True)
+
+  print(rank(candidates)[0]["doc_id"])   # "exact_keyword_hit" -- correctly rewarded for its strong keyword match
+starter_code: |
+  def rank(candidates, keyword_weight=0.5, vector_weight=0.5):
+      return sorted(candidates, key=lambda c: c["vector_score"], reverse=True)
+
+  candidates = [
+      {"doc_id": "semantic_match", "vector_score": 0.85, "keyword_score": 0.0},
+      {"doc_id": "exact_keyword_hit", "vector_score": 0.70, "keyword_score": 0.9},
+  ]
+  print(rank(candidates)[0]["doc_id"])
+challenge: |
+  Fix `rank` so it sorts by a weighted combination of `keyword_score`
+  and `vector_score`, instead of `vector_score` alone. It should print
+  `exact_keyword_hit`, not `semantic_match`.
+expected_output: |
+  exact_keyword_hit
+hints:
+  - "Define a combined(c) helper: return keyword_weight * c[\"keyword_score\"] + vector_weight * c[\"vector_score\"]."
+  - "Sort using key=combined instead of key=lambda c: c[\"vector_score\"] -- with equal 0.5/0.5 weights, exact_keyword_hit's combined score (0.8) beats semantic_match's (0.425)."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 10
+difficulty: deep_dive
+contains_patterns:
+  - "keyword_weight \\* c\\[.keyword_score.\\]"
+concept_tags: [rag, hybrid_search, ranking]

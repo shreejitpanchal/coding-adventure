@@ -1,0 +1,53 @@
+id: ai_203
+title: "Resource Content Needs Its MIME Type, Not Just Its Bytes"
+language: ai
+level: 203
+objective: "Fix a resource-content builder that omits the mimeType field, leaving a client with no reliable way to know how to interpret or render the bytes it received."
+explanation: |
+  A resource's content block carries a `mimeType` (`"text/plain"`,
+  `"application/json"`, `"image/png"`, ...) alongside its actual data,
+  because the raw bytes alone don't say how to interpret them -- a
+  client rendering a resource needs to know whether it's looking at
+  plain text to display directly, JSON to parse, or binary image data
+  to decode, and guessing from content alone is unreliable at best.
+
+  The bug this exercise fixes returns a resource content block with no
+  `mimeType` field at all. The fix includes it explicitly alongside the
+  URI and text.
+example_code: |
+  # The trap: no mimeType at all -- the client has no reliable way to
+  # know how to interpret these bytes.
+  def build_resource_content_trap(uri, text):
+      return {"uri": uri, "text": text}
+
+  block_trap = build_resource_content_trap("file:///a.txt", "hi")
+  print("mimeType" in block_trap)   # False -- ambiguous how to interpret this content
+
+  # The fix: include the mimeType explicitly.
+  def build_resource_content(uri, text, mime_type):
+      return {"uri": uri, "text": text, "mimeType": mime_type}
+
+  block = build_resource_content("file:///a.txt", "hi", "text/plain")
+  print("mimeType" in block)   # True -- correctly self-describing
+starter_code: |
+  def build_resource_content(uri, text, mime_type):
+      return {"uri": uri, "text": text}
+
+  block = build_resource_content("file:///a.txt", "hi", "text/plain")
+  print("mimeType" in block)
+challenge: |
+  Fix `build_resource_content` so the returned dict also includes a
+  `"mimeType": mime_type` field. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"mimeType\": mime_type as a third key in the returned dict, alongside \"uri\" and \"text\"."
+  - "Without it, a client rendering the resource has to guess between plain text, JSON, or binary data."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 28
+difficulty: warmup
+contains_patterns:
+  - "\"mimeType\": mime_type"
+concept_tags: [mcp, resources, mime_type]

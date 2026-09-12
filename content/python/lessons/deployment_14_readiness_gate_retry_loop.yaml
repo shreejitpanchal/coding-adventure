@@ -1,0 +1,77 @@
+id: deployment_14
+title: "Checking Once Isn't Waiting -- A Slow-Starting Dependency Needs Retries"
+language: python
+level: 404
+objective: "Fix a readiness gate that checks a dependency exactly once and gives up immediately if it isn't ready yet, when a dependency that's still starting up needs to be polled with retries (and a small delay between them) until it actually becomes available or a real timeout is reached."
+explanation: |
+  A dependency a service needs -- a database, a downstream API -- often
+  takes a little time to finish its own startup after being launched;
+  checking it exactly once, immediately, and giving up the instant
+  that single check says "not ready yet" treats a normal, temporary
+  startup delay as a permanent failure. A readiness gate needs to
+  *wait*, retrying the check with a short delay between attempts, up
+  to some bounded number of tries (or a real timeout), only actually
+  giving up once the dependency has had a genuine, reasonable chance
+  to finish starting.
+
+  The fix retries the check with a delay between attempts, instead of
+  checking exactly once.
+example_code: |
+  # The trap: checks exactly ONCE -- no chance for a slow dependency to start.
+  def wait_for_dependency_trap(check_fn):
+      return check_fn()
+
+  state_trap = {"calls": 0}
+  def check_fn_trap():
+      state_trap["calls"] += 1
+      return state_trap["calls"] >= 3     # simulates becoming ready on the 3rd check
+
+  print(wait_for_dependency_trap(check_fn_trap))
+  # False -- WRONG, the dependency just needed a couple more checks to be ready
+
+  # The fix: retry with a delay, giving the dependency a real chance to start.
+  import time
+
+  def wait_for_dependency(check_fn, max_attempts=5, delay=0.01):
+      for attempt in range(max_attempts):
+          if check_fn():
+              return True
+          time.sleep(delay)
+      raise TimeoutError("dependency never became ready")
+
+  state = {"calls": 0}
+  def check_fn2():
+      state["calls"] += 1
+      return state["calls"] >= 3
+
+  print(wait_for_dependency(check_fn2))
+  # True -- correctly waited through the dependency's normal startup delay
+starter_code: |
+  def wait_for_dependency(check_fn):
+      return check_fn()
+
+  state = {"calls": 0}
+  def check_fn():
+      state["calls"] += 1
+      return state["calls"] >= 3
+
+  print(wait_for_dependency(check_fn))
+challenge: |
+  Fix `wait_for_dependency` so it retries `check_fn()` up to
+  `max_attempts=5` times, sleeping `delay=0.01` seconds between
+  attempts, returning `True` the moment it succeeds, instead of
+  checking only once. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "def wait_for_dependency(check_fn, max_attempts=5, delay=0.01): for attempt in range(max_attempts): if check_fn(): return True; time.sleep(delay)."
+  - "A dependency that's still starting up needs a real chance to finish -- checking exactly once treats a normal, temporary startup delay as a permanent failure."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 14
+difficulty: core
+contains_patterns:
+  - "max_attempts=5"
+  - "time\\.sleep\\(delay\\)"
+concept_tags: [deployment, readiness, retries]

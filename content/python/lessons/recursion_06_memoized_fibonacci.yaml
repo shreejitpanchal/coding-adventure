@@ -1,0 +1,67 @@
+id: recursion_06
+title: "Memoizing a Recursive Fibonacci to Avoid Exponential Recomputation"
+language: python
+level: 446
+objective: "Fix a naive recursive Fibonacci that recomputes the same smaller values exponentially many times, when caching each result in a plain dict the first time it's computed -- checking the cache before recursing -- turns the exponential blowup into linear work."
+explanation: |
+  A naive recursive `fib(n) = fib(n - 1) + fib(n - 2)` recomputes the
+  exact same smaller values over and over -- `fib(5)` computes `fib(3)`
+  twice, `fib(2)` three times, and the redundancy compounds
+  exponentially as `n` grows, making even moderately large inputs
+  impractically slow despite the logic being completely correct.
+  Memoization fixes this directly: check a cache dict before doing any
+  real work, and only recurse (storing the result afterward) when this
+  exact input hasn't been computed before -- every distinct value of
+  `n` then gets computed exactly once, no matter how many times it's
+  asked for across the whole call tree.
+
+  The fix adds a cache dict, checked before recursing.
+example_code: |
+  # The trap: no caching -- the same smaller values are recomputed exponentially often.
+  def fib_trap(n):
+      if n < 2:
+          return n
+      return fib_trap(n - 1) + fib_trap(n - 2)
+
+  print(fib_trap(25))
+  # 75025 -- correct, but recomputes the same smaller values over and over
+
+  # The fix: a cache dict, checked before recursing at all.
+  cache = {}
+
+  def fib(n):
+      if n in cache:
+          return cache[n]
+      if n < 2:
+          return n
+      result = fib(n - 1) + fib(n - 2)
+      cache[n] = result
+      return result
+
+  print(fib(25))
+  # 75025 -- same correct result, each distinct value computed exactly once
+starter_code: |
+  def fib(n):
+      if n < 2:
+          return n
+      return fib(n - 1) + fib(n - 2)
+
+  print(fib(25))
+challenge: |
+  Fix `fib` by adding a module-level `cache = {}` dict, checking `if n
+  in cache: return cache[n]` before doing anything else, and storing
+  each new result in `cache[n]` before returning it. Keep the same
+  output: 75025.
+expected_output: |
+  75025
+hints:
+  - "cache = {}, then inside fib: if n in cache: return cache[n], and store result = fib(n - 1) + fib(n - 2); cache[n] = result before returning it."
+  - "Without caching, fib(25) recomputes the same smaller values an exponential number of times -- caching makes each distinct value computed exactly once."
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 6
+difficulty: deep_dive
+contains_patterns:
+  - "if n in cache:"
+concept_tags: [recursion, memoization]

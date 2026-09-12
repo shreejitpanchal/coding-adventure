@@ -1,0 +1,76 @@
+id: ai_229
+title: "with_retry Should Actually Retry, Not Give Up After One Attempt"
+language: ai
+level: 229
+objective: "Fix a retry wrapper that calls the function exactly once and gives up on the first failure, when it should retry up to a maximum attempt count before finally giving up -- the entire reason a retry wrapper exists."
+explanation: |
+  `with_retry` exists specifically for transient failures -- a flaky
+  network call, a model endpoint that occasionally times out -- where
+  trying again shortly after often just works. A wrapper that calls the
+  underlying function once and immediately propagates any failure isn't
+  a retry wrapper at all, just an unnecessary layer of indirection
+  around a single, unretried call.
+
+  The bug this exercise fixes calls the function exactly once. The fix
+  retries up to `max_attempts` times, only giving up once every attempt
+  has failed.
+example_code: |
+  # The trap: calls the function ONCE -- no actual retrying happens at
+  # all, regardless of max_attempts.
+  def call_with_retry_trap(fn, max_attempts):
+      return fn()
+
+  attempts = {"n": 0}
+  def flaky():
+      attempts["n"] += 1
+      if attempts["n"] < 3:
+          raise RuntimeError("transient failure")
+      return "success"
+
+  # call_with_retry_trap(flaky, 5)  # RuntimeError on the very first call -- never gets a second chance
+
+  # The fix: retry up to max_attempts times before giving up.
+  def call_with_retry(fn, max_attempts):
+      last_error = None
+      for _ in range(max_attempts):
+          try:
+              return fn()
+          except RuntimeError as e:
+              last_error = e
+      raise last_error
+
+  print(call_with_retry(flaky, 5))   # "success" -- succeeded on the 3rd attempt, well within the 5-attempt budget
+starter_code: |
+  def call_with_retry(fn, max_attempts):
+      return fn()
+
+  attempts = {"n": 0}
+
+  def flaky():
+      attempts["n"] += 1
+      if attempts["n"] < 3:
+          raise RuntimeError("transient failure")
+      return "success"
+
+  try:
+      print(call_with_retry(flaky, 5))
+  except RuntimeError as e:
+      print(f"unhandled: {e}")
+challenge: |
+  Fix `call_with_retry` so it loops up to `max_attempts` times, catching
+  `RuntimeError` and trying again each time, instead of calling `fn()`
+  only once. It should print `success`, not
+  `unhandled: transient failure`.
+expected_output: |
+  success
+hints:
+  - "for _ in range(max_attempts): try: return fn() except RuntimeError as e: last_error = e -- then raise last_error after the loop if every attempt failed."
+  - "flaky() only succeeds on its 3rd call -- a retry loop with max_attempts=5 has plenty of room to reach that point."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "for _ in range\\(max_attempts\\):"
+concept_tags: [langchain, retry, error_handling]

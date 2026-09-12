@@ -1,0 +1,64 @@
+id: functional_programming_09
+title: "lru_cache Memoizes a Pure Function Automatically"
+language: python
+level: 344
+objective: "Fix an expensive recursive Fibonacci function recomputing the same values over and over, when functools.lru_cache automatically memoizes a pure function's results, computing each distinct input only once."
+explanation: |
+  Memoization -- caching a function's result by its input, so calling
+  it again with the same argument returns the cached value instead of
+  recomputing -- only makes sense for a genuinely pure function, since
+  it assumes the same input always produces the same output (this
+  category's earlier pure-functions lesson). A naive recursive
+  Fibonacci calls itself exponentially many times, recomputing the
+  exact same smaller values over and over (`fib(5)` computes `fib(3)`
+  twice, `fib(2)` three times, and so on) -- purely wasted work, since
+  `fib(3)` always returns the same answer. `@functools.lru_cache`
+  wraps a function so that calling it again with arguments it's
+  already seen returns the cached result directly, skipping the
+  recomputation entirely.
+
+  The fix adds `@lru_cache` above the recursive Fibonacci function.
+example_code: |
+  # The trap: no caching -- the same values get recomputed exponentially often.
+  def fib_trap(n):
+      if n < 2:
+          return n
+      return fib_trap(n - 1) + fib_trap(n - 2)
+
+  print(fib_trap(20))
+  # 6765 -- correct, but recomputes the same smaller values over and over
+
+  # The fix: lru_cache memoizes -- each distinct input computed only once.
+  from functools import lru_cache
+
+  @lru_cache
+  def fib(n):
+      if n < 2:
+          return n
+      return fib(n - 1) + fib(n - 2)
+
+  print(fib(20))
+  # 6765 -- same correct result, each value computed exactly once
+starter_code: |
+  def fib(n):
+      if n < 2:
+          return n
+      return fib(n - 1) + fib(n - 2)
+
+  print(fib(20))
+challenge: |
+  Fix this by importing `lru_cache` from `functools` and adding
+  `@lru_cache` directly above `fib`. Keep the same output: 6765.
+expected_output: |
+  6765
+hints:
+  - "from functools import lru_cache, then add @lru_cache directly above def fib(n):."
+  - "lru_cache only makes sense for a pure function -- it assumes the same input always produces the same output, which is exactly what memoization relies on."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "@lru_cache"
+concept_tags: [functional_programming, memoization, functools]

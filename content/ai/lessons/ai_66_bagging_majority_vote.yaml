@@ -1,0 +1,72 @@
+id: ai_66
+title: "Bagging Combines Predictions by Majority Vote, Not by Picking One Model"
+language: ai
+level: 66
+objective: "Fix a bagging ensemble that just returns the first bootstrap model's prediction, instead of combining every model's prediction through a majority vote -- the step that actually reduces variance."
+explanation: |
+  **Bagging** (bootstrap aggregating) trains several models, each on
+  its own bootstrap resample of the data (see this category's previous
+  two lessons), specifically so their individual errors -- which tend
+  to differ from model to model, since each saw a different resample --
+  can cancel out when combined. That cancellation only happens at the
+  **combination** step: taking a majority vote (for classification)
+  across every model's prediction. Skipping that step and just using
+  one model's prediction throws away the entire reason bagging reduces
+  variance in the first place -- it's exactly equivalent to training
+  only one model on one resample, with none of bagging's benefit.
+
+  The bug this exercise fixes trains multiple bootstrap models but only
+  ever returns the first one's prediction, ignoring the rest entirely.
+  The fix collects every model's prediction and returns whichever class
+  the majority actually voted for, correctly combining all of them the
+  way bagging is meant to.
+example_code: |
+  # The trap: trains several models, but only ever uses the FIRST one's
+  # prediction -- the rest are wasted, and bagging's benefit is lost.
+  def bagged_predict_trap(models, x):
+      return models[0].predict(x)
+
+  class FixedPredictor:
+      def __init__(self, label):
+          self.label = label
+      def predict(self, x):
+          return self.label
+
+  models = [FixedPredictor("cat"), FixedPredictor("dog"), FixedPredictor("dog")]
+  print(bagged_predict_trap(models, x=None))   # "cat" -- ignores that 2 of 3 models actually said "dog"
+
+  # The fix: collect every model's prediction, return the MAJORITY vote.
+  def bagged_predict(models, x):
+      votes = [m.predict(x) for m in models]
+      return max(set(votes), key=votes.count)
+
+  print(bagged_predict(models, x=None))   # "dog" -- correctly reflects the majority
+starter_code: |
+  class FixedPredictor:
+      def __init__(self, label):
+          self.label = label
+      def predict(self, x):
+          return self.label
+
+  def bagged_predict(models, x):
+      return models[0].predict(x)
+
+  models = [FixedPredictor("cat"), FixedPredictor("dog"), FixedPredictor("dog")]
+  print(bagged_predict(models, x=None))
+challenge: |
+  Fix `bagged_predict` so it collects every model's prediction and
+  returns the majority-voted label, instead of just returning the first
+  model's prediction. It should print `dog`, not `cat`.
+expected_output: |
+  dog
+hints:
+  - "Collect every model's vote first: votes = [m.predict(x) for m in models]."
+  - "Return the most common vote: max(set(votes), key=votes.count)."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "max\\(set\\(votes\\), key=votes\\.count\\)"
+concept_tags: [ml_fundamentals, bagging, ensemble_methods]

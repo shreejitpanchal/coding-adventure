@@ -1,0 +1,58 @@
+id: ai_209
+title: "A Timed-Out Request Needs to Actually Be Removed From Tracking"
+language: ai
+level: 209
+objective: "Fix a cleanup function that leaves every in-flight request in place regardless of which ones have timed out, so tracked requests accumulate forever instead of being removed once they're no longer waited on."
+explanation: |
+  A request timeout is only half the mechanism -- once a request is
+  known to have timed out, it also needs to be removed from whatever
+  structure is tracking in-flight requests, or that structure just
+  grows forever, accumulating dead entries for requests nobody is
+  waiting on anymore. A cleanup pass that receives the list of
+  timed-out ids but never actually removes them accomplishes nothing.
+
+  The bug this exercise fixes returns `in_flight` completely unchanged
+  regardless of what's in `timed_out_ids`. The fix pops each timed-out
+  id out of the tracking dict.
+example_code: |
+  # The trap: never removes anything -- timed-out requests leak forever.
+  def cleanup_stale_trap(in_flight, timed_out_ids):
+      return in_flight
+
+  in_flight_trap = {"r1": 1, "r2": 2}
+  cleanup_stale_trap(in_flight_trap, ["r1"])
+  print(len(in_flight_trap))   # 2 -- r1 was never actually removed
+
+  # The fix: pop each timed-out id out of the tracking dict.
+  def cleanup_stale(in_flight, timed_out_ids):
+      for rid in timed_out_ids:
+          in_flight.pop(rid, None)
+      return in_flight
+
+  in_flight = {"r1": 1, "r2": 2}
+  cleanup_stale(in_flight, ["r1"])
+  print(len(in_flight))   # 1 -- the timed-out request was actually removed
+starter_code: |
+  def cleanup_stale(in_flight, timed_out_ids):
+      return in_flight
+
+  in_flight = {"r1": 1, "r2": 2}
+  cleanup_stale(in_flight, ["r1"])
+  print(len(in_flight))
+challenge: |
+  Fix `cleanup_stale` so it loops over `timed_out_ids` and calls
+  `in_flight.pop(rid, None)` for each one, instead of leaving
+  `in_flight` untouched. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "for rid in timed_out_ids: in_flight.pop(rid, None) -- the None default avoids a KeyError if an id is already gone."
+  - "Detecting a timeout and actually removing the stale entry are two separate steps -- this exercise is about the second one."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 34
+difficulty: warmup
+contains_patterns:
+  - "in_flight\\.pop\\(rid, None\\)"
+concept_tags: [mcp, request_timeout, cleanup]

@@ -1,0 +1,55 @@
+id: data_structures_48
+title: "dict.keys() Returns a Live View -- Converting to a List Freezes a Snapshot"
+language: python
+level: 205
+objective: "Fix code that converts dict.keys() to a list immediately, freezing a snapshot that doesn't reflect a later change, when keeping it as a live view means it automatically stays in sync with the dict."
+explanation: |
+  `dict.keys()` (and `.values()`, `.items()`) doesn't return a copy --
+  it returns a *view* object, genuinely linked to the dict it came
+  from. Any later change to the dict is immediately visible through an
+  existing view, with no need to fetch a fresh one. Converting the
+  view to a `list` right away throws that connection away: `list(d.
+  keys())` captures whatever keys existed at that exact moment, frozen,
+  and a key added to `d` afterward is invisible to that already-built
+  list.
+
+  The bug this exercise fixes converts to a list immediately, freezing
+  a stale snapshot. The fix keeps the live view instead, letting it
+  reflect the later change.
+example_code: |
+  # The trap: converts to a list IMMEDIATELY -- a frozen snapshot that
+  # doesn't reflect a later change to the dict at all.
+  d_loop = {"a": 1, "b": 2}
+  keys_loop = list(d_loop.keys())
+  d_loop["c"] = 3
+  print(len(keys_loop))
+  # 2 -- doesn't include "c", since the snapshot was taken before the change
+
+  # The fix: keep it as a live view, not a frozen snapshot.
+  d = {"a": 1, "b": 2}
+  keys_view = d.keys()
+  d["c"] = 3
+  print(len(keys_view))
+  # 3 -- correctly reflects the change, since keys() is a live view
+starter_code: |
+  d = {"a": 1, "b": 2}
+  keys = list(d.keys())
+  d["c"] = 3
+  print(len(keys))
+challenge: |
+  Fix this so `keys = d.keys()` stays a live view (no `list(...)`
+  wrapper), instead of being frozen into a list immediately. It should
+  print `3`, not `2`.
+expected_output: |
+  3
+hints:
+  - "Replace keys = list(d.keys()) with keys = d.keys()."
+  - "A dict view is a genuinely live, linked object -- converting it to a list is what breaks that connection, not the view itself."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 48
+difficulty: gotcha
+contains_patterns:
+  - "keys = d\\.keys\\(\\)"
+concept_tags: [dict_views, dicts]

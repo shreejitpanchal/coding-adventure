@@ -1,0 +1,54 @@
+id: gotcha_gauntlet_37
+title: "The 'Same List' Check That Failed for Two Lists With Identical Contents"
+language: python
+level: 282
+objective: "Fix a check using 'is' to compare two lists that are expected to have matching contents, when 'is' checks whether they're the exact same object -- '==' is what actually checks whether their contents match."
+explanation: |
+  `is` answers "are these two names pointing at the exact same object
+  in memory" -- a completely different question from "do these two
+  objects have equal contents." Two separately built lists with
+  identical elements, like `[1, 2, 3]` constructed twice in two
+  different places, are two distinct objects that happen to hold the
+  same values -- `is` between them is `False`, even though every
+  element matches. A check meant to answer "does this list match the
+  expected contents" needs `==`, which recursively compares elements,
+  not `is`, which only ever answers "is this the literal same object."
+
+  This is the same identity-vs-equality confusion this category's
+  earlier string-comparison lesson covers, applied here to lists
+  instead of strings.
+example_code: |
+  # The trap: 'is' checks IDENTITY -- two separately built equal lists differ.
+  def matches_expected_trap(actual, expected):
+      return actual is expected
+
+  print(matches_expected_trap([1, 2, 3], [1, 2, 3]))
+  # False -- WRONG, these are two distinct list objects with equal contents
+
+  # The fix: '==' checks CONTENTS, recursively, regardless of identity.
+  def matches_expected(actual, expected):
+      return actual == expected
+
+  print(matches_expected([1, 2, 3], [1, 2, 3]))
+  # True -- correctly compares the actual contents
+starter_code: |
+  def matches_expected(actual, expected):
+      return actual is expected
+
+  print(matches_expected([1, 2, 3], [1, 2, 3]))
+challenge: |
+  Fix `matches_expected` so it returns `actual == expected`, instead of
+  `actual is expected`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "return actual == expected."
+  - "is only ever answers \"is this the exact same object\" -- two separately constructed lists with equal contents are still two different objects."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 37
+difficulty: warmup
+contains_patterns:
+  - "return actual == expected"
+concept_tags: [lists, identity, equality, gotchas]

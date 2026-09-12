@@ -1,0 +1,65 @@
+id: ai_146
+title: "A Supervisor Agent Should Delegate to the Sub-Agent Suited for the Task"
+language: ai
+level: 146
+objective: "Fix a supervisor agent that always delegates to the same sub-agent regardless of task type, instead of routing each subtask to whichever specialized sub-agent is actually suited for it."
+explanation: |
+  Multi-agent systems often split work across specialized sub-agents --
+  a billing sub-agent, a technical-support sub-agent, a scheduling
+  sub-agent -- specifically so each one can be simpler and more focused
+  than one giant generalist agent trying to handle everything. That
+  benefit only materializes if the **supervisor** (the agent
+  coordinating them) actually routes each subtask to the sub-agent
+  suited for it, rather than defaulting to whichever sub-agent happens
+  to be listed first or configured as a fallback.
+
+  The bug this exercise fixes always delegates to the same sub-agent
+  regardless of the subtask's actual type. The fix looks up the
+  subtask's type in a routing table and delegates to the matching
+  specialized sub-agent instead.
+example_code: |
+  # The trap: always delegates to the SAME sub-agent -- specialization
+  # provides no benefit if routing never actually uses it.
+  def delegate_trap(task, subagents):
+      return subagents["billing"](task)   # bug: hardcoded, ignores the task's actual type
+
+  subagents = {
+      "billing": lambda t: f"billing_agent handled: {t}",
+      "tech_support": lambda t: f"tech_support_agent handled: {t}",
+  }
+  task = {"type": "tech_support", "description": "My login isn't working"}
+  print(delegate_trap(task, subagents))   # "billing_agent handled: ..." -- routed to the WRONG specialist
+
+  # The fix: route by the task's own declared type.
+  def delegate(task, subagents):
+      return subagents[task["type"]](task["description"])
+
+  print(delegate(task, subagents))   # "tech_support_agent handled: My login isn't working" -- correctly routed
+starter_code: |
+  def delegate(task, subagents):
+      return subagents["billing"](task["description"])
+
+  subagents = {
+      "billing": lambda t: f"billing_agent handled: {t}",
+      "tech_support": lambda t: f"tech_support_agent handled: {t}",
+  }
+  task = {"type": "tech_support", "description": "My login isn't working"}
+  print(delegate(task, subagents))
+challenge: |
+  Fix `delegate` so it looks up `subagents[task["type"]]` instead of
+  the hardcoded `subagents["billing"]`. It should print
+  `tech_support_agent handled: My login isn't working`, not
+  `billing_agent handled: My login isn't working`.
+expected_output: |
+  tech_support_agent handled: My login isn't working
+hints:
+  - "Change subagents[\"billing\"] to subagents[task[\"type\"]] -- routing by the task's own declared type, not a fixed literal."
+  - "The rest of the call (passing task[\"description\"]) stays the same -- only which sub-agent gets picked needs to change."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 16
+difficulty: warmup
+contains_patterns:
+  - "subagents\\[task\\[.type.\\]\\]"
+concept_tags: [agentic_frameworks, multi_agent, delegation]

@@ -1,0 +1,72 @@
+id: stdlib_deep_dive_33
+title: "timedelta Correctly Carries Days Into Hours -- Manual Hour Addition Doesn't"
+language: python
+level: 234
+objective: "Fix code that adds hours to a datetime by manually adding to the .hour attribute (which can't legally exceed 23 and doesn't roll over into the next day), when datetime + timedelta(hours=...) handles day rollover correctly."
+explanation: |
+  A `datetime`'s `.hour` attribute is just a plain integer field
+  constrained to `0..23` -- assigning it a value like `26` doesn't
+  "roll over" into the next day, it raises `ValueError` outright, since
+  `datetime` objects are immutable and `.hour` isn't a settable
+  arithmetic quantity in the first place. Adding hours correctly means
+  adding a `timedelta(hours=...)` to the whole `datetime`, which
+  correctly carries the overflow into the day (and month, and year)
+  fields as needed.
+
+  The bug this exercise fixes tries to add hours by constructing a
+  fresh `datetime` with `hour=original.hour + n`, which crashes once
+  the sum exceeds 23. The fix adds a `timedelta` to the whole
+  `datetime` instead.
+example_code: |
+  # The trap: manually adding to .hour crashes once it overflows past 23.
+  from datetime import datetime
+
+  def add_hours_trap(dt, hours):
+      return dt.replace(hour=dt.hour + hours)
+
+  start = datetime(2024, 1, 1, 20, 0)
+  try:
+      add_hours_trap(start, 6)
+      print("ok")
+  except ValueError:
+      print("crashed")
+  # "crashed" -- 20 + 6 = 26, not a legal hour value
+
+  # The fix: timedelta correctly carries the overflow into the day field.
+  from datetime import timedelta
+
+  def add_hours(dt, hours):
+      return dt + timedelta(hours=hours)
+
+  result = add_hours(start, 6)
+  print(result.day, result.hour)
+  # 2 2 -- correctly rolled over into the next day at 2 AM
+starter_code: |
+  from datetime import datetime
+
+  def add_hours(dt, hours):
+      return dt.replace(hour=dt.hour + hours)
+
+  start = datetime(2024, 1, 1, 20, 0)
+  try:
+      result = add_hours(start, 6)
+      print(result.day, result.hour)
+  except ValueError:
+      print("crashed")
+challenge: |
+  Fix `add_hours` so it uses `dt + timedelta(hours=hours)` (importing
+  `timedelta` from `datetime`) instead of manually incrementing
+  `.hour`. It should print `2 2`, not `crashed`.
+expected_output: |
+  2 2
+hints:
+  - "from datetime import timedelta, then: return dt + timedelta(hours=hours)."
+  - ".hour is a plain 0-23 field with no rollover semantics -- adding a timedelta to the whole datetime object is what correctly carries overflow into the day."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 33
+difficulty: gotcha
+contains_patterns:
+  - "dt \\+ timedelta\\(hours=hours\\)"
+concept_tags: [datetime, timedelta]

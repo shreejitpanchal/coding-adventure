@@ -1,0 +1,73 @@
+id: gotcha_gauntlet_22
+title: "The Duration Measurement That Used the Wrong Kind of Clock"
+language: python
+level: 267
+objective: "Fix code measuring elapsed time by subtracting two datetime.now() calls (a wall clock that can jump backward from NTP/system-clock adjustments), when time.perf_counter() is a monotonic clock specifically meant for measuring durations."
+explanation: |
+  `datetime.now()` reads the system's wall clock -- the actual
+  calendar date and time, which is exactly what's needed for
+  timestamps, but is not guaranteed to move forward smoothly: NTP
+  synchronization, manual clock changes, or daylight-saving
+  transitions can all shift it backward mid-measurement, which would
+  make a naive `end - start` duration calculation come out *negative*.
+  `time.perf_counter()` is a monotonic clock -- it's explicitly
+  documented to never go backward, and is designed specifically for
+  measuring elapsed durations, not for knowing what time it actually
+  is (its return value has no meaningful absolute meaning on its own,
+  only differences between two calls do).
+
+  The fix is to use `time.perf_counter()` for both endpoints of a
+  duration measurement, reserving `datetime.now()` for genuine
+  timestamps.
+example_code: |
+  # Works most of the time, but is the WRONG tool -- wall clocks can
+  # jump backward mid-measurement, corrupting the duration.
+  from datetime import datetime
+
+  def measure_trap(work_fn):
+      start = datetime.now()
+      work_fn()
+      end = datetime.now()
+      return (end - start).total_seconds() >= 0
+
+  # measure_trap is not reliably >= 0 -- a wall-clock adjustment during
+  # work_fn() can make "end" appear to be BEFORE "start"
+
+  # The fix: perf_counter() is monotonic -- guaranteed to never go backward.
+  import time
+
+  def measure(work_fn):
+      start = time.perf_counter()
+      work_fn()
+      end = time.perf_counter()
+      return (end - start) >= 0
+
+  print(measure(lambda: sum(range(1000))))
+  # True -- guaranteed, since perf_counter() can never move backward
+starter_code: |
+  from datetime import datetime
+
+  def measure(work_fn):
+      start = datetime.now()
+      work_fn()
+      end = datetime.now()
+      return (end - start).total_seconds() >= 0
+
+  print(measure(lambda: sum(range(1000))))
+challenge: |
+  Fix `measure` so it uses `time.perf_counter()` (imported from `time`)
+  for both `start` and `end`, instead of `datetime.now()`. It should
+  still print `True`.
+expected_output: |
+  True
+hints:
+  - "import time, then: start = time.perf_counter() and end = time.perf_counter(), returning (end - start) >= 0."
+  - "perf_counter() is specifically documented as monotonic -- guaranteed to never move backward, unlike a wall clock, which can jump with NTP or manual adjustments."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 22
+difficulty: deep_dive
+contains_patterns:
+  - "time\\.perf_counter\\(\\)"
+concept_tags: [time, monotonic_clock, gotchas]

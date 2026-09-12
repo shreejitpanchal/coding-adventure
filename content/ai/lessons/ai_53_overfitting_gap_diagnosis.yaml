@@ -1,0 +1,60 @@
+id: ai_53
+title: "Diagnosing Overfitting from the Train/Validation Gap, Not Either Score Alone"
+language: ai
+level: 53
+objective: "Fix a diagnostic function that flags overfitting based on train accuracy alone, when overfitting is really about the GAP between train and validation performance."
+explanation: |
+  A high training accuracy on its own says nothing about whether a
+  model has overfit -- a simple, well-regularized model can also score
+  high on training data if the task itself is easy. **Overfitting**
+  specifically means the model has memorized quirks of the training set
+  that don't generalize, which shows up as a *gap*: high performance on
+  data it has seen, meaningfully lower performance on data it hasn't.
+  Checking train accuracy alone conflates "the model fit this data
+  well" (which could be entirely legitimate) with "the model only fits
+  data it has already seen" (the actual problem).
+
+  The bug this exercise fixes flags overfitting purely from a high
+  train score, regardless of what the validation score is -- a model
+  scoring 0.95 on both train and validation gets incorrectly flagged,
+  even though matching scores are exactly what *good* generalization
+  looks like. The fix checks the actual gap between the two scores
+  against a threshold, correctly distinguishing "high train score with a
+  large gap" (genuine overfitting) from "high train score that
+  generalizes just as well" (not overfitting at all).
+example_code: |
+  # The trap: flags overfitting from train score ALONE, ignoring validation entirely.
+  def is_overfitting_trap(train_acc, val_acc, high_threshold=0.9):
+      return train_acc > high_threshold   # bug: never even looks at val_acc
+
+  print(is_overfitting_trap(0.95, 0.94))   # True -- WRONG, this model generalizes fine!
+
+  # The fix: flag overfitting from the GAP between train and validation scores.
+  def is_overfitting(train_acc, val_acc, gap_threshold=0.15):
+      return (train_acc - val_acc) > gap_threshold
+
+  print(is_overfitting(0.95, 0.94))   # False -- correctly recognizes this as healthy generalization
+  print(is_overfitting(0.95, 0.60))   # True -- a genuinely large gap, correctly flagged
+starter_code: |
+  def is_overfitting(train_acc, val_acc, high_threshold=0.9):
+      return train_acc > high_threshold
+
+  print(is_overfitting(0.95, 0.94))
+challenge: |
+  Fix `is_overfitting` so it flags overfitting based on the gap between
+  `train_acc` and `val_acc` exceeding `0.15`, instead of just checking
+  whether `train_acc` alone is high. It should print `False` for
+  `is_overfitting(0.95, 0.94)`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change the check to: return (train_acc - val_acc) > gap_threshold, with gap_threshold defaulting to 0.15."
+  - "A train/val gap of 0.95 - 0.94 = 0.01 is small -- well under any reasonable overfitting threshold -- so this specific case should NOT be flagged."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 13
+difficulty: gotcha
+contains_patterns:
+  - "train_acc - val_acc"
+concept_tags: [ml_fundamentals, overfitting, model_evaluation]

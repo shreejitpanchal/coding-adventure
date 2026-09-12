@@ -1,0 +1,59 @@
+id: ai_338
+title: "Measuring Agreement Means Comparing Each Pair, Not the Two Totals"
+language: ai
+level: 338
+objective: "Fix an agreement check that compares the sum of human scores against the sum of auto-evaluator scores, when two totals can match by coincidence even though the two sets of scores barely agree on any individual example at all."
+explanation: |
+  Checking whether an automatic evaluator agrees with human feedback is
+  only meaningful example-by-example -- comparing the two *totals*
+  can produce a false "they agree!" verdict purely by coincidence, the
+  same way this category's earlier regression-detection lesson showed
+  aggregate totals hiding individual flips. Two scoring totals landing
+  on the same number says nothing about whether the human and the
+  evaluator actually agreed on which specific examples were right or
+  wrong.
+
+  The bug this exercise fixes compares `sum(human_scores) ==
+  sum(auto_scores)`. The fix counts how many individual examples
+  actually match.
+example_code: |
+  # The trap: compares TOTALS, not whether each pair actually agrees.
+  def agreement_rate_trap(human_scores, auto_scores):
+      return sum(human_scores) == sum(auto_scores)
+
+  human_scores = [1, 0, 1]
+  auto_scores = [0, 1, 1]   # totals match (2 == 2), but only the 3rd example actually agrees
+  print(agreement_rate_trap(human_scores, auto_scores))
+  # True -- WRONG, only 1 of 3 examples actually agree
+
+  # The fix: count how many individual examples actually match.
+  def agreement_count(human_scores, auto_scores):
+      return sum(1 for h, a in zip(human_scores, auto_scores) if h == a)
+
+  print(agreement_count(human_scores, auto_scores))
+  # 1 -- correctly reflects that only the 3rd example genuinely agrees
+starter_code: |
+  def agreement_count(human_scores, auto_scores):
+      return sum(human_scores) == sum(auto_scores)
+
+  human_scores = [1, 0, 1]
+  auto_scores = [0, 1, 1]
+  print(agreement_count(human_scores, auto_scores))
+challenge: |
+  Fix `agreement_count` so it returns `sum(1 for h, a in
+  zip(human_scores, auto_scores) if h == a)`, counting actual per-
+  example agreement, instead of comparing the two totals. It should
+  print `1`, not `True`.
+expected_output: |
+  1
+hints:
+  - "Use zip(human_scores, auto_scores) to walk both lists together, counting positions where h == a."
+  - "Totals matching by coincidence hides exactly the kind of disagreement this metric is supposed to catch."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 28
+difficulty: gotcha
+contains_patterns:
+  - "for h, a in zip\\(human_scores, auto_scores\\) if h == a"
+concept_tags: [langsmith, evaluators, feedback_agreement]

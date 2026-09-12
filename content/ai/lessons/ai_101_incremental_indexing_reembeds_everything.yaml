@@ -1,0 +1,83 @@
+id: ai_101
+title: "Adding One Document Shouldn't Require Re-Embedding the Whole Corpus"
+language: ai
+level: 101
+objective: "Fix an indexing function that re-embeds every document from scratch whenever a single new one is added, instead of embedding only the new document and appending it to what's already indexed."
+explanation: |
+  Embedding is real, non-trivial computational work -- re-running it
+  across an entire corpus every time a single new document arrives
+  wastes enormous effort re-doing work that was already done and hasn't
+  changed at all. **Incremental indexing** embeds only what's actually
+  new (or changed, per this category's previous lesson on stale
+  entries) and appends it to the existing index, leaving every
+  already-embedded document's vector untouched.
+
+  The bug this exercise fixes re-embeds the entire corpus, including
+  documents that were already indexed and haven't changed, every single
+  time a new document is added -- work that scales worse and worse as
+  the corpus grows, for no benefit at all. The fix embeds only the new
+  document and appends it, leaving the existing index's already-computed
+  entries completely alone.
+example_code: |
+  # The trap: re-embeds the ENTIRE corpus from scratch on every single
+  # addition -- redoing work that was already done for no reason.
+  call_count = 0
+  def counting_embed(text):
+      global call_count
+      call_count += 1
+      return f"embedding_of({text})"
+
+  def add_document_trap(index, all_documents, new_document):
+      all_documents.append(new_document)
+      return [counting_embed(doc) for doc in all_documents]   # re-embeds EVERYTHING, every time
+
+  all_documents = ["doc1", "doc2"]
+  index = [f"embedding_of({d})" for d in all_documents]   # pre-existing entries, embedded once already
+  add_document_trap(index, all_documents, "doc3")
+  print(call_count)   # 3 -- re-embedded doc1 and doc2 AGAIN, even though they hadn't changed
+
+  # The fix: embed only the NEW document, append it to the existing index.
+  call_count = 0
+  def add_document(index, all_documents, new_document):
+      all_documents.append(new_document)
+      index.append(counting_embed(new_document))
+      return index
+
+  add_document(index, all_documents, "doc4")
+  print(call_count)   # 1 -- only the genuinely new document triggered an embedding call
+starter_code: |
+  def embed(text):
+      return f"embedding_of({text})"
+
+  call_count = 0
+  def counting_embed(text):
+      global call_count
+      call_count += 1
+      return embed(text)
+
+  def add_document(index, all_documents, new_document):
+      all_documents.append(new_document)
+      return [counting_embed(doc) for doc in all_documents]
+
+  all_documents = ["doc1", "doc2"]
+  index = [embed(d) for d in all_documents]
+  new_index = add_document(index, all_documents, "doc3")
+  print(call_count)
+challenge: |
+  Fix `add_document` so it only calls `counting_embed` on the single new
+  document and appends the result to `index`, instead of re-embedding
+  every document in `all_documents` on every call. It should print `1`,
+  not `3`.
+expected_output: |
+  1
+hints:
+  - "Change the function body to: all_documents.append(new_document); index.append(counting_embed(new_document)); return index."
+  - "Only the ONE new document should ever be passed to counting_embed -- the existing index's already-embedded entries need no new embedding calls at all."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 16
+difficulty: core
+contains_patterns:
+  - "index\\.append\\(counting_embed\\(new_document\\)\\)"
+concept_tags: [rag, incremental_indexing, embeddings]

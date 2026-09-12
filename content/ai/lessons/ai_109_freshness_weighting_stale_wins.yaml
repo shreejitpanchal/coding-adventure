@@ -1,0 +1,65 @@
+id: ai_109
+title: "Pure Similarity Ranking Can Surface an Outdated Document Over a Fresher One"
+language: ai
+level: 109
+objective: "Fix a ranking function that ignores document recency entirely, letting a highly similar but outdated document outrank a slightly less similar but current one -- exactly wrong for time-sensitive information like policies or pricing."
+explanation: |
+  Pure similarity ranking has no concept of time -- a document from
+  three years ago and a document from yesterday rank purely on how
+  textually similar they are to the query, with no adjustment for which
+  one is more likely to still be accurate. For genuinely time-sensitive
+  content (a pricing page, a policy document, a status report), an old
+  document being *slightly* more textually similar shouldn't
+  necessarily outrank a newer one that's still clearly relevant --
+  recency needs to factor into the ranking directly.
+
+  The bug this exercise fixes ranks purely by similarity score, letting
+  an outdated document with marginally higher similarity outrank a
+  current, still-relevant document. The fix combines similarity with a
+  recency bonus, correctly favoring the current document when its
+  similarity is close enough that recency should tip the balance.
+example_code: |
+  # The trap: ranks by SIMILARITY alone -- an old, outdated document can
+  # outrank a fresher one purely on a marginal textual similarity edge.
+  def rank_trap(candidates):
+      return sorted(candidates, key=lambda c: c["similarity"], reverse=True)
+
+  candidates = [
+      {"doc_id": "policy_2021", "similarity": 0.91, "is_current": False},
+      {"doc_id": "policy_2024", "similarity": 0.88, "is_current": True},
+  ]
+  print(rank_trap(candidates)[0]["doc_id"])   # "policy_2021" -- the OUTDATED policy wins on similarity alone
+
+  # The fix: combine similarity with a recency bonus for current documents.
+  def rank_with_recency(candidates, recency_bonus=0.05):
+      def score(c):
+          return c["similarity"] + (recency_bonus if c["is_current"] else 0)
+      return sorted(candidates, key=score, reverse=True)
+
+  print(rank_with_recency(candidates)[0]["doc_id"])   # "policy_2024" -- correctly favors the current policy
+starter_code: |
+  def rank_with_recency(candidates, recency_bonus=0.05):
+      return sorted(candidates, key=lambda c: c["similarity"], reverse=True)
+
+  candidates = [
+      {"doc_id": "policy_2021", "similarity": 0.91, "is_current": False},
+      {"doc_id": "policy_2024", "similarity": 0.88, "is_current": True},
+  ]
+  print(rank_with_recency(candidates)[0]["doc_id"])
+challenge: |
+  Fix `rank_with_recency` so it adds `recency_bonus` to a document's
+  similarity score when `is_current` is `True`, before ranking. It
+  should print `policy_2024`, not `policy_2021`.
+expected_output: |
+  policy_2024
+hints:
+  - "Define score(c) returning c[\"similarity\"] + (recency_bonus if c[\"is_current\"] else 0), and sort using key=score."
+  - "0.88 + 0.05 = 0.93, which now beats 0.91 -- the current document's recency bonus correctly tips the balance."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "recency_bonus if c\\[.is_current.\\] else 0"
+concept_tags: [rag, freshness, ranking]

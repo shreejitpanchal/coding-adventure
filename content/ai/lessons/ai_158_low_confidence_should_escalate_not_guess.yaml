@@ -1,0 +1,59 @@
+id: ai_158
+title: "A Low-Confidence Decision Should Escalate to a Human, Not Guess Anyway"
+language: ai
+level: 158
+objective: "Fix a decision function that acts on its own conclusion regardless of how low its confidence score is, instead of escalating to a human when confidence falls below a threshold -- proceeding on a guess is worse than admitting uncertainty for a decision that matters."
+explanation: |
+  Not every agent decision is equally safe to act on automatically --
+  a genuinely low-confidence classification (the agent isn't sure
+  whether a support ticket is billing or technical) is exactly the case
+  where escalating to a human for a quick confirmation beats confidently
+  proceeding on what might well be a wrong guess. This is a companion
+  to this category's human-in-the-loop lesson: that one gated on the
+  *type* of action being high-stakes; this one gates on the agent's own
+  *confidence* in its decision, regardless of how routine the action
+  itself is.
+
+  The bug this exercise fixes acts on the agent's decision regardless
+  of its confidence score. The fix checks confidence against a
+  threshold first, escalating to a human instead of acting when
+  confidence is too low.
+example_code: |
+  # The trap: acts on the decision regardless of confidence -- a
+  # genuinely low-confidence guess gets treated the same as a sure thing.
+  def route_ticket_trap(category, confidence):
+      return f"Routed to: {category}"
+
+  print(route_ticket_trap("billing", confidence=0.35))   # "Routed to: billing" -- acted on a coin-flip-level guess
+
+  # The fix: check confidence against a threshold, escalate if too low.
+  def route_ticket(category, confidence, threshold=0.7):
+      if confidence < threshold:
+          return "ESCALATED: confidence too low for automatic routing"
+      return f"Routed to: {category}"
+
+  print(route_ticket("billing", confidence=0.35))   # "ESCALATED: ..." -- correctly refuses to act on a low-confidence guess
+starter_code: |
+  def route_ticket(category, confidence, threshold=0.7):
+      return f"Routed to: {category}"
+
+  print(route_ticket("billing", confidence=0.35))
+challenge: |
+  Fix `route_ticket` so it checks `confidence < threshold` first,
+  returning `"ESCALATED: confidence too low for automatic routing"` in
+  that case, instead of always routing automatically. It should print
+  `ESCALATED: confidence too low for automatic routing`, not
+  `Routed to: billing`.
+expected_output: |
+  ESCALATED: confidence too low for automatic routing
+hints:
+  - "Add: if confidence < threshold: return \"ESCALATED: confidence too low for automatic routing\", as the first check."
+  - "0.35 is well below the default 0.7 threshold, so this case should always escalate rather than route automatically."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 28
+difficulty: warmup
+contains_patterns:
+  - "ESCALATED"
+concept_tags: [agentic_frameworks, confidence_thresholds, human_in_the_loop]

@@ -1,0 +1,61 @@
+id: ai_331
+title: "A p95 Latency Metric Is Not the Same Thing as the Average"
+language: ai
+level: 331
+objective: "Fix a function that computes the mean of a set of durations while calling it a p95, when a percentile describes where a value falls within the sorted distribution -- a completely different, and far more useful, statistic than a simple average for spotting how bad the SLOWEST typical requests actually are."
+explanation: |
+  An average can look perfectly reasonable even while a meaningful
+  fraction of real requests are dramatically slower than it suggests --
+  a handful of very slow outliers get smoothed away by many fast ones.
+  A percentile like p95 answers a different, more actionable question:
+  "how slow is the worst request among the slowest 5%?" -- exactly the
+  number that matters for understanding what a real user having a bad
+  day actually experiences, which a mean can hide almost entirely.
+
+  The bug this exercise fixes computes `sum(durations) / len(durations)`
+  -- the mean. The fix sorts the durations and picks out the actual p95
+  position.
+example_code: |
+  # The trap: computes the MEAN, not a percentile at all.
+  def compute_p95_trap(durations):
+      return sum(durations) / len(durations)
+
+  durations = [10, 20, 30, 40, 100]
+  print(compute_p95_trap(durations))
+  # 40.0 -- this is the average, not a percentile; it hides how bad the slowest request really was
+
+  # The fix: sort the durations, pick out the actual p95 position.
+  import math
+
+  def compute_p95(durations):
+      sorted_durations = sorted(durations)
+      index = math.ceil(0.95 * len(sorted_durations)) - 1
+      return sorted_durations[index]
+
+  print(compute_p95(durations))
+  # 100 -- correctly reflects the slowest request in the top 5%
+starter_code: |
+  durations = [10, 20, 30, 40, 100]
+
+  def compute_p95(durations):
+      return sum(durations) / len(durations)
+
+  print(compute_p95(durations))
+challenge: |
+  Fix `compute_p95` so it sorts `durations`, computes `index =
+  math.ceil(0.95 * len(sorted_durations)) - 1`, and returns
+  `sorted_durations[index]`, instead of computing the plain mean. It
+  should print `100`, not `40.0`.
+expected_output: |
+  100
+hints:
+  - "import math, then: sorted_durations = sorted(durations); index = math.ceil(0.95 * len(sorted_durations)) - 1; return sorted_durations[index]."
+  - "A percentile position, not an arithmetic mean, is what actually reflects the tail-end of the distribution rather than smoothing it away."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 21
+difficulty: core
+contains_patterns:
+  - "math\\.ceil\\(0\\.95 \\* len\\(sorted_durations\\)\\)"
+concept_tags: [langsmith, latency_percentiles, monitoring]

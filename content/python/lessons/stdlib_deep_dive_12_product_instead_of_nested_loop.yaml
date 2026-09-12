@@ -1,0 +1,58 @@
+id: stdlib_deep_dive_12
+title: "itertools.product Replaces a Nested Loop Building a Cartesian Product"
+language: python
+level: 213
+objective: "Replace a manual nested loop pairing every element of one collection with every element of another using itertools.product."
+explanation: |
+  A nested loop over two collections, pairing every element of the
+  outer with every element of the inner, is building a Cartesian
+  product by hand. `itertools.product(a, b)` does exactly this
+  directly, and generalizes cleanly to more than two inputs
+  (`product(a, b, c)`) without needing a differently-nested loop for
+  each additional dimension -- the way a manually nested loop would.
+example_code: |
+  # A manual nested loop pairing every element of a with every element of b.
+  def all_combos_loop(a, b):
+      result = []
+      for x in a:
+          for y in b:
+              result.append((x, y))
+      return result
+
+  print(all_combos_loop([1, 2], ["a", "b"]))
+  # [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]
+
+  # itertools.product does this directly.
+  from itertools import product
+
+  def all_combos(a, b):
+      return list(product(a, b))
+
+  print(all_combos([1, 2], ["a", "b"]))
+  # [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]
+starter_code: |
+  def all_combos(a, b):
+      result = []
+      for x in a:
+          for y in b:
+              result.append((x, y))
+      return result
+
+  print(all_combos([1, 2], ["a", "b"]))
+challenge: |
+  Rewrite `all_combos` using `itertools.product(a, b)`, instead of a
+  manual nested loop. Keep the same output:
+  [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')].
+expected_output: |
+  [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]
+hints:
+  - "from itertools import product, then: return list(product(a, b))."
+  - "product generalizes to any number of inputs -- product(a, b, c) needs no extra loop nesting compared to product(a, b)."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "product\\(a, b\\)"
+concept_tags: [itertools, product]

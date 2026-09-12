@@ -1,0 +1,59 @@
+id: functional_programming_31
+title: "map() Can Walk Several Iterables in Parallel, Zip-Style"
+language: python
+level: 366
+objective: "Fix code manually zipping two lists then unpacking each pair inside a list comprehension, when map() accepts multiple iterables directly, passing corresponding elements as separate arguments to the function -- no explicit zip or unpacking needed."
+explanation: |
+  `map(func, iterable)` isn't limited to a single iterable -- `map
+  (func, iter1, iter2)` walks *both* in parallel, calling `func(a, b)`
+  with corresponding elements from each, stopping once the shorter one
+  is exhausted (the same truncation behavior plain `zip()` has). This
+  makes an explicit `zip()` plus a tuple-unpacking comprehension
+  (`[f(a, b) for a, b in zip(xs, ys)]`) more verbose than necessary
+  when the goal is simply "combine corresponding elements with this
+  function" -- `map` already does exactly that, directly.
+
+  The fix replaces the manual `zip` + comprehension with `map(func,
+  xs, ys)`.
+example_code: |
+  # The trap: manual zip + unpacking, more verbose than necessary.
+  def add(a, b):
+      return a + b
+
+  xs = [1, 2, 3]
+  ys = [10, 20, 30]
+
+  result_trap = [add(a, b) for a, b in zip(xs, ys)]
+  print(result_trap)
+  # [11, 22, 33] -- correct, but map() already does exactly this directly
+
+  # The fix: map() walks multiple iterables in parallel directly.
+  result = list(map(add, xs, ys))
+  print(result)
+  # [11, 22, 33] -- same result, no explicit zip or unpacking needed
+starter_code: |
+  def add(a, b):
+      return a + b
+
+  xs = [1, 2, 3]
+  ys = [10, 20, 30]
+
+  result = [add(a, b) for a, b in zip(xs, ys)]
+  print(result)
+challenge: |
+  Rewrite `result` using `list(map(add, xs, ys))`, instead of a manual
+  `zip` plus tuple-unpacking comprehension. Keep the same output:
+  [11, 22, 33].
+expected_output: |
+  [11, 22, 33]
+hints:
+  - "result = list(map(add, xs, ys))."
+  - "map() accepts multiple iterables directly -- it walks them in parallel and calls the function with corresponding elements as separate arguments, no zip needed."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 31
+difficulty: core
+contains_patterns:
+  - "list\\(map\\(add, xs, ys\\)\\)"
+concept_tags: [functional_programming, map, higher_order_functions]

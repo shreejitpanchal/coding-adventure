@@ -1,0 +1,73 @@
+id: ai_329
+title: "A Fuzzy String Evaluator Needs an Actual Distance Check, Not Bare Equality"
+language: ai
+level: 329
+objective: "Fix a fuzzy-match evaluator that uses plain '==' regardless of the allowed distance, when a near-miss within the configured tolerance should still count as a match -- that's the entire reason a distance threshold exists instead of just using exact-match."
+explanation: |
+  A fuzzy-match evaluator exists specifically for cases where a
+  near-miss (a single typo, a minor spelling variant like `"colour"`
+  vs `"color"`) should still count as correct -- that's the whole
+  difference between it and this category's earlier exact-match
+  evaluator. Using bare `==` regardless of the configured
+  `max_distance` throws that entirely away: it behaves exactly like
+  exact-match, just with an unused parameter sitting there implying
+  tolerance that never actually gets applied.
+
+  The bug this exercise fixes compares with `==`, ignoring
+  `max_distance` completely. The fix computes the actual edit distance
+  and compares that against the threshold.
+example_code: |
+  # The trap: bare equality -- a near-miss within the allowed distance
+  # still fails.
+  def fuzzy_match_trap(actual, expected, max_distance):
+      return actual == expected
+
+  print(fuzzy_match_trap("colour", "color", max_distance=1))
+  # False -- a 1-character difference wrongly counted as a total mismatch
+
+  # The fix: compute the actual edit distance, compare against the threshold.
+  def edit_distance(a, b):
+      if len(a) == 0:
+          return len(b)
+      if len(b) == 0:
+          return len(a)
+      if a[0] == b[0]:
+          return edit_distance(a[1:], b[1:])
+      return 1 + min(edit_distance(a[1:], b), edit_distance(a, b[1:]), edit_distance(a[1:], b[1:]))
+
+  def fuzzy_match(actual, expected, max_distance):
+      return edit_distance(actual, expected) <= max_distance
+
+  print(fuzzy_match("colour", "color", max_distance=1))
+  # True -- correctly counted as a match within the allowed distance
+starter_code: |
+  def edit_distance(a, b):
+      if len(a) == 0:
+          return len(b)
+      if len(b) == 0:
+          return len(a)
+      if a[0] == b[0]:
+          return edit_distance(a[1:], b[1:])
+      return 1 + min(edit_distance(a[1:], b), edit_distance(a, b[1:]), edit_distance(a[1:], b[1:]))
+
+  def fuzzy_match(actual, expected, max_distance):
+      return actual == expected
+
+  print(fuzzy_match("colour", "color", max_distance=1))
+challenge: |
+  Fix `fuzzy_match` so it returns `edit_distance(actual, expected) <=
+  max_distance`, instead of the bare `actual == expected` comparison.
+  It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace return actual == expected with return edit_distance(actual, expected) <= max_distance."
+  - "\"colour\" and \"color\" differ by exactly one character (a deleted \"u\") -- edit_distance should return 1, which is within max_distance=1."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "edit_distance\\(actual, expected\\) <= max_distance"
+concept_tags: [langsmith, evaluators, fuzzy_matching]

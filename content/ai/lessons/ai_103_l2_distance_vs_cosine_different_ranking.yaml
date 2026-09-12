@@ -1,0 +1,76 @@
+id: ai_103
+title: "L2 Distance and Cosine Similarity Can Rank Candidates Differently"
+language: ai
+level: 103
+objective: "Fix a nearest-neighbor search that uses raw Euclidean (L2) distance when the actual retrieval intent is topical/directional similarity, which cosine similarity captures and L2 distance does not -- the two metrics can genuinely disagree on which candidate is 'closest.'"
+explanation: |
+  L2 distance measures how far apart two points are in raw space,
+  sensitive to both direction *and* magnitude. Cosine similarity
+  measures only the angle between two vectors, completely ignoring
+  magnitude. For retrieval, what usually matters is topical alignment
+  -- does this document's embedding point in roughly the same
+  "direction" (represent a similar topic) as the query -- not how far
+  apart the raw vectors happen to sit, which can be skewed by unrelated
+  factors like document length affecting embedding magnitude in some
+  schemes. These two metrics can genuinely disagree about which
+  candidate is "closest": a candidate with a large magnitude but nearly
+  identical direction to the query can be far away in raw L2 distance,
+  while a candidate that's geometrically nearby but points in a
+  meaningfully different direction can look deceptively "close" by L2
+  alone.
+
+  The bug this exercise fixes picks the nearest candidate by raw L2
+  distance, which favors the geometrically closest point regardless of
+  directional alignment. The fix uses cosine similarity instead,
+  correctly favoring the candidate whose direction actually matches the
+  query's, independent of either vector's magnitude.
+example_code: |
+  # The trap: picks by raw L2 distance -- favors geometric closeness,
+  # not directional/topical alignment.
+  def nearest_trap(query, candidates):
+      def l2(a, b):
+          return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
+      return min(candidates, key=lambda name: l2(query, candidates[name]))
+
+  query = [1, 0]
+  candidates = {"A": [10, 1], "B": [1, 1]}   # A: nearly same DIRECTION as query, but far in raw distance
+                                               # B: close in raw distance, but a meaningfully different direction
+  print(nearest_trap(query, candidates))   # "B" -- picked for raw closeness, not topical alignment
+
+  # The fix: use cosine similarity -- direction only, magnitude-independent.
+  def nearest_by_cosine(query, candidates):
+      def cosine(a, b):
+          dot = sum(x * y for x, y in zip(a, b))
+          norm_a = sum(x ** 2 for x in a) ** 0.5
+          norm_b = sum(y ** 2 for y in b) ** 0.5
+          return dot / (norm_a * norm_b)
+      return max(candidates, key=lambda name: cosine(query, candidates[name]))
+
+  print(nearest_by_cosine(query, candidates))   # "A" -- correctly favors directional/topical alignment
+starter_code: |
+  def nearest(query, candidates):
+      def l2(a, b):
+          return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
+      return min(candidates, key=lambda name: l2(query, candidates[name]))
+
+  query = [1, 0]
+  candidates = {"A": [10, 1], "B": [1, 1]}
+  print(nearest(query, candidates))
+challenge: |
+  Fix `nearest` so it computes cosine similarity between the query and
+  each candidate and returns whichever has the HIGHEST similarity
+  (`max`, not `min`), instead of the lowest raw L2 distance. It should
+  print `A`, not `B`.
+expected_output: |
+  A
+hints:
+  - "Define cosine(a, b) computing dot / (norm_a * norm_b), then use max(candidates, key=lambda name: cosine(query, candidates[name]))."
+  - "Candidate A's direction [10, 1] is very close to the query's direction [1, 0] (cosine ~0.995), even though it's geometrically far away in raw distance -- cosine correctly recognizes this."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 18
+difficulty: deep_dive
+contains_patterns:
+  - "max\\(candidates, key=lambda name: cosine"
+concept_tags: [rag, cosine_similarity, distance_metrics]

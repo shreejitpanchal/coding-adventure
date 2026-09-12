@@ -1,0 +1,64 @@
+id: ai_188
+title: "Unsubscribing From a Resource Must Actually Stop Future Update Notifications"
+language: ai
+level: 188
+objective: "Fix an unsubscribe handler that acknowledges the request but never actually removes the client from the resource's subscriber list, so update notifications keep arriving anyway -- an unsubscribe that doesn't unsubscribe."
+explanation: |
+  MCP lets a client subscribe to a resource to receive notifications
+  when it changes -- and the subscription needs a genuine, working
+  counterpart: unsubscribing. A client that unsubscribes and keeps
+  receiving update notifications anyway is experiencing exactly the
+  kind of broken contract that erodes trust in the whole notification
+  mechanism -- the unsubscribe call *looked* successful (it didn't
+  error), but had no actual effect.
+
+  The bug this exercise fixes returns a success acknowledgment for
+  unsubscribe without ever removing the client from the subscriber set.
+  The fix actually removes the client, so no further notifications for
+  that resource are sent to it.
+example_code: |
+  # The trap: acknowledges unsubscribe, but never actually REMOVES the
+  # client from the subscriber set -- notifications keep coming anyway.
+  subscribers_trap = {"file:///readme.md": {"client_1", "client_2"}}
+
+  def unsubscribe_trap(uri, client_id, subscribers):
+      return {"unsubscribed": True}   # bug: never touches `subscribers` at all
+
+  unsubscribe_trap("file:///readme.md", "client_1", subscribers_trap)
+  print("client_1" in subscribers_trap["file:///readme.md"])   # True -- still subscribed, despite "successfully" unsubscribing!
+
+  # The fix: actually remove the client from the subscriber set.
+  subscribers = {"file:///readme.md": {"client_1", "client_2"}}
+
+  def unsubscribe(uri, client_id, subscribers):
+      subscribers.get(uri, set()).discard(client_id)
+      return {"unsubscribed": True}
+
+  unsubscribe("file:///readme.md", "client_1", subscribers)
+  print("client_1" in subscribers["file:///readme.md"])   # False -- correctly removed
+starter_code: |
+  subscribers = {"file:///readme.md": {"client_1", "client_2"}}
+
+  def unsubscribe(uri, client_id, subscribers):
+      return {"unsubscribed": True}
+
+  unsubscribe("file:///readme.md", "client_1", subscribers)
+  print("client_1" in subscribers["file:///readme.md"])
+challenge: |
+  Fix `unsubscribe` so it actually removes `client_id` from
+  `subscribers[uri]` (via `.discard()`), instead of just returning a
+  success acknowledgment with no real effect. It should print `False`,
+  not `True`.
+expected_output: |
+  False
+hints:
+  - "Add: subscribers.get(uri, set()).discard(client_id), before returning the acknowledgment."
+  - "discard() removes the item if present and does nothing (no error) if it isn't -- a safe way to \"unsubscribe\" even from a URI the client wasn't actually subscribed to."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 13
+difficulty: gotcha
+contains_patterns:
+  - "\\.discard\\(client_id\\)"
+concept_tags: [mcp, resources, subscriptions]

@@ -1,0 +1,64 @@
+id: packaging_15
+title: "Capstone: Does an Installed Version Actually Satisfy a Requirement?"
+language: python
+level: 395
+objective: "Combine this category's requirement-parsing (name==version) and numeric version comparison into one satisfies_requirement(installed, requirement) check, instead of a stub that only ever compares the raw requirement string directly against the installed version string."
+explanation: |
+  This category has built up two separate pieces: parsing a
+  `name==version` requirement line apart (this category's `partition`-
+  based parsing, from the dependency-management side), and comparing
+  version strings *numerically* rather than lexicographically (this
+  category's tuple-based version comparison). A real "is this
+  installed version acceptable" check needs both together: parse the
+  requirement to pull out just the version part, then compare it
+  numerically against what's actually installed -- comparing the raw
+  strings directly breaks in exactly the same way this category's
+  `dependency_management` lessons already cover (`"10.0.0" >
+  "9.0.0"` lexicographically is `False`), and a version requirement
+  needs to be parsed apart from the package name before any comparison
+  can happen at all.
+
+  The fix parses the requirement, then compares numerically.
+example_code: |
+  # The trap: compares the RAW requirement string against the installed version.
+  def satisfies_requirement_trap(installed, requirement):
+      return installed == requirement
+
+  print(satisfies_requirement_trap("2.31.0", "requests==2.31.0"))
+  # False -- WRONG, "2.31.0" was never going to equal the whole "requests==2.31.0" string
+
+  # The fix: parse the requirement apart, then compare numerically.
+  def parse_version(v):
+      return tuple(int(p) for p in v.split("."))
+
+  def satisfies_requirement(installed, requirement):
+      _, _, required_version = requirement.partition("==")
+      return parse_version(installed) == parse_version(required_version)
+
+  print(satisfies_requirement("2.31.0", "requests==2.31.0"))
+  # True -- correctly parsed the requirement and compared numerically
+starter_code: |
+  def satisfies_requirement(installed, requirement):
+      return installed == requirement
+
+  print(satisfies_requirement("2.31.0", "requests==2.31.0"))
+challenge: |
+  Fix `satisfies_requirement` so it partitions `requirement` on `"=="`
+  to extract just the required version, then compares
+  `parse_version(installed) == parse_version(required_version)`
+  numerically, instead of comparing the raw strings directly. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "_, _, required_version = requirement.partition(\"==\"), then compare parse_version(installed) == parse_version(required_version)."
+  - "The requirement string bundles a package NAME together with a version -- it has to be parsed apart before any version comparison makes sense at all."
+xp_reward: 20
+achievement: packaging_master
+category: packaging
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "requirement\\.partition\\(\"==\"\\)"
+  - "parse_version\\(installed\\) == parse_version\\(required_version\\)"
+concept_tags: [packaging, versioning, requirements, capstone]

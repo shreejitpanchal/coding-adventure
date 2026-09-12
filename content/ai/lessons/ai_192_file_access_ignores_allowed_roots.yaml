@@ -1,0 +1,56 @@
+id: ai_192
+title: "A Server Must Only Access Files Within Its Client-Granted Roots"
+language: ai
+level: 192
+objective: "Fix a file-access check that allows any file path at all, ignoring the client's declared 'roots' (the specific directories the server is actually permitted to operate within) -- an MCP server has no business reaching outside the workspace boundaries it was explicitly granted."
+explanation: |
+  MCP's **roots** mechanism lets a client tell a server exactly which
+  directories it's allowed to operate within -- a workspace folder, a
+  specific project directory -- and a server is expected to respect
+  that boundary rather than treating it as a mere suggestion. This is
+  the same least-privilege principle this app covers elsewhere (agent
+  permission scoping, Microsoft Agent 365's first-class identities):
+  being *able* to construct a path outside the granted roots doesn't
+  mean the server should ever act on it.
+
+  The bug this exercise fixes allows access to any file path, with no
+  check against the granted roots at all. The fix verifies the
+  requested path actually falls within one of the allowed roots before
+  permitting access.
+example_code: |
+  # The trap: allows access to ANY path -- ignores the client's
+  # granted roots entirely.
+  def can_access_trap(path, allowed_roots):
+      return True
+
+  allowed_roots = ["/home/user/project"]
+  print(can_access_trap("/etc/passwd", allowed_roots))   # True -- WRONG, this is nowhere near the granted workspace!
+
+  # The fix: check the path actually falls within one of the allowed roots.
+  def can_access(path, allowed_roots):
+      return any(path.startswith(root) for root in allowed_roots)
+
+  print(can_access("/etc/passwd", allowed_roots))   # False -- correctly refused, outside the granted roots
+starter_code: |
+  def can_access(path, allowed_roots):
+      return True
+
+  allowed_roots = ["/home/user/project"]
+  print(can_access("/etc/passwd", allowed_roots))
+challenge: |
+  Fix `can_access` so it checks whether `path` starts with any of
+  `allowed_roots`, instead of always returning `True`. It should print
+  `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change the return statement to: return any(path.startswith(root) for root in allowed_roots)."
+  - "\"/etc/passwd\" doesn't start with \"/home/user/project\", so it correctly falls outside the client's granted roots."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 17
+difficulty: gotcha
+contains_patterns:
+  - "path\\.startswith\\(root\\)"
+concept_tags: [mcp, roots, access_control]

@@ -1,0 +1,65 @@
+id: stdlib_deep_dive_39
+title: "Two Identically-Seeded random.Random Instances Always Agree -- Unseeded Ones Essentially Never Do"
+language: python
+level: 240
+objective: "Fix code creating two separate random.Random() instances with no seed (expecting them to somehow produce comparable output), when only two instances seeded with the SAME seed value are guaranteed to produce identical output."
+explanation: |
+  Two separate `random.Random()` instances with no seed each draw from
+  the OS's own entropy source independently -- there is no reason
+  their output would ever agree, and relying on that would be
+  inherently flaky. Two `random.Random(seed)` instances constructed
+  with the exact same seed value are, by contrast, guaranteed to
+  produce identical output every single call, since a seeded
+  pseudorandom generator's entire sequence is fully determined by its
+  seed. This makes seeded generators reproducible in a way unseeded
+  ones structurally cannot be.
+
+  The bug this exercise fixes creates two unseeded generators and
+  expects their output to match. The fix seeds both with the same
+  value, which correctly guarantees agreement.
+example_code: |
+  # The trap: two unseeded generators have no reason to ever agree.
+  import random
+
+  def two_unseeded_agree_trap():
+      a = random.Random()
+      b = random.Random()
+      return a.random() == b.random()
+
+  # two_unseeded_agree_trap() is essentially always False -- flaky by design,
+  # since neither generator's output is determined by anything shared
+
+  # The fix: two generators seeded identically are guaranteed to agree.
+  def two_seeded_agree(seed):
+      a = random.Random(seed)
+      b = random.Random(seed)
+      return a.random() == b.random()
+
+  print(two_seeded_agree(42))
+  # True -- guaranteed, since both generators share the exact same seed
+starter_code: |
+  import random
+
+  def two_agree(seed):
+      a = random.Random()
+      b = random.Random()
+      return a.random() == b.random()
+
+  print(two_agree(42))
+challenge: |
+  Fix `two_agree` so both `Random` instances are constructed with the
+  `seed` parameter (`random.Random(seed)`), instead of with no seed at
+  all. It should reliably print `True`.
+expected_output: |
+  True
+hints:
+  - "a = random.Random(seed), b = random.Random(seed)."
+  - "Only generators seeded with the exact same value are guaranteed to produce identical output -- two unseeded generators have no shared basis to agree on."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 39
+difficulty: gotcha
+contains_patterns:
+  - "random\\.Random\\(seed\\)"
+concept_tags: [random, reproducibility, seeding]

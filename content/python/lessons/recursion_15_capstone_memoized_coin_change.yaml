@@ -1,0 +1,84 @@
+id: recursion_15
+title: "Capstone: Recursion Plus Memoization Is Dynamic Programming"
+language: python
+level: 455
+objective: "Combine this category's recursive base-case/recursive-case structure with this app's memoization technique into a classic dynamic-programming problem: the minimum number of coins needed to make a given amount, computed via recursion with a cache -- exactly what 'dynamic programming' actually means underneath."
+explanation: |
+  "Dynamic programming" sounds like a separate, advanced technique, but
+  it's really just this category's own recursion combined with the
+  memoization idea covered earlier in this category (and reinforced
+  throughout this app's functional-programming content): break a
+  problem into smaller recursive subproblems (here, "the minimum coins
+  to make `amount - coin`, for each available coin"), and cache each
+  subproblem's answer the first time it's computed, since the same
+  smaller amount is reached through many different combinations of
+  coin choices along the way. The minimum-coin-change problem is a
+  classic example: `min_coins(amount)` tries every coin as "the last
+  one used," recursing on the remainder, and takes whichever choice
+  needs the fewest coins overall -- caching each amount's answer so
+  the many overlapping subproblems aren't recomputed redundantly.
+
+  The fix adds a cache dict, checked before recursing into the smaller
+  subproblems.
+example_code: |
+  # Works, but recomputes the same smaller amounts redundantly, over and over.
+  def min_coins_slow(amount, coins):
+      if amount == 0:
+          return 0
+      best = float("inf")
+      for coin in coins:
+          if amount - coin >= 0:
+              best = min(best, min_coins_slow(amount - coin, coins) + 1)
+      return best
+
+  print(min_coins_slow(11, [1, 2, 5]))
+  # 3 -- correct (5 + 5 + 1), but the same smaller amounts get recomputed repeatedly
+
+  # The fix: cache each amount's answer -- this IS dynamic programming.
+  def min_coins(amount, coins, cache=None):
+      if cache is None:
+          cache = {}
+      if amount == 0:
+          return 0
+      if amount in cache:
+          return cache[amount]
+      best = float("inf")
+      for coin in coins:
+          if amount - coin >= 0:
+              best = min(best, min_coins(amount - coin, coins, cache) + 1)
+      cache[amount] = best
+      return best
+
+  print(min_coins(11, [1, 2, 5]))
+  # 3 -- same correct result, each distinct amount computed exactly once
+starter_code: |
+  def min_coins(amount, coins):
+      if amount == 0:
+          return 0
+      best = float("inf")
+      for coin in coins:
+          if amount - coin >= 0:
+              best = min(best, min_coins(amount - coin, coins) + 1)
+      return best
+
+  print(min_coins(11, [1, 2, 5]))
+challenge: |
+  Fix `min_coins` by adding a `cache=None` parameter (defaulting to a
+  fresh dict via `if cache is None: cache = {}`), checking `if amount
+  in cache: return cache[amount]` before doing any work, and storing
+  `cache[amount] = best` before returning it -- passing `cache` along
+  on every recursive call. Keep the same output: 3.
+expected_output: |
+  3
+hints:
+  - "def min_coins(amount, coins, cache=None): if cache is None: cache = {}; if amount == 0: return 0; if amount in cache: return cache[amount]."
+  - "Pass cache through to every recursive call: min_coins(amount - coin, coins, cache), and set cache[amount] = best right before returning it."
+xp_reward: 20
+achievement: recursion_master
+category: recursion
+category_level: 15
+difficulty: deep_dive
+contains_patterns:
+  - "if amount in cache:"
+  - "cache\\[amount\\] = best"
+concept_tags: [recursion, memoization, dynamic_programming, capstone]

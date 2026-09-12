@@ -66,7 +66,7 @@ hints:
   - "Change evaluate(memorize, memory, train_x, train_y) to evaluate(memorize, memory, test_x, test_y)."
   - "The evaluate() function itself is already correct -- only which dataset gets passed to it needs to change."
 xp_reward: 15
-achievement: ml_fundamentals_master
+achievement: null
 category: ml_fundamentals
 category_level: 5
 difficulty: deep_dive

@@ -1,0 +1,81 @@
+id: observability_08
+title: "A Plain FileHandler Never Stops Growing -- RotatingFileHandler Caps It"
+language: python
+level: 408
+objective: "Fix logging configured with a plain logging.FileHandler, whose log file grows without bound forever, when logging.handlers.RotatingFileHandler automatically rotates to a fresh file (renaming the old one as a numbered backup) once the file crosses a size limit, keeping only a bounded number of backups."
+explanation: |
+  `logging.FileHandler(path)` just keeps appending to the same file
+  forever -- there's no size limit, no rotation, nothing stopping a
+  long-running process's log file from eventually consuming all
+  available disk space. `logging.handlers.RotatingFileHandler(path,
+  maxBytes=N, backupCount=k)` solves this directly: once the active
+  log file would exceed `maxBytes`, it's renamed to `path.1` (with any
+  existing `path.1` bumped to `path.2`, and so on up to `backupCount`
+  old files kept, the oldest beyond that discarded), and a fresh, empty
+  file takes over as the active log -- capping total log disk usage at
+  roughly `maxBytes * (backupCount + 1)`, indefinitely, with no manual
+  cleanup ever needed.
+
+  The fix replaces `FileHandler` with `RotatingFileHandler`, given a
+  `maxBytes` limit and a `backupCount`.
+example_code: |
+  # The trap: a plain FileHandler -- grows forever, no rotation at all.
+  import logging, tempfile, os
+
+  with tempfile.TemporaryDirectory() as tmp:
+      path = os.path.join(tmp, "app.log")
+      logger_trap = logging.getLogger("trap_demo")
+      logger_trap.setLevel(logging.INFO)
+      handler_trap = logging.FileHandler(path)
+      logger_trap.addHandler(handler_trap)
+      for i in range(50):
+          logger_trap.info("x" * 100)
+      handler_trap.close()
+      print(os.path.exists(path + ".1"))
+      # False -- WRONG, no rotation ever happens no matter how large the file gets
+
+  # The fix: RotatingFileHandler rotates once the file crosses maxBytes.
+  import logging.handlers
+
+  with tempfile.TemporaryDirectory() as tmp:
+      path = os.path.join(tmp, "app.log")
+      logger = logging.getLogger("fixed_demo")
+      logger.setLevel(logging.INFO)
+      handler = logging.handlers.RotatingFileHandler(path, maxBytes=1000, backupCount=3)
+      logger.addHandler(handler)
+      for i in range(50):
+          logger.info("x" * 100)
+      handler.close()
+      print(os.path.exists(path + ".1"))
+      # True -- correctly rotated once the active file exceeded maxBytes
+starter_code: |
+  import logging, tempfile, os
+
+  with tempfile.TemporaryDirectory() as tmp:
+      path = os.path.join(tmp, "app.log")
+      logger = logging.getLogger("demo")
+      logger.setLevel(logging.INFO)
+      handler = logging.FileHandler(path)
+      logger.addHandler(handler)
+      for i in range(50):
+          logger.info("x" * 100)
+      handler.close()
+      print(os.path.exists(path + ".1"))
+challenge: |
+  Fix this by importing `logging.handlers` and using
+  `logging.handlers.RotatingFileHandler(path, maxBytes=1000,
+  backupCount=3)` instead of `logging.FileHandler(path)`. It should
+  print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "import logging.handlers, then: handler = logging.handlers.RotatingFileHandler(path, maxBytes=1000, backupCount=3)."
+  - "A plain FileHandler never rotates at all -- RotatingFileHandler renames the active file to a numbered backup once it crosses maxBytes, capping total disk usage."
+xp_reward: 10
+achievement: null
+category: observability
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "RotatingFileHandler\\(path, maxBytes=1000, backupCount=3\\)"
+concept_tags: [observability, logging, log_rotation]

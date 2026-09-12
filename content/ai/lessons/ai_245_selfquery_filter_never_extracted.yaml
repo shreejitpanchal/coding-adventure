@@ -1,0 +1,58 @@
+id: ai_245
+title: "A Self-Querying Filter Needs to Actually Extract What's in the Query"
+language: ai
+level: 245
+objective: "Fix a self-querying filter extractor that always returns an empty filter regardless of what's embedded in the query text, when a query naming a specific constraint (like an author) should have that constraint extracted and applied."
+explanation: |
+  A self-querying retriever lets a user embed structured constraints
+  directly in their natural-language query -- `"show me docs from
+  author:ada"` -- and expects the retriever to pull that constraint out
+  and apply it as a real metadata filter, not just search on the whole
+  query string as unstructured text. An extractor that always returns
+  an empty filter, no matter what the query actually contains, means
+  every such constraint is silently ignored -- the search runs
+  unfiltered even when the user explicitly asked to narrow it down.
+
+  The bug this exercise fixes always returns `{}`. The fix checks for
+  the `author:` marker and extracts the name that follows it.
+example_code: |
+  # The trap: NEVER extracts anything -- no filter is ever applied,
+  # regardless of what's embedded in the query.
+  def extract_filter_trap(query):
+      return {}
+
+  print(extract_filter_trap("show me docs from author:ada"))
+  # {} -- the author filter embedded in the query was ignored entirely
+
+  # The fix: check for the author: marker, extract the name.
+  def extract_filter(query):
+      if "author:" in query:
+          name = query.split("author:")[1].split()[0]
+          return {"author": name}
+      return {}
+
+  print(extract_filter("show me docs from author:ada"))
+  # {'author': 'ada'} -- correctly extracted as a real filter
+starter_code: |
+  def extract_filter(query):
+      return {}
+
+  print(extract_filter("show me docs from author:ada"))
+challenge: |
+  Fix `extract_filter` so it checks for `"author:"` in `query` and, if
+  present, extracts the name that follows it into
+  `{"author": name}`, instead of always returning `{}`. It should print
+  `{'author': 'ada'}`, not `{}`.
+expected_output: |
+  {'author': 'ada'}
+hints:
+  - "if \"author:\" in query: name = query.split(\"author:\")[1].split()[0]; return {\"author\": name}"
+  - "query.split(\"author:\")[1] gives everything after the marker; .split()[0] then takes just the first word of that (\"ada\")."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "\"author:\" in query"
+concept_tags: [langchain, self_querying_retriever, filter_extraction]

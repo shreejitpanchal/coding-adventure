@@ -1,0 +1,56 @@
+id: ai_402
+title: "An Agent That Stopped Sending Heartbeats Should Be Removed From the Registry"
+language: ai
+level: 402
+objective: "Fix a registry-pruning function that never removes anything, when an agent that's stopped sending heartbeats has genuinely gone away -- keeping its entry around means routing logic keeps delegating tasks to an agent that will never actually answer."
+explanation: |
+  An agent registry entry is only useful if it reflects an agent that's
+  actually still alive -- heartbeats exist so the registry can tell
+  "still running" apart from "crashed or disconnected a while ago." A
+  pruning pass that never actually removes a stale entry, no matter how
+  long it's been since that agent's last heartbeat, leaves dead agents
+  in the registry forever, where routing logic can keep confidently
+  delegating tasks to them with no way to know they'll never respond.
+
+  The bug this exercise fixes returns `registry` unchanged, checking
+  nothing. The fix filters out any agent whose last heartbeat is older
+  than the configured timeout.
+example_code: |
+  # The trap: never removes anything -- an agent that stopped sending
+  # heartbeats long ago stays in the registry forever.
+  def prune_registry_trap(registry, current_time, heartbeat_timeout):
+      return registry
+
+  registry = [{"name": "dead-agent", "last_heartbeat": 0}, {"name": "alive-agent", "last_heartbeat": 95}]
+  print(len(prune_registry_trap(registry, current_time=100, heartbeat_timeout=30)))
+  # 2 -- the dead agent was never actually removed
+
+  # The fix: filter out any agent whose last heartbeat is too old.
+  def prune_registry(registry, current_time, heartbeat_timeout):
+      return [a for a in registry if current_time - a["last_heartbeat"] <= heartbeat_timeout]
+
+  print(len(prune_registry(registry, current_time=100, heartbeat_timeout=30)))
+  # 1 -- correctly pruned the dead agent, keeping only the still-alive one
+starter_code: |
+  def prune_registry(registry, current_time, heartbeat_timeout):
+      return registry
+
+  registry = [{"name": "dead-agent", "last_heartbeat": 0}, {"name": "alive-agent", "last_heartbeat": 95}]
+  print(len(prune_registry(registry, current_time=100, heartbeat_timeout=30)))
+challenge: |
+  Fix `prune_registry` so it returns `[a for a in registry if
+  current_time - a["last_heartbeat"] <= heartbeat_timeout]`, instead
+  of `registry` unchanged. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Replace return registry with the filtered list comprehension comparing (current_time - a[\"last_heartbeat\"]) against heartbeat_timeout."
+  - "\"dead-agent\"'s last heartbeat was 100 ticks ago, well past the 30-tick timeout -- a correct prune has to actually exclude it."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 47
+difficulty: core
+contains_patterns:
+  - "current_time - a\\[\"last_heartbeat\"\\] <= heartbeat_timeout"
+concept_tags: [solace_agent_mesh, agent_card, registry_pruning]

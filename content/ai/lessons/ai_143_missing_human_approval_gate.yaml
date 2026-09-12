@@ -1,0 +1,61 @@
+id: ai_143
+title: "A High-Stakes Action Needs an Approval Gate, Not Automatic Execution"
+language: ai
+level: 143
+objective: "Fix an agent action-executor that runs every action automatically, including ones flagged as requiring human approval first -- an irreversible or high-stakes action (sending money, deleting data) shouldn't execute just because the agent decided to."
+explanation: |
+  Not every action an agent decides to take should execute
+  automatically -- some actions are irreversible, expensive, or
+  high-stakes enough (sending a payment, permanently deleting data,
+  sending an external communication) that a human should confirm them
+  first, no matter how confident the agent's own reasoning was. This
+  is a deliberate design choice, not a fallback for when the agent
+  might be wrong: even a genuinely correct decision on a high-stakes
+  action benefits from a human checkpoint, since the cost of a mistake
+  there is much higher than the cost of a brief pause for confirmation.
+
+  The bug this exercise fixes executes every action immediately,
+  regardless of whether it's flagged as requiring approval. The fix
+  checks that flag first, holding a flagged action in a pending state
+  awaiting explicit approval instead of running it automatically.
+example_code: |
+  # The trap: executes EVERY action immediately -- ignores the
+  # requires_approval flag on high-stakes actions entirely.
+  def execute_action_trap(action):
+      return f"EXECUTED: {action['description']}"
+
+  action = {"description": "Refund $500 to customer", "requires_approval": True}
+  print(execute_action_trap(action))   # "EXECUTED: Refund $500 to customer" -- ran with NO human confirmation at all
+
+  # The fix: check requires_approval FIRST, hold flagged actions pending.
+  def execute_action(action):
+      if action.get("requires_approval"):
+          return f"PENDING_APPROVAL: {action['description']}"
+      return f"EXECUTED: {action['description']}"
+
+  print(execute_action(action))   # "PENDING_APPROVAL: Refund $500 to customer" -- correctly held for human confirmation
+starter_code: |
+  def execute_action(action):
+      return f"EXECUTED: {action['description']}"
+
+  action = {"description": "Refund $500 to customer", "requires_approval": True}
+  print(execute_action(action))
+challenge: |
+  Fix `execute_action` so it checks `action.get("requires_approval")`
+  first, returning `f"PENDING_APPROVAL: {action['description']}"`
+  instead of executing immediately when that flag is set. It should
+  print `PENDING_APPROVAL: Refund $500 to customer`, not
+  `EXECUTED: Refund $500 to customer`.
+expected_output: |
+  PENDING_APPROVAL: Refund $500 to customer
+hints:
+  - "Add: if action.get(\"requires_approval\"): return f\"PENDING_APPROVAL: {action['description']}\", as the first line of the function."
+  - "Only fall through to the EXECUTED branch when requires_approval is falsy (missing or False)."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 13
+difficulty: warmup
+contains_patterns:
+  - "PENDING_APPROVAL"
+concept_tags: [agentic_frameworks, human_in_the_loop, safety]

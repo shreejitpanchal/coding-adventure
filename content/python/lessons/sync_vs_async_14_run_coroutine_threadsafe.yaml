@@ -1,0 +1,90 @@
+id: sync_vs_async_14
+title: "Submitting a Coroutine to a Loop Running on a DIFFERENT Thread"
+language: python
+level: 444
+objective: "Fix code trying to run_until_complete() on an event loop that's already running on a different thread (raising RuntimeError immediately, since a loop can't be driven from two places at once), when asyncio.run_coroutine_threadsafe() is the correct, thread-safe way to submit a coroutine to a loop owned by another thread and get its result back."
+explanation: |
+  An event loop running via `loop.run_forever()` on a background
+  thread is already busy being driven by that thread -- calling `loop.
+  run_until_complete(coro)` from a *different* thread raises
+  `RuntimeError: This event loop is already running` immediately,
+  since a loop can only ever be actively driven from one place at a
+  time. `asyncio.run_coroutine_threadsafe(coro, loop)` is built
+  specifically for this cross-thread situation: it safely schedules
+  `coro` to run *on* the loop's own thread, and returns an ordinary
+  `concurrent.futures.Future` that the calling thread can block on with
+  `.result()` to get the real return value back, entirely safely,
+  without ever trying to drive the loop itself from the wrong thread.
+
+  The fix uses `run_coroutine_threadsafe`, retrieving the result via
+  the returned `Future`.
+example_code: |
+  # The trap: run_until_complete() on a loop ALREADY running elsewhere -- crashes.
+  import asyncio, threading
+
+  def run_loop_forever(loop):
+      asyncio.set_event_loop(loop)
+      loop.run_forever()
+
+  loop = asyncio.new_event_loop()
+  threading.Thread(target=run_loop_forever, args=(loop,), daemon=True).start()
+
+  async def compute():
+      return 42
+
+  def submit_trap(loop, coro):
+      return loop.run_until_complete(coro)
+
+  try:
+      submit_trap(loop, compute())
+      print("ok")
+  except RuntimeError:
+      print("crashed")
+  # "crashed" -- can't drive a loop that's already running on another thread
+
+  # The fix: run_coroutine_threadsafe() safely submits across the thread boundary.
+  def submit(loop, coro):
+      future = asyncio.run_coroutine_threadsafe(coro, loop)
+      return future.result(timeout=1)
+
+  print(submit(loop, compute()))
+  # 42 -- correctly submitted from this thread, run on the loop's OWN thread
+starter_code: |
+  import asyncio, threading
+
+  def run_loop_forever(loop):
+      asyncio.set_event_loop(loop)
+      loop.run_forever()
+
+  loop = asyncio.new_event_loop()
+  threading.Thread(target=run_loop_forever, args=(loop,), daemon=True).start()
+
+  async def compute():
+      return 42
+
+  def submit(loop, coro):
+      return loop.run_until_complete(coro)
+
+  try:
+      print(submit(loop, compute()))
+  except RuntimeError:
+      print("crashed")
+challenge: |
+  Fix `submit` so it uses
+  `future = asyncio.run_coroutine_threadsafe(coro, loop)` and returns
+  `future.result(timeout=1)`, instead of calling `loop.
+  run_until_complete(coro)` directly. It should print `42`, not
+  `crashed`.
+expected_output: |
+  42
+hints:
+  - "future = asyncio.run_coroutine_threadsafe(coro, loop), then return future.result(timeout=1)."
+  - "A loop already being driven by run_forever() on another thread can't also be driven by run_until_complete() from this one -- run_coroutine_threadsafe() is the safe way to submit work to it instead."
+xp_reward: 15
+achievement: null
+category: sync_vs_async
+category_level: 14
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.run_coroutine_threadsafe\\(coro, loop\\)"
+concept_tags: [asyncio, threading, sync_vs_async]

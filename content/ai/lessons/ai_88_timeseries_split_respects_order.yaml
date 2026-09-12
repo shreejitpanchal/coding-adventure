@@ -1,0 +1,69 @@
+id: ai_88
+title: "Time-Series Data Must Split by Time, Not by Arrival Order"
+language: ai
+level: 88
+objective: "Fix a train/test split that just takes the data in whatever order it was given, which lets a later date end up in training while an earlier date lands in test -- an information leak that never happens in real deployment, where the future genuinely hasn't occurred yet."
+explanation: |
+  A plain positional split (first N rows go to train, the rest to test)
+  is only safe for time-series data if the rows already happen to be in
+  chronological order -- and data arriving from a shuffled export, a
+  database query with no explicit ordering, or a randomized split (this
+  app's default approach for most tabular data) can easily *not* be in
+  that order at all. Splitting positionally on out-of-order data can
+  put a later date into the training set while an earlier date lands in
+  the test set -- effectively letting the model "see the future"
+  relative to some of its test cases, something that can never happen
+  once the model is actually deployed and only has the past available
+  to predict from. The fix is to sort by date *before* splitting,
+  guaranteeing every training example genuinely precedes every test
+  example in time, regardless of what order the data originally arrived in.
+
+  The bug this exercise fixes splits the rows positionally, exactly as
+  given, with no regard for whether they're already chronologically
+  ordered. On data that arrived in a scrambled order, this can easily
+  leak a later date into training ahead of an earlier test date.
+example_code: |
+  # The trap: splits positionally, in WHATEVER order the data arrived --
+  # a later date can easily end up in training ahead of an earlier test date.
+  def split_trap(rows, test_frac):
+      cut = int(len(rows) * (1 - test_frac))
+      return rows[:cut], rows[cut:]
+
+  # Data arrived in a scrambled (not chronologically sorted) order.
+  rows = [{"date": d} for d in [3, 7, 1, 9, 0, 5, 8, 2, 6, 4]]
+  train_trap, test_trap = split_trap(rows, 0.3)
+  print(max(r["date"] for r in train_trap) > min(r["date"] for r in test_trap))   # True -- date 9 (train) leaked ahead of date 2 (test)
+
+  # The fix: sort by date FIRST, then split strictly by time.
+  def split_by_time(rows, test_frac):
+      ordered = sorted(rows, key=lambda r: r["date"])
+      cut = int(len(ordered) * (1 - test_frac))
+      return ordered[:cut], ordered[cut:]
+
+  train, test = split_by_time(rows, 0.3)
+  print(max(r["date"] for r in train) > min(r["date"] for r in test))   # False -- every train date genuinely precedes every test date
+starter_code: |
+  def split_by_time(rows, test_frac):
+      cut = int(len(rows) * (1 - test_frac))
+      return rows[:cut], rows[cut:]
+
+  rows = [{"date": d} for d in [3, 7, 1, 9, 0, 5, 8, 2, 6, 4]]
+  train, test = split_by_time(rows, 0.3)
+  print(max(r["date"] for r in train) > min(r["date"] for r in test))
+challenge: |
+  Fix `split_by_time` so it sorts `rows` by `date` first, before
+  splitting positionally, instead of splitting the rows exactly as
+  given. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add a sort step first: ordered = sorted(rows, key=lambda r: r[\"date\"]), and split THAT instead of the original rows."
+  - "Once sorted, the cut point genuinely separates all earlier dates (train) from all later dates (test), so no train date can exceed any test date."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 48
+difficulty: gotcha
+contains_patterns:
+  - "sorted\\(rows, key=lambda r: r\\[.date.\\]\\)"
+concept_tags: [ml_fundamentals, time_series, data_leakage, train_test_split]

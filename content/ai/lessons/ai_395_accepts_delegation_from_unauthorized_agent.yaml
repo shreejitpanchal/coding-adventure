@@ -1,0 +1,55 @@
+id: ai_395
+title: "An Agent Should Only Accept Delegated Tasks From Authorized Callers"
+language: ai
+level: 395
+objective: "Fix a task-acceptance function that always accepts a delegation regardless of who sent it, when an agent should only act on tasks delegated by agents actually listed as allowed to call it -- accepting delegation from anyone defeats the entire point of having a trust boundary between agents."
+explanation: |
+  Not every agent in a mesh should necessarily be able to delegate to
+  every other agent -- a payment-processing agent, say, might only
+  accept delegated tasks from a small, explicitly trusted set of
+  callers, refusing anything from an agent that was never granted that
+  trust. Accepting a delegation regardless of who sent it removes that
+  boundary entirely: any agent on the mesh, trusted or not, can trigger
+  this agent's work simply by sending it a message shaped like a valid
+  delegation.
+
+  The bug this exercise fixes always returns `True`, regardless of
+  `caller_agent_id`. The fix checks the caller against
+  `allowed_callers` first.
+example_code: |
+  # The trap: never checks caller_agent_id against allowed_callers at
+  # all -- accepts a delegation from ANY agent.
+  def accept_task_trap(task, caller_agent_id, allowed_callers):
+      return True
+
+  print(accept_task_trap("do something", "untrusted-agent", allowed_callers=["router-agent"]))
+  # True -- accepted a task from an agent that was never actually authorized to delegate to this one
+
+  # The fix: check the caller against the allowed list.
+  def accept_task(task, caller_agent_id, allowed_callers):
+      return caller_agent_id in allowed_callers
+
+  print(accept_task("do something", "untrusted-agent", allowed_callers=["router-agent"]))
+  # False -- correctly refused an unauthorized delegation
+starter_code: |
+  def accept_task(task, caller_agent_id, allowed_callers):
+      return True
+
+  print(accept_task("do something", "untrusted-agent", allowed_callers=["router-agent"]))
+challenge: |
+  Fix `accept_task` so it returns `caller_agent_id in
+  allowed_callers`, instead of always `True`. It should print `False`,
+  not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace return True with return caller_agent_id in allowed_callers."
+  - "\"untrusted-agent\" isn't in the allowed_callers list -- a correct check has to actually refuse it, not accept every caller unconditionally."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 40
+difficulty: warmup
+contains_patterns:
+  - "return caller_agent_id in allowed_callers"
+concept_tags: [solace_agent_mesh, delegation, trust_boundary]

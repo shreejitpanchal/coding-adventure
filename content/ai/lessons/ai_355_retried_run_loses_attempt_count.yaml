@@ -1,0 +1,55 @@
+id: ai_355
+title: "A Retried Run's Log Must Record How Many Attempts It Actually Took"
+language: ai
+level: 355
+objective: "Fix a run-logging function that always records exactly one attempt regardless of how many retries actually happened, when a run that needed three tries before succeeding is meaningfully different from one that succeeded immediately -- and that difference is worth keeping."
+explanation: |
+  A run that only succeeded after several retries represents something
+  genuinely less reliable than one that worked on the first try, even
+  though both end up logged with the same final successful output.
+  Hardcoding the attempt count to `1` regardless of what actually
+  happened erases that distinction entirely -- a system that's
+  quietly retrying constantly looks, in the logs, identical to one
+  that never needs to.
+
+  The bug this exercise fixes hardcodes `"attempts": 1`. The fix
+  records the actual `attempts_made` value.
+example_code: |
+  # The trap: always records "1" attempt, regardless of how many
+  # retries actually happened.
+  def log_attempts_trap(attempts_made, final_output):
+      return {"attempts": 1, "output": final_output}
+
+  record_trap = log_attempts_trap(attempts_made=3, final_output="success")
+  print(record_trap["attempts"])
+  # 1 -- lost the fact that this actually took 3 attempts
+
+  # The fix: record the actual number of attempts.
+  def log_attempts(attempts_made, final_output):
+      return {"attempts": attempts_made, "output": final_output}
+
+  record = log_attempts(3, "success")
+  print(record["attempts"])
+  # 3 -- correctly reflects what actually happened
+starter_code: |
+  def log_attempts(attempts_made, final_output):
+      return {"attempts": 1, "output": final_output}
+
+  record = log_attempts(3, "success")
+  print(record["attempts"])
+challenge: |
+  Fix `log_attempts` so it records `"attempts": attempts_made`,
+  instead of the hardcoded literal `1`. It should print `3`, not `1`.
+expected_output: |
+  3
+hints:
+  - "Replace \"attempts\": 1 with \"attempts\": attempts_made."
+  - "A system that's quietly retrying constantly should look genuinely different in the logs from one that never needs to -- this field is what preserves that distinction."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 45
+difficulty: warmup
+contains_patterns:
+  - "\"attempts\": attempts_made"
+concept_tags: [langsmith, run_logging, retries]

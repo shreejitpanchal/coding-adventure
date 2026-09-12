@@ -1,0 +1,63 @@
+id: ai_365
+title: "A Webhook Must Verify Its Signature Before Trusting Anything in the Payload"
+language: ai
+level: 365
+objective: "Fix a webhook handler that processes a payload regardless of whether its signature actually matches, when a webhook entrypoint has no other way to confirm a request genuinely came from the source it claims to -- skipping the check means accepting a forged request as readily as a real one."
+explanation: |
+  A webhook endpoint is publicly reachable, which means anyone who
+  knows the URL can send it a payload shaped however they like -- the
+  signature is the only thing standing between "a request that
+  genuinely came from the expected source" and "a forged request that
+  merely looks the same shape." A handler that never actually compares
+  the provided signature against the expected one accepts both
+  identically.
+
+  The bug this exercise fixes processes the payload with no signature
+  check at all. The fix rejects the request when the signatures don't
+  match.
+example_code: |
+  # The trap: never checks the signature at all -- accepts any
+  # payload, forged or not.
+  def handle_webhook_trap(payload, provided_signature, expected_signature):
+      return {"text": payload["message"]}
+
+  print(handle_webhook_trap({"message": "wire $10000"}, "forged", "real-secret-signature") is not None)
+  # True -- accepted a forged, unverified request
+
+  # The fix: reject the request when signatures don't match.
+  def handle_webhook(payload, provided_signature, expected_signature):
+      if provided_signature != expected_signature:
+          raise PermissionError("invalid webhook signature")
+      return {"text": payload["message"]}
+
+  try:
+      handle_webhook({"message": "wire $10000"}, "forged", "real-secret-signature")
+  except PermissionError as e:
+      print(str(e))
+  # "invalid webhook signature" -- correctly rejected the forged request
+starter_code: |
+  def handle_webhook(payload, provided_signature, expected_signature):
+      return {"text": payload["message"]}
+
+  try:
+      print(handle_webhook({"message": "wire $10000"}, "forged", "real-secret-signature") is not None)
+  except PermissionError as e:
+      print(str(e))
+challenge: |
+  Fix `handle_webhook` so it raises `PermissionError("invalid webhook
+  signature")` when `provided_signature != expected_signature`,
+  instead of processing the payload unconditionally. It should print
+  `invalid webhook signature`, not `True`.
+expected_output: |
+  invalid webhook signature
+hints:
+  - "Add: if provided_signature != expected_signature: raise PermissionError(\"invalid webhook signature\"), as the first check."
+  - "A publicly reachable URL has no other way to confirm a request's real origin -- the signature check is the entire security boundary here."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "provided_signature != expected_signature"
+concept_tags: [solace_agent_mesh, entrypoint, webhook_security]

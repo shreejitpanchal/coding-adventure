@@ -1,0 +1,64 @@
+id: packaging_09
+title: "'1.0' and '1.0.0' Are the Same Version -- But Not the Same Tuple"
+language: python
+level: 389
+objective: "Fix a version-equality check comparing tuples of different lengths ((1, 0) vs (1, 0, 0)), which are never equal as tuples even though they represent the same version -- padding the shorter one with zeros (via itertools.zip_longest) makes the comparison correct."
+explanation: |
+  `"1.0"` and `"1.0.0"` mean the exact same version -- the missing
+  trailing `.0` is implicit -- but `(1, 0) == (1, 0, 0)` is `False`,
+  since tuple equality requires the same length as well as the same
+  elements. Comparing parsed version tuples directly breaks the moment
+  either version string has a different number of components than the
+  other, even when they're semantically identical. `itertools.
+  zip_longest(a, b, fillvalue=0)` (this app's stdlib category covers
+  it for exactly this kind of unequal-length pairing) pads whichever
+  side is shorter with `0`s before comparing, correctly treating a
+  missing trailing component as an implicit zero.
+
+  The fix pads both version tuples to equal length with `zip_longest`
+  before comparing.
+example_code: |
+  # The trap: unequal-length tuples are never equal, even for the same version.
+  def versions_equal_trap(a, b):
+      pa = tuple(int(p) for p in a.split("."))
+      pb = tuple(int(p) for p in b.split("."))
+      return pa == pb
+
+  print(versions_equal_trap("1.0", "1.0.0"))
+  # False -- WRONG, these represent the exact same version
+
+  # The fix: pad the shorter tuple with 0s using zip_longest.
+  from itertools import zip_longest
+
+  def versions_equal(a, b):
+      pa = [int(p) for p in a.split(".")]
+      pb = [int(p) for p in b.split(".")]
+      return all(x == y for x, y in zip_longest(pa, pb, fillvalue=0))
+
+  print(versions_equal("1.0", "1.0.0"))
+  # True -- correctly treats the missing trailing component as an implicit 0
+starter_code: |
+  def versions_equal(a, b):
+      pa = tuple(int(p) for p in a.split("."))
+      pb = tuple(int(p) for p in b.split("."))
+      return pa == pb
+
+  print(versions_equal("1.0", "1.0.0"))
+challenge: |
+  Fix `versions_equal` so it uses
+  `all(x == y for x, y in zip_longest(pa, pb, fillvalue=0))` (imported
+  from `itertools`), instead of comparing the raw tuples directly. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from itertools import zip_longest, then: return all(x == y for x, y in zip_longest(pa, pb, fillvalue=0))."
+  - "zip_longest pads whichever side is shorter with fillvalue -- exactly what's needed to treat a missing trailing version component as an implicit 0."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 9
+difficulty: gotcha
+contains_patterns:
+  - "zip_longest\\(pa, pb, fillvalue=0\\)"
+concept_tags: [packaging, versioning, itertools, gotchas]

@@ -1,0 +1,74 @@
+id: ai_138
+title: "Picking the First Matching Tool Isn't the Same as Picking the Best One"
+language: ai
+level: 138
+objective: "Fix a tool-selection function that returns the first tool whose description contains any matching keyword, instead of scoring every candidate tool and picking the one that best matches the task -- multiple tools can plausibly apply, and 'first' isn't the same as 'best'."
+explanation: |
+  An agent with several tools available often has more than one tool
+  that could plausibly handle a given task -- a "search_web" tool and a
+  "search_internal_docs" tool might both match a query mentioning
+  "search." Picking whichever one happens to be checked first (an
+  artifact of list order, not actual suitability) can route a task to a
+  technically-matching but genuinely worse-suited tool. Scoring every
+  candidate against the task and picking the best-scoring one instead
+  correctly accounts for *how well* each tool matches, not just
+  *whether* it matches at all.
+
+  The bug this exercise fixes returns the first tool whose description
+  contains any keyword from the task, stopping the search immediately
+  on the first hit. The fix scores every tool by how many keywords
+  actually match and picks the highest-scoring one, correctly
+  preferring a more specific match over a merely adequate one.
+example_code: |
+  # The trap: returns the FIRST matching tool -- list order decides,
+  # not which tool is actually the best fit for the task.
+  def select_tool_trap(task_keywords, tools):
+      for tool in tools:
+          if any(kw in tool["description"] for kw in task_keywords):
+              return tool["name"]
+      return None
+
+  tools = [
+      {"name": "general_search", "description": "search the web for general information"},
+      {"name": "internal_docs_search", "description": "search internal company documentation specifically"},
+  ]
+  task_keywords = ["search", "internal", "documentation"]
+  print(select_tool_trap(task_keywords, tools))   # "general_search" -- matched first, but it's the WORSE fit
+
+  # The fix: score every tool by how many keywords match, pick the BEST.
+  def select_tool(task_keywords, tools):
+      def score(tool):
+          return sum(1 for kw in task_keywords if kw in tool["description"])
+      return max(tools, key=score)["name"]
+
+  print(select_tool(task_keywords, tools))   # "internal_docs_search" -- correctly the better-matching tool
+starter_code: |
+  def select_tool(task_keywords, tools):
+      for tool in tools:
+          if any(kw in tool["description"] for kw in task_keywords):
+              return tool["name"]
+      return None
+
+  tools = [
+      {"name": "general_search", "description": "search the web for general information"},
+      {"name": "internal_docs_search", "description": "search internal company documentation specifically"},
+  ]
+  print(select_tool(["search", "internal", "documentation"], tools))
+challenge: |
+  Fix `select_tool` so it scores every tool by how many task keywords
+  appear in its description and returns the highest-scoring tool's
+  name, instead of returning the first tool with any matching keyword
+  at all. It should print `internal_docs_search`, not `general_search`.
+expected_output: |
+  internal_docs_search
+hints:
+  - "Define score(tool) as sum(1 for kw in task_keywords if kw in tool[\"description\"]), then return max(tools, key=score)[\"name\"]."
+  - "\"internal_docs_search\"'s description matches all 3 keywords (search, internal, documentation); \"general_search\"'s only matches 1 (search) -- scoring correctly favors the more specific tool."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "max\\(tools, key=score\\)"
+concept_tags: [agentic_frameworks, tool_selection, tool_use]

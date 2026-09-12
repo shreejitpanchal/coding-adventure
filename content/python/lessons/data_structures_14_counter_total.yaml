@@ -1,0 +1,45 @@
+id: data_structures_14
+title: "Counter.total() Sums Every Count Without a Separate sum() Call"
+language: python
+level: 171
+objective: "Use Counter.total() (Python 3.10+) to get the sum of all counts, instead of calling sum() on the counter's values separately."
+explanation: |
+  Once you have a `Counter`, getting the total number of items it
+  represents (not the number of distinct keys, but the sum of every
+  count) is common enough that Python 3.10 added `.total()` directly
+  as a method -- `counter.total()` is equivalent to `sum(counter.
+  values())`, just without needing to reach into `.values()`
+  separately to do the summing yourself.
+example_code: |
+  from collections import Counter
+
+  votes = Counter(["dog", "cat", "dog", "dog", "cat", "fish"])
+
+  # Summing the values manually.
+  total_loop = sum(votes.values())
+  print(total_loop)                         # 6
+
+  # .total() does this directly.
+  print(votes.total())                      # 6
+starter_code: |
+  from collections import Counter
+
+  votes = Counter(["dog", "cat", "dog", "dog", "cat", "fish"])
+  total = sum(votes.values())
+  print(total)
+challenge: |
+  Rewrite this using `votes.total()` instead of `sum(votes.values())`.
+  Keep the same output: 6.
+expected_output: |
+  6
+hints:
+  - "Replace sum(votes.values()) with votes.total()."
+  - ".total() is equivalent to sum(counter.values()), just built directly into Counter since Python 3.10."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 14
+difficulty: warmup
+contains_patterns:
+  - "votes\\.total\\(\\)"
+concept_tags: [counter, collections]

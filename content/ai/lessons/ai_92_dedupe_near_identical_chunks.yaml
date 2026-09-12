@@ -1,0 +1,77 @@
+id: ai_92
+title: "Near-Identical Retrieved Chunks Waste Context Budget"
+language: ai
+level: 92
+objective: "Fix a retrieval post-processing step that returns every retrieved chunk as-is, including near-duplicates that waste context-window budget (see this category's own lesson on that budget) on repeated information instead of genuinely new content."
+explanation: |
+  Overlapping source documents, redundant chunking, or simply several
+  near-identical passages in the underlying corpus can all produce a
+  top-k retrieval result where two or more chunks say almost the same
+  thing. Feeding all of them into the prompt wastes exactly the
+  context-window budget this category's earlier lesson warned about --
+  every token spent on a near-duplicate chunk is a token not spent on
+  genuinely different, useful context.
+
+  The bug this exercise fixes returns every retrieved chunk untouched,
+  with no check for near-duplicates at all. The fix compares each new
+  chunk against the ones already kept using a simple word-overlap
+  (Jaccard) similarity, skipping a chunk that's too similar to
+  something already kept -- so the final list keeps its first
+  occurrence of near-duplicate content, once, instead of repeating it.
+example_code: |
+  # The trap: returns every chunk untouched -- near-duplicates waste
+  # context budget on repeated information.
+  def dedupe_chunks_trap(chunks, threshold=0.75):
+      return chunks
+
+  chunks = [
+      "the quick brown fox jumps over the lazy dog today",
+      "the quick brown fox jumps over the lazy dog now",   # near-duplicate of the first
+      "a completely different sentence about cooking recipes",
+  ]
+  print(len(dedupe_chunks_trap(chunks)))   # 3 -- the near-duplicate wasn't caught at all
+
+  # The fix: skip a chunk if it's too similar (Jaccard word overlap) to one already kept.
+  def word_overlap(a, b):
+      set_a, set_b = set(a.split()), set(b.split())
+      return len(set_a & set_b) / len(set_a | set_b) if (set_a | set_b) else 0.0
+
+  def dedupe_chunks(chunks, threshold=0.75):
+      kept = []
+      for chunk in chunks:
+          if not any(word_overlap(chunk, k) >= threshold for k in kept):
+              kept.append(chunk)
+      return kept
+
+  print(len(dedupe_chunks(chunks)))   # 2 -- correctly keeps only one of the two near-duplicates
+starter_code: |
+  def word_overlap(a, b):
+      set_a, set_b = set(a.split()), set(b.split())
+      return len(set_a & set_b) / len(set_a | set_b) if (set_a | set_b) else 0.0
+
+  def dedupe_chunks(chunks, threshold=0.75):
+      return chunks
+
+  chunks = [
+      "the quick brown fox jumps over the lazy dog today",
+      "the quick brown fox jumps over the lazy dog now",
+      "a completely different sentence about cooking recipes",
+  ]
+  print(len(dedupe_chunks(chunks)))
+challenge: |
+  Fix `dedupe_chunks` so it skips a chunk whose word-overlap similarity
+  to any already-kept chunk is at or above `threshold`, instead of
+  returning every chunk untouched. It should print `2`, not `3`.
+expected_output: |
+  2
+hints:
+  - "Build a `kept` list, and for each chunk check: if not any(word_overlap(chunk, k) >= threshold for k in kept): kept.append(chunk)."
+  - "The first two sentences share 8 of their 10 combined unique words (0.8 overlap), which is above the 0.75 threshold -- the second should be skipped as a near-duplicate of the first."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "word_overlap\\(chunk, k\\)"
+concept_tags: [rag, deduplication, context_window]

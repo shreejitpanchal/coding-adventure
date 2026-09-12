@@ -1,0 +1,58 @@
+id: ai_131
+title: "Recall@K Measures Whether the Right Answer Was Retrieved At All"
+language: ai
+level: 131
+objective: "Fix a retrieval-evaluation function that checks whether the correct document is the very first result, when Recall@K should credit finding it ANYWHERE within the top k results, not only in first place."
+explanation: |
+  Evaluating retrieval quality needs its own metric, separate from
+  generation quality entirely -- **Recall@K** answers a specific
+  question: across a set of test queries, for what fraction of them did
+  the truly relevant document appear *somewhere* in the top k retrieved
+  results? A relevant document landing at rank 3 (still comfortably
+  inside a typical top-5 or top-10) is a real retrieval success -- the
+  re-ranking stage (this category's own lesson on that) exists
+  precisely to promote a correct-but-not-first result upward, and
+  penalizing anything short of "exactly first place" would ignore that
+  entire mechanism's value.
+
+  The bug this exercise fixes only credits a hit when the relevant
+  document is the very first result. The fix checks whether the
+  relevant document appears anywhere within the top k, correctly
+  reflecting what Recall@K is actually meant to measure.
+example_code: |
+  # The trap: only credits a hit if the relevant doc is FIRST -- ignores
+  # a real retrieval success further down within the top k.
+  def recall_at_k_trap(retrieved, relevant_doc, k):
+      return retrieved[0] == relevant_doc
+
+  retrieved = ["doc_wrong", "doc_correct", "doc_also_wrong"]
+  print(recall_at_k_trap(retrieved, "doc_correct", k=3))   # False -- but doc_correct WAS found, just not first!
+
+  # The fix: check if the relevant doc appears ANYWHERE in the top k.
+  def recall_at_k(retrieved, relevant_doc, k):
+      return relevant_doc in retrieved[:k]
+
+  print(recall_at_k(retrieved, "doc_correct", k=3))   # True -- correctly credited as a retrieval success
+starter_code: |
+  def recall_at_k(retrieved, relevant_doc, k):
+      return retrieved[0] == relevant_doc
+
+  retrieved = ["doc_wrong", "doc_correct", "doc_also_wrong"]
+  print(recall_at_k(retrieved, "doc_correct", k=3))
+challenge: |
+  Fix `recall_at_k` so it checks whether `relevant_doc` appears anywhere
+  in `retrieved[:k]`, instead of only checking the first position. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change the check to: return relevant_doc in retrieved[:k]."
+  - "\"doc_correct\" is at position 1 (not 0), but it's still within the top 3 -- Recall@K should credit that as a hit."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 46
+difficulty: warmup
+contains_patterns:
+  - "relevant_doc in retrieved\\[:k\\]"
+concept_tags: [rag, recall_at_k, retrieval_evaluation]

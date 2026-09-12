@@ -1,0 +1,80 @@
+id: functional_programming_42
+title: "Every Logger Built by the Factory Secretly Shared the Same List"
+language: python
+level: 377
+objective: "Fix a closure-returning factory function with a mutable default argument, which is created exactly once at function-definition time and silently shared by EVERY closure the factory ever produces -- a None-sentinel default builds a genuinely fresh list per factory call instead."
+explanation: |
+  This category's function-factory lesson builds a new function per
+  call, remembering its own state -- but if that state comes from a
+  mutable *default argument* (`def make_logger(prefix, log=[]):`), the
+  factory doesn't actually get a fresh list every time it's called at
+  all: a default argument's value is created exactly *once*, when the
+  function is defined, and every call that doesn't pass its own
+  `log` shares that exact same list. Two "independent" loggers built
+  from the same factory end up silently writing into the same shared
+  list, since neither one ever got its own.
+
+  The fix uses the same `None`-sentinel pattern this app's very first
+  gotcha lesson covers -- `log=None`, then `if log is None: log = []`
+  inside the function body -- which genuinely creates a fresh list on
+  every call.
+example_code: |
+  # The trap: log=[] is created ONCE, at definition time -- every logger shares it.
+  def make_logger_trap(prefix, log=[]):
+      def logger(msg):
+          log.append(f"{prefix}: {msg}")
+          return log
+      return logger
+
+  logger_a_trap = make_logger_trap("A")
+  logger_b_trap = make_logger_trap("B")
+  logger_a_trap("hello")
+  logger_b_trap("world")
+  print(logger_a_trap("again"))
+  # ['A: hello', 'B: world', 'A: again'] -- WRONG, B's entry leaked into A's log
+
+  # The fix: a None-sentinel default creates a FRESH list every call.
+  def make_logger(prefix, log=None):
+      if log is None:
+          log = []
+      def logger(msg):
+          log.append(f"{prefix}: {msg}")
+          return log
+      return logger
+
+  logger_a = make_logger("A")
+  logger_b = make_logger("B")
+  logger_a("hello")
+  logger_b("world")
+  print(logger_a("again"))
+  # ['A: hello', 'A: again'] -- correctly independent, no shared list at all
+starter_code: |
+  def make_logger(prefix, log=[]):
+      def logger(msg):
+          log.append(f"{prefix}: {msg}")
+          return log
+      return logger
+
+  logger_a = make_logger("A")
+  logger_b = make_logger("B")
+  logger_a("hello")
+  logger_b("world")
+  print(logger_a("again"))
+challenge: |
+  Fix `make_logger` so `log=None` is the default, with `if log is
+  None: log = []` as the function's first line, instead of the mutable
+  `log=[]` default. It should print `['A: hello', 'A: again']`, not
+  `['A: hello', 'B: world', 'A: again']`.
+expected_output: |
+  ['A: hello', 'A: again']
+hints:
+  - "def make_logger(prefix, log=None): if log is None: log = []."
+  - "A default argument's value is created exactly ONCE, at function-definition time -- every factory call that doesn't pass its own log shares that same one list."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "if log is None:"
+concept_tags: [functional_programming, closures, mutable_defaults, gotchas]

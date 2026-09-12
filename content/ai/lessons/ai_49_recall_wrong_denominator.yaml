@@ -1,0 +1,63 @@
+id: ai_49
+title: "Recall's Denominator Is TP + FN, Not the Whole Dataset"
+language: ai
+level: 49
+objective: "Fix a hand-rolled recall calculation that divides true positives by the total number of examples instead of by true positives plus false negatives."
+explanation: |
+  **Recall** answers a specific question: of every example that was
+  actually positive, what fraction did the model correctly catch? That
+  question is only about the positive examples -- it has nothing to do
+  with how many negative examples exist in the dataset at all. The
+  correct denominator is `TP + FN` (every example that was truly
+  positive, whether caught or missed), not the size of the whole
+  dataset, which also includes true negatives and false positives that
+  have no bearing on "how many of the real positives did we catch."
+
+  The bug this exercise fixes divides by `len(y_true)` instead -- on a
+  dataset with many more negatives than positives, this silently
+  produces a smaller number than the true recall, understating exactly
+  how well (or badly) the model is finding positives, since the
+  denominator is inflated by examples the recall metric was never
+  supposed to count in the first place.
+example_code: |
+  # The trap: divides by the WHOLE dataset size, not TP + FN.
+  def recall_trap(y_true, y_pred, positive_class=1):
+      tp = sum(t == positive_class and p == positive_class for t, p in zip(y_true, y_pred))
+      return tp / len(y_true)   # bug: wrong denominator entirely
+
+  y_true = [1, 1, 1, 0, 0]
+  y_pred = [1, 0, 1, 0, 0]
+  print(round(recall_trap(y_true, y_pred), 3))   # 0.4 -- understated
+
+  # The fix: divide by TP + FN specifically (every TRUE positive, caught or missed).
+  def recall(y_true, y_pred, positive_class=1):
+      tp = sum(t == positive_class and p == positive_class for t, p in zip(y_true, y_pred))
+      fn = sum(t == positive_class and p != positive_class for t, p in zip(y_true, y_pred))
+      return tp / (tp + fn) if (tp + fn) else 0.0
+
+  print(round(recall(y_true, y_pred), 3))   # 0.667 -- correctly reflects 2 of 3 true positives caught
+starter_code: |
+  def recall(y_true, y_pred, positive_class=1):
+      tp = sum(t == positive_class and p == positive_class for t, p in zip(y_true, y_pred))
+      return tp / len(y_true)
+
+  y_true = [1, 1, 1, 0, 0]
+  y_pred = [1, 0, 1, 0, 0]
+  print(round(recall(y_true, y_pred), 3))
+challenge: |
+  Fix `recall` so it divides true positives by `tp + fn` (computing `fn`
+  as the count of true positives the model missed), instead of dividing
+  by `len(y_true)`. It should print `0.667`, not `0.4`.
+expected_output: |
+  0.667
+hints:
+  - "Compute fn = sum(t == positive_class and p != positive_class for t, p in zip(y_true, y_pred)) -- the true positives the model missed."
+  - "Return tp / (tp + fn), guarding the zero-division case where tp + fn is 0."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 9
+difficulty: gotcha
+contains_patterns:
+  - "tp \\+ fn"
+concept_tags: [ml_fundamentals, recall, evaluation_metrics]

@@ -1,0 +1,60 @@
+id: ai_77
+title: "Undersampling Trades Away Real Data to Fix Class Balance"
+language: ai
+level: 77
+objective: "Fix an undersampling function that keeps every majority-class row (defeating the point of undersampling), and recognize the real tradeoff undersampling makes -- discarding real majority-class data specifically to balance the classes."
+explanation: |
+  **Undersampling** balances classes from the other direction of this
+  category's oversampling lesson: instead of duplicating minority
+  rows, it discards majority-class rows until the counts match. That
+  fixes the imbalance without ever duplicating anything, but it comes
+  with a real, opposite cost -- genuine majority-class data, which
+  might have contained useful information, gets thrown away entirely,
+  and on a small dataset this can mean discarding a meaningful fraction
+  of all the training data available.
+
+  The bug this exercise fixes keeps every majority-class row regardless
+  of the target count, defeating undersampling's entire purpose (the
+  classes stay just as imbalanced as before). The fix truncates the
+  majority-class rows down to exactly the minority class's count,
+  genuinely balancing the classes at the cost of discarding the rest.
+example_code: |
+  # The trap: keeps EVERY majority row regardless of target size --
+  # the classes stay exactly as imbalanced as before "undersampling."
+  def undersample_trap(majority_rows, minority_count):
+      return majority_rows
+
+  majority = ["a1", "a2", "a3", "a4", "a5"]
+  result_trap = undersample_trap(majority, minority_count=2)
+  print(len(result_trap))   # 5 -- unchanged, still imbalanced against 2 minority rows
+
+  # The fix: truncate majority rows down to the minority class's count.
+  def undersample(majority_rows, minority_count):
+      return majority_rows[:minority_count]
+
+  result = undersample(majority, minority_count=2)
+  print(len(result))   # 2 -- correctly matches the minority class's count
+starter_code: |
+  def undersample(majority_rows, minority_count):
+      return majority_rows
+
+  majority = ["a1", "a2", "a3", "a4", "a5"]
+  result = undersample(majority, minority_count=2)
+  print(len(result))
+challenge: |
+  Fix `undersample` so it truncates `majority_rows` down to exactly
+  `minority_count` rows, instead of returning all of them unchanged. It
+  should print `2`, not `5`.
+expected_output: |
+  2
+hints:
+  - "Return majority_rows[:minority_count] -- a simple slice down to the target count."
+  - "This genuinely discards the remaining majority-class rows, unlike the original code which kept every one of them."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 37
+difficulty: warmup
+contains_patterns:
+  - "majority_rows\\[:minority_count\\]"
+concept_tags: [ml_fundamentals, undersampling, class_imbalance]

@@ -1,0 +1,68 @@
+id: ai_78
+title: "Cost-Sensitive Learning Weights Errors by How Much They Actually Cost"
+language: ai
+level: 78
+objective: "Fix a loss calculation that counts every misclassification equally, when a false negative on a rare, high-stakes class (missing real fraud) is genuinely far more costly than a false positive (flagging a legitimate transaction for review)."
+explanation: |
+  Not every mistake costs the same in the real world -- missing an
+  actual fraudulent transaction (a false negative) is typically far
+  more expensive than flagging a legitimate one for extra review (a
+  false positive), yet a plain error count treats both mistakes as
+  worth exactly one point each. **Cost-sensitive learning** makes this
+  asymmetry explicit by weighting each type of error according to its
+  real-world cost, so a model being evaluated (or trained) actually
+  gets penalized in proportion to what a mistake really costs, not
+  just whether a mistake was made at all.
+
+  The bug this exercise fixes counts every misclassification as costing
+  exactly `1`, regardless of which direction the error went. The fix
+  applies different costs to false negatives versus false positives,
+  correctly reflecting that missing real fraud is far more expensive
+  than over-flagging a legitimate transaction.
+example_code: |
+  # The trap: every misclassification costs exactly 1 -- treats a
+  # missed fraud case the same as an over-flagged legitimate one.
+  def total_cost_trap(y_true, y_pred):
+      return sum(1 for t, p in zip(y_true, y_pred) if t != p)
+
+  y_true = [1, 0, 1, 0]   # 1 = fraud, 0 = legitimate
+  y_pred = [0, 1, 1, 0]   # index 0: missed fraud (false negative); index 1: over-flagged (false positive)
+  print(total_cost_trap(y_true, y_pred))   # 2 -- treats both errors as equally costly
+
+  # The fix: weight false negatives and false positives DIFFERENTLY.
+  def total_cost(y_true, y_pred, fn_cost=10, fp_cost=1):
+      cost = 0
+      for t, p in zip(y_true, y_pred):
+          if t == 1 and p == 0:
+              cost += fn_cost   # missed fraud -- expensive
+          elif t == 0 and p == 1:
+              cost += fp_cost   # over-flagged legitimate transaction -- cheap
+      return cost
+
+  print(total_cost(y_true, y_pred))   # 11 -- correctly reflects the real asymmetry (10 + 1)
+starter_code: |
+  def total_cost(y_true, y_pred, fn_cost=10, fp_cost=1):
+      return sum(1 for t, p in zip(y_true, y_pred) if t != p)
+
+  y_true = [1, 0, 1, 0]
+  y_pred = [0, 1, 1, 0]
+  print(total_cost(y_true, y_pred))
+challenge: |
+  Fix `total_cost` so it charges `fn_cost` for a false negative
+  (`t == 1 and p == 0`) and `fp_cost` for a false positive (`t == 0 and
+  p == 1`), instead of counting every mismatch as costing `1`. It
+  should print `11`, not `2`.
+expected_output: |
+  11
+hints:
+  - "Loop over the pairs, checking `if t == 1 and p == 0: cost += fn_cost` and `elif t == 0 and p == 1: cost += fp_cost`."
+  - "index 0 (t=1,p=0) is a false negative costing 10; index 1 (t=0,p=1) is a false positive costing 1; total 11."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "fn_cost"
+  - "fp_cost"
+concept_tags: [ml_fundamentals, cost_sensitive_learning, class_imbalance]

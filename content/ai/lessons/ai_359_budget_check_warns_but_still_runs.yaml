@@ -1,0 +1,79 @@
+id: ai_359
+title: "A Budget Check Should Actually Stop the Run, Not Just Warn and Continue"
+language: ai
+level: 359
+objective: "Fix a budget-enforcing wrapper that logs a warning when over budget but calls the function anyway, when genuinely enforcing a cost budget means refusing to run, not just noting that the budget was already exceeded and proceeding regardless."
+explanation: |
+  This category's earlier lesson covered detecting that a budget has
+  been exceeded -- actually enforcing it is a separate step, and a
+  wrapper that only logs a warning before running the function anyway
+  provides no real spending control at all. A budget that's merely
+  observed, never enforced, will keep letting cost accumulate exactly
+  as if no budget existed in the first place.
+
+  The bug this exercise fixes prints a warning, then calls `fn()`
+  regardless. The fix refuses to call `fn()` at all once the budget has
+  been exceeded.
+example_code: |
+  # The trap: only LOGS a warning, then runs the function anyway
+  # regardless of being over budget.
+  def check_and_run_trap(fn, total_cost_so_far, budget):
+      if total_cost_so_far > budget:
+          print("(warning: over budget)")
+      return fn()
+
+  calls_trap = []
+  def do_work_trap():
+      calls_trap.append("ran")
+      return "done"
+
+  check_and_run_trap(do_work_trap, total_cost_so_far=150, budget=100)
+  print(len(calls_trap))
+  # 1 -- ran anyway, despite already being over budget
+
+  # The fix: refuse to call fn() at all once the budget is exceeded.
+  def check_and_run(fn, total_cost_so_far, budget):
+      if total_cost_so_far > budget:
+          return "BUDGET_EXCEEDED"
+      return fn()
+
+  calls = []
+  def do_work():
+      calls.append("ran")
+      return "done"
+
+  check_and_run(do_work, total_cost_so_far=150, budget=100)
+  print(len(calls))
+  # 0 -- correctly refused to run at all
+starter_code: |
+  calls = []
+
+  def do_work():
+      calls.append("ran")
+      return "done"
+
+  def check_and_run(fn, total_cost_so_far, budget):
+      if total_cost_so_far > budget:
+          print("(warning: over budget)")
+      return fn()
+
+  check_and_run(do_work, total_cost_so_far=150, budget=100)
+  print(len(calls))
+challenge: |
+  Fix `check_and_run` so it returns `"BUDGET_EXCEEDED"` (without
+  calling `fn()` at all) when `total_cost_so_far > budget`, instead of
+  just printing a warning and calling `fn()` anyway. It should print
+  `0`, not `1`.
+expected_output: |
+  0
+hints:
+  - "Replace the print(...) line with return \"BUDGET_EXCEEDED\" -- this needs to exit the function before fn() is ever called."
+  - "A budget that's only ever observed and logged, never enforced, provides exactly the same amount of protection as no budget at all."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "return \"BUDGET_EXCEEDED\""
+concept_tags: [langsmith, cost_tracking, budget_enforcement]

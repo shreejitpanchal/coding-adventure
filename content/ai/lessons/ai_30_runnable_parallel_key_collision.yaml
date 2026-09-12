@@ -93,7 +93,7 @@ hints:
   - "Replace result.update({\"output\": branch.invoke(x)}) with result[name] = branch.invoke(x)."
   - "`name` (the dict key from self.branches.items()) is each branch's own distinct name -- use it instead of a fixed literal key."
 xp_reward: 15
-achievement: langchain_master
+achievement: null
 category: langchain
 category_level: 5
 difficulty: deep_dive

@@ -1,0 +1,80 @@
+id: ai_51
+title: "Macro Averaging Treats Every Class Equally, Micro Doesn't"
+language: ai
+level: 51
+objective: "Fix a multi-class F1 calculation that always micro-averages (pooling all classes' counts together) when the caller actually wanted a macro average that weighs each class equally regardless of its size."
+explanation: |
+  With more than two classes, there isn't one single "the" F1 score --
+  **macro averaging** computes each class's F1 independently, then
+  averages those per-class scores with equal weight, so a rare class
+  counts exactly as much as a common one. **Micro averaging** instead
+  pools every class's true/false positives and negatives together
+  first, then computes one overall F1 from the pooled totals -- which
+  means a large class's performance dominates the result, since it
+  simply contributes more raw counts to the pool.
+
+  The bug this exercise fixes is a function that always computes the
+  micro-style pooled score, even when a genuinely rare class is
+  performing badly -- that class's poor performance gets diluted into
+  the pool by the far larger class's good performance, hiding the rare
+  class's problem entirely. The fix computes each class's F1
+  separately and averages those *scores*, giving the rare class equal
+  voice regardless of how few examples of it exist.
+example_code: |
+  # The trap: always pools counts across classes first (micro-style),
+  # letting a large class's good performance mask a rare class's bad one.
+  def f1_multiclass_trap(per_class_tp, per_class_fp, per_class_fn):
+      tp = sum(per_class_tp.values())
+      fp = sum(per_class_fp.values())
+      fn = sum(per_class_fn.values())
+      precision = tp / (tp + fp) if (tp + fp) else 0.0
+      recall = tp / (tp + fn) if (tp + fn) else 0.0
+      return 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+
+  per_class_tp = {"common": 90, "rare": 0}
+  per_class_fp = {"common": 10, "rare": 0}
+  per_class_fn = {"common": 10, "rare": 10}
+  print(round(f1_multiclass_trap(per_class_tp, per_class_fp, per_class_fn), 3))   # 0.857 -- looks fine, "rare" is hidden in the pool
+
+  # The fix: macro average -- compute each class's F1 separately, THEN average.
+  def f1_macro(per_class_tp, per_class_fp, per_class_fn):
+      scores = []
+      for cls in per_class_tp:
+          tp, fp, fn = per_class_tp[cls], per_class_fp[cls], per_class_fn[cls]
+          precision = tp / (tp + fp) if (tp + fp) else 0.0
+          recall = tp / (tp + fn) if (tp + fn) else 0.0
+          f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+          scores.append(f1)
+      return sum(scores) / len(scores)
+
+  print(round(f1_macro(per_class_tp, per_class_fp, per_class_fn), 3))   # 0.45 -- "rare"'s 0.0 F1 correctly pulls the average down
+starter_code: |
+  def f1_multiclass(per_class_tp, per_class_fp, per_class_fn):
+      tp = sum(per_class_tp.values())
+      fp = sum(per_class_fp.values())
+      fn = sum(per_class_fn.values())
+      precision = tp / (tp + fp) if (tp + fp) else 0.0
+      recall = tp / (tp + fn) if (tp + fn) else 0.0
+      return 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+
+  per_class_tp = {"common": 90, "rare": 0}
+  per_class_fp = {"common": 10, "rare": 0}
+  per_class_fn = {"common": 10, "rare": 10}
+  print(round(f1_multiclass(per_class_tp, per_class_fp, per_class_fn), 3))
+challenge: |
+  Fix `f1_multiclass` so it computes each class's own F1 independently
+  and averages those scores (macro averaging), instead of pooling
+  counts across classes first. It should print `0.45`, not `0.857`.
+expected_output: |
+  0.45
+hints:
+  - "Loop over each class in per_class_tp, compute that class's own precision/recall/F1 from just its own tp/fp/fn, and collect the per-class F1 scores into a list."
+  - "Return the average of that list of per-class F1 scores, not one F1 computed from pooled totals."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 11
+difficulty: gotcha
+contains_patterns:
+  - "for cls in per_class_tp"
+concept_tags: [ml_fundamentals, macro_averaging, multiclass_metrics]

@@ -1,0 +1,74 @@
+id: ai_114
+title: "HyDE Embeds a Hypothetical Answer, Not the Raw Question"
+language: ai
+level: 114
+objective: "Fix a HyDE-style retrieval function that embeds the raw user question directly, instead of first generating a hypothetical answer and embedding THAT -- the technique's whole mechanism for closing the gap between how questions and answers are phrased."
+explanation: |
+  A short question and the document passage that actually answers it
+  are often phrased very differently -- `"What's the refund policy?"`
+  doesn't share much surface vocabulary with the passage that actually
+  explains refund terms and conditions. **HyDE** (Hypothetical Document
+  Embeddings) works around this by first generating a *hypothetical*
+  answer to the question (even a plausible-sounding, unverified one),
+  and embedding *that* hypothetical answer instead of the raw question
+  -- since a hypothetical answer's phrasing tends to resemble a real
+  answer's phrasing much more closely than the original question does,
+  improving retrieval quality specifically on question/answer phrasing
+  mismatches.
+
+  The bug this exercise fixes embeds the raw query directly, skipping
+  the hypothetical-answer generation step entirely. The fix generates a
+  hypothetical answer first (via a provided `generate_hypothetical_answer`
+  function standing in for a real LLM call) and embeds that generated
+  text instead of the original question.
+example_code: |
+  # The trap: embeds the RAW QUESTION directly -- skips HyDE's whole
+  # mechanism for closing the question/answer phrasing gap.
+  def embed(text):
+      return f"embedding_of({text})"
+
+  def hyde_retrieve_trap(query, generate_hypothetical_answer):
+      return embed(query)   # bug: never calls generate_hypothetical_answer at all
+
+  def generate_hypothetical_answer(query):
+      return "Refunds are processed within 5-7 business days of the return being received."
+
+  print(hyde_retrieve_trap("What's the refund policy?", generate_hypothetical_answer))
+  # embedding_of(What's the refund policy?) -- the raw question, not a hypothetical answer
+
+  # The fix: generate a hypothetical answer FIRST, embed THAT instead.
+  def hyde_retrieve(query, generate_hypothetical_answer):
+      hypothetical = generate_hypothetical_answer(query)
+      return embed(hypothetical)
+
+  print(hyde_retrieve("What's the refund policy?", generate_hypothetical_answer))
+  # embedding_of(Refunds are processed within 5-7 business days...) -- the hypothetical ANSWER's phrasing
+starter_code: |
+  def embed(text):
+      return f"embedding_of({text})"
+
+  def generate_hypothetical_answer(query):
+      return "Refunds are processed within 5-7 business days of the return being received."
+
+  def hyde_retrieve(query, generate_hypothetical_answer):
+      return embed(query)
+
+  print(hyde_retrieve("What's the refund policy?", generate_hypothetical_answer))
+challenge: |
+  Fix `hyde_retrieve` so it calls `generate_hypothetical_answer(query)`
+  first and embeds that result, instead of embedding the raw `query`
+  directly. It should print
+  `embedding_of(Refunds are processed within 5-7 business days of the return being received.)`
+expected_output: |
+  embedding_of(Refunds are processed within 5-7 business days of the return being received.)
+hints:
+  - "Call hypothetical = generate_hypothetical_answer(query) first, then return embed(hypothetical) -- not embed(query)."
+  - "The whole point of HyDE is embedding the generated hypothetical ANSWER's text, not the original question's text."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 29
+difficulty: core
+contains_patterns:
+  - "generate_hypothetical_answer\\(query\\)"
+concept_tags: [rag, hyde, query_transformation]

@@ -1,0 +1,70 @@
+id: recursion_08
+title: "Summing a Tree Needs to Recurse Into Every Child, Not Just Read the Root"
+language: python
+level: 448
+objective: "Fix a tree-sum function that only returns the root node's own value, completely ignoring its children, when a tree is a naturally recursive structure -- each node's total is its own value PLUS the recursive sum of every child."
+explanation: |
+  A tree node (a dict with a `value` and a list of `children`, each
+  itself shaped the same way) is a recursive data structure -- exactly
+  like the nested lists this category's `flatten` lesson covers,
+  processing it correctly means the function's own structure mirrors
+  the data's structure. Returning just `node["value"]` only ever
+  answers "what's at the root," completely ignoring that each child is
+  itself a whole subtree with its own value (and possibly its own
+  children) that needs to be recursively summed and added in.
+
+  The fix starts with the node's own value, then recursively adds in
+  the sum of every child.
+example_code: |
+  # The trap: only reads the root's own value -- every child is ignored entirely.
+  def tree_sum_trap(node):
+      return node["value"]
+
+  tree = {
+      "value": 1,
+      "children": [
+          {"value": 2, "children": []},
+          {"value": 3, "children": [{"value": 4, "children": []}]},
+      ],
+  }
+  print(tree_sum_trap(tree))
+  # 1 -- WRONG, this ignores every single child in the tree
+
+  # The fix: recurse into every child, adding each subtree's sum in.
+  def tree_sum(node):
+      total = node["value"]
+      for child in node["children"]:
+          total += tree_sum(child)
+      return total
+
+  print(tree_sum(tree))
+  # 10 -- correctly 1 + 2 + 3 + 4, recursively summing every node in the tree
+starter_code: |
+  def tree_sum(node):
+      return node["value"]
+
+  tree = {
+      "value": 1,
+      "children": [
+          {"value": 2, "children": []},
+          {"value": 3, "children": [{"value": 4, "children": []}]},
+      ],
+  }
+  print(tree_sum(tree))
+challenge: |
+  Fix `tree_sum` so it starts with `total = node["value"]`, then adds
+  `tree_sum(child)` for every child in `node["children"]`, instead of
+  returning only the root's own value. It should print `10`, not `1`.
+expected_output: |
+  10
+hints:
+  - "total = node[\"value\"], then: for child in node[\"children\"]: total += tree_sum(child); return total."
+  - "A tree is a recursive structure -- each child is itself a whole subtree that needs its own recursive sum, not just its bare value."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "total \\+= tree_sum\\(child\\)"
+concept_tags: [recursion, trees, data_structures]

@@ -1,0 +1,77 @@
+id: ai_172
+title: "An Agent Shouldn't Be Able to Call a Tool Outside Its Own Allowed Set"
+language: ai
+level: 172
+objective: "Fix a tool dispatcher that looks up and calls any tool by name from a global registry, with no check that the calling agent is actually permitted to use that specific tool -- letting a narrowly-scoped agent reach for a tool well outside its intended scope."
+explanation: |
+  A specialized sub-agent (this category's own delegation lesson) is
+  usually meant to have access to only the tools relevant to its
+  specific job -- a billing agent shouldn't be able to call a tool that
+  deletes user accounts, even if that tool happens to exist somewhere
+  in the same global registry the rest of the system shares. This is
+  the same least-privilege principle this app's AI track covers for
+  Microsoft Agent 365's first-class agent identities, applied here at
+  the level of one agent's own permitted toolset.
+
+  The bug this exercise fixes looks up and calls any tool by name from
+  the global registry, with no permission check against the calling
+  agent's own allowed toolset at all. The fix checks that the requested
+  tool is actually in the agent's allowed set before calling it,
+  refusing the call otherwise.
+example_code: |
+  # The trap: calls ANY tool from the global registry by name --
+  # no check against the agent's own PERMITTED toolset at all.
+  def call_tool_trap(agent_allowed_tools, tool_registry, tool_name, *args):
+      return tool_registry[tool_name](*args)
+
+  tool_registry = {
+      "check_invoice": lambda order_id: f"invoice for {order_id}",
+      "delete_all_accounts": lambda: "ALL ACCOUNTS DELETED",
+  }
+  billing_agent_tools = {"check_invoice"}
+  print(call_tool_trap(billing_agent_tools, tool_registry, "delete_all_accounts"))
+  # "ALL ACCOUNTS DELETED" -- a BILLING agent just called a tool WAY outside its scope!
+
+  # The fix: check the tool is in the agent's OWN allowed set first.
+  def call_tool(agent_allowed_tools, tool_registry, tool_name, *args):
+      if tool_name not in agent_allowed_tools:
+          raise PermissionError(f"tool '{tool_name}' is not permitted for this agent")
+      return tool_registry[tool_name](*args)
+
+  try:
+      call_tool(billing_agent_tools, tool_registry, "delete_all_accounts")
+  except PermissionError as e:
+      print(e)   # correctly refused
+starter_code: |
+  def call_tool(agent_allowed_tools, tool_registry, tool_name, *args):
+      return tool_registry[tool_name](*args)
+
+  tool_registry = {
+      "check_invoice": lambda order_id: f"invoice for {order_id}",
+      "delete_all_accounts": lambda: "ALL ACCOUNTS DELETED",
+  }
+  billing_agent_tools = {"check_invoice"}
+  try:
+      print(call_tool(billing_agent_tools, tool_registry, "delete_all_accounts"))
+  except PermissionError as e:
+      print(e)
+challenge: |
+  Fix `call_tool` so it checks `tool_name not in agent_allowed_tools`
+  first, raising `PermissionError(f"tool '{tool_name}' is not permitted
+  for this agent")` in that case, instead of calling any tool from the
+  registry unconditionally. It should print
+  `tool 'delete_all_accounts' is not permitted for this agent`, not
+  `ALL ACCOUNTS DELETED`.
+expected_output: |
+  tool 'delete_all_accounts' is not permitted for this agent
+hints:
+  - "Add: if tool_name not in agent_allowed_tools: raise PermissionError(f\"tool '{tool_name}' is not permitted for this agent\")."
+  - "This check needs to happen BEFORE the tool_registry lookup, so an out-of-scope tool is refused rather than executed."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "raise PermissionError"
+concept_tags: [agentic_frameworks, permission_scoping, tool_calling, security]

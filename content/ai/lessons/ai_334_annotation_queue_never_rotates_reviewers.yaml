@@ -1,0 +1,57 @@
+id: ai_334
+title: "An Annotation Queue Should Rotate Through Reviewers, Not Always Pick the First"
+language: ai
+level: 334
+objective: "Fix a reviewer-assignment function that always picks the first reviewer regardless of which item is being assigned, when distributing annotation work evenly means rotating through the reviewer list, not loading every single item onto one person."
+explanation: |
+  An annotation queue exists to spread review work across a team, and
+  that only happens if assignment actually rotates through the
+  available reviewers -- always picking the same one defeats the
+  purpose entirely, piling every single item onto one person while
+  everyone else on the team sits idle. Round-robin assignment (cycling
+  through reviewers based on the item's position) is the simplest way
+  to distribute work roughly evenly without any real coordination
+  logic.
+
+  The bug this exercise fixes always returns `reviewers[0]`. The fix
+  uses `item_index % len(reviewers)` to rotate through the list.
+example_code: |
+  # The trap: always assigns to the FIRST reviewer -- no rotation at
+  # all, regardless of which item this is.
+  def assign_reviewer_trap(item_index, reviewers):
+      return reviewers[0]
+
+  reviewers = ["alice", "bob", "carol"]
+  print([assign_reviewer_trap(i, reviewers) for i in range(4)])
+  # ['alice', 'alice', 'alice', 'alice'] -- no rotation at all
+
+  # The fix: rotate through reviewers based on the item's position.
+  def assign_reviewer(item_index, reviewers):
+      return reviewers[item_index % len(reviewers)]
+
+  print([assign_reviewer(i, reviewers) for i in range(4)])
+  # ['alice', 'bob', 'carol', 'alice'] -- correctly rotates through the team
+starter_code: |
+  def assign_reviewer(item_index, reviewers):
+      return reviewers[0]
+
+  reviewers = ["alice", "bob", "carol"]
+  print([assign_reviewer(i, reviewers) for i in range(4)])
+challenge: |
+  Fix `assign_reviewer` so it returns `reviewers[item_index %
+  len(reviewers)]`, instead of always `reviewers[0]`. It should print
+  `['alice', 'bob', 'carol', 'alice']`, not
+  `['alice', 'alice', 'alice', 'alice']`.
+expected_output: |
+  ['alice', 'bob', 'carol', 'alice']
+hints:
+  - "Replace reviewers[0] with reviewers[item_index % len(reviewers)]."
+  - "The modulo operator is what makes this wrap back around to the first reviewer once every reviewer has had a turn -- item index 3 lands back on \"alice\" with 3 reviewers."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 24
+difficulty: warmup
+contains_patterns:
+  - "reviewers\\[item_index % len\\(reviewers\\)\\]"
+concept_tags: [langsmith, annotation_queue, round_robin]

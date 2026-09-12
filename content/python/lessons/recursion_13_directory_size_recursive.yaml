@@ -1,0 +1,80 @@
+id: recursion_13
+title: "A Directory's Size Is the Recursive Sum of Everything Inside It"
+language: python
+level: 453
+objective: "Fix a directory-size function that returns 0 for any directory, never looking inside it at all, when a directory's total size is the recursive sum of every file and subdirectory it contains -- exactly the same recursive-tree shape this category's tree-sum lesson covers, applied to a filesystem."
+explanation: |
+  A simulated filesystem -- a dict tree where each node is either a
+  `"file"` (with a `size`) or a `"dir"` (with a list of `children`,
+  each itself shaped the same way) -- is recursive in exactly the same
+  way this category's tree-sum exercise is: a directory's total size
+  isn't a property it has on its own, it's the sum of everything
+  recursively found inside it, file sizes and subdirectory sizes alike.
+  Returning `0` for every directory without ever looking inside it
+  completely ignores that its actual size comes entirely from what it
+  contains.
+
+  The fix recursively sums every child's size when the node is a
+  directory, instead of returning a flat 0.
+example_code: |
+  # The trap: returns 0 for a directory -- never looks inside it at all.
+  def total_size_trap(node):
+      if node["type"] == "file":
+          return node["size"]
+      return 0
+
+  fs = {
+      "type": "dir",
+      "children": [
+          {"type": "file", "size": 100},
+          {"type": "dir", "children": [
+              {"type": "file", "size": 50},
+              {"type": "file", "size": 25},
+          ]},
+      ],
+  }
+  print(total_size_trap(fs))
+  # 0 -- WRONG, this directory clearly contains real files with real sizes
+
+  # The fix: recursively sum every child, files and subdirectories alike.
+  def total_size(node):
+      if node["type"] == "file":
+          return node["size"]
+      return sum(total_size(child) for child in node["children"])
+
+  print(total_size(fs))
+  # 175 -- correctly 100 + 50 + 25, recursively summed through the whole tree
+starter_code: |
+  def total_size(node):
+      if node["type"] == "file":
+          return node["size"]
+      return 0
+
+  fs = {
+      "type": "dir",
+      "children": [
+          {"type": "file", "size": 100},
+          {"type": "dir", "children": [
+              {"type": "file", "size": 50},
+              {"type": "file", "size": 25},
+          ]},
+      ],
+  }
+  print(total_size(fs))
+challenge: |
+  Fix `total_size` so a directory returns
+  `sum(total_size(child) for child in node["children"])`, instead of a
+  flat `0`. It should print `175`, not `0`.
+expected_output: |
+  175
+hints:
+  - "return sum(total_size(child) for child in node[\"children\"])."
+  - "A directory's size isn't a property it has directly -- it's the recursive sum of every file and subdirectory it actually contains."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "sum\\(total_size\\(child\\) for child in node\\[\"children\"\\]\\)"
+concept_tags: [recursion, trees, file_systems]

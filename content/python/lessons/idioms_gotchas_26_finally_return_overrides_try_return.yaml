@@ -1,0 +1,65 @@
+id: idioms_gotchas_26
+title: "A return Inside finally: Always Wins, Silently Discarding try's Own Return"
+language: python
+level: 95
+objective: "Fix a function whose finally block has its own return statement, when finally's return unconditionally overrides whatever try was about to return -- even a value that try had already successfully computed and was in the middle of returning."
+explanation: |
+  `finally` always runs, no matter how `try` exits -- normal
+  completion, an exception, or even a `return` already in progress.
+  If `finally` itself contains a `return`, that return wins
+  unconditionally, silently discarding whatever `try` was about to
+  return (or whatever exception was about to propagate). This is easy
+  to miss because nothing looks obviously wrong: the function still
+  runs, still returns something, just never what `try` actually
+  computed.
+
+  The bug this exercise fixes has a `return` statement inside
+  `finally`. The fix removes it, letting `try`'s own return value
+  through.
+example_code: |
+  # The trap: a return inside finally ALWAYS wins, silently discarding
+  # whatever try was about to return.
+  def get_value_trap():
+      try:
+          return "try_value"
+      finally:
+          return "finally_value"
+
+  print(get_value_trap())
+  # "finally_value" -- the try block's return was silently discarded
+
+  # The fix: no return in finally -- try's own return value goes through.
+  def get_value():
+      try:
+          return "try_value"
+      finally:
+          pass
+
+  print(get_value())
+  # "try_value" -- correctly returns what try actually computed
+starter_code: |
+  def get_value():
+      try:
+          return "try_value"
+      finally:
+          return "finally_value"
+
+  print(get_value())
+challenge: |
+  Fix `get_value` so `finally` no longer has its own `return`
+  statement (replace it with `pass`, or remove the `finally` clause
+  entirely), letting `try`'s own return value through. It should print
+  `try_value`, not `finally_value`.
+expected_output: |
+  try_value
+hints:
+  - "Replace return \"finally_value\" with pass inside the finally block."
+  - "A return inside finally always wins, unconditionally -- it doesn't matter what try was about to return or raise."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 26
+difficulty: gotcha
+contains_patterns:
+  - "pass"
+concept_tags: [idioms, try_finally, control_flow]

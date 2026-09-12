@@ -1,0 +1,64 @@
+id: ai_199
+title: "Declared Capabilities Should Reflect What's Actually Implemented"
+language: ai
+level: 199
+objective: "Fix a capability-declaration builder that unconditionally claims every capability regardless of what the server actually implements, so a client ends up believing features exist that were never wired up."
+explanation: |
+  During MCP's `initialize` handshake, a server declares which
+  capabilities it supports (`tools`, `resources`, `prompts`, ...) so the
+  client knows what it can even attempt to call. That declaration is
+  only useful if it's accurate -- a server that always claims all three
+  capabilities regardless of what it actually implemented sets the
+  client up to call something that doesn't exist, discovering the gap
+  only at request time instead of up front during capability
+  negotiation.
+
+  The bug this exercise fixes hardcodes every capability as present, no
+  matter what was actually passed in. The fix only includes a
+  capability when the corresponding flag says it's genuinely
+  implemented.
+example_code: |
+  # The trap: claims ALL capabilities regardless of what's actually
+  # implemented.
+  def build_capabilities_trap(has_tools, has_resources, has_prompts):
+      return {"tools": {}, "resources": {}, "prompts": {}}
+
+  caps_trap = build_capabilities_trap(True, False, False)
+  print(len(caps_trap))   # 3 -- claims resources/prompts support it doesn't actually have
+
+  # The fix: only include a capability when it's genuinely implemented.
+  def build_capabilities(has_tools, has_resources, has_prompts):
+      caps = {}
+      if has_tools:
+          caps["tools"] = {}
+      if has_resources:
+          caps["resources"] = {}
+      if has_prompts:
+          caps["prompts"] = {}
+      return caps
+
+  caps = build_capabilities(True, False, False)
+  print(len(caps))   # 1 -- accurately declares only what's actually implemented
+starter_code: |
+  def build_capabilities(has_tools, has_resources, has_prompts):
+      return {"tools": {}, "resources": {}, "prompts": {}}
+
+  caps = build_capabilities(True, False, False)
+  print(len(caps))
+challenge: |
+  Fix `build_capabilities` so it only adds a key for a capability whose
+  flag is `True`, instead of always returning all three. With
+  `(True, False, False)` it should print `1`, not `3`.
+expected_output: |
+  1
+hints:
+  - "Build an empty dict, then conditionally add \"tools\"/\"resources\"/\"prompts\" keys with separate if statements checking each flag."
+  - "A capability declaration that claims more than what's implemented just moves the failure from handshake time to request time."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 24
+difficulty: warmup
+contains_patterns:
+  - "if has_prompts:"
+concept_tags: [mcp, capability_negotiation, initialize]

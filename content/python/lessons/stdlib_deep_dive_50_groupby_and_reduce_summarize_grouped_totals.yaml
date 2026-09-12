@@ -1,0 +1,76 @@
+id: stdlib_deep_dive_50
+title: "Capstone: itertools.groupby + functools.reduce Compute Per-Group Totals in One Pass"
+language: python
+level: 251
+objective: "Combine itertools.groupby (grouping pre-sorted records by category) with functools.reduce (folding each group's amounts into a running total) to compute a per-category total, instead of manually looping and accumulating into a dict by hand."
+explanation: |
+  `itertools.groupby` groups consecutive equal keys in already-sorted
+  data into `(key, group_iterator)` pairs -- exactly the shape needed
+  to process "each category's records" as its own separate sequence.
+  `functools.reduce(func, iterable, initial)` then folds each group's
+  sequence of amounts down to a single running total. Combining them
+  processes a sorted list of records into one total per category
+  without a manually-managed accumulator dict.
+
+  This exercise requires records be sorted by category first (a
+  `groupby` prerequisite -- it only groups *consecutive* equal keys),
+  then folds each group's amounts with `reduce` into a
+  `{category: total}` dict.
+example_code: |
+  # Manual approach: a hand-managed accumulator dict works, but doesn't
+  # demonstrate groupby+reduce at all.
+  def totals_by_category_manual(records):
+      totals = {}
+      for category, amount in records:
+          totals[category] = totals.get(category, 0) + amount
+      return totals
+
+  records = [("food", 10), ("food", 5), ("gas", 20), ("gas", 8), ("gas", 2)]
+  print(totals_by_category_manual(records))
+  # {'food': 15, 'gas': 30} -- correct, but the exercise wants groupby+reduce
+
+  # The target approach: groupby groups consecutive equal keys, reduce
+  # folds each group's amounts into one total.
+  from itertools import groupby
+  from functools import reduce
+
+  def totals_by_category(records):
+      sorted_records = sorted(records, key=lambda r: r[0])
+      result = {}
+      for category, group in groupby(sorted_records, key=lambda r: r[0]):
+          amounts = [amount for _, amount in group]
+          result[category] = reduce(lambda acc, x: acc + x, amounts, 0)
+      return result
+
+  print(totals_by_category(records))
+  # {'food': 15, 'gas': 30} -- same correct totals, built from groupby+reduce
+starter_code: |
+  def totals_by_category(records):
+      totals = {}
+      for category, amount in records:
+          totals[category] = totals.get(category, 0) + amount
+      return totals
+
+  records = [("food", 10), ("food", 5), ("gas", 20), ("gas", 8), ("gas", 2)]
+  print(totals_by_category(records))
+challenge: |
+  Rewrite `totals_by_category` to sort `records` by category, then use
+  `itertools.groupby` to group consecutive equal categories and
+  `functools.reduce` to fold each group's amounts into a total,
+  instead of a hand-managed accumulator dict. It should still print
+  `{'food': 15, 'gas': 30}`.
+expected_output: |
+  {'food': 15, 'gas': 30}
+hints:
+  - "sorted_records = sorted(records, key=lambda r: r[0]), then for category, group in groupby(sorted_records, key=lambda r: r[0]):."
+  - "Inside the loop: amounts = [amount for _, amount in group], then result[category] = reduce(lambda acc, x: acc + x, amounts, 0)."
+  - "groupby only groups CONSECUTIVE equal keys -- the input must be sorted by that key first, or non-adjacent same-category records won't be grouped together."
+xp_reward: 15
+achievement: stdlib_deep_dive_master
+category: stdlib_deep_dive
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "groupby\\(sorted_records, key=lambda r: r\\[0\\]\\)"
+  - "reduce\\(lambda acc, x: acc \\+ x, amounts, 0\\)"
+concept_tags: [itertools, groupby, functools, reduce, capstone]

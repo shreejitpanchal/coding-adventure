@@ -1,0 +1,60 @@
+id: idioms_gotchas_39
+title: "Sorting Twice, Secondary Key First, Relies on Python's Sort Being Stable"
+language: python
+level: 108
+objective: "Fix a multi-key sort that only sorts by one key, when sorting by the secondary key first and the primary key second -- relying on Python's sort being stable -- is the idiomatic way to combine two sort criteria without writing a custom composite comparator."
+explanation: |
+  Python's `sorted()` is guaranteed *stable*: elements that compare
+  equal under the given key keep their relative order from before the
+  sort. That guarantee is what makes a two-pass sort work for
+  multi-key ordering -- sort by the secondary key first, then sort the
+  already-sorted result by the primary key, and stability ensures
+  elements sharing the same primary key stay in their secondary-key
+  order from the first pass. Sorting by only one key loses whatever
+  the other key was supposed to contribute to the ordering entirely.
+
+  The bug this exercise fixes sorts by `name` only, ignoring `grade`.
+  The fix sorts by `name` first, then by `grade`, relying on stability
+  to combine both criteria correctly.
+example_code: |
+  # The trap: sorts by NAME only -- the grade-based grouping the
+  # caller actually wanted is completely ignored.
+  def sort_by_grade_then_name_trap(students):
+      return sorted(students, key=lambda s: s["name"])
+
+  students = [{"name": "Bo", "grade": "A"}, {"name": "Ada", "grade": "B"}, {"name": "Cy", "grade": "A"}]
+  print([s["name"] for s in sort_by_grade_then_name_trap(students)])
+  # ['Ada', 'Bo', 'Cy'] -- pure alphabetical order, completely ignoring grade grouping
+
+  # The fix: sort by the secondary key first, then the primary key --
+  # stability preserves the secondary ordering within each primary group.
+  def sort_by_grade_then_name(students):
+      by_name = sorted(students, key=lambda s: s["name"])
+      return sorted(by_name, key=lambda s: s["grade"])
+
+  print([s["name"] for s in sort_by_grade_then_name(students)])
+  # ['Bo', 'Cy', 'Ada'] -- grade A group (Bo, Cy, in name order), then grade B (Ada)
+starter_code: |
+  def sort_by_grade_then_name(students):
+      return sorted(students, key=lambda s: s["name"])
+
+  students = [{"name": "Bo", "grade": "A"}, {"name": "Ada", "grade": "B"}, {"name": "Cy", "grade": "A"}]
+  print([s["name"] for s in sort_by_grade_then_name(students)])
+challenge: |
+  Fix `sort_by_grade_then_name` so it first sorts by `"name"` (the
+  secondary key), then sorts THAT result by `"grade"` (the primary
+  key), instead of sorting by `"name"` alone. It should print
+  `['Bo', 'Cy', 'Ada']`, not `['Ada', 'Bo', 'Cy']`.
+expected_output: |
+  ['Bo', 'Cy', 'Ada']
+hints:
+  - "by_name = sorted(students, key=lambda s: s[\"name\"]), then return sorted(by_name, key=lambda s: s[\"grade\"])."
+  - "Sort by the LEAST important key first, and the MOST important key last -- Python's sort being stable is what makes the earlier ordering survive within each group of the final sort."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 39
+difficulty: core
+contains_patterns:
+  - "by_name = sorted\\(students, key=lambda s: s\\[\"name\"\\]\\)"
+concept_tags: [idioms, sort_stability, multi_key_sorting]

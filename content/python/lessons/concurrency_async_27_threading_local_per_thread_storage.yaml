@@ -1,0 +1,87 @@
+id: concurrency_async_27
+title: "A Shared Global Leaks Between Threads -- threading.local() Gives Each Its Own"
+language: python
+level: 317
+objective: "Fix code storing per-thread state (like a request id) in a shared global variable, which every thread overwrites and reads from the SAME place, when threading.local() gives each thread its own genuinely independent copy of an attribute."
+explanation: |
+  A plain module-level variable is exactly one object, shared by every
+  thread that touches it -- storing "the current request id" there
+  works only if a single thread ever sets and reads it without any
+  other thread interleaving in between, which real multithreaded code
+  can't guarantee at all. Two threads each setting their own "current"
+  value into the same shared variable race to overwrite each other,
+  and whichever thread reads it afterward may see a completely
+  different thread's value, not its own. `threading.local()` creates
+  an object whose attributes are automatically *per-thread* -- setting
+  `local_data.request_id = x` in one thread and reading `local_data.
+  request_id` in another genuinely accesses two separate underlying
+  values, even though both threads refer to the exact same
+  `local_data` object by name.
+
+  The fix replaces the shared global with a `threading.local()`
+  instance.
+example_code: |
+  # The trap: a shared global -- every thread overwrites the SAME value.
+  import threading
+
+  current_id_trap = None
+
+  def handle_trap(request_id, results):
+      global current_id_trap
+      current_id_trap = request_id
+      results[request_id] = current_id_trap
+
+  results_trap = {}
+  for rid in [1, 2, 3]:
+      handle_trap(rid, results_trap)
+  print(all(results_trap[rid] == rid for rid in [1, 2, 3]))
+  # True here, coincidentally, since these ran sequentially in one thread --
+  # but with REAL concurrent threads, current_id_trap is one shared slot,
+  # genuinely at risk of being overwritten between the assignment and the read
+
+  # The fix: threading.local() gives each thread its own independent slot.
+  local_data = threading.local()
+
+  def handle(request_id, results):
+      local_data.request_id = request_id
+      results[request_id] = local_data.request_id
+
+  results = {}
+  for rid in [1, 2, 3]:
+      handle(rid, results)
+  print(all(results[rid] == rid for rid in [1, 2, 3]))
+  # True -- and genuinely safe under real concurrent threads too, since each
+  # thread's local_data.request_id is independent of every other thread's
+starter_code: |
+  import threading
+
+  current_id = None
+
+  def handle(request_id, results):
+      global current_id
+      current_id = request_id
+      results[request_id] = current_id
+
+  results = {}
+  for rid in [1, 2, 3]:
+      handle(rid, results)
+  print(all(results[rid] == rid for rid in [1, 2, 3]))
+challenge: |
+  Fix this so `local_data = threading.local()` replaces the shared
+  `current_id` global, with `handle` reading and writing `local_data.
+  request_id` instead. It should still print `True`, but now be
+  genuinely safe under real concurrent threads.
+expected_output: |
+  True
+hints:
+  - "local_data = threading.local(), then inside handle: local_data.request_id = request_id."
+  - "A plain global is ONE shared slot, at real risk of being overwritten by another thread between when it's set and when it's read -- threading.local() gives each thread its own independent slot instead."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 27
+difficulty: deep_dive
+contains_patterns:
+  - "threading\\.local\\(\\)"
+  - "local_data\\.request_id"
+concept_tags: [threading, thread_local, concurrency]

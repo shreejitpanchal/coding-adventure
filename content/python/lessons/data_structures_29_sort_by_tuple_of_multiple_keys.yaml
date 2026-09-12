@@ -1,0 +1,68 @@
+id: data_structures_29
+title: "Sorting by a Tuple Key Combines Several Fields Into One Sort, With No Second Pass Needed"
+language: python
+level: 186
+objective: "Fix a sort that only considers one field, when the actual intent needs sorting by department first and age second -- a tuple key expresses both criteria in a single sorted() call."
+explanation: |
+  Passing a tuple as `sorted()`'s `key` function combines several
+  sort criteria into one pass -- `key=lambda p: (p["dept"], p["age"])`
+  sorts primarily by department, and within the same department, by
+  age, since Python compares tuples element by element, left to right.
+  This is a genuinely different (and often simpler) approach from this
+  category's earlier "sort twice, relying on stability" idiom: instead
+  of two separate `sorted()` calls, one tuple key expresses every
+  criterion in the correct priority order directly.
+
+  The bug this exercise fixes sorts by `"name"` alone, which has
+  nothing to do with the intended department/age grouping. The fix
+  sorts by the tuple `(dept, age)`.
+example_code: |
+  # The trap: sorts by a field unrelated to the intended grouping.
+  people = [
+      {"name": "Bo", "dept": "eng", "age": 30},
+      {"name": "Ada", "dept": "eng", "age": 25},
+      {"name": "Cy", "dept": "sales", "age": 40},
+      {"name": "Zoe", "dept": "eng", "age": 20},
+  ]
+
+  def sort_people_trap(people):
+      return sorted(people, key=lambda p: p["name"])
+
+  print([p["name"] for p in sort_people_trap(people)])
+  # ['Ada', 'Bo', 'Cy', 'Zoe'] -- ignored dept/age grouping entirely
+
+  # The fix: a tuple key sorts by BOTH fields in one pass.
+  def sort_people(people):
+      return sorted(people, key=lambda p: (p["dept"], p["age"]))
+
+  print([p["name"] for p in sort_people(people)])
+  # ['Zoe', 'Ada', 'Bo', 'Cy'] -- correctly grouped by dept, then by age within each
+starter_code: |
+  people = [
+      {"name": "Bo", "dept": "eng", "age": 30},
+      {"name": "Ada", "dept": "eng", "age": 25},
+      {"name": "Cy", "dept": "sales", "age": 40},
+      {"name": "Zoe", "dept": "eng", "age": 20},
+  ]
+
+  def sort_people(people):
+      return sorted(people, key=lambda p: p["name"])
+
+  print([p["name"] for p in sort_people(people)])
+challenge: |
+  Fix `sort_people` so its key is `(p["dept"], p["age"])`, instead of
+  `p["name"]` alone. It should print
+  `['Zoe', 'Ada', 'Bo', 'Cy']`, not `['Ada', 'Bo', 'Cy', 'Zoe']`.
+expected_output: |
+  ['Zoe', 'Ada', 'Bo', 'Cy']
+hints:
+  - "Change key=lambda p: p[\"name\"] to key=lambda p: (p[\"dept\"], p[\"age\"])."
+  - "Python compares tuples element by element -- dept decides the primary grouping, and age only breaks ties within the same dept."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 29
+difficulty: core
+contains_patterns:
+  - "key=lambda p: \\(p\\[\"dept\"\\], p\\[\"age\"\\]\\)"
+concept_tags: [sorting, tuple_keys]

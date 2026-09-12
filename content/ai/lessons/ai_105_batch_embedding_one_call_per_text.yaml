@@ -1,0 +1,73 @@
+id: ai_105
+title: "Embedding One Text at a Time Wastes the Batching an Embedding API Offers"
+language: ai
+level: 105
+objective: "Fix an indexing loop that calls the embedding function once per document, when the embedding function actually accepts a whole batch at once -- turning what could be one efficient call into many separate, slower ones."
+explanation: |
+  Most real embedding APIs (and most local embedding models) accept a
+  **batch** of texts in a single call and process them together far
+  more efficiently than the same number of individual one-at-a-time
+  calls -- each call carries its own fixed overhead (a network
+  round-trip, a model-loading cost), so calling it once per document
+  multiplies that overhead by however many documents there are, instead
+  of paying it once for the whole batch.
+
+  The bug this exercise fixes loops over documents and calls the
+  embedding function separately for each one, even though the function
+  signature accepts a list and could embed everything in a single call.
+  The fix passes the entire list of documents to the embedding function
+  at once, cutting the number of calls down to exactly one regardless
+  of how many documents there are.
+example_code: |
+  # The trap: calls the (batch-capable) embed function ONCE PER
+  # DOCUMENT -- wasting the batching it was actually designed to support.
+  call_count = 0
+  def embed_batch(texts):
+      global call_count
+      call_count += 1
+      return [f"embedding_of({t})" for t in texts]
+
+  def index_documents_trap(documents):
+      return [embed_batch([doc])[0] for doc in documents]   # bug: one call PER document
+
+  documents = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+  index_documents_trap(documents)
+  print(call_count)   # 5 -- one call per document, even though embed_batch takes a whole list
+
+  # The fix: pass the ENTIRE list in a single call.
+  call_count = 0
+  def index_documents(documents):
+      return embed_batch(documents)
+
+  index_documents(documents)
+  print(call_count)   # 1 -- a single batched call for all 5 documents
+starter_code: |
+  call_count = 0
+  def embed_batch(texts):
+      global call_count
+      call_count += 1
+      return [f"embedding_of({t})" for t in texts]
+
+  def index_documents(documents):
+      return [embed_batch([doc])[0] for doc in documents]
+
+  documents = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+  index_documents(documents)
+  print(call_count)
+challenge: |
+  Fix `index_documents` so it passes the entire `documents` list to
+  `embed_batch` in a single call, instead of calling it once per
+  document. It should print `1`, not `5`.
+expected_output: |
+  1
+hints:
+  - "Change the function body to: return embed_batch(documents) -- passing the whole list directly."
+  - "embed_batch already accepts (and processes) a list of texts -- there's no need to wrap each document in its own single-element list and call it separately."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 20
+difficulty: warmup
+contains_patterns:
+  - "return embed_batch\\(documents\\)"
+concept_tags: [rag, batch_embedding, efficiency]

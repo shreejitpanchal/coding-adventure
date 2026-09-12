@@ -1,0 +1,60 @@
+id: ai_401
+title: "A Task's Real Lifecycle Needs More Than a Success/Fail Boolean"
+language: ai
+level: 401
+objective: "Fix a status updater that collapses every lifecycle state into a single success boolean, when a task genuinely passes through several distinct states (received, delegated, in_progress, completed) that are meaningfully different from either success or failure -- and collapsing them loses that distinction entirely."
+explanation: |
+  A task that's merely been delegated to an agent and hasn't finished
+  yet is not the same thing as one that failed, but a status updater
+  that only ever sets a `success` boolean has no way to represent
+  anything in between -- every non-final state gets forced into
+  looking exactly like a failure, even though "still in progress" and
+  "genuinely failed" call for completely different handling downstream.
+
+  The bug this exercise fixes computes `success` as `new_status ==
+  "completed"`, discarding every other possible status entirely. The
+  fix stores the actual status string instead.
+example_code: |
+  # The trap: collapses every possible lifecycle state into a single
+  # boolean, losing intermediate states like "delegated" entirely.
+  def update_task_status_trap(task, new_status):
+      task["success"] = new_status == "completed"
+
+  task_trap = {"status": "received"}
+  update_task_status_trap(task_trap, "delegated")
+  print(task_trap.get("status"))
+  # "received" -- the status was never actually updated; "delegated" was silently collapsed into a "success" field nobody asked to see
+
+  # The fix: store the actual status string.
+  def update_task_status(task, new_status):
+      task["status"] = new_status
+
+  task = {"status": "received"}
+  update_task_status(task, "delegated")
+  print(task.get("status"))
+  # "delegated" -- correctly distinct from both "completed" and any failure state
+starter_code: |
+  def update_task_status(task, new_status):
+      task["success"] = new_status == "completed"
+
+  task = {"status": "received"}
+  update_task_status(task, "delegated")
+  print(task.get("status"))
+challenge: |
+  Fix `update_task_status` so it sets `task["status"] = new_status`,
+  storing the actual status string, instead of collapsing everything
+  into an unrelated `"success"` boolean that the check doesn't even
+  look at. It should print `delegated`, not `received`.
+expected_output: |
+  delegated
+hints:
+  - "Replace task[\"success\"] = new_status == \"completed\" with task[\"status\"] = new_status."
+  - "The buggy version writes to a completely different key (\"success\") -- \"status\" is never touched at all, so it stays stuck at its original value."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 46
+difficulty: warmup
+contains_patterns:
+  - "task\\[\"status\"\\] = new_status"
+concept_tags: [solace_agent_mesh, task_lifecycle, status_tracking]

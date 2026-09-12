@@ -1,0 +1,81 @@
+id: gotcha_gauntlet_29
+title: "The Plugin Registry That Every Subclass Secretly Shared"
+language: python
+level: 274
+objective: "Fix a mutable class-level list defined on a base class, which every subclass inherits as the exact same shared object -- not a fresh, independent list per subclass -- unless each subclass creates its own."
+explanation: |
+  A mutable attribute assigned in a base class's body (`registered =
+  []` directly under `class Plugin:`) is one single object, owned by
+  the base class -- every subclass that doesn't define its own
+  `registered` inherits access to that *same* object through normal
+  attribute lookup. Calling `SubA.registered.append(...)` doesn't
+  create or modify anything belonging to `SubA` specifically; it
+  mutates the one shared list the base class owns, which every other
+  subclass sees too, since they were all really pointing at the exact
+  same object the whole time.
+
+  The fix is giving each subclass its *own* class-level list, defined
+  directly in that subclass's own body -- a fresh, independent object
+  per subclass, instead of one shared list inherited from the base.
+example_code: |
+  # The trap: registered = [] lives on the BASE class -- every subclass
+  # shares that ONE list.
+  class PluginTrap:
+      registered = []
+
+  class AlphaTrap(PluginTrap):
+      pass
+
+  class BetaTrap(PluginTrap):
+      pass
+
+  AlphaTrap.registered.append("alpha-plugin")
+  BetaTrap.registered.append("beta-plugin")
+  print(AlphaTrap.registered)
+  # ['alpha-plugin', 'beta-plugin'] -- WRONG, Beta's entry leaked into Alpha's list
+
+  # The fix: each subclass defines its OWN class-level list.
+  class Plugin:
+      pass
+
+  class Alpha(Plugin):
+      registered = []
+
+  class Beta(Plugin):
+      registered = []
+
+  Alpha.registered.append("alpha-plugin")
+  Beta.registered.append("beta-plugin")
+  print(Alpha.registered)
+  # ['alpha-plugin'] -- correctly independent of Beta's own list
+starter_code: |
+  class Plugin:
+      registered = []
+
+  class Alpha(Plugin):
+      pass
+
+  class Beta(Plugin):
+      pass
+
+  Alpha.registered.append("alpha-plugin")
+  Beta.registered.append("beta-plugin")
+  print(Alpha.registered)
+challenge: |
+  Fix this so `Alpha` and `Beta` each define their own `registered =
+  []` directly in their own class body, instead of inheriting one
+  shared list from `Plugin`. It should print `['alpha-plugin']`, not
+  `['alpha-plugin', 'beta-plugin']`.
+expected_output: |
+  ['alpha-plugin']
+hints:
+  - "Move registered = [] out of Plugin, and add it separately to both class Alpha: and class Beta:."
+  - "A subclass that doesn't define its own class attribute inherits the base class's exact same object -- not a fresh copy of it."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 29
+difficulty: gotcha
+contains_patterns:
+  - "class Alpha\\(Plugin\\):\\s*registered = \\[\\]"
+concept_tags: [inheritance, class_attributes, mutable_defaults, gotchas]

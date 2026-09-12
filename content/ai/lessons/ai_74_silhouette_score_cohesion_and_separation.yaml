@@ -1,0 +1,62 @@
+id: ai_74
+title: "Silhouette Score Needs Separation Too, Not Just Cohesion"
+language: ai
+level: 74
+objective: "Fix a cluster-quality score that only measures how tight each cluster is internally, ignoring how far apart different clusters are from each other -- a clustering can be internally tight while still having its clusters overlap or sit right next to each other."
+explanation: |
+  A clustering can look great by one measure and mediocre by another:
+  **cohesion** (how close points within the same cluster are to each
+  other) only tells half the story. A clustering with tiny, tight
+  clusters that are nevertheless sitting right on top of each other is
+  still a bad clustering -- the clusters aren't meaningfully
+  *separated*. The **silhouette score** combines both: for each point,
+  it compares the average distance to points in its own cluster
+  (cohesion) against the average distance to points in the *nearest
+  other* cluster (separation), rewarding points that are both close to
+  their own cluster and far from other clusters.
+
+  The bug this exercise fixes reports cohesion alone as if it were the
+  full quality score -- a clustering can score perfectly on cohesion
+  alone while its clusters are badly overlapping, since cohesion never
+  even looks at other clusters at all. The fix computes the actual
+  silhouette-style score, `(separation - cohesion) / max(separation,
+  cohesion)`, which only rewards a point when it's genuinely closer to
+  its own cluster than to the nearest other one.
+example_code: |
+  # The trap: reports COHESION alone -- never checks how close the
+  # clusters are to EACH OTHER, which is half of what quality means.
+  def cluster_quality_trap(own_cluster_dist, nearest_other_cluster_dist):
+      return 1 - own_cluster_dist   # bug: ignores nearest_other_cluster_dist entirely
+
+  # A point whose own cluster is tight (dist=0.1) but whose nearest OTHER
+  # cluster is even closer (dist=0.05) -- badly overlapping clusters.
+  print(round(cluster_quality_trap(0.1, 0.05), 3))   # 0.9 -- looks great, hides the overlap entirely
+
+  # The fix: the real silhouette-style score, using BOTH distances.
+  def cluster_quality(own_cluster_dist, nearest_other_cluster_dist):
+      a, b = own_cluster_dist, nearest_other_cluster_dist
+      return (b - a) / max(a, b)
+
+  print(round(cluster_quality(0.1, 0.05), 3))   # -0.5 -- correctly negative: nearer to ANOTHER cluster than its own
+starter_code: |
+  def cluster_quality(own_cluster_dist, nearest_other_cluster_dist):
+      return 1 - own_cluster_dist
+
+  print(round(cluster_quality(0.1, 0.05), 3))
+challenge: |
+  Fix `cluster_quality` so it computes `(b - a) / max(a, b)` where `a`
+  is `own_cluster_dist` and `b` is `nearest_other_cluster_dist`, instead
+  of just `1 - own_cluster_dist`. It should print `-0.5`, not `0.9`.
+expected_output: |
+  -0.5
+hints:
+  - "a, b = own_cluster_dist, nearest_other_cluster_dist; return (b - a) / max(a, b)."
+  - "With a=0.1 and b=0.05: (0.05 - 0.1) / max(0.1, 0.05) = -0.05 / 0.1 = -0.5 -- negative, since this point is actually closer to another cluster than its own."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 34
+difficulty: deep_dive
+contains_patterns:
+  - "\\(b - a\\) / max\\(a, b\\)"
+concept_tags: [ml_fundamentals, silhouette_score, clustering]

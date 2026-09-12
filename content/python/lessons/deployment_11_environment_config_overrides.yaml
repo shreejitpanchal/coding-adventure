@@ -1,0 +1,62 @@
+id: deployment_11
+title: "The Production Config That Ignored Its Own Environment Overrides"
+language: python
+level: 401
+objective: "Fix a config-merging function that returns the base config unchanged, ignoring environment-specific overrides entirely, when merging base defaults with environment-specific values (production, staging) lets each environment override just what it needs to differ, without duplicating every shared setting."
+explanation: |
+  A real deployment typically has one base config (defaults shared
+  across every environment) plus a small set of environment-specific
+  overrides (a production database URL that's different from staging's,
+  a debug flag that's off in production but on in dev) -- duplicating
+  the entire config per environment means every shared setting has to
+  be kept in sync by hand across every copy. Merging the base config
+  with the environment's overrides -- with the overrides winning for
+  any key they define -- lets each environment declare only what's
+  actually different, inheriting everything else from the shared base.
+
+  The fix merges `base` and `overrides` (with `overrides` winning),
+  instead of returning `base` unchanged.
+example_code: |
+  # The trap: returns the base config, completely ignoring overrides.
+  def merge_config_trap(base, overrides):
+      return base
+
+  base = {"debug": False, "timeout": 30, "db_url": "localhost"}
+  prod_overrides = {"db_url": "prod-db.example.com"}
+
+  print(merge_config_trap(base, prod_overrides))
+  # {'debug': False, 'timeout': 30, 'db_url': 'localhost'} -- WRONG, still points at localhost
+
+  # The fix: merge, with the environment's overrides winning.
+  def merge_config(base, overrides):
+      return {**base, **overrides}
+
+  print(merge_config(base, prod_overrides))
+  # {'debug': False, 'timeout': 30, 'db_url': 'prod-db.example.com'} -- correctly
+  # inherited the shared defaults, with only db_url overridden for production
+starter_code: |
+  def merge_config(base, overrides):
+      return base
+
+  base = {"debug": False, "timeout": 30, "db_url": "localhost"}
+  prod_overrides = {"db_url": "prod-db.example.com"}
+
+  print(merge_config(base, prod_overrides))
+challenge: |
+  Fix `merge_config` so it returns `{**base, **overrides}`, instead of
+  `base` unchanged. It should print
+  `{'debug': False, 'timeout': 30, 'db_url': 'prod-db.example.com'}`,
+  not the unmodified base config.
+expected_output: |
+  {'debug': False, 'timeout': 30, 'db_url': 'prod-db.example.com'}
+hints:
+  - "return {**base, **overrides}."
+  - "Unpacking overrides LAST is what makes it win for any shared key -- everything else is inherited unchanged from base."
+xp_reward: 10
+achievement: null
+category: deployment
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "return \\{\\*\\*base, \\*\\*overrides\\}"
+concept_tags: [deployment, configuration, environments]

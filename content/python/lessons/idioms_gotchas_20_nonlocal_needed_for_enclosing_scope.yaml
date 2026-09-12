@@ -1,0 +1,76 @@
+id: idioms_gotchas_20
+title: "Rebinding an Enclosing Function's Variable Needs 'nonlocal'"
+language: python
+level: 89
+objective: "Fix a nested function that tries to increment a counter from its enclosing scope, when assigning to a name inside a nested function -- without declaring it nonlocal -- creates a brand-new local variable instead of rebinding the enclosing one."
+explanation: |
+  A nested function can *read* a variable from its enclosing function's
+  scope without any special declaration -- closures do this all the
+  time. But the moment a nested function *assigns* to that name, Python
+  treats it as a new local variable scoped to the nested function
+  itself, exactly the same rule this category's earlier `global`
+  lesson covers for module-level scope, just one level down. Without
+  `nonlocal`, the outer variable is never actually touched -- the inner
+  function is quietly working with its own separate, freshly-created
+  local copy.
+
+  The bug this exercise fixes assigns to `count` inside the nested
+  function with no `nonlocal` declaration. The fix declares
+  `nonlocal count` explicitly.
+example_code: |
+  # The trap: assigning to count inside the nested function creates a
+  # NEW local variable there -- the enclosing count is never touched.
+  def make_counter_trap():
+      count = 0
+      def increment():
+          count = count + 1   # bug: this is a NEW local `count`, not the enclosing one
+          return count
+      increment()
+      return count
+
+  print(make_counter_trap())
+  # 0 -- the enclosing count was never actually incremented
+
+  # The fix: declare nonlocal explicitly.
+  def make_counter():
+      count = 0
+      def increment():
+          nonlocal count
+          count = count + 1
+          return count
+      increment()
+      return count
+
+  print(make_counter())
+  # 1 -- correctly incremented the enclosing scope's variable
+starter_code: |
+  def make_counter():
+      count = 0
+      def increment():
+          count = count + 1
+          return count
+      increment()
+      return count
+
+  try:
+      print(make_counter())
+  except UnboundLocalError:
+      print("unhandled")
+challenge: |
+  Fix `increment` so it declares `nonlocal count` as its first line,
+  letting it rebind the enclosing function's `count` instead of
+  implicitly creating a new local one. It should print `1`, not
+  `unhandled`.
+expected_output: |
+  1
+hints:
+  - "Add nonlocal count as the first line inside increment()."
+  - "Without nonlocal, count = count + 1 inside increment() refers to a brand-new local variable that shadows the enclosing one entirely."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 20
+difficulty: gotcha
+contains_patterns:
+  - "nonlocal count"
+concept_tags: [idioms, closures, nonlocal]

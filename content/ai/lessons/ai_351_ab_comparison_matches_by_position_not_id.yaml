@@ -1,0 +1,63 @@
+id: ai_351
+title: "Comparing Baseline and Candidate Results Must Match by Example ID, Not List Position"
+language: ai
+level: 351
+objective: "Fix an A/B comparison that zips two result lists together by position, when the two lists aren't guaranteed to be in the same order -- comparing by position can pair completely unrelated examples together, producing a meaningless comparison."
+explanation: |
+  Two evaluation runs against "the same dataset" aren't guaranteed to
+  return their results in the same order -- different evaluators,
+  different execution paths, or just an unordered underlying data store
+  can all produce results in different sequences. Comparing two result
+  lists by raw position (`zip`) silently assumes matching order, and
+  when that assumption breaks, the comparison ends up pairing
+  completely unrelated examples together, reporting differences that
+  don't actually exist (or missing real ones) purely because of
+  ordering.
+
+  The bug this exercise fixes zips the two lists together directly,
+  matching purely by position. The fix builds a lookup by
+  `example_id` first, so the comparison is correct regardless of order.
+example_code: |
+  # The trap: matches purely by POSITION -- if the two lists aren't in
+  # the same order, this compares totally unrelated examples.
+  def compare_by_position_trap(baseline_results, candidate_results):
+      return sum(1 for b, c in zip(baseline_results, candidate_results) if b["score"] != c["score"])
+
+  baseline_results = [{"example_id": "e1", "score": 1}, {"example_id": "e2", "score": 0}]
+  candidate_results = [{"example_id": "e2", "score": 0}, {"example_id": "e1", "score": 1}]   # same examples, different ORDER
+  print(compare_by_position_trap(baseline_results, candidate_results))
+  # 2 -- wrongly reports both as different, purely due to order mismatch
+
+  # The fix: build a lookup by example_id first, compare correctly
+  # regardless of order.
+  def compare_by_id(baseline_results, candidate_results):
+      candidate_by_id = {c["example_id"]: c for c in candidate_results}
+      return sum(1 for b in baseline_results if b["score"] != candidate_by_id[b["example_id"]]["score"])
+
+  print(compare_by_id(baseline_results, candidate_results))
+  # 0 -- correctly recognized these are the same examples, just listed differently
+starter_code: |
+  def compare_by_id(baseline_results, candidate_results):
+      return sum(1 for b, c in zip(baseline_results, candidate_results) if b["score"] != c["score"])
+
+  baseline_results = [{"example_id": "e1", "score": 1}, {"example_id": "e2", "score": 0}]
+  candidate_results = [{"example_id": "e2", "score": 0}, {"example_id": "e1", "score": 1}]
+  print(compare_by_id(baseline_results, candidate_results))
+challenge: |
+  Fix `compare_by_id` so it builds `candidate_by_id = {c["example_id"]:
+  c for c in candidate_results}` and looks each baseline example up by
+  its own `example_id`, instead of matching purely by list position
+  with `zip`. It should print `0`, not `2`.
+expected_output: |
+  0
+hints:
+  - "Build candidate_by_id = {c[\"example_id\"]: c for c in candidate_results} first, then compare b[\"score\"] against candidate_by_id[b[\"example_id\"]][\"score\"]."
+  - "The two lists here contain the exact same two examples, just in a different order -- matching by id sees through that; matching by position doesn't."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 41
+difficulty: gotcha
+contains_patterns:
+  - "candidate_by_id = \\{c\\[\"example_id\"\\]: c for c in candidate_results\\}"
+concept_tags: [langsmith, ab_testing, example_matching]

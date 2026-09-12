@@ -1,0 +1,73 @@
+id: functional_programming_22
+title: "A Typo'd Magic String Compares Silently False -- A Typo'd Enum Member Crashes Loudly"
+language: python
+level: 357
+objective: "Fix a function returning a raw string as a status code (where a typo like 'sucess' silently breaks every comparison against the correctly-spelled 'success', with no error anywhere), when an Enum defines a closed, fixed set of valid values -- a typo'd member name raises AttributeError immediately instead of silently compiling into a different value."
+explanation: |
+  A bare string used as a status code has no fixed, checkable set of
+  valid values -- `"sucess"` (missing the second `c`) is just as valid
+  a string as `"success"` from Python's point of view, so a typo
+  anywhere the value is *returned* silently produces a value that will
+  never equal `"success"` anywhere it's *checked*, with no error at
+  either point. An `Enum` defines a genuinely closed set of valid
+  members -- `Status.SUCCESS`, `Status.ERROR`, and nothing else exists
+  -- so a typo like `Status.SUCCES` isn't a different, silently-wrong
+  value at all; it's an `AttributeError`, raised immediately, at the
+  exact point the typo was made.
+
+  The fix returns `Status.SUCCESS` (an Enum member) instead of the raw
+  string `"sucess"`.
+example_code: |
+  # The trap: a typo'd raw string -- silently never equals the correct one.
+  def check_status_trap(code):
+      if code == 0:
+          return "sucess"          # typo -- missing a "c"
+      return "error"
+
+  result_trap = check_status_trap(0)
+  print(result_trap == "success")
+  # False -- WRONG, and there's no error anywhere pointing at the typo
+
+  # The fix: Enum defines a closed, fixed set of valid members.
+  from enum import Enum, auto
+
+  class Status(Enum):
+      SUCCESS = auto()
+      ERROR = auto()
+
+  def check_status(code):
+      if code == 0:
+          return Status.SUCCESS
+      return Status.ERROR
+
+  result = check_status(0)
+  print(result == Status.SUCCESS)
+  # True -- correctly compared; a typo'd Status.SUCCES would have raised
+  # AttributeError immediately, loudly, instead of silently comparing unequal
+starter_code: |
+  def check_status(code):
+      if code == 0:
+          return "sucess"
+      return "error"
+
+  result = check_status(0)
+  print(result == "success")
+challenge: |
+  Fix this by defining `class Status(Enum): SUCCESS = auto(); ERROR =
+  auto()`, having `check_status` return `Status.SUCCESS`/`Status.ERROR`
+  instead of raw strings, and comparing `result == Status.SUCCESS`. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from enum import Enum, auto, then: class Status(Enum): SUCCESS = auto(); ERROR = auto()."
+  - "A typo'd Enum member name raises AttributeError immediately -- a typo'd raw string just silently becomes a different value that will never compare equal, with no error anywhere."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 22
+difficulty: gotcha
+contains_patterns:
+  - "class Status\\(Enum\\):"
+  - "Status\\.SUCCESS"
+concept_tags: [functional_programming, enum, sum_types, gotchas]

@@ -1,0 +1,85 @@
+id: ai_275
+title: "A Graph-Wide Step Limit Must Cap Total Steps, Not Just One Node's Retries"
+language: ai
+level: 275
+objective: "Fix a graph runner that never enforces its own max_steps budget at all, when the whole graph -- not just one retrying node -- needs a hard total-step cap so an accidental cycle across several different nodes can't run forever either."
+explanation: |
+  This category's earlier cycle lesson covered capping retries on a
+  single self-looping node -- but an accidental cycle can just as
+  easily span *several different* nodes bouncing back and forth (a
+  routes-to-b, b-routes-to-a, neither one ever reaching an end node),
+  which a single node's own retry counter would never catch. A graph
+  needs its own global step budget as a last-resort safety net,
+  independent of whatever any individual node's own retry logic is
+  doing.
+
+  The bug this exercise fixes has no step limit at all -- only an
+  unrelated internal hard cap keeps the demonstration itself from
+  truly hanging forever. The fix checks the actual `steps < max_steps`
+  condition on every iteration of the graph's own walk.
+example_code: |
+  # The trap: no max_steps enforcement at all -- only an unrelated,
+  # very high internal safety net keeps this demo from truly hanging.
+  def run_with_limit_trap(nodes, edges, start, end, max_steps):
+      current = start
+      state = None
+      steps = 0
+      while current != end:
+          state = nodes[current](state)
+          current = edges[current]
+          steps += 1
+          if steps > 10000:
+              break
+      return steps
+
+  nodes = {"a": lambda s: "a-ran", "b": lambda s: "b-ran"}
+  edges = {"a": "b", "b": "a"}   # an accidental cycle spanning two DIFFERENT nodes, never reaching "END"
+  print(run_with_limit_trap(nodes, edges, "a", "END", 5))
+  # 10001 -- completely ignored max_steps=5, only stopped due to an unrelated internal safety net
+
+  # The fix: actually check steps against max_steps on every iteration.
+  def run_with_limit(nodes, edges, start, end, max_steps):
+      current = start
+      state = None
+      steps = 0
+      while current != end and steps < max_steps:
+          state = nodes[current](state)
+          current = edges[current]
+          steps += 1
+      return steps
+
+  print(run_with_limit(nodes, edges, "a", "END", 5))
+  # 5 -- correctly stopped once max_steps was reached, regardless of which node was current
+starter_code: |
+  def run_with_limit(nodes, edges, start, end, max_steps):
+      current = start
+      state = None
+      steps = 0
+      while current != end:
+          state = nodes[current](state)
+          current = edges[current]
+          steps += 1
+          if steps > 10000:
+              break
+      return steps
+
+  nodes = {"a": lambda s: "a-ran", "b": lambda s: "b-ran"}
+  edges = {"a": "b", "b": "a"}
+  print(run_with_limit(nodes, edges, "a", "END", 5))
+challenge: |
+  Fix `run_with_limit` so its `while` condition includes `and steps <
+  max_steps`, instead of only relying on the unrelated internal hard
+  cap of 10000. It should print `5`, not `10001`.
+expected_output: |
+  5
+hints:
+  - "Change the while condition to: while current != end and steps < max_steps:"
+  - "The graph's own step budget needs to be checked regardless of which specific nodes are involved in an accidental cycle."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "steps < max_steps"
+concept_tags: [langgraph, max_steps, cycle_safety]

@@ -1,0 +1,59 @@
+id: ai_83
+title: "Smaller Batches Mean Noisier Gradient Estimates"
+language: ai
+level: 83
+objective: "Fix a batch-gradient averaging function that divides by a fixed constant instead of the actual batch size, so a smaller batch's gradient estimate ends up scaled incorrectly rather than reflecting how much noisier a small sample's average genuinely is."
+explanation: |
+  A gradient computed from a mini-batch is an *estimate* of the true
+  gradient over the whole dataset, averaged from however many examples
+  are in that batch. A larger batch averages over more examples, so
+  its estimate is less noisy (individual examples' quirks cancel out
+  more); a smaller batch's estimate is noisier, since a handful of
+  unusual examples can swing the average much further. Correctly
+  computing that average requires dividing by the *actual* batch size
+  used, not some fixed assumption about what the batch size normally
+  is.
+
+  The bug this exercise fixes divides every batch's summed gradient by
+  a hardcoded constant, regardless of how many examples were actually
+  in that specific batch -- a smaller batch (fewer examples summed)
+  gets divided by too large a number, silently shrinking its gradient
+  estimate rather than correctly reflecting its own average. The fix
+  divides by the batch's own actual size, `len(batch_gradients)`, so
+  each batch's average is computed correctly regardless of its size.
+example_code: |
+  # The trap: divides by a FIXED constant, regardless of actual batch size.
+  def average_gradient_trap(batch_gradients, assumed_batch_size=32):
+      return sum(batch_gradients) / assumed_batch_size
+
+  small_batch = [1.0, 2.0, 3.0]   # a batch of only 3 examples
+  print(average_gradient_trap(small_batch))   # 0.1875 -- WRONG, divided by 32 instead of 3
+
+  # The fix: divide by the batch's OWN actual size.
+  def average_gradient(batch_gradients):
+      return sum(batch_gradients) / len(batch_gradients)
+
+  print(average_gradient(small_batch))   # 2.0 -- the correct average of this specific batch
+starter_code: |
+  def average_gradient(batch_gradients, assumed_batch_size=32):
+      return sum(batch_gradients) / assumed_batch_size
+
+  small_batch = [1.0, 2.0, 3.0]
+  print(average_gradient(small_batch))
+challenge: |
+  Fix `average_gradient` so it divides by `len(batch_gradients)` (the
+  batch's own actual size), instead of a fixed assumed constant. It
+  should print `2.0`, not `0.1875`.
+expected_output: |
+  2.0
+hints:
+  - "Change the divisor to len(batch_gradients) instead of assumed_batch_size."
+  - "sum([1.0, 2.0, 3.0]) is 6.0, and 6.0 / 3 (this batch's actual size) is 2.0 -- the real average of this specific batch."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 43
+difficulty: warmup
+contains_patterns:
+  - "len\\(batch_gradients\\)"
+concept_tags: [ml_fundamentals, batch_size, gradient_descent]

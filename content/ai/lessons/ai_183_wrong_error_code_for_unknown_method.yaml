@@ -1,0 +1,56 @@
+id: ai_183
+title: "'Method Not Found' Has a Specific JSON-RPC Error Code -- Use It"
+language: ai
+level: 183
+objective: "Fix an error response builder that uses a generic error code for every failure, when JSON-RPC (and MCP) defines specific, standard error codes for specific situations -- an unrecognized method should return code -32601, not a generic catch-all."
+explanation: |
+  JSON-RPC 2.0 (the protocol MCP is built directly on) reserves a
+  specific range of error codes for specific, well-defined situations:
+  `-32700` for a parse error, `-32600` for an invalid request,
+  `-32601` specifically for "method not found," `-32602` for invalid
+  parameters, and `-32603` for an internal error. A client receiving an
+  error response is meant to be able to branch on this code
+  programmatically -- retry differently for a transient internal error
+  than for a permanently unsupported method, for instance -- which only
+  works if the server actually returns the *correct* specific code for
+  each situation, not one generic code for everything.
+
+  The bug this exercise fixes returns the same generic error code
+  (`-1`) regardless of what actually went wrong. The fix returns the
+  standard `-32601` specifically for an unrecognized method, matching
+  what the spec defines for exactly this case.
+example_code: |
+  # The trap: the SAME generic error code for every failure -- a client
+  # can't distinguish "unknown method" from any other kind of error at all.
+  def build_error_trap(reason):
+      return {"jsonrpc": "2.0", "id": 1, "error": {"code": -1, "message": reason}}
+
+  print(build_error_trap("method not found")["error"]["code"])   # -1 -- not a real, spec-defined code at all
+
+  # The fix: use the STANDARD -32601 code specifically for method-not-found.
+  def build_method_not_found_error(method_name):
+      return {"jsonrpc": "2.0", "id": 1, "error": {"code": -32601, "message": f"Method not found: {method_name}"}}
+
+  print(build_method_not_found_error("tools/unknown_method")["error"]["code"])   # -32601 -- the correct, spec-defined code
+starter_code: |
+  def build_method_not_found_error(method_name):
+      return {"jsonrpc": "2.0", "id": 1, "error": {"code": -1, "message": f"Method not found: {method_name}"}}
+
+  print(build_method_not_found_error("tools/unknown_method")["error"]["code"])
+challenge: |
+  Fix `build_method_not_found_error` so it uses the standard JSON-RPC
+  error code `-32601`, instead of the non-standard `-1`. It should
+  print `-32601`, not `-1`.
+expected_output: |
+  -32601
+hints:
+  - "Change the error code value from -1 to -32601."
+  - "-32601 is JSON-RPC's own reserved, spec-defined code specifically for \"method not found\" -- clients rely on this exact number to branch their error handling."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 8
+difficulty: warmup
+contains_patterns:
+  - "-32601"
+concept_tags: [mcp, json_rpc, error_codes]

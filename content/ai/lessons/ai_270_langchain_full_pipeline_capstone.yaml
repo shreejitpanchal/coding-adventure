@@ -1,0 +1,80 @@
+id: ai_270
+title: "Capstone: Message Ordering, Parallel Branches, and Assign, All Together"
+language: ai
+level: 270
+objective: "Fix a full pipeline function that combines this category's message-ordering, RunnableParallel key-collision, and assign-preserves-keys lessons into one composite bug -- messages built in the wrong order, branch results collapsed under one shared key, and the messages themselves dropped entirely from the final combined result."
+explanation: |
+  This category has covered each of these mechanics on its own: a chat
+  message list needs its system entry first, `RunnableParallel` must
+  merge each branch's result under its own distinct name rather than a
+  shared key, and `RunnablePassthrough.assign` has to preserve what was
+  already there instead of discarding it when adding something new.
+  This capstone combines all three into one realistic composite
+  function -- the shape a real pipeline assembling a prompt, running
+  several branches, and combining everything into one final payload
+  would actually take.
+
+  The bug this exercise fixes gets all three wrong at once: it puts the
+  user message before the system message, merges every branch's output
+  under the same fixed `"output"` key (losing everything but whichever
+  branch ran last), and returns only that collapsed branch data,
+  dropping the built messages entirely. The fix builds the messages in
+  the correct order, keeps each branch's result under its own name, and
+  merges the messages back in alongside them.
+example_code: |
+  # The trap: wrong message order, collapsed branch keys, AND the
+  # messages get dropped from the final result entirely.
+  def run_full_pipeline_trap(system_prompt, user_input, branches):
+      messages = [{"role": "user", "content": user_input}, {"role": "system", "content": system_prompt}]
+      branch_results = {}
+      for name, fn in branches.items():
+          branch_results.update({"output": fn(user_input)})
+      return {"combined": branch_results}
+
+  branches = {"summary": lambda x: f"summary: {x}", "sentiment": lambda x: "positive"}
+  result_trap = run_full_pipeline_trap("Be concise.", "great product", branches)
+  print(sorted(result_trap["combined"].keys()))
+  # ['output'] -- both branches collapsed into one key, and the messages were dropped entirely
+
+  # The fix: correct message order, distinct branch keys, messages
+  # merged back into the final result.
+  def run_full_pipeline(system_prompt, user_input, branches):
+      messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input}]
+      branch_results = {}
+      for name, fn in branches.items():
+          branch_results[name] = fn(user_input)
+      return {"messages": messages, **branch_results}
+
+  result = run_full_pipeline("Be concise.", "great product", branches)
+  print(sorted(result.keys()))
+  # ['messages', 'sentiment', 'summary'] -- correctly preserved everything, each under its own key
+starter_code: |
+  def run_full_pipeline(system_prompt, user_input, branches):
+      messages = [{"role": "user", "content": user_input}, {"role": "system", "content": system_prompt}]
+      branch_results = {}
+      for name, fn in branches.items():
+          branch_results.update({"output": fn(user_input)})
+      return {"combined": branch_results}
+
+  branches = {"summary": lambda x: f"summary: {x}", "sentiment": lambda x: "positive"}
+  result = run_full_pipeline("Be concise.", "great product", branches)
+  print(sorted(result.keys()))
+challenge: |
+  Fix `run_full_pipeline` so it builds `messages` with the system
+  message first, merges each branch's result under its own `name` (not
+  a shared `"output"` key), and returns `{"messages": messages,
+  **branch_results}`. It should print
+  `['messages', 'sentiment', 'summary']`, not `['combined']`.
+expected_output: |
+  ['messages', 'sentiment', 'summary']
+hints:
+  - "Fix all three at once: system message first in the list, branch_results[name] = fn(user_input) instead of .update({\"output\": ...}), and return {\"messages\": messages, **branch_results}."
+  - "This ties together three separate lessons from earlier in this category -- message ordering, distinct branch keys, and preserving existing data when merging in something new."
+xp_reward: 20
+achievement: langchain_master
+category: langchain
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "branch_results\\[name\\] = fn\\(user_input\\)"
+concept_tags: [langchain, capstone, chain_composition]

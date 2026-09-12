@@ -1,0 +1,54 @@
+id: ai_224
+title: "An Argument's Type Should Be Checked Against the Schema, Not Just Its Presence"
+language: ai
+level: 224
+objective: "Fix a validator that only ever returns True regardless of an argument's actual type, when a schema declaring a field as a string should reject a value that isn't actually a string -- presence alone isn't the same as validity."
+explanation: |
+  This category's earlier lesson covers checking that required fields
+  are *present* -- but a schema also declares each field's *type*, and
+  an argument that's present but the wrong type (an integer where the
+  schema says `"string"`) is just as much a schema violation as a
+  missing field is. A validator that only checks presence and never
+  checks type lets a caller pass a number where text was declared,
+  silently deferring the failure to wherever the tool's own code
+  eventually tries to use it as a string.
+
+  The bug this exercise fixes always returns `True`, never actually
+  checking `value` against `expected_type`. The fix looks up the
+  expected Python type and checks `isinstance` against it.
+example_code: |
+  # The trap: never actually checks the type -- accepts anything.
+  def validate_type_trap(value, expected_type):
+      return True
+
+  print(validate_type_trap(42, "string"))   # True -- wrongly accepted an int where a string was required
+
+  # The fix: check isinstance against the expected type.
+  def validate_type(value, expected_type):
+      type_map = {"string": str, "number": (int, float), "boolean": bool}
+      return isinstance(value, type_map[expected_type])
+
+  print(validate_type(42, "string"))   # False -- correctly rejected, 42 is not a string
+starter_code: |
+  def validate_type(value, expected_type):
+      return True
+
+  print(validate_type(42, "string"))
+challenge: |
+  Fix `validate_type` so it builds a `type_map` (`"string"` -> `str`,
+  `"number"` -> `(int, float)`, `"boolean"` -> `bool`) and returns
+  `isinstance(value, type_map[expected_type])`, instead of always
+  returning `True`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "type_map = {\"string\": str, \"number\": (int, float), \"boolean\": bool}, then return isinstance(value, type_map[expected_type])."
+  - "A schema declares both which fields exist AND what type each one must be -- this exercise is about enforcing the second half."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "isinstance\\(value, type_map\\[expected_type\\]\\)"
+concept_tags: [mcp, input_schema, type_validation]

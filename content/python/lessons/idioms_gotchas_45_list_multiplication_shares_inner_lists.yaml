@@ -1,0 +1,62 @@
+id: idioms_gotchas_45
+title: "[[0] * cols] * rows Creates rows Copies of the SAME Inner List"
+language: python
+level: 114
+objective: "Fix a grid-building function that multiplies a list-of-lists by the row count, when '* rows' just repeats the SAME inner list object that many times -- mutating one 'row' silently mutates every other row too, since they were never separate to begin with."
+explanation: |
+  `[x] * n` repeats `x` `n` times in the resulting list -- but it
+  repeats the exact same object each time, not `n` independent copies
+  of it. For an immutable `x` (a number, a string) this is invisible,
+  since there's no way to mutate it anyway. The moment `x` is itself a
+  mutable list (`[[0] * cols] * rows`, building what looks like a
+  grid), every "row" in the result is the identical inner list object,
+  so mutating one cell in one row mutates that same cell in every
+  other row simultaneously.
+
+  The bug this exercise fixes uses `[[0] * cols] * rows`. The fix uses
+  a list comprehension that builds a genuinely fresh inner list for
+  every row.
+example_code: |
+  # The trap: multiplies the SAME inner list object -- every "row" is
+  # actually the identical list, so mutating one mutates them all.
+  def make_grid_trap(rows, cols):
+      return [[0] * cols] * rows
+
+  grid_trap = make_grid_trap(3, 3)
+  grid_trap[0][0] = 9
+  print(grid_trap[1][0])
+  # 9 -- WRONG, mutating row 0 changed every other row too
+
+  # The fix: a comprehension builds a genuinely fresh list per row.
+  def make_grid(rows, cols):
+      return [[0] * cols for _ in range(rows)]
+
+  grid = make_grid(3, 3)
+  grid[0][0] = 9
+  print(grid[1][0])
+  # 0 -- correctly independent rows
+starter_code: |
+  def make_grid(rows, cols):
+      return [[0] * cols] * rows
+
+  grid = make_grid(3, 3)
+  grid[0][0] = 9
+  print(grid[1][0])
+challenge: |
+  Fix `make_grid` so it returns `[[0] * cols for _ in range(rows)]`, a
+  comprehension building a fresh inner list per row, instead of `[[0]
+  * cols] * rows` (which repeats the same inner list object). It
+  should print `0`, not `9`.
+expected_output: |
+  0
+hints:
+  - "Replace [[0] * cols] * rows with [[0] * cols for _ in range(rows)]."
+  - "\"* cols\" on immutable zeros is fine -- it's the OUTER \"* rows\" repeating a mutable inner list that causes every row to be the same shared object."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 45
+difficulty: gotcha
+contains_patterns:
+  - "\\[\\[0\\] \\* cols for _ in range\\(rows\\)\\]"
+concept_tags: [idioms, list_multiplication, aliasing]

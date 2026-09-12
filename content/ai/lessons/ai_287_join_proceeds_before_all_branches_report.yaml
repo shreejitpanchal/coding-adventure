@@ -1,0 +1,65 @@
+id: ai_287
+title: "A Join Node Must Wait for Every Branch, Not Just Whichever Arrives First"
+language: ai
+level: 287
+objective: "Fix a join point that proceeds with whatever branch results have arrived so far, when it should verify every expected branch has actually reported in before treating the fan-out as complete."
+explanation: |
+  A join node is where several parallel branches (from a fan-out)
+  reconverge into one continuing path -- and it's only safe to proceed
+  past that point once every branch that was supposed to report in
+  actually has. A join that proceeds with whatever's arrived so far,
+  with no check against how many branches were actually expected, can
+  silently continue the graph on an incomplete result -- treating "two
+  out of three branches finished" as if it were "the fan-out is done."
+
+  The bug this exercise fixes returns `branch_results` immediately, with
+  no check against `expected_count`. The fix raises an error if not
+  every expected branch has reported in yet.
+example_code: |
+  # The trap: proceeds immediately with whatever's arrived -- never
+  # checks against expected_count at all.
+  def run_join_trap(branch_results, expected_count):
+      return branch_results
+
+  branch_results = ["summary-done"]   # only 1 of the 2 expected branches has reported in
+  print(len(run_join_trap(branch_results, 2)))
+  # 1 -- proceeded with only 1 of the 2 expected branches
+
+  # The fix: verify every expected branch has actually reported in.
+  def run_join(branch_results, expected_count):
+      if len(branch_results) < expected_count:
+          raise ValueError("not all branches have reported in yet")
+      return branch_results
+
+  try:
+      print(len(run_join(branch_results, 2)))
+  except ValueError as e:
+      print(str(e))
+  # "not all branches have reported in yet" -- correctly refused to proceed on an incomplete fan-out
+starter_code: |
+  def run_join(branch_results, expected_count):
+      return branch_results
+
+  branch_results = ["summary-done"]
+  try:
+      print(len(run_join(branch_results, 2)))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `run_join` so it raises `ValueError("not all branches have
+  reported in yet")` when `len(branch_results) < expected_count`,
+  instead of always returning `branch_results` immediately. It should
+  print `not all branches have reported in yet`, not `1`.
+expected_output: |
+  not all branches have reported in yet
+hints:
+  - "Add: if len(branch_results) < expected_count: raise ValueError(\"not all branches have reported in yet\"), before the return."
+  - "The number of branches that have actually finished has to be compared against how many were expected -- there's no other way to know the fan-out is genuinely complete."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 22
+difficulty: core
+contains_patterns:
+  - "len\\(branch_results\\) < expected_count"
+concept_tags: [langgraph, join, fan_out]

@@ -1,0 +1,60 @@
+id: stdlib_deep_dive_10
+title: "itertools.combinations Generates Every Pair Without a Nested Loop"
+language: python
+level: 211
+objective: "Replace a manual nested loop generating every pair of items with itertools.combinations, which does the same thing directly."
+explanation: |
+  Generating every unique pair from a collection by hand needs a
+  nested loop with the inner one starting just past the outer one's
+  current position (`range(i + 1, len(items))`) specifically to avoid
+  both duplicate pairs and pairing an item with itself.
+  `itertools.combinations(items, 2)` expresses "every way to choose 2
+  items, order not mattering" directly, generalizing cleanly to any
+  group size (`combinations(items, 3)` for triples) without needing a
+  differently-shaped nested loop for each size.
+example_code: |
+  # A manual nested loop, carefully avoiding duplicates and self-pairs.
+  def all_pairs_loop(items):
+      result = []
+      for i in range(len(items)):
+          for j in range(i + 1, len(items)):
+              result.append((items[i], items[j]))
+      return result
+
+  print(all_pairs_loop(["a", "b", "c"]))
+  # [('a', 'b'), ('a', 'c'), ('b', 'c')]
+
+  # itertools.combinations expresses this directly.
+  from itertools import combinations
+
+  def all_pairs(items):
+      return list(combinations(items, 2))
+
+  print(all_pairs(["a", "b", "c"]))
+  # [('a', 'b'), ('a', 'c'), ('b', 'c')]
+starter_code: |
+  def all_pairs(items):
+      result = []
+      for i in range(len(items)):
+          for j in range(i + 1, len(items)):
+              result.append((items[i], items[j]))
+      return result
+
+  print(all_pairs(["a", "b", "c"]))
+challenge: |
+  Rewrite `all_pairs` using `itertools.combinations(items, 2)`, instead
+  of a manual nested loop. Keep the same output:
+  [('a', 'b'), ('a', 'c'), ('b', 'c')].
+expected_output: |
+  [('a', 'b'), ('a', 'c'), ('b', 'c')]
+hints:
+  - "from itertools import combinations, then: return list(combinations(items, 2))."
+  - "combinations(items, 2) generalizes to any group size -- combinations(items, 3) would give every triple, with no new loop structure needed."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "combinations\\(items, 2\\)"
+concept_tags: [itertools, combinations]

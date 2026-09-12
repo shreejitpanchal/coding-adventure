@@ -1,0 +1,69 @@
+id: deployment_09
+title: "The Canary Rollout Where the Same User Kept Flip-Flopping"
+language: python
+level: 399
+objective: "Fix a canary-rollout check that decides randomly on every single call (so the SAME user can get a different answer from one call to the next), when bucketing consistently by the user's own id -- not by how many times the check has been called -- keeps a given user's treatment stable."
+explanation: |
+  A canary rollout is supposed to route a fixed percentage of traffic
+  to a new version, but with the *same user* consistently landing on
+  the same side every time -- otherwise a single user bounces between
+  old and new behavior on every request, which is confusing at best
+  and can corrupt anything stateful (a half-finished multi-step flow
+  spanning both versions) at worst. A check whose answer depends on
+  *how many times it's been called*, rather than on the user's own
+  identity, produces exactly that flip-flopping: nothing about the
+  decision is actually tied to which user is asking. Bucketing by a
+  hash of the user's own id fixes this -- `hash(user_id) % 100` always
+  produces the same number for the same `user_id` within a run, so the
+  same user always lands in the same bucket, every single call.
+
+  The fix bases the canary decision on `hash(user_id)`, not on an
+  incrementing call counter.
+example_code: |
+  # The trap: decides based on a call COUNTER, not the user's own identity.
+  def in_canary_trap(user_id, percentage, call_count):
+      call_count[0] += 1
+      return call_count[0] % 2 == 0
+
+  calls = [0]
+  r1_trap = in_canary_trap("user-42", 50, calls)
+  r2_trap = in_canary_trap("user-42", 50, calls)
+  print(r1_trap == r2_trap)
+  # False -- WRONG, the exact same user got two DIFFERENT answers
+
+  # The fix: bucket by a hash of the user's OWN id -- stable across calls.
+  def in_canary(user_id, percentage):
+      bucket = hash(user_id) % 100
+      return bucket < percentage
+
+  r1 = in_canary("user-42", 50)
+  r2 = in_canary("user-42", 50)
+  print(r1 == r2)
+  # True -- correctly consistent, since it depends only on user_id
+starter_code: |
+  def in_canary(user_id, percentage, call_count):
+      call_count[0] += 1
+      return call_count[0] % 2 == 0
+
+  calls = [0]
+  r1 = in_canary("user-42", 50, calls)
+  r2 = in_canary("user-42", 50, calls)
+  print(r1 == r2)
+challenge: |
+  Fix `in_canary` so it computes `bucket = hash(user_id) % 100` and
+  returns `bucket < percentage`, taking only `user_id` and `percentage`
+  as parameters, instead of depending on a call counter. It should
+  print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "def in_canary(user_id, percentage): bucket = hash(user_id) % 100; return bucket < percentage."
+  - "hash(user_id) is stable for the same user_id within a run -- a decision based on it, not on how many times the function has been called, keeps that user's treatment consistent."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 9
+difficulty: deep_dive
+contains_patterns:
+  - "hash\\(user_id\\) % 100"
+concept_tags: [deployment, canary_release, consistent_hashing]

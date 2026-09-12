@@ -1,0 +1,74 @@
+id: functional_programming_35
+title: "Metadata Attached Directly to a Function Survives a Rename -- A Separate Dict Doesn't"
+language: python
+level: 370
+objective: "Fix code storing a function's metadata in a separate dict keyed by the function's name as a string (which silently breaks the moment the function is renamed), when a function is an ordinary object that can hold its own custom attributes directly -- metadata attached that way travels with the function automatically."
+explanation: |
+  Functions in Python are genuine objects, not just names pointing at
+  compiled code -- like any other object, they can have arbitrary
+  custom attributes assigned directly onto them (`func.version = 2`),
+  stored as part of the function object itself. Storing the same
+  information in a *separate* dict, keyed by the function's name as a
+  plain string, creates a hidden dependency on that string staying in
+  sync with the function's actual name forever -- renaming the
+  function during a refactor doesn't update the dict key
+  automatically, since nothing connects the two beyond a string that
+  happens to match today.
+
+  The fix attaches the metadata directly onto the function object as
+  an attribute, instead of a separate string-keyed dict.
+example_code: |
+  # The trap: metadata lives in a SEPARATE dict, keyed by name as a string.
+  def handler_trap():
+      pass
+
+  METADATA_TRAP = {"handler_trap": {"version": 2}}
+
+  def process_handler_trap():        # renamed during a refactor
+      pass
+
+  try:
+      print(METADATA_TRAP["process_handler_trap"]["version"])
+      print("ok")
+  except KeyError:
+      print("crashed")
+  # "crashed" -- the dict's string key was never updated when the function was renamed
+
+  # The fix: attach the metadata directly onto the function object.
+  def process_handler():
+      pass
+  process_handler.version = 2
+
+  print(process_handler.version)
+  # 2 -- correctly travels with the function itself, renaming it changes nothing
+starter_code: |
+  def handler():
+      pass
+
+  METADATA = {"handler": {"version": 2}}
+
+  def process_handler():
+      pass
+
+  try:
+      print(METADATA["process_handler"]["version"])
+  except KeyError:
+      print("crashed")
+challenge: |
+  Fix this by removing the `METADATA` dict entirely and instead
+  attaching the version directly to the function --
+  `process_handler.version = 2` -- then printing
+  `process_handler.version`. It should print `2`, not `crashed`.
+expected_output: |
+  2
+hints:
+  - "process_handler.version = 2, then print(process_handler.version)."
+  - "A function is an ordinary object that can hold its own custom attributes directly -- metadata attached that way is never at risk of going stale after a rename, unlike a separate string-keyed dict."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 35
+difficulty: gotcha
+contains_patterns:
+  - "process_handler\\.version = 2"
+concept_tags: [functional_programming, first_class_functions, gotchas]

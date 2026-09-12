@@ -97,7 +97,7 @@ hints:
   - "Wrap result = fn() in a try/except Exception as e: block, setting result = {\"error\": str(e)} in the except branch."
   - "The try/except must be INSIDE the for loop, around just the single fn() call -- not around the whole loop -- so each tool's failure is isolated to itself."
 xp_reward: 15
-achievement: solace_agent_mesh_master
+achievement: null
 category: solace_agent_mesh
 category_level: 5
 difficulty: deep_dive

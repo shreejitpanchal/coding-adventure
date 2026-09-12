@@ -1,0 +1,57 @@
+id: ai_226
+title: "A Multi-Step Sequence Needs to Actually Run Every Step, in Order"
+language: ai
+level: 226
+objective: "Fix a sequence runner that only executes the first step of a multi-step pipeline, when a real RunnableSequence needs to thread its input through every step in order, each one building on the previous step's output."
+explanation: |
+  This category's earlier lesson on `|` composition covered chaining
+  exactly two steps -- the same idea generalizes to any number of
+  steps: `functools.reduce` is a clean way to fold a list of functions
+  over a starting value, applying each one to the running result in
+  turn. A sequence runner that stops after the first step (or applies
+  every step to the same original input instead of the running result)
+  isn't really running a sequence at all, just one step with extra,
+  unused steps sitting beside it.
+
+  The bug this exercise fixes returns the first step's result directly,
+  never touching the rest of the list. The fix folds every step over
+  the input in order, using `functools.reduce`.
+example_code: |
+  # The trap: only runs the FIRST step, the rest of the sequence is
+  # never touched at all.
+  def run_sequence_trap(steps, x):
+      return steps[0](x)
+
+  steps = [lambda x: x + 1, lambda x: x * 2, lambda x: x - 3]
+  print(run_sequence_trap(steps, 5))   # 6 -- only step 1 ran; steps 2 and 3 never applied
+
+  # The fix: fold every step over the running result, in order.
+  import functools
+
+  def run_sequence(steps, x):
+      return functools.reduce(lambda acc, step: step(acc), steps, x)
+
+  print(run_sequence(steps, 5))   # 9 -- (5+1)=6, (6*2)=12, (12-3)=9
+starter_code: |
+  def run_sequence(steps, x):
+      return steps[0](x)
+
+  steps = [lambda x: x + 1, lambda x: x * 2, lambda x: x - 3]
+  print(run_sequence(steps, 5))
+challenge: |
+  Fix `run_sequence` so it uses `functools.reduce` to apply every step
+  in order, each one running on the previous step's result, instead of
+  only running `steps[0]`. It should print `9`, not `6`.
+expected_output: |
+  9
+hints:
+  - "import functools, then: return functools.reduce(lambda acc, step: step(acc), steps, x)."
+  - "reduce's third argument (x) is the starting accumulator -- each step function then runs on the running result, not the original input."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "functools\\.reduce\\("
+concept_tags: [langchain, runnable_sequence, chain_composition]

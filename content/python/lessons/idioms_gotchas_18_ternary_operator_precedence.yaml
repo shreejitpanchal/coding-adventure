@@ -1,0 +1,60 @@
+id: idioms_gotchas_18
+title: "A Ternary's Condition Needs Its Own Parentheses When Combined With Arithmetic"
+language: python
+level: 87
+objective: "Fix a ternary expression where operator precedence groups the arithmetic differently than intended, producing a value that looks plausible but was computed from the wrong branch of the conditional."
+explanation: |
+  Python's conditional expression (`a if condition else b`) has lower
+  precedence than most arithmetic and comparison operators, which
+  usually works out fine -- but combining it with a comparison that
+  itself contains an operator sharing a symbol with something nearby
+  can silently group differently than a reader expects. The safest fix
+  isn't memorizing the full precedence table: it's adding explicit
+  parentheses around the condition, so the grouping matches what's
+  actually intended, unambiguously, regardless of what the general
+  precedence rules would have produced.
+
+  The bug this exercise fixes lets an unparenthesized condition
+  interact with a nearby subtraction it wasn't meant to include. The
+  fix wraps the actual condition in explicit parentheses.
+example_code: |
+  # The trap: the condition isn't clearly separated from the
+  # subtraction happening right next to it.
+  def adjusted_price_trap(price, is_member, discount):
+      return price - discount if is_member else price - 0
+
+  print(adjusted_price_trap(100, False, 20))
+  # 100 -- looks right here, but the lack of parentheses makes the
+  # actual grouping easy to misread and easy to get wrong when the
+  # expression grows even slightly more complex
+
+  # The fix: parenthesize the condition explicitly, regardless of
+  # what the general precedence rules would produce.
+  def adjusted_price(price, is_member, discount):
+      return (price - discount) if is_member else price
+
+  print(adjusted_price(100, False, 20))
+  # 100 -- same result, but now unambiguous regardless of how it's read
+starter_code: |
+  def adjusted_price(price, is_member, discount):
+      return price - discount if is_member else price - 0
+
+  print(adjusted_price(100, False, 20))
+challenge: |
+  Fix `adjusted_price` so the discounted branch is explicitly
+  parenthesized as `(price - discount) if is_member else price`,
+  instead of leaving the subtraction ungrouped and adding a
+  meaningless `- 0` to the other branch. It should still print `100`.
+expected_output: |
+  100
+hints:
+  - "Wrap the discount calculation in parentheses: (price - discount) if is_member else price."
+  - "The \"else price - 0\" branch is a sign the ungrouped version was already confusing to read -- the 0 does nothing except mask that."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 18
+difficulty: warmup
+contains_patterns:
+  - "\\(price - discount\\) if is_member else price"
+concept_tags: [idioms, ternary_expressions, operator_precedence]

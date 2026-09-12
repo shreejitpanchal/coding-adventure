@@ -1,0 +1,54 @@
+id: ai_390
+title: "Even a Status Broadcast Needs a task_id to Say Which Task It's About"
+language: ai
+level: 390
+objective: "Fix a status-update builder that omits the task id, when a receiving agent tracking several in-flight tasks at once has no way to tell which one a status broadcast is actually referring to without it."
+explanation: |
+  A status broadcast (`"in_progress"`, `"delegated"`) is a notification
+  rather than a request-response pair, but it's still about a specific
+  task -- and an agent that's juggling several delegated tasks at once
+  needs the `task_id` to know which one just changed status. Omitting
+  it produces a broadcast that's technically valid but practically
+  useless the moment more than one task is in flight simultaneously.
+
+  The bug this exercise fixes builds the update with `status` only.
+  The fix includes `task_id` alongside it.
+example_code: |
+  # The trap: no task_id at all -- the receiver has no way to know
+  # WHICH task this status update is even about.
+  def build_status_update_trap(status):
+      return {"method": "task/status", "params": {"status": status}}
+
+  update_trap = build_status_update_trap("in_progress")
+  print("task_id" in update_trap["params"])
+  # False
+
+  # The fix: include the task_id alongside the status.
+  def build_status_update(status, task_id):
+      return {"method": "task/status", "params": {"status": status, "task_id": task_id}}
+
+  update = build_status_update("in_progress", "task-99")
+  print("task_id" in update["params"])
+  # True -- correctly identifies which task this update is about
+starter_code: |
+  def build_status_update(status, task_id):
+      return {"method": "task/status", "params": {"status": status}}
+
+  update = build_status_update("in_progress", "task-99")
+  print("task_id" in update["params"])
+challenge: |
+  Fix `build_status_update` so `params` also includes `"task_id":
+  task_id`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"task_id\": task_id as a second key inside the params dict, alongside \"status\"."
+  - "A single agent can have several tasks in flight at once -- a status broadcast with no task_id is ambiguous the moment there's more than one."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 35
+difficulty: warmup
+contains_patterns:
+  - "\"task_id\": task_id"
+concept_tags: [solace_agent_mesh, a2a_protocol, status_notifications]

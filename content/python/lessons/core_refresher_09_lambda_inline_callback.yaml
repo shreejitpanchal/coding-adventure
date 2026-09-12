@@ -1,0 +1,50 @@
+id: core_refresher_09
+title: "A Lambda Skips Naming a Function You'll Only Ever Use Once"
+language: python
+level: 122
+objective: "Replace a named helper function used only as a callback with an inline lambda expression."
+explanation: |
+  A `lambda` is a small, anonymous, single-expression function -- `lambda
+  n: n % 2 == 0` is exactly equivalent to `def is_even(n): return n % 2
+  == 0`, just without a name and restricted to a single expression (no
+  statements, no multiple lines). For a genuinely one-off helper that
+  exists purely to be passed somewhere else (`filter()`, `sorted()`'s
+  `key=`, `map()`), naming it separately just adds a name nobody will
+  ever reuse; writing it inline as a lambda keeps the logic right where
+  it's used. For anything more than a trivial single expression, a
+  regular named `def` is still the better, more readable choice.
+example_code: |
+  # A named helper used only once, purely as a callback.
+  def is_even(n):
+      return n % 2 == 0
+
+  nums = [1, 2, 3, 4, 5, 6]
+  evens_named = list(filter(is_even, nums))
+  print(evens_named)                       # [2, 4, 6]
+
+  # Inline as a lambda instead -- no separate name needed.
+  evens = list(filter(lambda n: n % 2 == 0, nums))
+  print(evens)                             # [2, 4, 6]
+starter_code: |
+  def is_even(n):
+      return n % 2 == 0
+
+  nums = [1, 2, 3, 4, 5, 6]
+  evens = list(filter(is_even, nums))
+  print(evens)
+challenge: |
+  Rewrite this so filter() takes an inline lambda directly, instead of
+  a separately-named is_even function. Keep the same output: [2, 4, 6].
+expected_output: |
+  [2, 4, 6]
+hints:
+  - "Replace is_even with lambda n: n % 2 == 0, passed directly to filter()."
+  - "filter(lambda n: n % 2 == 0, nums)"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "lambda n: n % 2 == 0"
+concept_tags: [lambda, functions]

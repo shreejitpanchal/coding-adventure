@@ -1,0 +1,67 @@
+id: functional_programming_33
+title: "A Hardcoded Strategy Can't Be Swapped -- A Function Parameter Can"
+language: python
+level: 368
+objective: "Fix a function with a strategy hardcoded inline (no way for the caller to choose a different one), when accepting the strategy AS a function parameter -- with a sensible default -- lets callers inject their own behavior instead of being stuck with the one hardcoded choice."
+explanation: |
+  A function that hardcodes *how* it does something -- sorting by
+  length, specifically, with `key=len` written directly in its body --
+  gives callers no way to ask for different behavior at all; wanting a
+  different sort order means writing an entirely separate function.
+  Accepting the strategy itself as a parameter, since functions are
+  ordinary first-class values, lets the *caller* decide the behavior
+  at the call site: `process(items, key=len)` as the sensible default,
+  but `process(items, key=lambda s: -len(s))` for a genuinely
+  different strategy, using the exact same function underneath.
+
+  The fix adds `key=len` as an explicit parameter (with `len` as the
+  sensible default), instead of hardcoding it inline.
+example_code: |
+  # The trap: the strategy is hardcoded -- no way to swap it at the call site.
+  def process_trap(items):
+      return sorted(items, key=len)
+
+  print(process_trap(["ccc", "a", "bb"]))
+  try:
+      print(process_trap(["ccc", "a", "bb"], key=lambda s: -len(s)))
+  except TypeError:
+      print("crashed")
+  # ['a', 'bb', 'ccc']
+  # crashed -- WRONG, no way to ask for a different strategy at all
+
+  # The fix: the strategy is a parameter, with a sensible default.
+  def process(items, key=len):
+      return sorted(items, key=key)
+
+  print(process(["ccc", "a", "bb"]))
+  print(process(["ccc", "a", "bb"], key=lambda s: -len(s)))
+  # ['a', 'bb', 'ccc']
+  # ['ccc', 'bb', 'a'] -- correctly let the caller inject a different strategy
+starter_code: |
+  def process(items):
+      return sorted(items, key=len)
+
+  print(process(["ccc", "a", "bb"]))
+  try:
+      print(process(["ccc", "a", "bb"], key=lambda s: -len(s)))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `process` so it takes `key=len` as an explicit parameter,
+  sorting with `sorted(items, key=key)`, instead of hardcoding
+  `key=len` inline. It should print `['a', 'bb', 'ccc']` then
+  `['ccc', 'bb', 'a']`, not `crashed` on the second line.
+expected_output: |
+  ['a', 'bb', 'ccc']
+  ['ccc', 'bb', 'a']
+hints:
+  - "def process(items, key=len): return sorted(items, key=key)."
+  - "Hardcoding key=len inline gives the caller no way to override it -- accepting it as a parameter (with len as the default) lets the caller inject a different strategy at the call site."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 33
+difficulty: core
+contains_patterns:
+  - "def process\\(items, key=len\\):"
+concept_tags: [functional_programming, strategy_pattern, higher_order_functions]

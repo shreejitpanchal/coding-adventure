@@ -1,0 +1,93 @@
+id: gotcha_gauntlet_43
+title: "The 'Expensive' Property That Silently Recomputed Every Single Time"
+language: python
+level: 288
+objective: "Fix a @property whose getter recomputes an expensive (or observable) value from scratch on every access, when the value never actually changes after the object is built -- caching it once, the first time it's needed, avoids repeating the work on every subsequent access."
+explanation: |
+  A plain `@property` getter runs its full body every single time the
+  attribute is accessed -- there's nothing about `@property` itself
+  that remembers a previous result. For a value that's genuinely
+  expensive to compute, or that has an observable side effect (like
+  incrementing a counter to prove how many times it ran), accessing it
+  three times means the work happens three separate times, even though
+  the underlying data never changed between accesses and the exact
+  same result comes back every time.
+
+  The fix is caching the computed value the first time it's needed --
+  storing it in a private instance attribute and returning that cached
+  value on every subsequent access, computing it only once no matter
+  how many times the property is actually read afterward.
+example_code: |
+  # The trap: recomputes (and re-increments a counter) on EVERY access.
+  class ReportTrap:
+      def __init__(self, rows):
+          self.rows = rows
+          self.compute_count = 0
+
+      @property
+      def total(self):
+          self.compute_count += 1
+          return sum(self.rows)
+
+  r_trap = ReportTrap([1, 2, 3])
+  r_trap.total
+  r_trap.total
+  r_trap.total
+  print(r_trap.compute_count)
+  # 3 -- WRONG if "total" was supposed to be computed just once and cached
+
+  # The fix: cache the computed value the first time it's needed.
+  class Report:
+      def __init__(self, rows):
+          self.rows = rows
+          self.compute_count = 0
+          self._total = None
+
+      @property
+      def total(self):
+          if self._total is None:
+              self.compute_count += 1
+              self._total = sum(self.rows)
+          return self._total
+
+  r = Report([1, 2, 3])
+  r.total
+  r.total
+  r.total
+  print(r.compute_count)
+  # 1 -- correctly computed only once, then reused from the cache
+starter_code: |
+  class Report:
+      def __init__(self, rows):
+          self.rows = rows
+          self.compute_count = 0
+
+      @property
+      def total(self):
+          self.compute_count += 1
+          return sum(self.rows)
+
+  r = Report([1, 2, 3])
+  r.total
+  r.total
+  r.total
+  print(r.compute_count)
+challenge: |
+  Fix `Report` by adding a `self._total = None` cache in `__init__`,
+  and having `total` only recompute (and increment `compute_count`)
+  when `self._total is None`, returning the cached value otherwise. It
+  should print `1`, not `3`.
+expected_output: |
+  1
+hints:
+  - "self._total = None in __init__, then: if self._total is None: self.compute_count += 1; self._total = sum(self.rows); return self._total."
+  - "A plain @property getter has no memory of a previous result -- it reruns its whole body on every single access unless the class explicitly caches the value itself."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 43
+difficulty: deep_dive
+contains_patterns:
+  - "self\\._total = None"
+  - "if self\\._total is None:"
+concept_tags: [properties, caching, gotchas]

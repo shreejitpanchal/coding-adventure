@@ -1,0 +1,90 @@
+id: functional_programming_18
+title: "all() Stops at the First Failing Predicate -- A Manual Loop Often Forgets To"
+language: python
+level: 353
+objective: "Fix a validation function using a for loop that checks every rule even after one has already failed, when all() combined with a generator expression short-circuits at the first failing predicate, exactly like this category's any()/generator lesson does for the first match."
+explanation: |
+  `all(predicate(x) for x in checks)` is the natural functional-style
+  complement to `any()`: it short-circuits the *instant* it hits a
+  falsy value, returning `False` immediately without evaluating any
+  remaining predicates -- there's no point checking rule 3 once rule 1
+  has already failed the whole validation. A manual loop that
+  collects every rule's result into a list *before* checking whether
+  they're all true (`results = [rule(x) for rule in rules]; return
+  all(results)`) defeats this entirely, since building the list up
+  front means every single rule runs regardless of whether an earlier
+  one already failed.
+
+  The fix passes a generator expression directly to `all()`, instead
+  of pre-building a list of every rule's result first.
+example_code: |
+  # The trap: builds the WHOLE results list first -- every rule runs regardless.
+  calls_trap = []
+
+  def rule_a_trap(x):
+      calls_trap.append("a")
+      return x > 0
+
+  def rule_b_trap(x):
+      calls_trap.append("b")
+      return x < 100
+
+  def validate_trap(x, rules):
+      results = [rule(x) for rule in rules]
+      return all(results)
+
+  validate_trap(-5, [rule_a_trap, rule_b_trap])
+  print(len(calls_trap))
+  # 2 -- WRONG if the intent was stopping as soon as rule_a already failed
+
+  # The fix: a generator expression lets all() short-circuit correctly.
+  calls = []
+
+  def rule_a(x):
+      calls.append("a")
+      return x > 0
+
+  def rule_b(x):
+      calls.append("b")
+      return x < 100
+
+  def validate(x, rules):
+      return all(rule(x) for rule in rules)
+
+  validate(-5, [rule_a, rule_b])
+  print(len(calls))
+  # 1 -- correctly stopped after rule_a already failed
+starter_code: |
+  calls = []
+
+  def rule_a(x):
+      calls.append("a")
+      return x > 0
+
+  def rule_b(x):
+      calls.append("b")
+      return x < 100
+
+  def validate(x, rules):
+      results = [rule(x) for rule in rules]
+      return all(results)
+
+  validate(-5, [rule_a, rule_b])
+  print(len(calls))
+challenge: |
+  Fix `validate` so it returns `all(rule(x) for rule in rules)`
+  directly, instead of pre-building a `results` list first. It should
+  print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "return all(rule(x) for rule in rules)."
+  - "Pre-building a list forces every rule to run before all() even starts checking -- a generator expression lets all() stop the instant it hits the first falsy value."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 18
+difficulty: gotcha
+contains_patterns:
+  - "return all\\(rule\\(x\\) for rule in rules\\)"
+concept_tags: [functional_programming, short_circuit, generators]

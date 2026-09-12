@@ -1,0 +1,59 @@
+id: ai_288
+title: "A Join Node Must Merge Every Branch's Contribution, Not Just the Last One"
+language: ai
+level: 288
+objective: "Fix a join node that keeps only the last parallel branch's state, discarding every other branch's contribution, when a join is supposed to combine what all of the branches produced into one merged result."
+explanation: |
+  Once every branch of a fan-out has reported in, the join step's job
+  is combining what each of them separately contributed into one
+  unified state -- a summary branch's key alongside a sentiment
+  branch's key, both present in the final result. Keeping only the
+  last branch's state (or picking any single one) throws away every
+  other branch's work, even though each one ran successfully and
+  produced something genuinely worth keeping.
+
+  The bug this exercise fixes returns `branch_states[-1]` -- just the
+  last one. The fix merges every branch's state together.
+example_code: |
+  # The trap: keeps only the LAST branch's state -- every other
+  # branch's contribution is discarded.
+  def merge_branches_trap(branch_states):
+      return branch_states[-1]
+
+  branch_states = [{"summary": "great"}, {"sentiment": "positive"}]
+  print(sorted(merge_branches_trap(branch_states).keys()))
+  # ['sentiment'] -- "summary" was completely discarded
+
+  # The fix: merge every branch's state together.
+  def merge_branches(branch_states):
+      merged = {}
+      for s in branch_states:
+          merged.update(s)
+      return merged
+
+  print(sorted(merge_branches(branch_states).keys()))
+  # ['sentiment', 'summary'] -- correctly combined every branch's contribution
+starter_code: |
+  def merge_branches(branch_states):
+      return branch_states[-1]
+
+  branch_states = [{"summary": "great"}, {"sentiment": "positive"}]
+  print(sorted(merge_branches(branch_states).keys()))
+challenge: |
+  Fix `merge_branches` so it builds a `merged` dict and calls
+  `merged.update(s)` for every `s` in `branch_states`, instead of
+  returning only `branch_states[-1]`. It should print
+  `['sentiment', 'summary']`, not `['sentiment']`.
+expected_output: |
+  ['sentiment', 'summary']
+hints:
+  - "merged = {}, then for s in branch_states: merged.update(s), then return merged."
+  - "Every branch that successfully finished contributed something worth keeping -- a join step's job is combining all of it, not selecting just one."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 23
+difficulty: warmup
+contains_patterns:
+  - "merged\\.update\\(s\\)"
+concept_tags: [langgraph, join, state_merging]

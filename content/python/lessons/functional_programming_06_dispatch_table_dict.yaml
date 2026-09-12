@@ -1,0 +1,77 @@
+id: functional_programming_06
+title: "A Dict of Functions Replaces a Long if/elif Chain"
+language: python
+level: 341
+objective: "Replace a long if/elif chain choosing between operations with a dict mapping each name directly to its function -- functions are first-class values in Python, so they can be stored, looked up, and called just like any other value."
+explanation: |
+  Functions in Python are ordinary first-class objects -- they can be
+  stored in a variable, put into a list or dict, passed as an argument,
+  and returned from another function, exactly like an int or a string
+  can. A long `if op == "add": ... elif op == "sub": ...` chain
+  choosing which operation to run is really just a manual, verbose way
+  of mapping a name to a function -- a dict expresses that mapping
+  directly: `{"add": add, "sub": sub}[op](a, b)` looks the function up
+  by name and calls it in one step, with no branching logic to
+  maintain or extend by hand.
+
+  The fix replaces the if/elif chain with a dispatch dict.
+example_code: |
+  # The trap: a long if/elif chain, growing linearly with every new operation.
+  def add(a, b):
+      return a + b
+
+  def sub(a, b):
+      return a - b
+
+  def calculate_trap(op, a, b):
+      if op == "add":
+          return add(a, b)
+      elif op == "sub":
+          return sub(a, b)
+      else:
+          raise ValueError(f"unknown op: {op}")
+
+  print(calculate_trap("add", 3, 4))
+  # 7 -- correct, but every new operation needs another elif branch
+
+  # The fix: a dict maps each name directly to its function.
+  OPS = {"add": add, "sub": sub}
+
+  def calculate(op, a, b):
+      return OPS[op](a, b)
+
+  print(calculate("add", 3, 4))
+  # 7 -- same result, with no branching logic to grow at all
+starter_code: |
+  def add(a, b):
+      return a + b
+
+  def sub(a, b):
+      return a - b
+
+  def calculate(op, a, b):
+      if op == "add":
+          return add(a, b)
+      elif op == "sub":
+          return sub(a, b)
+      else:
+          raise ValueError(f"unknown op: {op}")
+
+  print(calculate("add", 3, 4))
+challenge: |
+  Replace `calculate`'s if/elif chain with a dispatch dict --
+  `OPS = {"add": add, "sub": sub}` -- and have `calculate` just look up
+  and call `OPS[op](a, b)`. Keep the same output: 7.
+expected_output: |
+  7
+hints:
+  - "OPS = {\"add\": add, \"sub\": sub}, then: def calculate(op, a, b): return OPS[op](a, b)."
+  - "Functions are ordinary values in Python -- storing them in a dict and looking them up by key is a direct, first-class alternative to branching logic."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "OPS\\[op\\]\\(a, b\\)"
+concept_tags: [functional_programming, first_class_functions, dispatch]

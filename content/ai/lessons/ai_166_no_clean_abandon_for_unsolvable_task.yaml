@@ -1,0 +1,77 @@
+id: ai_166
+title: "An Unsolvable Task Needs a Clean 'I Can't Do This,' Not an Endless Retry Loop"
+language: ai
+level: 166
+objective: "Fix an agent loop that keeps retrying the exact same failing approach indefinitely (up to the max_steps cap this category already covers) instead of recognizing a genuinely unsolvable request and abandoning cleanly with a clear explanation."
+explanation: |
+  This category's `max_steps` lesson prevents an unbounded loop from
+  running forever -- but hitting that cap silently, with no distinction
+  between "ran out of steps while making real progress" and "was stuck
+  on the exact same failing approach the whole time," leaves a user
+  with an unhelpful, generic failure. A genuinely unsolvable request
+  (asking for information that doesn't exist, a task outside what any
+  available tool can accomplish) deserves a clean, specific "I can't do
+  this, here's why" response the moment that becomes clear, not
+  grinding through every remaining step first.
+
+  The bug this exercise fixes keeps retrying identical failed attempts
+  until `max_steps` is exhausted, then returns a generic failure with no
+  explanation. The fix detects that the last several attempts were
+  identical failures and abandons early with a specific, honest
+  explanation instead of exhausting every remaining step first.
+example_code: |
+  # The trap: retries the SAME failing approach until max_steps runs
+  # out, then gives a generic failure with no real explanation.
+  def run_until_solved_trap(attempt_fn, max_steps=5):
+      last_result = None
+      for _ in range(max_steps):
+          last_result = attempt_fn()
+      return "FAILED: max steps exhausted"
+
+  def always_fails():
+      return "no matching record found"
+
+  print(run_until_solved_trap(always_fails))   # "FAILED: max steps exhausted" -- unhelpful, and took all 5 steps to say it
+
+  # The fix: detect repeated identical failures, abandon early with a real reason.
+  def run_until_solved(attempt_fn, max_steps=5):
+      results = []
+      for _ in range(max_steps):
+          result = attempt_fn()
+          results.append(result)
+          if len(results) >= 2 and results[-1] == results[-2]:
+              return f"ABANDONED: repeated identical result, likely unsolvable -- {result}"
+      return results[-1]
+
+  print(run_until_solved(always_fails))   # "ABANDONED: repeated identical result, likely unsolvable -- no matching record found"
+starter_code: |
+  def run_until_solved(attempt_fn, max_steps=5):
+      last_result = None
+      for _ in range(max_steps):
+          last_result = attempt_fn()
+      return "FAILED: max steps exhausted"
+
+  def always_fails():
+      return "no matching record found"
+
+  print(run_until_solved(always_fails))
+challenge: |
+  Fix `run_until_solved` so it tracks each attempt's result, and
+  abandons early with `f"ABANDONED: repeated identical result, likely
+  unsolvable -- {result}"` the moment two consecutive attempts produce
+  the exact same result, instead of always exhausting every step first.
+  It should print
+  `ABANDONED: repeated identical result, likely unsolvable -- no matching record found`.
+expected_output: |
+  ABANDONED: repeated identical result, likely unsolvable -- no matching record found
+hints:
+  - "Track a `results` list, appending each attempt's result, and check `if len(results) >= 2 and results[-1] == results[-2]:` after each attempt."
+  - "Since attempt_fn always returns the exact same string, the check triggers on the very second attempt -- no need to wait for max_steps to run out."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 36
+difficulty: deep_dive
+contains_patterns:
+  - "results\\[-1\\] == results\\[-2\\]"
+concept_tags: [agentic_frameworks, agent_loop, failure_detection]

@@ -1,0 +1,96 @@
+id: gotcha_gauntlet_17
+title: "The Fluent Chain That Broke Because One Method Forgot to Return self"
+language: python
+level: 262
+objective: "Fix a fluent-interface method that mutates the object but forgets to return self, breaking every chained call after it, which silently operate on None instead."
+explanation: |
+  A fluent interface -- `builder.set_x(1).set_y(2).build()` -- only
+  works because every method in the chain returns the object itself
+  (`self`), so the next `.method()` call has something to call it on.
+  The instant one method in the chain forgets its `return self`, it
+  implicitly returns `None`, and every subsequent call in the chain is
+  actually being made on `None` -- immediately raising `AttributeError:
+  'NoneType' object has no attribute ...` at the very next `.` in the
+  chain, which can look confusing since the crash site is textually far
+  from the method that's actually missing its `return`.
+
+  The fix is simply making sure every method meant to participate in
+  the chain ends with `return self`.
+example_code: |
+  # The trap: set_name forgets "return self" -- breaks the very next call.
+  class QueryBuilderTrap:
+      def __init__(self):
+          self.parts = []
+
+      def set_name(self, name):
+          self.parts.append(f"name={name}")
+          # forgot: return self
+
+      def set_limit(self, n):
+          self.parts.append(f"limit={n}")
+          return self
+
+      def build(self):
+          return "&".join(self.parts)
+
+  try:
+      QueryBuilderTrap().set_name("ada").set_limit(10).build()
+      print("ok")
+  except AttributeError:
+      print("crashed")
+  # "crashed" -- set_name returned None, so .set_limit(10) was called on None
+
+  # The fix: every chained method returns self.
+  class QueryBuilder:
+      def __init__(self):
+          self.parts = []
+
+      def set_name(self, name):
+          self.parts.append(f"name={name}")
+          return self
+
+      def set_limit(self, n):
+          self.parts.append(f"limit={n}")
+          return self
+
+      def build(self):
+          return "&".join(self.parts)
+
+  print(QueryBuilder().set_name("ada").set_limit(10).build())
+  # "name=ada&limit=10" -- correctly chained all the way through
+starter_code: |
+  class QueryBuilder:
+      def __init__(self):
+          self.parts = []
+
+      def set_name(self, name):
+          self.parts.append(f"name={name}")
+
+      def set_limit(self, n):
+          self.parts.append(f"limit={n}")
+          return self
+
+      def build(self):
+          return "&".join(self.parts)
+
+  try:
+      print(QueryBuilder().set_name("ada").set_limit(10).build())
+  except AttributeError:
+      print("crashed")
+challenge: |
+  Fix `set_name` by adding `return self` as its last line. It should
+  print `name=ada&limit=10`, not `crashed`.
+expected_output: |
+  name=ada&limit=10
+hints:
+  - "Add return self as the last line of set_name."
+  - "A fluent chain only works because every method returns self -- one method that forgets breaks every call chained after it, not just its own."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 17
+difficulty: gotcha
+contains_patterns:
+  - "self\\.parts\\.append\\(f\"name=\\{name\\}\"\\)"
+  - "return self"
+concept_tags: [fluent_interface, method_chaining, gotchas]

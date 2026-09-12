@@ -1,0 +1,61 @@
+id: ai_370
+title: "A Renamed Capability Should Still Match Through a Known Alias"
+language: ai
+level: 370
+objective: "Fix a capability check that only compares the exact requested name, when an agent still advertising a capability's older, deprecated name should still match a request using the new name -- as long as a known alias mapping connects the two."
+explanation: |
+  Capability names sometimes get renamed over time (`document_export`
+  replacing an older `pdf_export`), but not every deployed agent
+  updates its own advertised capability list the instant a rename
+  happens. A plain equality check between the requested name and an
+  agent's advertised capabilities breaks that backward compatibility
+  entirely -- an agent still using the old name becomes invisible to
+  any request phrased with the new one, even though it's perfectly
+  capable of doing the work.
+
+  The bug this exercise fixes checks the requested name directly, with
+  no alias lookup. The fix resolves the requested name to its
+  canonical form first.
+example_code: |
+  # The trap: checks the requested name DIRECTLY -- no alias lookup at
+  # all, so an agent using the OLD name is never matched.
+  def has_capability_trap(agent_capabilities, requested):
+      return requested in agent_capabilities
+
+  agent_capabilities = ["pdf_export"]   # this agent still uses the deprecated old name
+  aliases = {"document_export": "pdf_export"}
+  print(has_capability_trap(agent_capabilities, "document_export"))
+  # False -- wrongly failed to match via the known alias
+
+  # The fix: resolve the requested name to its canonical form first.
+  def has_capability(agent_capabilities, requested, aliases):
+      canonical = aliases.get(requested, requested)
+      return canonical in agent_capabilities
+
+  print(has_capability(agent_capabilities, "document_export", aliases))
+  # True -- correctly matched via the alias mapping
+starter_code: |
+  def has_capability(agent_capabilities, requested, aliases):
+      return requested in agent_capabilities
+
+  agent_capabilities = ["pdf_export"]
+  aliases = {"document_export": "pdf_export"}
+  print(has_capability(agent_capabilities, "document_export", aliases))
+challenge: |
+  Fix `has_capability` so it resolves `canonical = aliases.get
+  (requested, requested)` first, then checks `canonical in
+  agent_capabilities`, instead of checking `requested` directly. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "canonical = aliases.get(requested, requested), then return canonical in agent_capabilities."
+  - "aliases.get(requested, requested) falls back to the requested name unchanged when there's no known alias for it -- the alias lookup is purely additive."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "aliases\\.get\\(requested, requested\\)"
+concept_tags: [solace_agent_mesh, agent_card, capability_aliasing]

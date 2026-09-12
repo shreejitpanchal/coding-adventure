@@ -1,0 +1,67 @@
+id: ai_301
+title: "A Router's Own Route Name Should Be Validated Against the Table Before Dispatch"
+language: ai
+level: 301
+objective: "Fix a dispatcher that indexes straight into a routing table with no check at all, when a router naming a route that was never registered should raise a clear, specific error instead of a bare KeyError with no context."
+explanation: |
+  A router function and its routing table are two separately maintained
+  things -- a router might name a route (`"escalate_node"`) that the
+  routing table's author simply never got around to registering,
+  whether from a typo or an incomplete update. Indexing straight into
+  the table with no check means that mismatch surfaces as a raw
+  `KeyError` naming just the missing key, with no indication that the
+  actual problem is a router and its routing table having drifted out
+  of sync with each other.
+
+  The bug this exercise fixes indexes `routing_table[route_name]`
+  directly. The fix checks membership first and raises a specific,
+  informative error.
+example_code: |
+  # The trap: indexes straight into the table -- a raw, contextless
+  # KeyError if the router named a route that was never registered.
+  def dispatch_trap(route_name, routing_table):
+      return routing_table[route_name]
+
+  routing_table = {"approve_node": "approve_fn", "reject_node": "reject_fn"}
+  # dispatch_trap("escalate_node", routing_table)  # KeyError: 'escalate_node' -- no context about WHY
+
+  # The fix: check membership first, raise a specific, informative error.
+  def dispatch(route_name, routing_table):
+      if route_name not in routing_table:
+          raise ValueError(f"router returned unregistered route: {route_name}")
+      return routing_table[route_name]
+
+  try:
+      dispatch("escalate_node", routing_table)
+  except ValueError as e:
+      print(str(e))
+  # "router returned unregistered route: escalate_node" -- immediately clear what actually went wrong
+starter_code: |
+  def dispatch(route_name, routing_table):
+      return routing_table[route_name]
+
+  routing_table = {"approve_node": "approve_fn", "reject_node": "reject_fn"}
+  try:
+      print(dispatch("escalate_node", routing_table))
+  except KeyError:
+      print("unhandled")
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `dispatch` so it checks `if route_name not in routing_table:
+  raise ValueError(f"router returned unregistered route: {route_name}")`
+  before indexing into the table. It should print
+  `router returned unregistered route: escalate_node`, not `unhandled`.
+expected_output: |
+  router returned unregistered route: escalate_node
+hints:
+  - "Add the check as the first line of the function, before the routing_table[route_name] lookup ever runs."
+  - "A router and its routing table are maintained separately -- this check is what catches them drifting out of sync with each other."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 36
+difficulty: core
+contains_patterns:
+  - "route_name not in routing_table"
+concept_tags: [langgraph, conditional_edges, error_handling]

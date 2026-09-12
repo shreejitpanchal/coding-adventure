@@ -1,0 +1,56 @@
+id: ai_328
+title: "A Structured-Output Evaluator Must Check the Actual Fields, Not Just That Something Came Back"
+language: ai
+level: 328
+objective: "Fix a structured-output evaluator that only verifies a result isn't None, when it should confirm every field the schema actually requires is genuinely present -- a non-None result missing half its required fields shouldn't pass."
+explanation: |
+  Checking that a model's structured output "isn't None" catches only
+  the most extreme failure (nothing came back at all) while completely
+  missing the far more common case: something came back, but it's
+  incomplete, missing one or more of the fields the schema actually
+  requires. A result missing a required field is just as much a
+  failure as no result at all -- both leave a downstream consumer
+  without data it needed.
+
+  The bug this exercise fixes checks only `output is not None`. The
+  fix also verifies every entry in `required_fields` is actually
+  present in `output`.
+example_code: |
+  # The trap: only checks that SOMETHING was returned, never
+  # validates it actually has the required fields.
+  def evaluate_structured_trap(output, required_fields):
+      return output is not None
+
+  output = {"name": "Ada"}
+  print(evaluate_structured_trap(output, ["name", "score"]))
+  # True -- wrongly passed despite missing "score" entirely
+
+  # The fix: also verify every required field is actually present.
+  def evaluate_structured(output, required_fields):
+      return output is not None and all(f in output for f in required_fields)
+
+  print(evaluate_structured(output, ["name", "score"]))
+  # False -- correctly caught the missing field
+starter_code: |
+  def evaluate_structured(output, required_fields):
+      return output is not None
+
+  output = {"name": "Ada"}
+  print(evaluate_structured(output, ["name", "score"]))
+challenge: |
+  Fix `evaluate_structured` so it returns `output is not None and
+  all(f in output for f in required_fields)`, instead of only checking
+  `output is not None`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add and all(f in output for f in required_fields) onto the existing output is not None check."
+  - "\"score\" is genuinely missing from output -- a check that only asks \"did anything come back\" can't catch that."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 18
+difficulty: core
+contains_patterns:
+  - "all\\(f in output for f in required_fields\\)"
+concept_tags: [langsmith, structured_output, evaluators]

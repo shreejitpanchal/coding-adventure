@@ -1,0 +1,46 @@
+id: data_structures_15
+title: "deque.rotate() Shifts Every Element Without Rebuilding the Sequence"
+language: python
+level: 172
+objective: "Use deque.rotate() to cycle a round-robin turn order, instead of manually slicing and reassembling a list."
+explanation: |
+  Cycling a sequence -- moving the last element to the front, or the
+  first element to the back, for a round-robin turn order -- can be
+  done with list slicing (`lst = [lst[-1]] + lst[:-1]`), but that
+  builds an entirely new list every time. `deque.rotate(n)` does the
+  same logical shift in place: a positive `n` rotates elements from the
+  end to the front, a negative `n` rotates from the front to the end,
+  in O(k) relative to how far things shift rather than rebuilding the
+  whole sequence.
+example_code: |
+  # Manually slicing and reassembling to rotate.
+  turn_order_loop = ["ada", "bo", "cy"]
+  turn_order_loop = [turn_order_loop[-1]] + turn_order_loop[:-1]
+  print(turn_order_loop)                    # ['cy', 'ada', 'bo']
+
+  # deque.rotate() shifts in place.
+  from collections import deque
+
+  turn_order = deque(["ada", "bo", "cy"])
+  turn_order.rotate(1)
+  print(list(turn_order))                   # ['cy', 'ada', 'bo']
+starter_code: |
+  turn_order = ["ada", "bo", "cy"]
+  turn_order = [turn_order[-1]] + turn_order[:-1]
+  print(turn_order)
+challenge: |
+  Rewrite this using `collections.deque` and `.rotate(1)`, instead of
+  manual slicing. Keep the same output: ['cy', 'ada', 'bo'].
+expected_output: |
+  ['cy', 'ada', 'bo']
+hints:
+  - "from collections import deque, then: turn_order = deque([...]); turn_order.rotate(1); print(list(turn_order))."
+  - "rotate(1) moves the LAST element to the front -- exactly what the manual slice was doing, just without rebuilding the whole list."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "turn_order\\.rotate\\(1\\)"
+concept_tags: [deque, collections]

@@ -1,0 +1,54 @@
+id: ai_312
+title: "A None Initial State Should Fall Back to the Graph's Configured Default"
+language: ai
+level: 312
+objective: "Fix an initial-state resolver that returns whatever the caller passed in even when it's None, when a graph should fall back to its own configured default state -- so the first node doesn't immediately crash trying to read from nothing."
+explanation: |
+  A caller invoking a graph without explicitly providing an initial
+  state is implicitly asking for the graph's own sensible starting
+  point, not for `None` to be threaded straight into the first node. A
+  resolver that returns whatever it was given, unconditionally, treats
+  "the caller didn't specify anything" identically to "the caller
+  explicitly wants an empty state" -- when only the graph's own
+  configured default actually reflects the first, more common case.
+
+  The bug this exercise fixes returns `caller_state` directly, even
+  when it's `None`. The fix falls back to `default_state` specifically
+  in that case.
+example_code: |
+  # The trap: returns whatever was passed in directly, even when
+  # it's None -- ignores the graph's own configured default entirely.
+  def apply_default_trap(caller_state, default_state):
+      return caller_state
+
+  print(apply_default_trap(None, {"count": 0}) is None)
+  # True -- the graph's default was never actually applied
+
+  # The fix: fall back to default_state specifically when caller_state is None.
+  def apply_default(caller_state, default_state):
+      return caller_state if caller_state is not None else default_state
+
+  print(apply_default(None, {"count": 0}) is None)
+  # False -- correctly fell back to the graph's configured default
+starter_code: |
+  def apply_default(caller_state, default_state):
+      return caller_state
+
+  print(apply_default(None, {"count": 0}) is None)
+challenge: |
+  Fix `apply_default` so it returns `caller_state if caller_state is
+  not None else default_state`, instead of `caller_state` unchanged.
+  It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace return caller_state with return caller_state if caller_state is not None else default_state."
+  - "Only None should trigger the fallback -- a caller-provided empty dict ({}) is a legitimate, deliberate choice that shouldn't be second-guessed."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 47
+difficulty: warmup
+contains_patterns:
+  - "caller_state if caller_state is not None else default_state"
+concept_tags: [langgraph, initial_state, defaults]

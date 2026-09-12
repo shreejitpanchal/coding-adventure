@@ -1,0 +1,70 @@
+id: packaging_07
+title: "Resolving a 'module:function' Entry-Point String"
+language: python
+level: 387
+objective: "Fix code trying to call an entry-point string like 'json:dumps' directly, when it needs to be split into a module path and an attribute name, then resolved via importlib.import_module and getattr."
+explanation: |
+  A real console-script entry point, declared in `pyproject.toml`'s
+  `[project.scripts]`, is stored as a plain string in the
+  `module.path:function_name` shape -- `"mypackage.cli:main"`, say --
+  not a real, callable Python object. Nothing about that string is
+  directly callable; it has to be *resolved* first: split on `":"` to
+  separate the module path from the attribute name, import the module
+  with `importlib.import_module(module_path)`, then `getattr(module,
+  attr_name)` to actually retrieve the callable the string was
+  pointing at.
+
+  The fix implements exactly that resolution instead of trying to call
+  the raw string.
+example_code: |
+  # The trap: trying to call a raw string directly -- it isn't callable at all.
+  def resolve_trap(entry_point):
+      return entry_point
+
+  func_trap = resolve_trap("json:dumps")
+  try:
+      func_trap({"a": 1})
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- a plain string has no __call__ at all
+
+  # The fix: split, import the module, then getattr the actual function.
+  import importlib
+
+  def resolve(entry_point):
+      module_path, attr_name = entry_point.split(":")
+      module = importlib.import_module(module_path)
+      return getattr(module, attr_name)
+
+  func = resolve("json:dumps")
+  print(func({"a": 1}))
+  # '{"a": 1}' -- correctly resolved the real json.dumps function and called it
+starter_code: |
+  def resolve(entry_point):
+      return entry_point
+
+  func = resolve("json:dumps")
+  try:
+      print(func({"a": 1}))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `resolve` so it splits `entry_point` on `":"`, imports the module
+  with `importlib.import_module`, and returns `getattr(module,
+  attr_name)`, instead of returning the raw string. It should print
+  `{"a": 1}`, not `crashed`.
+expected_output: |
+  {"a": 1}
+hints:
+  - "import importlib, then: module_path, attr_name = entry_point.split(\":\"); module = importlib.import_module(module_path); return getattr(module, attr_name)."
+  - "An entry point is just a STRING describing where to find a callable -- resolving it means importing the module and looking up the attribute by name."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "importlib\\.import_module\\(module_path\\)"
+  - "getattr\\(module, attr_name\\)"
+concept_tags: [packaging, entry_points, importlib]

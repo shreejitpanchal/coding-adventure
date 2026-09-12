@@ -1,0 +1,58 @@
+id: ai_134
+title: "Mean Reciprocal Rank Rewards Finding the Answer Sooner, Not Just Eventually"
+language: ai
+level: 134
+objective: "Fix a Mean Reciprocal Rank (MRR) calculation that treats every rank position the same as long as the relevant document was found somewhere, when MRR is specifically meant to reward finding it at rank 1 much more than finding it at rank 5."
+explanation: |
+  Recall@K (this category's own lesson) only asks a yes/no question:
+  was the relevant document found anywhere in the top k? It doesn't
+  distinguish between finding it at rank 1 versus rank 5, even though a
+  user experiences those very differently -- scrolling past four wrong
+  answers before reaching the right one is a meaningfully worse
+  experience than getting it immediately. **Mean Reciprocal Rank**
+  captures that difference directly: each query's score is `1 / rank`
+  (rank 1 scores `1.0`, rank 2 scores `0.5`, rank 5 scores `0.2`),
+  averaged across all test queries -- explicitly rewarding an earlier
+  correct answer over a later one, not just crediting "found it
+  eventually" the same way Recall@K does.
+
+  The bug this exercise fixes credits every query with a flat `1.0`
+  whenever the relevant document was found at all, regardless of its
+  rank -- exactly Recall@K's binary logic, not MRR's rank-sensitive
+  one. The fix computes `1 / rank` for the relevant document's actual
+  position, correctly rewarding an earlier find more than a later one.
+example_code: |
+  # The trap: credits a flat 1.0 whenever the doc was found AT ALL --
+  # this is Recall@K's binary logic, not MRR's rank-sensitive scoring.
+  def mrr_trap(rank_of_relevant_doc):
+      return 1.0 if rank_of_relevant_doc is not None else 0.0
+
+  print(mrr_trap(rank_of_relevant_doc=4))   # 1.0 -- same credit as if it had been found at rank 1!
+
+  # The fix: score is 1/rank -- rewards an EARLIER find more than a later one.
+  def reciprocal_rank(rank_of_relevant_doc):
+      return 1 / rank_of_relevant_doc if rank_of_relevant_doc is not None else 0.0
+
+  print(reciprocal_rank(rank_of_relevant_doc=4))   # 0.25 -- correctly less credit than finding it at rank 1 (which would be 1.0)
+starter_code: |
+  def reciprocal_rank(rank_of_relevant_doc):
+      return 1.0 if rank_of_relevant_doc is not None else 0.0
+
+  print(reciprocal_rank(rank_of_relevant_doc=4))
+challenge: |
+  Fix `reciprocal_rank` so it returns `1 / rank_of_relevant_doc` when a
+  rank is given, instead of a flat `1.0` regardless of rank. It should
+  print `0.25`, not `1.0`.
+expected_output: |
+  0.25
+hints:
+  - "Change the true-case return value to: 1 / rank_of_relevant_doc."
+  - "Rank 4 gives 1/4 = 0.25 -- meaningfully less credit than rank 1 would give (1/1 = 1.0), reflecting that it took longer to find the right answer."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "1 / rank_of_relevant_doc"
+concept_tags: [rag, mean_reciprocal_rank, retrieval_evaluation]

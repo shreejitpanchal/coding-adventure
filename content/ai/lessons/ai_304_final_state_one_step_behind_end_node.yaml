@@ -1,0 +1,74 @@
+id: ai_304
+title: "The Graph's Final Result Must Reflect the End Node's Own Work, Not the Node Before It"
+language: ai
+level: 304
+objective: "Fix a graph runner that returns the previous node's state instead of the most recently completed one, so the final result is missing whatever the actual last node along the path contributed."
+explanation: |
+  A graph's final returned value should be whatever the last node to
+  actually run produced -- tracking the *previous* iteration's state
+  instead of the current one means the result is permanently one step
+  behind, silently missing the very last node's own contribution to the
+  final answer. Nothing about this crashes: the returned value looks
+  entirely plausible, it's just the wrong node's output.
+
+  The bug this exercise fixes returns `prev_state`, held from one
+  iteration earlier. The fix returns `state`, reflecting the most
+  recently completed node's own result.
+example_code: |
+  # The trap: keeps the PREVIOUS node's state as the "final" result,
+  # one step behind.
+  def run_graph_trap(nodes, edges, start, end):
+      current = start
+      state = None
+      while current != end:
+          prev_state = state
+          state = nodes[current](state)
+          current = edges[current]
+      return prev_state
+
+  nodes = {"a": lambda s: "a-done", "b": lambda s: "b-done"}
+  edges = {"a": "b", "b": "END"}
+  print(run_graph_trap(nodes, edges, "a", "END"))
+  # "a-done" -- one step behind, missing "b"'s own final contribution
+
+  # The fix: return the most recently completed node's own result.
+  def run_graph(nodes, edges, start, end):
+      current = start
+      state = None
+      while current != end:
+          state = nodes[current](state)
+          current = edges[current]
+      return state
+
+  print(run_graph(nodes, edges, "a", "END"))
+  # "b-done" -- correctly reflects the actual last node that ran
+starter_code: |
+  def run_graph(nodes, edges, start, end):
+      current = start
+      state = None
+      while current != end:
+          prev_state = state
+          state = nodes[current](state)
+          current = edges[current]
+      return prev_state
+
+  nodes = {"a": lambda s: "a-done", "b": lambda s: "b-done"}
+  edges = {"a": "b", "b": "END"}
+  print(run_graph(nodes, edges, "a", "END"))
+challenge: |
+  Fix `run_graph` so it returns `state` (the most recently completed
+  node's result) instead of `prev_state` (one iteration behind). It
+  should print `b-done`, not `a-done`.
+expected_output: |
+  b-done
+hints:
+  - "Change return prev_state to return state, and the now-unused prev_state assignment can be removed entirely."
+  - "\"a-done\" is what state looked like BEFORE node \"b\" ran -- \"b-done\" is what it looks like AFTER, which is what the final result should actually reflect."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 39
+difficulty: gotcha
+contains_patterns:
+  - "return state"
+concept_tags: [langgraph, graph_execution, final_result]

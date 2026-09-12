@@ -1,0 +1,84 @@
+id: core_refresher_49
+title: "@cached_property Computes a Value Once, Not on Every Access"
+language: python
+level: 162
+objective: "Fix a @property that recomputes an expensive value on every single access, when @functools.cached_property computes it once and caches the result for every subsequent access."
+explanation: |
+  A plain `@property` recomputes its body every single time it's
+  accessed -- fine for something cheap, but wasteful for something
+  genuinely expensive (summing a large dataset, a real computation
+  that shouldn't need to happen twice for the same object).
+  `functools.cached_property` behaves like a property on first access,
+  but replaces itself with the computed value directly on the
+  instance afterward, so every access after the first is a plain
+  attribute lookup with no recomputation at all.
+
+  The bug this exercise fixes uses a plain `@property`, recomputing on
+  every access. The fix uses `@cached_property`, computing once.
+example_code: |
+  # A plain @property -- recomputes on EVERY access.
+  calls_loop = {"n": 0}
+
+  class ReportLoop:
+      def __init__(self, data):
+          self.data = data
+      @property
+      def total(self):
+          calls_loop["n"] += 1
+          return sum(self.data)
+
+  r_loop = ReportLoop([1, 2, 3])
+  r_loop.total
+  r_loop.total
+  print(calls_loop["n"])
+  # 2 -- recomputed on every single access
+
+  # @cached_property computes ONCE, then caches the result.
+  from functools import cached_property
+
+  calls = {"n": 0}
+
+  class Report:
+      def __init__(self, data):
+          self.data = data
+      @cached_property
+      def total(self):
+          calls["n"] += 1
+          return sum(self.data)
+
+  r = Report([1, 2, 3])
+  r.total
+  r.total
+  print(calls["n"])
+  # 1 -- computed once, cached for every access after that
+starter_code: |
+  calls = {"n": 0}
+
+  class Report:
+      def __init__(self, data):
+          self.data = data
+      @property
+      def total(self):
+          calls["n"] += 1
+          return sum(self.data)
+
+  r = Report([1, 2, 3])
+  r.total
+  r.total
+  print(calls["n"])
+challenge: |
+  Fix `Report` so `total` uses `@cached_property` (imported from
+  `functools`) instead of `@property`. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "from functools import cached_property, then replace @property with @cached_property above total."
+  - "cached_property replaces itself with the computed value directly on the instance after the first access -- every access after that is a plain attribute lookup, no recomputation."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "@cached_property"
+concept_tags: [cached_property, functools]

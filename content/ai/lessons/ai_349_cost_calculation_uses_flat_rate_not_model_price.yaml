@@ -1,0 +1,55 @@
+id: ai_349
+title: "Cost Calculation Needs the Actual Model's Price, Not a Flat Rate for Everyone"
+language: ai
+level: 349
+objective: "Fix a cost-calculation function that multiplies token count by a flat rate of 1 regardless of which model was actually used, when different models genuinely have different per-token prices -- a flat rate silently misreports cost for every model except the one it happens to match."
+explanation: |
+  Different models charge genuinely different amounts per token, and a
+  cost calculation that ignores which model actually ran -- using the
+  same flat multiplier for a cheap model and an expensive one alike --
+  produces a number that has nothing to do with what was actually
+  spent. This isn't a rounding error; it's reporting the wrong figure
+  entirely for every model whose real price doesn't happen to match the
+  flat rate.
+
+  The bug this exercise fixes multiplies by a flat rate of `1`. The fix
+  looks up the actual price for the model that was used.
+example_code: |
+  # The trap: uses a FLAT rate of 1, ignoring the model-specific
+  # price entirely.
+  def calculate_cost_trap(model, num_tokens, price_per_model):
+      return num_tokens * 1
+
+  price_per_model = {"gpt-4": 3, "gpt-3.5": 1}
+  print(calculate_cost_trap("gpt-4", 100, price_per_model))
+  # 100 -- used a flat rate, ignoring gpt-4's actual (higher) price
+
+  # The fix: look up the actual price for the model that ran.
+  def calculate_cost(model, num_tokens, price_per_model):
+      return num_tokens * price_per_model[model]
+
+  print(calculate_cost("gpt-4", 100, price_per_model))
+  # 300 -- correctly reflects gpt-4's real per-token price
+starter_code: |
+  def calculate_cost(model, num_tokens, price_per_model):
+      return num_tokens * 1
+
+  price_per_model = {"gpt-4": 3, "gpt-3.5": 1}
+  print(calculate_cost("gpt-4", 100, price_per_model))
+challenge: |
+  Fix `calculate_cost` so it returns `num_tokens *
+  price_per_model[model]`, instead of `num_tokens * 1`. It should
+  print `300`, not `100`.
+expected_output: |
+  300
+hints:
+  - "Replace the flat multiplier 1 with price_per_model[model]."
+  - "gpt-4's price in this table is 3 -- the flat rate of 1 was silently underreporting its real cost by a factor of 3."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 39
+difficulty: warmup
+contains_patterns:
+  - "num_tokens \\* price_per_model\\[model\\]"
+concept_tags: [langsmith, cost_tracking, token_pricing]

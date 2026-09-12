@@ -1,0 +1,71 @@
+id: gotcha_gauntlet_08
+title: "The Sanitizer That Corrupted the Caller's Original List"
+language: python
+level: 253
+objective: "Fix a function that removes items from the list it's given directly, silently mutating the caller's own list, when it should operate on a copy and leave the original untouched."
+explanation: |
+  Passing a list into a function doesn't pass a copy -- it passes a
+  reference to the exact same list object the caller already has.
+  `items.remove(...)` inside the function mutates that shared object
+  directly, so the caller's own list changes too, even though nothing
+  about calling `sanitize(my_list)` visually suggests `my_list` itself
+  would be altered. This is especially dangerous for a function whose
+  name and purpose ("clean this up and give me the result") implies a
+  transformation, not an in-place side effect on the caller's data.
+
+  The fix is to operate on a fresh copy inside the function --
+  `items[:]` or `list(items)` at the top -- so the original list the
+  caller passed in is never touched, regardless of what the function
+  does internally.
+example_code: |
+  # The trap: mutates the CALLER's own list directly.
+  def sanitize_trap(items):
+      for item in list(items):
+          if item < 0:
+              items.remove(item)
+      return items
+
+  original_trap = [1, -2, 3, -4]
+  sanitize_trap(original_trap)
+  print(original_trap)
+  # [1, 3] -- WRONG, the caller's own list was silently mutated
+
+  # The fix: work on a fresh copy, leaving the original untouched.
+  def sanitize(items):
+      result = items[:]
+      for item in list(result):
+          if item < 0:
+              result.remove(item)
+      return result
+
+  original = [1, -2, 3, -4]
+  sanitize(original)
+  print(original)
+  # [1, -2, 3, -4] -- correctly untouched
+starter_code: |
+  def sanitize(items):
+      for item in list(items):
+          if item < 0:
+              items.remove(item)
+      return items
+
+  original = [1, -2, 3, -4]
+  sanitize(original)
+  print(original)
+challenge: |
+  Fix `sanitize` so it copies `items` into a new list (`result =
+  items[:]`) and removes from that copy instead of the original. It
+  should print `[1, -2, 3, -4]`, not `[1, 3]`.
+expected_output: |
+  [1, -2, 3, -4]
+hints:
+  - "result = items[:] at the top of sanitize, then remove from result instead of items, and return result."
+  - "A function parameter is a reference to the caller's exact same object -- mutating it in place always affects the caller too, unless the function explicitly copies first."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "result = items\\[:\\]"
+concept_tags: [aliasing, mutation, gotchas]

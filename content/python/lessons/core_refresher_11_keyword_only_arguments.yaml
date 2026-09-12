@@ -1,0 +1,60 @@
+id: core_refresher_11
+title: "A Bare * in a Signature Forces Later Arguments to Be Keyword-Only"
+language: python
+level: 124
+objective: "Add a bare '*' to a function signature so a parameter can no longer be passed positionally by accident."
+explanation: |
+  A lone `*` in a function signature (with nothing after the `*` but a
+  comma) doesn't collect anything itself -- it's a marker saying
+  "everything after this point must be passed by keyword." A parameter
+  like `timeout` that comes after it can no longer be supplied
+  positionally, even accidentally: `connect("host", 5)` would raise a
+  `TypeError` instead of silently accepting `5` as the timeout in
+  whatever position it happened to land in. For a parameter whose
+  *meaning* isn't obvious from a bare positional value (what does the
+  `5` in `connect("host", 5)` even mean, without reading the
+  signature?), this forces every caller to spell out `timeout=5`
+  explicitly.
+example_code: |
+  # No protection -- timeout can be passed positionally, whether or
+  # not that was actually intended.
+  def connect_loose(host, timeout=30):
+      return f"{host}:{timeout}"
+
+  print(connect_loose("myhost", 5))        # "myhost:5" -- worked positionally
+
+  # A bare * forces everything after it to be keyword-only.
+  def connect(host, *, timeout=30):
+      return f"{host}:{timeout}"
+
+  try:
+      connect("myhost", 5)
+  except TypeError:
+      print("blocked")
+  # "blocked" -- positional timeout is no longer accepted at all
+
+  print(connect("myhost", timeout=5))      # "myhost:5" -- keyword call still works fine
+starter_code: |
+  def connect(host, timeout=30):
+      return f"{host}:{timeout}"
+
+  try:
+      print(connect("myhost", 5))
+  except TypeError:
+      print("blocked")
+challenge: |
+  Fix `connect` so it has a bare `*` before `timeout`, forcing it to be
+  keyword-only. It should print `blocked`, not `myhost:5`.
+expected_output: |
+  blocked
+hints:
+  - "Add a bare * as its own item in the parameter list: def connect(host, *, timeout=30):."
+  - "Anything after a bare * in the signature can only be passed by keyword -- passing it positionally now raises TypeError."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "def connect\\(host, \\*, timeout=30\\):"
+concept_tags: [keyword_only_arguments, function_signatures]

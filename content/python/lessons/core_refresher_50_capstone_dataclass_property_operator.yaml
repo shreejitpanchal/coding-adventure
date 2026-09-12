@@ -1,0 +1,76 @@
+id: core_refresher_50
+title: "Capstone: A Dataclass, a Property, and an Overloaded Operator, Together"
+language: python
+level: 163
+objective: "Replace a fully hand-written value class with a @dataclass(frozen=True) that also uses @property for a derived value and __add__ for natural combination, tying together three separate lessons from across this category into one realistic value object."
+explanation: |
+  A small immutable value object -- money, a coordinate, a duration --
+  is exactly where this category's individual lessons naturally come
+  together: `@dataclass(frozen=True)` eliminates the hand-written
+  `__init__` while making the object immutable and hashable, `@property`
+  exposes a derived value (`dollars`, computed from the stored `cents`)
+  without a separate method call, and `__add__` lets two instances
+  combine with the ordinary `+` operator instead of a specially-named
+  method. None of these three pieces depends on the others -- each
+  works perfectly well alone, the way this category has taught them
+  separately -- but a realistic value class typically wants all three
+  at once.
+
+  The bug this exercise fixes hand-writes `__init__`, a `get_dollars()`
+  method, and an `add()` method. The fix replaces all three with a
+  `@dataclass(frozen=True)`, a `@property`, and `__add__`.
+example_code: |
+  # Fully hand-written: __init__, a get_dollars() method, an add() method.
+  class MoneyLoop:
+      def __init__(self, cents):
+          self.cents = cents
+      def get_dollars(self):
+          return self.cents / 100
+      def add(self, other):
+          return MoneyLoop(self.cents + other.cents)
+
+  m_loop = MoneyLoop(150).add(MoneyLoop(250))
+  print(m_loop.get_dollars())              # 4.0
+
+  # @dataclass + @property + __add__, combining three separate lessons.
+  from dataclasses import dataclass
+
+  @dataclass(frozen=True)
+  class Money:
+      cents: int
+      @property
+      def dollars(self):
+          return self.cents / 100
+      def __add__(self, other):
+          return Money(self.cents + other.cents)
+
+  m = Money(150) + Money(250)
+  print(m.dollars)                         # 4.0
+starter_code: |
+  class Money:
+      def __init__(self, cents):
+          self.cents = cents
+      def get_dollars(self):
+          return self.cents / 100
+      def add(self, other):
+          return Money(self.cents + other.cents)
+
+  m = Money(150).add(Money(250))
+  print(m.get_dollars())
+challenge: |
+  Rewrite `Money` as a `@dataclass(frozen=True)` with `cents: int`, a
+  `dollars` `@property`, and an `__add__` method, then combine two
+  instances with `+`. Keep the same output: 4.0.
+expected_output: |
+  4.0
+hints:
+  - "@dataclass(frozen=True) above class Money: cents: int -- no __init__ needed at all."
+  - "@property above def dollars(self): return self.cents / 100, and def __add__(self, other): return Money(self.cents + other.cents)."
+xp_reward: 20
+achievement: core_refresher_master
+category: core_refresher
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "def __add__\\(self, other\\):"
+concept_tags: [dataclasses, property, operator_overloading, capstone]

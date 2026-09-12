@@ -1,0 +1,58 @@
+id: ai_150
+title: "One Slow Tool Call Shouldn't Be Able to Hang the Whole Agent Run"
+language: ai
+level: 150
+objective: "Fix a tool-call wrapper with no timeout at all, letting one slow or hung tool block the entire agent run indefinitely -- the exact 'runaway loop with no bound' risk this app flags for plain code, applied here to a single tool invocation."
+explanation: |
+  A tool call that hangs -- a network call to a dependency that never
+  responds, an infinite loop inside a buggy tool implementation -- can
+  block an entire agent run indefinitely if nothing bounds how long any
+  single call is allowed to take. This is the same "no bound at all"
+  risk this app's execution engines guard against for submitted code
+  generally (a timeout that kills a runaway process), applied here
+  specifically to one tool invocation inside an otherwise-healthy agent
+  run: the rest of the agent's logic might be working fine, but it
+  never gets a chance to continue if one tool call never returns.
+
+  This exercise simulates a per-tool timeout check without needing real
+  threads: given a tool's reported elapsed time and a timeout limit, the
+  bug checks nothing at all and always "succeeds." The fix checks the
+  elapsed time against the timeout and reports a timeout explicitly
+  once it's exceeded, instead of assuming every call completes fine.
+example_code: |
+  # The trap: no timeout check at all -- a call reporting it took far
+  # longer than any reasonable limit is still treated as a success.
+  def call_with_timeout_trap(elapsed_seconds, timeout_seconds):
+      return "SUCCESS"
+
+  print(call_with_timeout_trap(elapsed_seconds=45, timeout_seconds=10))   # "SUCCESS" -- even though this took 4.5x the limit!
+
+  # The fix: check elapsed time against the timeout explicitly.
+  def call_with_timeout(elapsed_seconds, timeout_seconds):
+      if elapsed_seconds > timeout_seconds:
+          return "TIMEOUT"
+      return "SUCCESS"
+
+  print(call_with_timeout(elapsed_seconds=45, timeout_seconds=10))   # "TIMEOUT" -- correctly flagged as exceeding the limit
+starter_code: |
+  def call_with_timeout(elapsed_seconds, timeout_seconds):
+      return "SUCCESS"
+
+  print(call_with_timeout(elapsed_seconds=45, timeout_seconds=10))
+challenge: |
+  Fix `call_with_timeout` so it returns `"TIMEOUT"` when
+  `elapsed_seconds > timeout_seconds`, instead of always returning
+  `"SUCCESS"` unconditionally. It should print `TIMEOUT`, not `SUCCESS`.
+expected_output: |
+  TIMEOUT
+hints:
+  - "Add a check: if elapsed_seconds > timeout_seconds: return \"TIMEOUT\", before the SUCCESS fallback."
+  - "45 seconds elapsed clearly exceeds the 10-second timeout limit."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 20
+difficulty: warmup
+contains_patterns:
+  - "elapsed_seconds > timeout_seconds"
+concept_tags: [agentic_frameworks, timeout, tool_calling]

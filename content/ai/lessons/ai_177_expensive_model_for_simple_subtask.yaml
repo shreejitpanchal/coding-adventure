@@ -1,0 +1,59 @@
+id: ai_177
+title: "Not Every Sub-Task Needs the Most Expensive Model Available"
+language: ai
+level: 177
+objective: "Fix a model-selection function that always routes every sub-task to the most expensive, most capable model, when a genuinely simple sub-task (classifying a short label, extracting a date) can be handled by a much cheaper model just as reliably."
+explanation: |
+  Not every step in a multi-step agent workflow needs the same level of
+  model capability -- classifying a support ticket into one of five
+  categories is a fundamentally simpler task than synthesizing a
+  nuanced final response, and routing both to the most expensive
+  available model wastes money on the easy step for no accuracy benefit
+  it actually needs. Matching model choice to task complexity (a
+  cheaper, faster model for simple, well-defined sub-tasks; the more
+  capable model reserved for genuinely complex reasoning) is a direct,
+  practical way to control the running cost this category's own
+  budget-tracking lesson cares about.
+
+  The bug this exercise fixes always selects the most expensive model
+  regardless of task complexity. The fix checks the task's declared
+  complexity first, routing simple tasks to a cheaper model and
+  reserving the expensive one for genuinely complex tasks.
+example_code: |
+  # The trap: always uses the MOST EXPENSIVE model, regardless of how
+  # simple the actual task is.
+  def select_model_trap(task_complexity):
+      return "expensive_model"
+
+  print(select_model_trap("simple"))   # "expensive_model" -- wasted cost on a task that didn't need it at all
+
+  # The fix: route by the task's ACTUAL declared complexity.
+  def select_model(task_complexity):
+      if task_complexity == "simple":
+          return "cheap_model"
+      return "expensive_model"
+
+  print(select_model("simple"))   # "cheap_model" -- correctly matched to what the task actually needs
+starter_code: |
+  def select_model(task_complexity):
+      return "expensive_model"
+
+  print(select_model("simple"))
+challenge: |
+  Fix `select_model` so it returns `"cheap_model"` when
+  `task_complexity` is `"simple"`, and `"expensive_model"` otherwise,
+  instead of always returning `"expensive_model"`. It should print
+  `cheap_model`, not `expensive_model`.
+expected_output: |
+  cheap_model
+hints:
+  - "Add: if task_complexity == \"simple\": return \"cheap_model\", before the expensive_model fallback."
+  - "Only genuinely complex tasks should fall through to the expensive_model branch."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 47
+difficulty: warmup
+contains_patterns:
+  - "cheap_model"
+concept_tags: [agentic_frameworks, cost_optimization, model_selection]

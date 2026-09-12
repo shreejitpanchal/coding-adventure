@@ -1,0 +1,74 @@
+id: concurrency_async_38
+title: "An Unnamed Task Shows Up as 'Task-7' in Every Debug Log -- Name It Instead"
+language: python
+level: 328
+objective: "Fix code creating several asyncio Tasks with no name at all, making them indistinguishable in logs and debugging tools (shown only as generic 'Task-N' identifiers), when passing name= to create_task gives each one a genuinely meaningful, inspectable identity."
+explanation: |
+  `asyncio.create_task(coro)` auto-assigns a generic name like
+  `Task-7` if none is given -- harmless for a tiny script, but a real
+  debugging obstacle once a program has more than a couple of
+  concurrent tasks running: a crash log or `asyncio.all_tasks()` dump
+  full of indistinguishable `Task-N` identifiers gives no clue which
+  logical piece of work each one actually represents.
+  `asyncio.create_task(coro, name="...")` attaches a real, meaningful
+  name, retrievable later with `task.get_name()`, that shows up in
+  exactly those debugging contexts instead of a meaningless
+  auto-generated counter.
+
+  The fix passes an explicit `name=` argument to `create_task`.
+example_code: |
+  # The trap: no name at all -- shows up as a generic Task-N everywhere.
+  import asyncio
+
+  async def fetch_user_trap():
+      await asyncio.sleep(0)
+      return "ada"
+
+  async def main_trap():
+      task = asyncio.create_task(fetch_user_trap())
+      await task
+      print(task.get_name().startswith("Task-"))
+      # True -- WRONG if a meaningful name was expected here instead
+
+  # The fix: name= gives the task a real, meaningful identity.
+  async def fetch_user():
+      await asyncio.sleep(0)
+      return "ada"
+
+  async def main():
+      task = asyncio.create_task(fetch_user(), name="fetch-user")
+      await task
+      print(task.get_name())
+      # "fetch-user" -- correctly identifiable in logs and debugging tools
+  asyncio.run(main())
+starter_code: |
+  import asyncio
+
+  async def fetch_user():
+      await asyncio.sleep(0)
+      return "ada"
+
+  async def main():
+      task = asyncio.create_task(fetch_user())
+      await task
+      print(task.get_name())
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it creates the task with
+  `asyncio.create_task(fetch_user(), name="fetch-user")`, instead of
+  no name at all. It should print `fetch-user`, not a generic
+  `Task-N`.
+expected_output: |
+  fetch-user
+hints:
+  - "asyncio.create_task(fetch_user(), name=\"fetch-user\")."
+  - "Without an explicit name, a Task gets an auto-generated Task-N identifier -- useless for telling tasks apart in a debug log or crash dump."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 38
+difficulty: warmup
+contains_patterns:
+  - "name=\"fetch-user\""
+concept_tags: [asyncio, tasks, debugging, concurrency]

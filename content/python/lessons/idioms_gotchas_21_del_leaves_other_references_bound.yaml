@@ -1,0 +1,73 @@
+id: idioms_gotchas_21
+title: "del Removes a Name, Not the Object -- Other References Stay Alive"
+language: python
+level: 90
+objective: "Fix code that assumes 'del' on one variable destroys the underlying object entirely, when 'del' only removes that one binding -- any other name still pointing at the same object keeps it alive and fully usable."
+explanation: |
+  `del x` removes the name `x` from its scope -- it doesn't reach into
+  the object `x` was pointing at and destroy it. If some other variable
+  `y` was bound to that exact same object, `y` is completely unaffected:
+  the object is still there, still fully usable, and `del` only ever
+  severed the one specific name-to-object link it was actually applied
+  to. Python only garbage-collects an object once *every* reference to
+  it is gone, not the instant any single one of them is deleted.
+
+  The bug this exercise fixes assumes `del original` also invalidates
+  `alias`, which still points at the same list. The fix demonstrates
+  (and checks) that `alias` remains fully valid.
+example_code: |
+  # The trap: assumes del also invalidates OTHER names pointing at the
+  # same object -- it doesn't, it only removes the one name given to it.
+  def delete_and_check_trap():
+      original = [1, 2, 3]
+      alias = original
+      del original
+      try:
+          len(alias)
+          return "still_valid"
+      except NameError:
+          return "invalidated"
+
+  print(delete_and_check_trap())
+  # "still_valid" -- alias is completely unaffected by deleting original
+
+  # This IS the correct, expected behavior -- del only removes the one
+  # name it's given, nothing more.
+  def delete_and_check():
+      original = [1, 2, 3]
+      alias = original
+      del original
+      return len(alias)
+
+  print(delete_and_check())
+  # 3 -- alias still points at the same, fully intact list
+starter_code: |
+  def delete_and_check():
+      original = [1, 2, 3]
+      alias = original
+      del original
+      del alias
+      return len(alias)
+
+  try:
+      print(delete_and_check())
+  except NameError:
+      print("unhandled")
+challenge: |
+  Fix `delete_and_check` so it doesn't also `del alias` -- `alias`
+  should remain a perfectly valid reference to the original list even
+  after `original` itself has been deleted. It should print `3`, not
+  `unhandled`.
+expected_output: |
+  3
+hints:
+  - "Remove the del alias line entirely -- only original needs to be deleted."
+  - "del only removes the ONE name it's given -- alias still points at the exact same list object, completely unaffected."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 21
+difficulty: warmup
+contains_patterns:
+  - "return len\\(alias\\)"
+concept_tags: [idioms, del_statement, references]

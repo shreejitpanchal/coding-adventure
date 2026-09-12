@@ -1,0 +1,73 @@
+id: core_refresher_30
+title: "yield from Delegates to a Sub-Generator Without a Manual Loop"
+language: python
+level: 143
+objective: "Replace a manual loop that re-yields every value from a sub-generator with 'yield from', which delegates to it directly."
+explanation: |
+  Manually looping over a sub-generator just to re-yield each of its
+  values one at a time (`for x in inner(): yield x`... or, outside a
+  generator, appending each one to a result list) works, but it's
+  exactly what `yield from` does in a single statement: `yield from
+  inner()` delegates directly to the sub-generator, yielding everything
+  it produces as if the outer generator had yielded those values
+  itself, with no manual re-iteration needed. It also works directly
+  against any iterable, not just another generator -- `yield from [3,
+  4]` delegates to a plain list just as naturally.
+
+  The bug this exercise fixes manually collects values from `inner()`
+  and a plain list into a result list. The fix uses `yield from` for
+  both.
+example_code: |
+  # Manually re-collects values from a sub-generator and a list.
+  def inner():
+      yield 1
+      yield 2
+
+  def outer_loop():
+      result = []
+      for x in inner():
+          result.append(x)
+      for x in [3, 4]:
+          result.append(x)
+      return result
+
+  print(outer_loop())                      # [1, 2, 3, 4]
+
+  # yield from delegates directly, to both a generator and a list.
+  def outer():
+      yield from inner()
+      yield from [3, 4]
+
+  print(list(outer()))                     # [1, 2, 3, 4]
+starter_code: |
+  def inner():
+      yield 1
+      yield 2
+
+  def outer():
+      result = []
+      for x in inner():
+          result.append(x)
+      for x in [3, 4]:
+          result.append(x)
+      return result
+
+  print(outer())
+challenge: |
+  Rewrite `outer` as a generator function using `yield from inner()`
+  and `yield from [3, 4]`, instead of manually collecting values into
+  a list. Keep the same output when wrapped in `list(...)`:
+  [1, 2, 3, 4].
+expected_output: |
+  [1, 2, 3, 4]
+hints:
+  - "Replace the whole body with: yield from inner(); yield from [3, 4]. Call it via list(outer())."
+  - "yield from works against any iterable, not just another generator -- delegating to a plain list works exactly the same way."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 30
+difficulty: core
+contains_patterns:
+  - "yield from inner\\(\\)"
+concept_tags: [generators, yield_from]

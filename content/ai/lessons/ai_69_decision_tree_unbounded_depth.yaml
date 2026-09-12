@@ -1,0 +1,63 @@
+id: ai_69
+title: "An Unbounded Decision Tree Memorizes Training Data"
+language: ai
+level: 69
+objective: "Fix a decision tree's stopping condition so it also checks depth against a max_depth limit, instead of only stopping once a node is perfectly pure -- which lets the tree grow deep enough to isolate individual noisy training examples."
+explanation: |
+  A decision tree can, in principle, keep splitting until every leaf
+  contains examples of only one class -- perfectly memorizing the
+  training set. With no limit on how deep that's allowed to go, the
+  tree happily grows a branch specific enough to isolate individual
+  noisy or unusual training examples, which is exactly what
+  overfitting looks like structurally: a model with enough capacity to
+  memorize rather than generalize. Capping the tree's `max_depth` is
+  the simplest, most direct way to limit that capacity, forcing the
+  tree to stop splitting once it's captured the broad pattern rather
+  than continuing down to every last idiosyncratic detail.
+
+  The bug this exercise fixes is a stopping-condition check that only
+  looks at whether a node is already pure (or down to one row) -- it
+  never considers how deep the recursion has already gone, so a
+  genuinely mixed node at depth 5 would be told "keep splitting"
+  regardless of any depth limit passed in. The fix adds the missing
+  `depth >= max_depth` check, so the tree correctly stops once it hits
+  the depth cap, even if the node still contains a mix of classes.
+example_code: |
+  # The trap: only checks purity -- completely ignores depth and max_depth.
+  def should_stop_trap(rows, depth, max_depth):
+      classes = {r["label"] for r in rows}
+      return len(classes) <= 1 or len(rows) <= 1
+
+  mixed_rows = [{"label": 0}, {"label": 1}, {"label": 0}, {"label": 1}]
+  print(should_stop_trap(mixed_rows, depth=5, max_depth=3))   # False -- WRONG, depth 5 already exceeds max_depth 3
+
+  # The fix: also stop once depth reaches max_depth, pure or not.
+  def should_stop(rows, depth, max_depth):
+      classes = {r["label"] for r in rows}
+      return len(classes) <= 1 or len(rows) <= 1 or depth >= max_depth
+
+  print(should_stop(mixed_rows, depth=5, max_depth=3))   # True -- correctly stops at the depth cap
+starter_code: |
+  def should_stop(rows, depth, max_depth):
+      classes = {r["label"] for r in rows}
+      return len(classes) <= 1 or len(rows) <= 1
+
+  mixed_rows = [{"label": 0}, {"label": 1}, {"label": 0}, {"label": 1}]
+  print(should_stop(mixed_rows, depth=5, max_depth=3))
+challenge: |
+  Fix `should_stop` so it also returns `True` once `depth >= max_depth`,
+  in addition to the existing purity check. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Add `or depth >= max_depth` to the returned condition."
+  - "depth=5 is already past max_depth=3, so the fixed function should stop regardless of how mixed the node's classes still are."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 29
+difficulty: gotcha
+contains_patterns:
+  - "depth >= max_depth"
+concept_tags: [ml_fundamentals, decision_trees, overfitting]

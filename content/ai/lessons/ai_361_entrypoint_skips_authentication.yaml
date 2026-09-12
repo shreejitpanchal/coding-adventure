@@ -1,0 +1,63 @@
+id: ai_361
+title: "An Entrypoint Must Authenticate a Request Before Ever Acting On It"
+language: ai
+level: 361
+objective: "Fix a request handler that translates and processes a payload regardless of whether it was actually authenticated, when every entrypoint is responsible for verifying the caller's identity before anything downstream ever sees the request."
+explanation: |
+  Entrypoints aren't just format translators -- they're also where
+  authentication and authorization have to happen, since it's the one
+  place that genuinely knows which transport (and which caller) a
+  request actually came from. A handler that translates and processes
+  every payload regardless of an `is_authenticated` flag treats an
+  unverified, potentially forged request exactly the same as a
+  legitimate one, handing it straight to the rest of the mesh with no
+  identity check ever having occurred.
+
+  The bug this exercise fixes processes the request unconditionally.
+  The fix rejects it immediately when `is_authenticated` is false.
+example_code: |
+  # The trap: processes ANY request, regardless of whether it was
+  # actually authenticated.
+  def handle_request_trap(raw_payload, is_authenticated):
+      return {"text": raw_payload["message"]}
+
+  print(handle_request_trap({"message": "delete all data"}, is_authenticated=False))
+  # {'text': 'delete all data'} -- processed an unauthenticated request
+
+  # The fix: reject the request immediately if it's not authenticated.
+  def handle_request(raw_payload, is_authenticated):
+      if not is_authenticated:
+          raise PermissionError("unauthenticated request rejected")
+      return {"text": raw_payload["message"]}
+
+  try:
+      handle_request({"message": "delete all data"}, is_authenticated=False)
+  except PermissionError as e:
+      print(str(e))
+  # "unauthenticated request rejected" -- correctly refused
+starter_code: |
+  def handle_request(raw_payload, is_authenticated):
+      return {"text": raw_payload["message"]}
+
+  try:
+      print(handle_request({"message": "delete all data"}, is_authenticated=False))
+  except PermissionError as e:
+      print(str(e))
+challenge: |
+  Fix `handle_request` so it raises `PermissionError("unauthenticated
+  request rejected")` when `is_authenticated` is `False`, instead of
+  processing the request unconditionally. It should print
+  `unauthenticated request rejected`, not the processed payload.
+expected_output: |
+  unauthenticated request rejected
+hints:
+  - "Add: if not is_authenticated: raise PermissionError(\"unauthenticated request rejected\"), as the first line of the function."
+  - "Authentication has to happen at the entrypoint -- it's the one place that actually knows which caller a request came from."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 6
+difficulty: warmup
+contains_patterns:
+  - "raise PermissionError"
+concept_tags: [solace_agent_mesh, entrypoint, authentication]

@@ -1,0 +1,55 @@
+id: ai_332
+title: "Production Tracing at a Sample Rate Should Actually Skip Most Runs"
+language: ai
+level: 332
+objective: "Fix a sampling check that always returns True regardless of the configured sample rate, when tracing only a fraction of production traffic is precisely how tracing stays affordable at high volume -- tracing everything defeats the entire reason a sample rate exists."
+explanation: |
+  Tracing every single field of every single request at high production
+  volume gets expensive fast -- in storage, and often in literal per-
+  trace cost from the tracing provider. Sampling exists so a
+  representative fraction of traffic still gets full visibility without
+  paying to trace all of it. A sampling check that always says "yes,
+  trace this one" regardless of the configured rate provides zero cost
+  control: every run gets fully traced exactly as if sampling had never
+  been configured at all.
+
+  The bug this exercise fixes always returns `True`. The fix uses a
+  deterministic interval derived from `sample_rate` to trace only every
+  Nth run.
+example_code: |
+  # The trap: ALWAYS traces, ignoring sample_rate entirely.
+  def should_trace_trap(run_index, sample_rate):
+      return True
+
+  print(sum(should_trace_trap(i, sample_rate=0.25) for i in range(8)))
+  # 8 -- traced every single run despite a 25% sample rate
+
+  # The fix: trace only every Nth run, based on the configured rate.
+  def should_trace(run_index, sample_rate):
+      interval = round(1 / sample_rate)
+      return run_index % interval == 0
+
+  print(sum(should_trace(i, sample_rate=0.25) for i in range(8)))
+  # 2 -- correctly traced only every 4th run (indices 0 and 4)
+starter_code: |
+  def should_trace(run_index, sample_rate):
+      return True
+
+  print(sum(should_trace(i, sample_rate=0.25) for i in range(8)))
+challenge: |
+  Fix `should_trace` so it computes `interval = round(1 /
+  sample_rate)` and returns `run_index % interval == 0`, instead of
+  always returning `True`. It should print `2`, not `8`.
+expected_output: |
+  2
+hints:
+  - "interval = round(1 / sample_rate), then return run_index % interval == 0."
+  - "With sample_rate=0.25, interval is 4 -- only every 4th run index (0, 4) should be traced, out of the 8 checked here."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 22
+difficulty: core
+contains_patterns:
+  - "run_index % interval == 0"
+concept_tags: [langsmith, sampling, production_tracing]

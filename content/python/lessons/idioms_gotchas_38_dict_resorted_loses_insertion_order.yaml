@@ -1,0 +1,59 @@
+id: idioms_gotchas_38
+title: "Python 3.7+ Dicts Already Preserve Insertion Order -- No Need to Re-Sort"
+language: python
+level: 107
+objective: "Fix a function that forcibly re-sorts a dict's keys alphabetically, when the dict's actual insertion order was meaningful (a sequence of setup steps) and Python 3.7+ dicts already preserve that order reliably on their own."
+explanation: |
+  Dict ordering was officially guaranteed as part of the language
+  starting with Python 3.7 -- a dict remembers the order its keys were
+  first inserted in, and iterating it reflects that order faithfully.
+  Code written under the old assumption that dict order was arbitrary
+  sometimes "defensively" re-sorts keys before using them, but that
+  defensiveness actively destroys real, meaningful information the
+  moment the insertion order itself carried intent -- a sequence of
+  setup steps meant to run in a specific order, say, gets silently
+  reordered alphabetically instead.
+
+  The bug this exercise fixes rebuilds the dict with `sorted(config)`,
+  discarding the meaningful insertion order. The fix just returns a
+  copy of the dict as-is.
+example_code: |
+  # The trap: forcibly re-sorts alphabetically, discarding the
+  # meaningful insertion order the caller actually set up.
+  def format_config_trap(config):
+      return {k: config[k] for k in sorted(config)}
+
+  config = {"z_last_step": "cleanup", "a_first_step": "init"}
+  print(list(format_config_trap(config).keys())[0])
+  # "a_first_step" -- WRONG, this was supposed to run LAST, but alphabetical sorting put it first
+
+  # The fix: Python 3.7+ dicts already preserve insertion order --
+  # no need to resort at all.
+  def format_config(config):
+      return dict(config)
+
+  print(list(format_config(config).keys())[0])
+  # "z_last_step" -- correctly preserves the intended step order
+starter_code: |
+  def format_config(config):
+      return {k: config[k] for k in sorted(config)}
+
+  config = {"z_last_step": "cleanup", "a_first_step": "init"}
+  print(list(format_config(config).keys())[0])
+challenge: |
+  Fix `format_config` so it returns `dict(config)` directly, instead of
+  forcibly re-sorting the keys alphabetically. It should print
+  `z_last_step`, not `a_first_step`.
+expected_output: |
+  z_last_step
+hints:
+  - "Replace {k: config[k] for k in sorted(config)} with dict(config)."
+  - "Dict insertion order has been a language guarantee since Python 3.7 -- \"defensively\" re-sorting actively destroys real information when that order was meaningful."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 38
+difficulty: warmup
+contains_patterns:
+  - "return dict\\(config\\)"
+concept_tags: [idioms, dict_ordering, insertion_order]

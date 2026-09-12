@@ -1,0 +1,58 @@
+id: ai_54
+title: "Underfitting: Both Scores Are Low, Not Just the Validation Score"
+language: ai
+level: 54
+objective: "Fix a diagnostic that flags underfitting from a low validation score alone, when underfitting specifically means the TRAINING score is also low -- a low validation score with a high training score is overfitting, not underfitting."
+explanation: |
+  **Underfitting** means the model is too simple to capture the
+  underlying pattern at all -- it performs poorly even on the data it
+  was trained on, not just on new data. A low validation score by
+  itself doesn't distinguish between two very different problems: a
+  model that's also doing poorly on training data (genuinely
+  underfitting -- it lacks the capacity to learn the pattern) versus a
+  model doing great on training data but poorly on validation data
+  (overfitting -- it learned the training data's noise instead of the
+  real pattern). Checking validation score alone conflates these two
+  opposite diagnoses.
+
+  The bug this exercise fixes flags underfitting purely from a low
+  validation score, misdiagnosing a model with train=0.95/val=0.55 (a
+  textbook overfitting case) as "underfitting." The fix additionally
+  requires the *training* score to also be low, correctly reserving the
+  underfitting label for the case where the model genuinely fails to
+  learn the pattern even on data it has already seen.
+example_code: |
+  # The trap: flags underfitting from a low VALIDATION score alone.
+  def is_underfitting_trap(train_acc, val_acc, low_threshold=0.6):
+      return val_acc < low_threshold   # bug: ignores train_acc entirely
+
+  print(is_underfitting_trap(0.95, 0.55))   # True -- WRONG, this is OVERFITTING, not underfitting
+
+  # The fix: underfitting requires the TRAINING score to be low too.
+  def is_underfitting(train_acc, val_acc, low_threshold=0.6):
+      return train_acc < low_threshold and val_acc < low_threshold
+
+  print(is_underfitting(0.95, 0.55))   # False -- correctly rejected; train_acc is high, so this is overfitting
+  print(is_underfitting(0.55, 0.52))   # True -- BOTH scores are low; genuine underfitting
+starter_code: |
+  def is_underfitting(train_acc, val_acc, low_threshold=0.6):
+      return val_acc < low_threshold
+
+  print(is_underfitting(0.95, 0.55))
+challenge: |
+  Fix `is_underfitting` so it requires BOTH `train_acc` and `val_acc` to
+  be below `low_threshold`, instead of checking `val_acc` alone. It
+  should print `False` for `is_underfitting(0.95, 0.55)`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change the check to: return train_acc < low_threshold and val_acc < low_threshold."
+  - "train_acc=0.95 is NOT below the 0.6 threshold, so the 'and' condition correctly makes the whole expression False -- this is overfitting, not underfitting."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "train_acc < low_threshold and val_acc < low_threshold"
+concept_tags: [ml_fundamentals, underfitting, model_evaluation]

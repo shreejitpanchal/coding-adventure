@@ -1,0 +1,61 @@
+id: functional_programming_07
+title: "A Function That Builds and Returns Another Function"
+language: python
+level: 342
+objective: "Write a make_multiplier(factor) function that returns a NEW function pre-configured with that factor, instead of writing a separate hardcoded function for every multiplier needed."
+explanation: |
+  Since functions are first-class values, a function can build and
+  return a brand-new function tailored to whatever arguments it was
+  called with -- a "function factory." `make_multiplier(3)` returns a
+  function that multiplies by 3 specifically, `make_multiplier(10)`
+  returns a completely different function that multiplies by 10 --
+  each one is a genuine closure remembering its own `factor` value,
+  rather than a single hardcoded function only ever able to multiply
+  by one fixed number.
+
+  This is the same underlying idea `functools.partial` provides
+  (pre-filling an argument), just expressed by hand with a nested
+  function instead of `partial` -- worth understanding both ways,
+  since a hand-written factory can do things `partial` alone can't,
+  like validating the factor or computing derived state at creation
+  time.
+example_code: |
+  # Without a factory: a separate hardcoded function per multiplier.
+  def triple(x):
+      return x * 3
+
+  print(triple(4))                    # 12
+
+  # The factory: builds a NEW function, remembering its own factor.
+  def make_multiplier(factor):
+      def multiplier(x):
+          return x * factor
+      return multiplier
+
+  double = make_multiplier(2)
+  triple_factory = make_multiplier(3)
+  print(double(4))                    # 8
+  print(triple_factory(4))            # 12 -- independent from double, own factor
+starter_code: |
+  def triple(x):
+      return x * 3
+
+  print(triple(4))
+challenge: |
+  Write `make_multiplier(factor)`, returning a new function that
+  multiplies its argument by `factor`. Use it to build `triple_factory
+  = make_multiplier(3)` and call `triple_factory(4)` instead of the
+  hardcoded `triple`. Keep the same output: 12.
+expected_output: |
+  12
+hints:
+  - "def make_multiplier(factor): def multiplier(x): return x * factor; return multiplier."
+  - "triple_factory = make_multiplier(3), then print(triple_factory(4))."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "def make_multiplier\\(factor\\):"
+concept_tags: [functional_programming, closures, higher_order_functions]

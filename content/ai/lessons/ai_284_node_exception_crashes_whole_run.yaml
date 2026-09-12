@@ -1,0 +1,67 @@
+id: ai_284
+title: "A Failing Node Should Route to an Error Node, Not Crash the Whole Graph"
+language: ai
+level: 284
+objective: "Fix a node runner with no exception handling at all, when a node's failure should be caught and routed to a dedicated error-handling node instead of taking down the entire graph run."
+explanation: |
+  A single node failing -- a downstream API erroring out, a validation
+  check throwing -- shouldn't necessarily mean the whole graph run is a
+  total loss. Catching the failure at the runner level and routing to a
+  dedicated error node lets the graph respond deliberately (log the
+  failure, notify someone, attempt a documented recovery path) instead
+  of the entire run just crashing with whatever raw exception the
+  failing node happened to raise.
+
+  The bug this exercise fixes calls `node_fn(state)` with no exception
+  handling at all. The fix catches the failure and routes to an error
+  node instead.
+example_code: |
+  # The trap: no exception handling at all -- a failing node crashes
+  # the ENTIRE graph run.
+  def run_safely_trap(node_fn, state):
+      return node_fn(state)
+
+  def risky_node(state):
+      raise RuntimeError("node failed")
+
+  # run_safely_trap(risky_node, {})  # RuntimeError -- takes the whole run down
+
+  # The fix: catch the failure, route to a dedicated error node instead.
+  def run_safely(node_fn, state):
+      try:
+          return node_fn(state)
+      except RuntimeError:
+          return {"routed_to": "error_node"}
+
+  print(run_safely(risky_node, {})["routed_to"])
+  # "error_node" -- correctly caught and routed, instead of crashing
+starter_code: |
+  def risky_node(state):
+      raise RuntimeError("node failed")
+
+  def run_safely(node_fn, state):
+      return node_fn(state)
+
+  try:
+      result = run_safely(risky_node, {})
+      print(result["routed_to"])
+  except RuntimeError:
+      print("crashed")
+challenge: |
+  Fix `run_safely` so it wraps `node_fn(state)` in a
+  `try/except RuntimeError`, returning `{"routed_to": "error_node"}`
+  on failure, instead of letting the exception propagate unhandled. It
+  should print `error_node`, not `crashed`.
+expected_output: |
+  error_node
+hints:
+  - "Wrap return node_fn(state) in try/except RuntimeError: return {\"routed_to\": \"error_node\"}."
+  - "This is the graph-level equivalent of a chain's fallback -- one failing step gets redirected instead of taking the whole run down with it."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "except RuntimeError:"
+concept_tags: [langgraph, error_handling, error_node]

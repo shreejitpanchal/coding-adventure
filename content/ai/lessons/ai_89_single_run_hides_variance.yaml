@@ -1,0 +1,66 @@
+id: ai_89
+title: "A Single Run's Score Gap Can Be Smaller Than the Noise Between Runs"
+language: ai
+level: 89
+objective: "Fix a model-comparison function that declares one model better purely because its single-run score was higher, without checking whether that gap is even larger than the ordinary run-to-run variance either model shows on its own."
+explanation: |
+  Training involves randomness (weight initialization, data shuffling,
+  bootstrap resampling -- see this category's own earlier lessons on
+  several of these) -- so re-running the *same* model twice rarely
+  produces the exact same score. A single comparison of "model A got
+  0.83, model B got 0.81" says nothing about whether A is genuinely
+  better, if a single model's own score already wobbles by more than
+  0.02 between ordinary re-runs -- the observed "gap" could just be
+  noise, not a real difference between the two models at all.
+
+  The bug this exercise fixes declares whichever model's one-shot score
+  is numerically higher as "better," with no reference to how much
+  either model's score naturally varies run to run. The fix compares
+  the two models' full sets of repeated-run scores and only declares
+  one genuinely better if its scores are better across *every* paired
+  run -- a much stronger, noise-resistant standard than comparing two
+  single numbers.
+example_code: |
+  # The trap: declares whichever model's ONE run scored higher as
+  # "better" -- no reference to how much either model's score naturally varies.
+  def better_model_trap(model_a_score, model_b_score):
+      return "A" if model_a_score > model_b_score else "B"
+
+  print(better_model_trap(0.83, 0.81))   # "A" -- based on a single, possibly-noisy pair of runs
+
+  # The fix: compare MULTIPLE runs, only declare a winner if it wins EVERY pair.
+  def better_model(model_a_scores, model_b_scores):
+      if all(a > b for a, b in zip(model_a_scores, model_b_scores)):
+          return "A"
+      elif all(b > a for a, b in zip(model_a_scores, model_b_scores)):
+          return "B"
+      return "inconclusive"
+
+  model_a_scores = [0.83, 0.79, 0.85]   # model A's score varies quite a bit run to run
+  model_b_scores = [0.81, 0.84, 0.80]   # sometimes A wins, sometimes B does -- no consistent winner
+  print(better_model(model_a_scores, model_b_scores))   # "inconclusive" -- correctly resists a single-run false confidence
+starter_code: |
+  def better_model(model_a_scores, model_b_scores):
+      return "A" if model_a_scores[0] > model_b_scores[0] else "B"
+
+  model_a_scores = [0.83, 0.79, 0.85]
+  model_b_scores = [0.81, 0.84, 0.80]
+  print(better_model(model_a_scores, model_b_scores))
+challenge: |
+  Fix `better_model` so it only declares "A" or "B" the winner if it
+  scores higher across EVERY paired run, and returns `"inconclusive"`
+  otherwise -- instead of comparing just the first run's scores. It
+  should print `inconclusive`, not `A`.
+expected_output: |
+  inconclusive
+hints:
+  - "Use all(a > b for a, b in zip(model_a_scores, model_b_scores)) to check if A wins every single paired run, and the mirrored check for B."
+  - "If neither all() check is true, return \"inconclusive\" -- run 1 favors A, but run 2 favors B, so neither model wins consistently."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 49
+difficulty: deep_dive
+contains_patterns:
+  - "inconclusive"
+concept_tags: [ml_fundamentals, statistical_significance, model_comparison]

@@ -1,0 +1,44 @@
+id: data_structures_10
+title: "|= Merges a Dict Into an Existing One In Place"
+language: python
+level: 167
+objective: "Replace a call to dict.update() with the |= in-place merge operator, added alongside | in Python 3.9."
+explanation: |
+  `dict.update(other)` merges another dict's entries into an existing
+  one in place, which is exactly what `|=` also does -- `config |=
+  overrides` and `config.update(overrides)` are equivalent, the same
+  way `x += 1` and `x = x + 1` are two spellings of the same
+  operation. `|=` reads consistently with the plain `|` merge operator
+  this category's previous lesson covers, just as an in-place update
+  instead of producing a new dict.
+example_code: |
+  # dict.update() merges in place.
+  config_loop = {"timeout": 30, "retries": 3}
+  config_loop.update({"timeout": 5})
+  print(config_loop)                        # {'timeout': 5, 'retries': 3}
+
+  # |= does the same thing, reading consistently with the | operator.
+  config = {"timeout": 30, "retries": 3}
+  config |= {"timeout": 5}
+  print(config)                             # {'timeout': 5, 'retries': 3}
+starter_code: |
+  config = {"timeout": 30, "retries": 3}
+  config.update({"timeout": 5})
+  print(config)
+challenge: |
+  Rewrite this using `config |= {"timeout": 5}` instead of
+  `config.update({"timeout": 5})`. Keep the same output:
+  {'timeout': 5, 'retries': 3}.
+expected_output: |
+  {'timeout': 5, 'retries': 3}
+hints:
+  - "Replace config.update({\"timeout\": 5}) with config |= {\"timeout\": 5}."
+  - "|= is to | what += is to + -- an in-place version of the same merge operation."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "config \\|= \\{\"timeout\": 5\\}"
+concept_tags: [dicts, merge_operator]

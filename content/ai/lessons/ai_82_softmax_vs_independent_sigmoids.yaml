@@ -1,0 +1,76 @@
+id: ai_82
+title: "Softmax Forces Probabilities to Sum to One -- Independent Sigmoids Don't"
+language: ai
+level: 82
+objective: "Fix a multi-class probability function that applies an independent sigmoid to each class score, which lets the 'probabilities' sum to almost anything -- softmax is what actually normalizes them into one real probability distribution."
+explanation: |
+  A **sigmoid** applied independently to each class's raw score treats
+  every class as its own separate yes/no question, with no requirement
+  that the results relate to each other at all -- appropriate for
+  genuine **multi-label** problems (a photo can contain both "cat" AND
+  "dog"), but wrong for standard **multi-class** problems (a photo is
+  exactly one of "cat," "dog," or "bird," never more than one).
+  **Softmax** is specifically built for the multi-class case: it
+  normalizes every class's score together so the results always sum to
+  exactly `1`, correctly representing "these are the relative odds of
+  mutually exclusive outcomes" rather than "here's an independent
+  yes/no confidence for each."
+
+  The bug this exercise fixes applies an independent sigmoid to each
+  class score, producing values that don't relate to each other at all
+  and don't sum anywhere near `1`. The fix applies softmax instead --
+  exponentiating each score and dividing by the sum of all the
+  exponentials -- correctly producing a genuine probability
+  distribution across the mutually exclusive classes.
+example_code: |
+  # The trap: an independent sigmoid per class -- results don't relate
+  # to each other and don't sum to anything meaningful.
+  import math
+
+  def sigmoid(x):
+      return 1 / (1 + math.exp(-x))
+
+  def class_probs_trap(scores):
+      return [round(sigmoid(s), 3) for s in scores]
+
+  scores = [2.0, 1.0, 0.1]
+  probs_trap = class_probs_trap(scores)
+  print(round(sum(probs_trap), 2))   # roughly 2.0 -- nowhere near a valid probability distribution's sum of 1
+
+  # The fix: softmax -- normalizes scores together so they sum to exactly 1.
+  def softmax(scores):
+      exp_scores = [math.exp(s) for s in scores]
+      total = sum(exp_scores)
+      return [round(e / total, 3) for e in exp_scores]
+
+  probs = softmax(scores)
+  print(round(sum(probs), 2))   # 1.0 -- a genuine probability distribution
+starter_code: |
+  import math
+
+  def sigmoid(x):
+      return 1 / (1 + math.exp(-x))
+
+  def class_probs(scores):
+      return [round(sigmoid(s), 3) for s in scores]
+
+  scores = [2.0, 1.0, 0.1]
+  probs = class_probs(scores)
+  print(round(sum(probs), 2) == 1.0)
+challenge: |
+  Fix `class_probs` so it computes softmax (exponentiate each score,
+  divide by the sum of all exponentials), instead of applying an
+  independent sigmoid to each one. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Compute exp_scores = [math.exp(s) for s in scores], then total = sum(exp_scores)."
+  - "Return [round(e / total, 3) for e in exp_scores] -- dividing each exponentiated score by the total forces the results to sum to exactly 1."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 42
+difficulty: core
+contains_patterns:
+  - "math\\.exp\\(s\\)"
+concept_tags: [ml_fundamentals, softmax, multiclass_classification]

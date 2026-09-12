@@ -1,0 +1,59 @@
+id: ai_248
+title: "Retrieved Documents Need to Be Deduplicated, Not Returned As-Is"
+language: ai
+level: 248
+objective: "Fix a document-deduplication function that returns every retrieved document unchanged, duplicates included, when repeated identical content should be collapsed down to a single copy before being used further downstream."
+explanation: |
+  Retrieval from multiple overlapping sources (several similarity
+  searches, a hybrid keyword+vector search) commonly surfaces the exact
+  same document more than once. Passing every duplicate through
+  unchanged wastes context budget on redundant content and can bias a
+  downstream model toward whatever happened to be duplicated, simply
+  because it appears more times -- not because it's more relevant.
+
+  The bug this exercise fixes returns `docs` completely unchanged. The
+  fix tracks what's already been seen and keeps only the first
+  occurrence of each distinct document.
+example_code: |
+  # The trap: returns EVERYTHING, duplicates and all.
+  def dedupe_trap(docs):
+      return docs
+
+  docs = ["doc a", "doc b", "doc a", "doc c"]
+  print(len(dedupe_trap(docs)))   # 4 -- "doc a" is counted twice
+
+  # The fix: track what's already been seen, keep only the first
+  # occurrence of each.
+  def dedupe(docs):
+      seen = set()
+      result = []
+      for d in docs:
+          if d not in seen:
+              seen.add(d)
+              result.append(d)
+      return result
+
+  print(len(dedupe(docs)))   # 3 -- the duplicate was correctly collapsed
+starter_code: |
+  def dedupe(docs):
+      return docs
+
+  docs = ["doc a", "doc b", "doc a", "doc c"]
+  print(len(dedupe(docs)))
+challenge: |
+  Fix `dedupe` so it builds a `result` list containing only the first
+  occurrence of each distinct document (tracked via a `seen` set),
+  instead of returning `docs` unchanged. It should print `3`, not `4`.
+expected_output: |
+  3
+hints:
+  - "Track a seen = set(), and for each d in docs: if d not in seen: seen.add(d); result.append(d)."
+  - "\"doc a\" appears twice in the input -- a correct dedupe keeps only its first occurrence."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 28
+difficulty: warmup
+contains_patterns:
+  - "if d not in seen:"
+concept_tags: [langchain, retrieval, deduplication]

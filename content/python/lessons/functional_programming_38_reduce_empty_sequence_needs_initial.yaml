@@ -1,0 +1,71 @@
+id: functional_programming_38
+title: "reduce() Crashes on an Empty Sequence Unless an Initial Value Is Given"
+language: python
+level: 373
+objective: "Fix a reduce() call with no initial value, which raises TypeError the moment it's given an empty sequence (there's nothing to start folding from), when supplying an explicit initial value gives reduce() a sensible starting point even when the input is empty."
+explanation: |
+  `reduce(func, iterable)` without a third argument uses the
+  iterable's *first element* as the starting accumulator -- which
+  works fine for a non-empty sequence, but has nothing to start from
+  at all when the sequence is empty, raising `TypeError: reduce() of
+  empty iterable with no initial value`. `reduce(func, iterable,
+  initial)` sidesteps this entirely: `initial` is used as the starting
+  accumulator regardless of how many elements the sequence has,
+  including zero -- an empty sequence just returns `initial`
+  unchanged, with no error at all.
+
+  The fix adds an explicit initial value (`0`, for a sum) as
+  `reduce`'s third argument.
+example_code: |
+  # The trap: no initial value -- crashes the instant the input is empty.
+  from functools import reduce
+
+  def total_trap(items):
+      return reduce(lambda a, b: a + b, items)
+
+  print(total_trap([1, 2, 3]))
+  try:
+      print(total_trap([]))
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # 6
+  # crashed -- reduce() of empty iterable with no initial value
+
+  # The fix: an explicit initial value gives reduce() a sensible start.
+  def total(items):
+      return reduce(lambda a, b: a + b, items, 0)
+
+  print(total([1, 2, 3]))
+  print(total([]))
+  # 6
+  # 0 -- correctly handled the empty sequence, no crash at all
+starter_code: |
+  from functools import reduce
+
+  def total(items):
+      return reduce(lambda a, b: a + b, items)
+
+  print(total([1, 2, 3]))
+  try:
+      print(total([]))
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `total` by adding `0` as `reduce`'s third argument --
+  `reduce(lambda a, b: a + b, items, 0)`. It should print `6` then
+  `0`, not `6` then `crashed`.
+expected_output: |
+  6
+  0
+hints:
+  - "return reduce(lambda a, b: a + b, items, 0)."
+  - "Without an initial value, reduce() uses the first element as its starting accumulator -- which doesn't exist at all when the sequence is empty."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 38
+difficulty: gotcha
+contains_patterns:
+  - "reduce\\(lambda a, b: a \\+ b, items, 0\\)"
+concept_tags: [functional_programming, reduce, gotchas]

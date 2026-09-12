@@ -1,0 +1,83 @@
+id: ai_124
+title: "A Single Timed-Out Query Shouldn't Immediately Fail the Whole Request"
+language: ai
+level: 124
+objective: "Fix a retrieval call that gives up the instant the vector store raises a timeout, instead of retrying a bounded number of times first -- a single transient network blip shouldn't turn into a hard failure for the whole request."
+explanation: |
+  A vector store query can fail transiently -- a brief network hiccup,
+  a momentary load spike -- without the store being genuinely broken.
+  Treating any single timeout as an immediate, unrecoverable failure
+  means a request fails completely over something that would likely
+  have succeeded on a second attempt moments later. A bounded retry (a
+  small number of attempts, not infinite) gives a transient blip a real
+  chance to resolve itself before the request actually gives up.
+
+  The bug this exercise fixes calls the vector store exactly once and
+  propagates any timeout immediately. The fix retries a bounded number
+  of times on a timeout before finally giving up, catching the common
+  case where the very next attempt succeeds.
+example_code: |
+  # The trap: ONE attempt, no retry at all -- a single transient
+  # timeout immediately fails the whole request.
+  class FlakyStore:
+      def __init__(self, fail_times):
+          self.fail_times = fail_times
+          self.attempts = 0
+      def query(self, q):
+          self.attempts += 1
+          if self.attempts <= self.fail_times:
+              raise TimeoutError("vector store timed out")
+          return ["result1", "result2"]
+
+  def search_trap(store, query):
+      return store.query(query)   # bug: no retry at all
+
+  store = FlakyStore(fail_times=1)   # fails once, then succeeds
+  # search_trap(store, "hello")  # TimeoutError -- gives up immediately, even though attempt 2 would succeed
+
+  # The fix: retry a bounded number of times before giving up.
+  def search(store, query, max_attempts=3):
+      last_error = None
+      for _ in range(max_attempts):
+          try:
+              return store.query(query)
+          except TimeoutError as e:
+              last_error = e
+      raise last_error
+
+  store2 = FlakyStore(fail_times=1)
+  print(search(store2, "hello"))   # ['result1', 'result2'] -- correctly succeeded on the retry
+starter_code: |
+  class FlakyStore:
+      def __init__(self, fail_times):
+          self.fail_times = fail_times
+          self.attempts = 0
+      def query(self, q):
+          self.attempts += 1
+          if self.attempts <= self.fail_times:
+              raise TimeoutError("vector store timed out")
+          return ["result1", "result2"]
+
+  def search(store, query, max_attempts=3):
+      return store.query(query)
+
+  store = FlakyStore(fail_times=1)
+  print(search(store, "hello"))
+challenge: |
+  Fix `search` so it retries up to `max_attempts` times on a
+  `TimeoutError`, only re-raising the last error if every attempt
+  fails, instead of propagating the first timeout immediately. It
+  should print `['result1', 'result2']`, not raise a `TimeoutError`.
+expected_output: |
+  ['result1', 'result2']
+hints:
+  - "Wrap the query call in a for loop up to max_attempts, with a try/except TimeoutError as e: last_error = e inside the loop."
+  - "Return store.query(query) immediately on success (inside the try); only raise last_error after the loop completes without a successful return."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 39
+difficulty: core
+contains_patterns:
+  - "for _ in range\\(max_attempts\\)"
+concept_tags: [rag, retry, fault_tolerance, vector_store]

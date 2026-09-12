@@ -1,0 +1,60 @@
+id: idioms_gotchas_49
+title: "'+' Between a List and a Tuple Raises TypeError, No Automatic Conversion"
+language: python
+level: 118
+objective: "Fix a function that adds a list and a tuple directly with '+', when Python's sequence concatenation requires BOTH sides to be the exact same type -- there's no automatic conversion between list and tuple, even though they're both just 'a sequence of things.'"
+explanation: |
+  `+` between two sequences only works when both sides are the *same*
+  concrete type -- `list + list` and `tuple + tuple` both work fine,
+  but `list + tuple` raises a `TypeError` immediately, because
+  `list.__add__` only knows how to combine with another list, not a
+  different sequence type entirely. Both being "just a sequence of
+  things" conceptually doesn't matter to Python here -- the concrete
+  types have to match exactly, and converting one explicitly is
+  required before combining them.
+
+  The bug this exercise fixes adds a `list` and a `tuple` directly.
+  The fix converts both to `list` first.
+example_code: |
+  # The trap: adds a list and a tuple directly -- + requires BOTH
+  # sides to be the SAME type, with no automatic conversion at all.
+  def combine_trap(a, b):
+      return a + b
+
+  try:
+      combine_trap([1, 2], (3, 4))
+  except TypeError:
+      print("unhandled")
+  # "unhandled" -- TypeError: can only concatenate list (not "tuple") to list
+
+  # The fix: convert both to the same type first.
+  def combine(a, b):
+      return list(a) + list(b)
+
+  print(combine([1, 2], (3, 4)))
+  # [1, 2, 3, 4] -- correctly combined once both sides are the same type
+starter_code: |
+  def combine(a, b):
+      return a + b
+
+  try:
+      print(combine([1, 2], (3, 4)))
+  except TypeError:
+      print("unhandled")
+challenge: |
+  Fix `combine` so it returns `list(a) + list(b)`, converting both
+  arguments to the same type first, instead of `a + b` directly. It
+  should print `[1, 2, 3, 4]`, not `unhandled`.
+expected_output: |
+  [1, 2, 3, 4]
+hints:
+  - "Wrap both a and b in list(...) before adding them: list(a) + list(b)."
+  - "Being conceptually similar (\"both are sequences\") doesn't matter to +  -- the CONCRETE types have to match exactly."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 49
+difficulty: warmup
+contains_patterns:
+  - "return list\\(a\\) \\+ list\\(b\\)"
+concept_tags: [idioms, sequence_concatenation, type_mismatch]

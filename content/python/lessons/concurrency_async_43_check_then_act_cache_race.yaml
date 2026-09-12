@@ -1,0 +1,108 @@
+id: concurrency_async_43
+title: "Two Threads Both Saw an Empty Cache Slot, So Both Filled It"
+language: python
+level: 333
+objective: "Fix a 'check if cached, then compute and store if not' pattern with no lock around it, where two threads can both see the cache slot empty before either writes to it, running the expensive computation twice for the same key -- a lock around the whole check-and-act sequence prevents that overlap."
+explanation: |
+  `if key not in cache: cache[key] = compute()` looks like one step,
+  but it's really two: *check* whether the key is missing, then *act*
+  by computing and storing it. Between those two steps, nothing stops
+  another thread from also checking, also finding the key missing (it
+  hasn't been stored yet), and also deciding to compute it -- both
+  threads redundantly run the expensive computation for the exact same
+  key, which is wasteful at best and can cause `compute()`-side
+  effects to happen more than once at worst. This "check-then-act"
+  race is a distinct pattern from a simple `counter += 1` race: the
+  bug isn't in a single operation being non-atomic, it's in the *gap*
+  between two separate operations that need to be treated as one
+  atomic unit.
+
+  The fix wraps the entire check-and-act sequence in a single `with
+  lock:` block, so no other thread can interleave a check in the
+  middle of another thread's check-and-act.
+example_code: |
+  # The trap: no lock around the check-then-act -- both threads can see
+  # the cache empty before either writes.
+  import threading, time
+
+  cache_trap = {}
+  call_count_trap = [0]
+
+  def compute_trap():
+      call_count_trap[0] += 1
+      return call_count_trap[0]
+
+  def get_or_compute_trap(key):
+      if key not in cache_trap:
+          time.sleep(0.02)              # widens the window between check and act
+          cache_trap[key] = compute_trap()
+      return cache_trap[key]
+
+  t1 = threading.Thread(target=get_or_compute_trap, args=("x",))
+  t2 = threading.Thread(target=get_or_compute_trap, args=("x",))
+  t1.start(); t2.start()
+  t1.join(); t2.join()
+  print(call_count_trap[0])
+  # 2 -- WRONG, compute() ran twice for the exact same key
+
+  # The fix: a lock around the WHOLE check-and-act sequence.
+  lock = threading.Lock()
+  cache = {}
+  call_count = [0]
+
+  def compute():
+      call_count[0] += 1
+      return call_count[0]
+
+  def get_or_compute(key):
+      with lock:
+          if key not in cache:
+              time.sleep(0.02)
+              cache[key] = compute()
+          return cache[key]
+
+  t1 = threading.Thread(target=get_or_compute, args=("x",))
+  t2 = threading.Thread(target=get_or_compute, args=("x",))
+  t1.start(); t2.start()
+  t1.join(); t2.join()
+  print(call_count[0])
+  # 1 -- correctly computed only once, since the lock serialized the whole sequence
+starter_code: |
+  import threading, time
+
+  cache = {}
+  call_count = [0]
+
+  def compute():
+      call_count[0] += 1
+      return call_count[0]
+
+  def get_or_compute(key):
+      if key not in cache:
+          time.sleep(0.02)
+          cache[key] = compute()
+      return cache[key]
+
+  t1 = threading.Thread(target=get_or_compute, args=("x",))
+  t2 = threading.Thread(target=get_or_compute, args=("x",))
+  t1.start(); t2.start()
+  t1.join(); t2.join()
+  print(call_count[0])
+challenge: |
+  Fix `get_or_compute` by adding `lock = threading.Lock()` at module
+  scope and wrapping the whole check-and-act body in `with lock:`. It
+  should reliably print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "lock = threading.Lock() at module scope, then: def get_or_compute(key): with lock: if key not in cache: ...; return cache[key]."
+  - "The bug isn't in one non-atomic operation -- it's the GAP between checking and acting. The whole sequence needs to be one atomic unit, guarded by a single lock."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 43
+difficulty: deep_dive
+contains_patterns:
+  - "threading\\.Lock\\(\\)"
+  - "with lock:"
+concept_tags: [threading, race_conditions, locks, concurrency]

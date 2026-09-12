@@ -1,0 +1,54 @@
+id: idioms_gotchas_07
+title: "The Fake Range Check: 'and 10' Is Just a Truthy Constant"
+language: python
+level: 76
+objective: "Fix a range check that uses 'x > 0 and 10' instead of Python's actual chained comparison syntax, which never checks the upper bound at all."
+explanation: |
+  Python supports genuine chained comparisons -- `0 < x < 10` reads
+  naturally and means exactly what it looks like: "x is greater than 0
+  AND less than 10." A common mistake when reaching for this is writing
+  `0 < x and 10` instead, intending it as shorthand for "and x < 10" but
+  actually leaving a bare literal `10` sitting there as the second
+  operand of `and`. Since `10` is always truthy, the whole expression
+  collapses to just checking `0 < x`, silently dropping the upper-bound
+  check entirely -- no error, no warning, just a range check that only
+  half-checks its range.
+
+  The bug this exercise fixes has that bare `10` where a real second
+  comparison was intended. The fix uses Python's actual chained
+  comparison syntax.
+example_code: |
+  # The trap: "and 10" is just a truthy constant -- it never actually
+  # checks the upper bound at all.
+  def in_range_trap(x):
+      return bool(0 < x and 10)
+
+  print(in_range_trap(500))   # True -- wrongly "in range" even though 500 is way outside 0-10
+
+  # The fix: Python's real chained comparison syntax.
+  def in_range(x):
+      return 0 < x < 10
+
+  print(in_range(500))   # False -- correctly out of range
+starter_code: |
+  def in_range(x):
+      return bool(0 < x and 10)
+
+  print(in_range(500))
+challenge: |
+  Fix `in_range` so it uses Python's chained comparison `0 < x < 10`
+  directly, instead of `0 < x and 10`. It should print `False`, not
+  `True`.
+expected_output: |
+  False
+hints:
+  - "Replace 0 < x and 10 with the chained comparison 0 < x < 10."
+  - "A bare literal like 10 is always truthy on its own -- it was never actually comparing anything to x."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 7
+difficulty: gotcha
+contains_patterns:
+  - "0 < x < 10"
+concept_tags: [idioms, chained_comparison, operators]

@@ -1,0 +1,67 @@
+id: ai_302
+title: "Each Node's Retry Counter Needs Its Own Slot, Not One Shared Across Every Node"
+language: ai
+level: 302
+objective: "Fix a retry-counter update that always bumps the same fixed 'retries' field, when each node's own retry cycle needs an independent counter -- otherwise one node's leftover retry count silently pollutes a completely different node's fresh cycle."
+explanation: |
+  If several different nodes each have their own retry cycle, a single
+  shared `"retries"` field in state can't tell them apart -- node A's
+  three exhausted retries look identical to node B's own retry count
+  the moment B's cycle starts, because they're reading and writing the
+  exact same field. Node B's very first attempt would appear to already
+  be attempt four, inheriting a count that has nothing to do with its
+  own actual retry history.
+
+  The bug this exercise fixes always increments `state["retries"]`.
+  The fix uses a per-node key (`f"retries_{node_name}"`), so every
+  node's retry count stays genuinely independent.
+example_code: |
+  # The trap: ONE shared "retries" counter for every node -- a
+  # different node's retries pollute this one's count.
+  def bump_retry_trap(state, node_name):
+      state = dict(state)
+      state["retries"] = state.get("retries", 0) + 1
+      return state
+
+  state = {"retries": 2}   # these 2 retries actually came from a DIFFERENT node's earlier cycle
+  state = bump_retry_trap(state, "node_b")
+  print(state.get("retries_node_b", 0))
+  # 0 -- node_b's OWN counter was never touched at all, since everything wrote to the shared "retries" key instead
+
+  # The fix: scope the counter to each node's own key.
+  def bump_retry(state, node_name):
+      state = dict(state)
+      key = f"retries_{node_name}"
+      state[key] = state.get(key, 0) + 1
+      return state
+
+  state2 = {"retries": 2}
+  state2 = bump_retry(state2, "node_b")
+  print(state2.get("retries_node_b", 0))
+  # 1 -- correctly wrote to node_b's own counter, unaffected by the unrelated shared field
+starter_code: |
+  def bump_retry(state, node_name):
+      state = dict(state)
+      state["retries"] = state.get("retries", 0) + 1
+      return state
+
+  state = {"retries": 2}
+  state = bump_retry(state, "node_b")
+  print(state.get("retries_node_b", 0))
+challenge: |
+  Fix `bump_retry` so it uses a per-node key (`key =
+  f"retries_{node_name}"`) instead of the fixed shared key `"retries"`.
+  It should print `1`, not `0`.
+expected_output: |
+  1
+hints:
+  - "key = f\"retries_{node_name}\", then state[key] = state.get(key, 0) + 1 -- replace every use of the literal \"retries\" with this per-node key."
+  - "The check reads state.get(\"retries_node_b\", 0) specifically -- the buggy version never writes to that key at all, since it only ever touches the shared \"retries\" field."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "key = f\"retries_\\{node_name\\}\""
+concept_tags: [langgraph, retry, state_scoping]

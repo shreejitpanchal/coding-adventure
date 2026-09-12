@@ -1,0 +1,53 @@
+id: functional_programming_12
+title: "The operator Module Replaces a Trivial Lambda With a Named Function"
+language: python
+level: 347
+objective: "Replace a one-line lambda that just calls an existing operator (like multiplication) with the equivalent named function from the operator module, avoiding an anonymous function purely for something that already has a name."
+explanation: |
+  Writing `lambda a, b: a * b` purely to hand a "multiply two things"
+  function to `reduce` or `sorted`'s `key` works, but it's an anonymous
+  wrapper around something that already has a perfectly good name:
+  `operator.mul`. The `operator` module exposes every built-in
+  operator (`add`, `sub`, `mul`, `truediv`, `eq`, `lt`, ...) as a
+  regular named function, so code that just needs "the multiplication
+  operator, as a callable" can use `operator.mul` directly instead of
+  writing a throwaway lambda that does nothing but call `*`. This is
+  "point-free" style in miniature: expressing the operation itself,
+  without naming the arguments it'll eventually be called with.
+
+  The fix replaces the lambda with `operator.mul`.
+example_code: |
+  # The trap: a lambda that does nothing but call an existing operator.
+  from functools import reduce
+
+  product_trap = reduce(lambda a, b: a * b, [1, 2, 3, 4])
+  print(product_trap)
+  # 24 -- correct, but the lambda adds nothing operator.mul doesn't already say
+
+  # The fix: operator.mul IS the multiplication operator, already named.
+  from operator import mul
+
+  product = reduce(mul, [1, 2, 3, 4])
+  print(product)
+  # 24 -- same result, using the operator module's existing named function
+starter_code: |
+  from functools import reduce
+
+  product = reduce(lambda a, b: a * b, [1, 2, 3, 4])
+  print(product)
+challenge: |
+  Rewrite this using `operator.mul` (imported from `operator`) instead
+  of `lambda a, b: a * b`. Keep the same output: 24.
+expected_output: |
+  24
+hints:
+  - "from operator import mul, then: reduce(mul, [1, 2, 3, 4])."
+  - "operator.mul IS the multiplication operator, already a named, importable function -- no need for a lambda that just calls * on its own."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "reduce\\(mul, \\[1, 2, 3, 4\\]\\)"
+concept_tags: [functional_programming, operator_module, point_free]

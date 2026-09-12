@@ -1,0 +1,65 @@
+id: data_structures_45
+title: "Counter.most_common() Breaks Ties by Insertion Order, Not Alphabetically"
+language: python
+level: 202
+objective: "Fix a function that alphabetically re-sorts tied results from most_common(), when the tie-breaking order most_common() already provides -- first-encountered wins -- is itself meaningful information that alphabetical sorting destroys."
+explanation: |
+  When two keys in a `Counter` have the same count, `.most_common()`
+  preserves their relative *insertion* order among the tied entries --
+  whichever key was incremented first appears first among equally-
+  ranked ties. Re-sorting the result alphabetically to "make it
+  deterministic" actually destroys real information: insertion order
+  often reflects something meaningful (which item was seen first in a
+  stream, which candidate got its first vote earliest), and alphabetical
+  order has nothing to do with that.
+
+  The bug this exercise fixes re-sorts `most_common()`'s result
+  alphabetically. The fix uses the tie order `most_common()` already
+  provides directly.
+example_code: |
+  # The trap: re-sorts alphabetically, destroying the meaningful
+  # insertion-order tie-break most_common() already provides.
+  from collections import Counter
+
+  def first_tied_trap(counts):
+      return sorted(counts.most_common())[0][0]
+
+  counts = Counter()
+  counts["b"] += 1
+  counts["a"] += 1
+  print(first_tied_trap(counts))
+  # "a" -- alphabetical sort picked this, regardless of which was actually seen first
+
+  # The fix: use most_common()'s own tie order directly.
+  def first_tied(counts):
+      return counts.most_common()[0][0]
+
+  print(first_tied(counts))
+  # "b" -- correctly reflects insertion order for the tied counts
+starter_code: |
+  from collections import Counter
+
+  def first_tied(counts):
+      return sorted(counts.most_common())[0][0]
+
+  counts = Counter()
+  counts["b"] += 1
+  counts["a"] += 1
+  print(first_tied(counts))
+challenge: |
+  Fix `first_tied` so it returns `counts.most_common()[0][0]` directly,
+  instead of re-sorting the result alphabetically first. It should
+  print `b`, not `a`.
+expected_output: |
+  b
+hints:
+  - "Replace sorted(counts.most_common())[0][0] with counts.most_common()[0][0]."
+  - "most_common() already preserves a meaningful order among tied counts -- whichever key was incremented first. Re-sorting throws that information away."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 45
+difficulty: gotcha
+contains_patterns:
+  - "return counts\\.most_common\\(\\)\\[0\\]\\[0\\]"
+concept_tags: [counter, most_common, ordering]

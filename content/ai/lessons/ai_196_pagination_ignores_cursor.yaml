@@ -1,0 +1,58 @@
+id: ai_196
+title: "Paginated list_tools Must Resume From the Given Cursor, Not Start Over"
+language: ai
+level: 196
+objective: "Fix a paginated list handler that always returns the first page regardless of the cursor a client provided, making it impossible to ever page through results beyond the very first page."
+explanation: |
+  MCP's list operations (`tools/list`, `resources/list`) support
+  cursor-based pagination for large result sets: a response includes a
+  `nextCursor`, and the client passes that cursor back on its next
+  request to get the *next* page, not the same first page again. A
+  handler that ignores the incoming cursor and always starts from the
+  beginning makes it impossible to ever see anything past the first
+  page -- every subsequent request just returns the same results,
+  regardless of how many pages actually exist.
+
+  The bug this exercise fixes ignores the incoming cursor entirely,
+  slicing from the very start every time. The fix uses the cursor to
+  determine where to resume, correctly advancing through the full
+  result set page by page.
+example_code: |
+  # The trap: ignores the CURSOR entirely -- always returns the first
+  # page, no matter what cursor the client actually provided.
+  def list_page_trap(all_items, cursor, page_size=2):
+      return all_items[:page_size]
+
+  all_items = ["tool_a", "tool_b", "tool_c", "tool_d"]
+  print(list_page_trap(all_items, cursor=2))   # ['tool_a', 'tool_b'] -- the SAME first page, ignoring cursor=2 entirely
+
+  # The fix: use the cursor to determine where to RESUME from.
+  def list_page(all_items, cursor, page_size=2):
+      start = cursor if cursor is not None else 0
+      return all_items[start:start + page_size]
+
+  print(list_page(all_items, cursor=2))   # ['tool_c', 'tool_d'] -- correctly resumes from where the cursor said to
+starter_code: |
+  def list_page(all_items, cursor, page_size=2):
+      return all_items[:page_size]
+
+  all_items = ["tool_a", "tool_b", "tool_c", "tool_d"]
+  print(list_page(all_items, cursor=2))
+challenge: |
+  Fix `list_page` so it uses `cursor` (defaulting to `0` when `None`)
+  as the starting index for the slice, instead of always slicing from
+  the beginning. It should print `['tool_c', 'tool_d']`, not
+  `['tool_a', 'tool_b']`.
+expected_output: |
+  ['tool_c', 'tool_d']
+hints:
+  - "Compute start = cursor if cursor is not None else 0, then slice: all_items[start:start + page_size]."
+  - "With cursor=2 and page_size=2, this correctly returns items at indices 2 and 3, not 0 and 1."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 21
+difficulty: core
+contains_patterns:
+  - "all_items\\[start:start \\+ page_size\\]"
+concept_tags: [mcp, pagination, list_operations]

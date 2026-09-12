@@ -62,7 +62,7 @@ hints:
   - "team_a = {\"alice\", \"bob\", \"carol\"} -- curly braces make a set."
   - "team_a & team_b is the set intersection."
 xp_reward: 15
-achievement: data_structures_master
+achievement: null
 category: data_structures
 category_level: 6
 difficulty: core

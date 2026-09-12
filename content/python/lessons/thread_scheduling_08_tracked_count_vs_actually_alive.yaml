@@ -1,0 +1,79 @@
+id: thread_scheduling_08
+title: "The Thread List's Length Doesn't Tell You How Many Are Still Actually Running"
+language: python
+level: 428
+objective: "Fix code that reports 'how many workers are active' by just returning the length of the list of Thread objects it created, when a thread that's already finished is still sitting in that list -- checking each one's is_alive() is what reflects how many are ACTUALLY still running right now."
+explanation: |
+  A list of `Thread` objects you created doesn't shrink as those
+  threads finish -- the objects themselves stay in the list forever
+  unless something explicitly removes them, regardless of whether the
+  actual OS thread they represent is still running or finished a while
+  ago. `len(threads)` only ever answers "how many Thread objects am I
+  tracking," not "how many are currently alive" -- those are
+  genuinely different questions once even one thread in the list has
+  already completed. `t.is_alive()`, checked per thread, is what
+  actually reflects real-time status: `True` while it's still running,
+  `False` once it's genuinely finished.
+
+  The fix counts only the threads whose `is_alive()` is still `True`,
+  instead of the raw list length.
+example_code: |
+  # The trap: list length -- doesn't shrink as threads actually finish.
+  import threading, time
+
+  fast_threads = [threading.Thread(target=lambda: None) for _ in range(2)]
+  slow_thread = threading.Thread(target=lambda: time.sleep(0.2))
+  threads = fast_threads + [slow_thread]
+  for t in threads:
+      t.start()
+  for t in fast_threads:
+      t.join()               # the two fast ones are done; slow_thread is still running
+  time.sleep(0.02)
+
+  def count_active_trap(threads):
+      return len(threads)
+
+  print(count_active_trap(threads))
+  # 3 -- WRONG, only ONE of these three is actually still running
+
+  # The fix: check is_alive() per thread, count only the genuinely running ones.
+  def count_active(threads):
+      return sum(1 for t in threads if t.is_alive())
+
+  print(count_active(threads))
+  # 1 -- correctly reflects that only slow_thread is still actually running
+  slow_thread.join()
+starter_code: |
+  import threading, time
+
+  fast_threads = [threading.Thread(target=lambda: None) for _ in range(2)]
+  slow_thread = threading.Thread(target=lambda: time.sleep(0.2))
+  threads = fast_threads + [slow_thread]
+  for t in threads:
+      t.start()
+  for t in fast_threads:
+      t.join()
+  time.sleep(0.02)
+
+  def count_active(threads):
+      return len(threads)
+
+  print(count_active(threads))
+  slow_thread.join()
+challenge: |
+  Fix `count_active` so it returns
+  `sum(1 for t in threads if t.is_alive())`, instead of the raw
+  `len(threads)`. It should print `1`, not `3`.
+expected_output: |
+  1
+hints:
+  - "return sum(1 for t in threads if t.is_alive())."
+  - "A finished thread's Thread object doesn't disappear from a list you're tracking -- is_alive() is what actually tells you whether it's still running right now."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "sum\\(1 for t in threads if t\\.is_alive\\(\\)\\)"
+concept_tags: [threading, is_alive, gotchas]

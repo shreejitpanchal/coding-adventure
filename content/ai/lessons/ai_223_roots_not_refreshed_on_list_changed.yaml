@@ -1,0 +1,58 @@
+id: ai_223
+title: "Cached Roots Must Be Refreshed When the Client Says They Changed"
+language: ai
+level: 223
+objective: "Fix a roots-notification handler that keeps serving the previously cached roots list even after being told it changed, when 'notifications/roots/list_changed' should trigger a genuine refetch of what directories the client currently grants access to."
+explanation: |
+  A client can change which directories (`roots`) it grants a server
+  access to at any point during a session, and it tells the server via
+  `notifications/roots/list_changed` when that happens. A server that
+  cached the roots list once and never refreshes it on this
+  notification keeps enforcing an access boundary that may no longer
+  match what the client actually intends -- either wrongly denying
+  access to a newly granted root, or (worse) continuing to treat a
+  since-revoked root as still allowed.
+
+  The bug this exercise fixes always returns the stale `cached_roots`.
+  The fix calls the refetch function specifically when the
+  `list_changed` notification arrives.
+example_code: |
+  # The trap: ignores the roots listChanged notification, keeps
+  # serving the stale cached roots forever.
+  def handle_roots_notification_trap(method, cached_roots, fetch_fn):
+      return cached_roots
+
+  print(len(handle_roots_notification_trap("notifications/roots/list_changed", ["/a"], lambda: ["/a", "/b"])))
+  # 1 -- stale, missing the newly granted root
+
+  # The fix: refetch specifically when list_changed arrives.
+  def handle_roots_notification(method, cached_roots, fetch_fn):
+      if method == "notifications/roots/list_changed":
+          return fetch_fn()
+      return cached_roots
+
+  print(len(handle_roots_notification("notifications/roots/list_changed", ["/a"], lambda: ["/a", "/b"])))
+  # 2 -- refetched instead of enforcing a stale access boundary
+starter_code: |
+  def handle_roots_notification(method, cached_roots, fetch_fn):
+      return cached_roots
+
+  print(len(handle_roots_notification("notifications/roots/list_changed", ["/a"], lambda: ["/a", "/b"])))
+challenge: |
+  Fix `handle_roots_notification` so it calls `fetch_fn()` and returns
+  that when `method` is `"notifications/roots/list_changed"`, instead
+  of always returning the stale `cached_roots`. It should print `2`,
+  not `1`.
+expected_output: |
+  2
+hints:
+  - "Add: if method == \"notifications/roots/list_changed\": return fetch_fn() before the fallback return."
+  - "Enforcing a stale roots list isn't just inconvenient -- it can mean treating a since-revoked directory as still allowed."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 48
+difficulty: core
+contains_patterns:
+  - "return fetch_fn\\(\\)"
+concept_tags: [mcp, roots, list_changed]

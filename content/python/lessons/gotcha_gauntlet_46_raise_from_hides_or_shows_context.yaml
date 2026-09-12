@@ -1,0 +1,84 @@
+id: gotcha_gauntlet_46
+title: "The Wrapped Exception That Hid the Real Root Cause"
+language: python
+level: 291
+objective: "Fix an except block that raises a new, higher-level exception with no 'from' clause, which hides which lower-level exception actually caused it -- 'raise NewError(...) from original' preserves the causal chain explicitly."
+explanation: |
+  Raising a brand-new exception type inside an `except` block --
+  translating a low-level `ValueError` into a more meaningful,
+  domain-specific `ConfigError`, say -- is a common and reasonable
+  pattern. But raising it as `raise ConfigError(...)` with nothing
+  connecting it back to the exception that was actually being handled
+  discards that link entirely from Python's own bookkeeping: the
+  traceback shows the new exception with no indication of what
+  originally triggered it, "During handling of the above exception,
+  another exception occurred" only appears when Python is told to
+  preserve that chain. `raise ConfigError(...) from original_error`
+  explicitly sets `__cause__` on the new exception, so the full causal
+  chain -- what really happened underneath -- stays visible for
+  debugging, instead of only showing the translated, higher-level
+  symptom.
+
+  The fix adds `from e` (the originally caught exception) to the
+  `raise` statement.
+example_code: |
+  # The trap: raises a NEW exception with no link back to the real cause.
+  class ConfigError(Exception):
+      pass
+
+  def load_config_trap(text):
+      try:
+          return int(text)
+      except ValueError:
+          raise ConfigError("invalid config value")
+
+  try:
+      load_config_trap("oops")
+  except ConfigError as e:
+      print(e.__cause__)
+  # None -- WRONG, the original ValueError is gone from the causal chain
+
+  # The fix: "from e" preserves the original exception as the real cause.
+  def load_config(text):
+      try:
+          return int(text)
+      except ValueError as e:
+          raise ConfigError("invalid config value") from e
+
+  try:
+      load_config("oops")
+  except ConfigError as e:
+      print(type(e.__cause__).__name__)
+  # ValueError -- correctly preserved, showing the actual root cause
+starter_code: |
+  class ConfigError(Exception):
+      pass
+
+  def load_config(text):
+      try:
+          return int(text)
+      except ValueError:
+          raise ConfigError("invalid config value")
+
+  try:
+      load_config("oops")
+  except ConfigError as e:
+      print(type(e.__cause__).__name__ if e.__cause__ else None)
+challenge: |
+  Fix `load_config` so it catches the `ValueError` `as e`, and raises
+  `ConfigError("invalid config value") from e`, instead of raising it
+  with no causal link at all. It should print `ValueError`, not
+  `None`.
+expected_output: |
+  ValueError
+hints:
+  - "except ValueError as e: raise ConfigError(\"invalid config value\") from e."
+  - "\"from e\" explicitly sets __cause__ on the new exception -- without it, the original exception's link to the new one is completely discarded."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 46
+difficulty: deep_dive
+contains_patterns:
+  - "from e"
+concept_tags: [exceptions, exception_chaining, gotchas]

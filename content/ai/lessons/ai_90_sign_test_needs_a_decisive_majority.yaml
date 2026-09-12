@@ -1,0 +1,72 @@
+id: ai_90
+title: "A Bare Majority of Wins Isn't a Decisive Result Either"
+language: ai
+level: 90
+objective: "Fix a paired-comparison sign test that declares a winner from any bare majority of paired wins, when a genuinely decisive result needs a much more lopsided majority -- a 5-out-of-7 split is still well within what pure noise could produce."
+explanation: |
+  This category's previous lesson required a winner to win *every*
+  paired run -- a standard so strict that ordinary noise defeats it
+  constantly, declaring "inconclusive" even when one model is
+  genuinely, meaningfully better. The other extreme -- declaring a
+  winner from any bare majority (more wins than losses, even 4-out-of-7)
+  -- is too weak in the opposite direction: with genuinely noisy,
+  evenly-matched models, a bare majority in either direction is
+  something ordinary run-to-run variance produces constantly on its
+  own, with no real underlying difference required to produce it. A
+  **sign test**'s practical middle ground: only declare a winner once
+  the fraction of paired wins clears a genuinely decisive threshold
+  (say, 80%+), and call anything short of that -- in either direction --
+  inconclusive, rather than either extreme.
+
+  The bug this exercise fixes declares a winner from any bare majority
+  at all, which a 5-out-of-7 split (about 71%) already satisfies despite
+  not being especially decisive. The fix requires the winning fraction
+  to clear an explicit, much higher threshold before declaring a real
+  winner, correctly calling this particular result inconclusive instead.
+example_code: |
+  # The trap: declares a winner from ANY bare majority -- 5 of 7 (71%)
+  # already "wins," even though that's well within noise's normal range.
+  def sign_test_trap(diffs):
+      positive = sum(1 for d in diffs if d > 0)
+      return "A" if positive > len(diffs) / 2 else "B"
+
+  diffs = [0.02, -0.01, 0.03, 0.01, -0.02, 0.01, 0.02]   # 5 positive, 2 negative
+  print(sign_test_trap(diffs))   # "A" -- from a fairly ordinary, non-decisive majority
+
+  # The fix: require a genuinely decisive fraction before declaring a winner.
+  def sign_test(diffs, min_fraction=0.8):
+      positive = sum(1 for d in diffs if d > 0)
+      fraction = positive / len(diffs)
+      if fraction >= min_fraction:
+          return "A"
+      elif fraction <= 1 - min_fraction:
+          return "B"
+      return "inconclusive"
+
+  print(sign_test(diffs))   # "inconclusive" -- 71% doesn't clear the 80% decisive bar
+starter_code: |
+  def sign_test(diffs, min_fraction=0.8):
+      positive = sum(1 for d in diffs if d > 0)
+      return "A" if positive > len(diffs) / 2 else "B"
+
+  diffs = [0.02, -0.01, 0.03, 0.01, -0.02, 0.01, 0.02]
+  print(sign_test(diffs))
+challenge: |
+  Fix `sign_test` so it only returns `"A"` or `"B"` once the winning
+  fraction reaches `min_fraction` (in either direction), returning
+  `"inconclusive"` otherwise -- instead of declaring a winner from any
+  bare majority. It should print `inconclusive`, not `A`.
+expected_output: |
+  inconclusive
+hints:
+  - "Compute fraction = positive / len(diffs), then check fraction >= min_fraction for \"A\" and fraction <= 1 - min_fraction for \"B\"."
+  - "5 of 7 is about 0.714, which is below the 0.8 threshold in either direction -- neither condition is met, so the result is inconclusive."
+xp_reward: 15
+achievement: ml_fundamentals_master
+category: ml_fundamentals
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "min_fraction"
+  - "inconclusive"
+concept_tags: [ml_fundamentals, statistical_significance, sign_test, model_comparison]

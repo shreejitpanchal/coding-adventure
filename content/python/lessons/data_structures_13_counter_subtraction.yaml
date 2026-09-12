@@ -1,0 +1,56 @@
+id: data_structures_13
+title: "Counter Subtraction Drops Anything That Would Go Zero or Negative"
+language: python
+level: 170
+objective: "Use Counter subtraction to find which required items are still missing from stock, instead of manually looping and comparing counts."
+explanation: |
+  Two `Counter`s can be subtracted directly with `-`, which subtracts
+  matching counts and -- unlike plain dict subtraction, which isn't
+  even defined -- automatically drops any resulting count that's zero
+  or negative. This is exactly the shape of "what's still needed that
+  isn't already covered": `required - in_stock` leaves only the items
+  (and exact remaining amounts) that stock genuinely falls short on,
+  with nothing for items where stock already covers the requirement.
+example_code: |
+  # Manually looping and comparing counts.
+  required_loop = {"apple": 3, "banana": 2}
+  in_stock_loop = {"apple": 5, "banana": 1}
+  missing_loop = {}
+  for item, need in required_loop.items():
+      have = in_stock_loop.get(item, 0)
+      if need > have:
+          missing_loop[item] = need - have
+  print(missing_loop)                       # {'banana': 1}
+
+  # Counter subtraction does this directly.
+  from collections import Counter
+
+  required = Counter({"apple": 3, "banana": 2})
+  in_stock = Counter({"apple": 5, "banana": 1})
+  missing = required - in_stock
+  print(dict(missing))                      # {'banana': 1}
+starter_code: |
+  required = {"apple": 3, "banana": 2}
+  in_stock = {"apple": 5, "banana": 1}
+  missing = {}
+  for item, need in required.items():
+      have = in_stock.get(item, 0)
+      if need > have:
+          missing[item] = need - have
+  print(missing)
+challenge: |
+  Rewrite this using `Counter` subtraction (`required - in_stock`),
+  instead of a manual loop. Keep the same output: {'banana': 1}.
+expected_output: |
+  {'banana': 1}
+hints:
+  - "from collections import Counter, then: missing = dict(Counter(required) - Counter(in_stock))."
+  - "Counter subtraction automatically drops any item whose result is zero or negative -- \"apple\" (5 - 3 = 2 in stock's favor) never appears in the result at all."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "Counter\\(required\\) - Counter\\(in_stock\\)"
+concept_tags: [counter, collections]

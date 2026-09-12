@@ -1,0 +1,77 @@
+id: functional_programming_48
+title: "Building the Pipeline Once, Instead of Repeating the Same Nested Calls"
+language: python
+level: 383
+objective: "Fix code repeating the same chain of nested function calls for every new input, when building the pipeline ONCE with pipe() (this category's earlier left-to-right composition helper) and reusing that single named function for every input avoids repeating the chain at all."
+explanation: |
+  Nested calls -- `replace_step(lower_step(strip_step(text)))` -- work
+  fine for one input, but repeating that exact same chain for every
+  new piece of text duplicates the *sequence of steps* itself, not
+  just the individual step functions. Building the pipeline once with
+  `pipe(...)` (this category's earlier left-to-right composition
+  helper) produces a single, genuinely reusable function -- `clean =
+  pipe(strip_step, lower_step, replace_step)` -- that can be applied to
+  any number of different inputs afterward, with the actual sequence
+  of steps defined in exactly one place.
+
+  The fix builds `clean` once via `pipe(...)`, then applies it to each
+  input instead of repeating the nested-call chain.
+example_code: |
+  # The trap: the SAME nested-call chain repeated for every input.
+  def strip_step(s):
+      return s.strip()
+
+  def lower_step(s):
+      return s.lower()
+
+  def replace_step(s):
+      return s.replace(" ", "_")
+
+  result1_trap = replace_step(lower_step(strip_step("  Hello World  ")))
+  result2_trap = replace_step(lower_step(strip_step("  Foo Bar  ")))
+  print(result1_trap, result2_trap)
+  # hello_world foo_bar -- correct, but the whole chain is repeated per input
+
+  # The fix: build the pipeline ONCE, reuse it for every input.
+  from functools import reduce
+
+  def pipe(*funcs):
+      return reduce(lambda acc, f: lambda x: f(acc(x)), funcs, lambda x: x)
+
+  clean = pipe(strip_step, lower_step, replace_step)
+  result1 = clean("  Hello World  ")
+  result2 = clean("  Foo Bar  ")
+  print(result1, result2)
+  # hello_world foo_bar -- same results, the step sequence defined only once
+starter_code: |
+  def strip_step(s):
+      return s.strip()
+
+  def lower_step(s):
+      return s.lower()
+
+  def replace_step(s):
+      return s.replace(" ", "_")
+
+  result1 = replace_step(lower_step(strip_step("  Hello World  ")))
+  result2 = replace_step(lower_step(strip_step("  Foo Bar  ")))
+  print(result1, result2)
+challenge: |
+  Fix this by defining `pipe(*funcs)` (folding with
+  `lambda acc, f: lambda x: f(acc(x))` starting from `lambda x: x`),
+  building `clean = pipe(strip_step, lower_step, replace_step)` once,
+  and applying `clean(...)` to each input instead of repeating the
+  nested-call chain. Keep the same output: hello_world foo_bar.
+expected_output: |
+  hello_world foo_bar
+hints:
+  - "from functools import reduce, then: def pipe(*funcs): return reduce(lambda acc, f: lambda x: f(acc(x)), funcs, lambda x: x)."
+  - "clean = pipe(strip_step, lower_step, replace_step), then result1 = clean(\"  Hello World  \") and result2 = clean(\"  Foo Bar  \")."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 48
+difficulty: deep_dive
+contains_patterns:
+  - "clean = pipe\\(strip_step, lower_step, replace_step\\)"
+concept_tags: [functional_programming, pipelines, composition, reuse]

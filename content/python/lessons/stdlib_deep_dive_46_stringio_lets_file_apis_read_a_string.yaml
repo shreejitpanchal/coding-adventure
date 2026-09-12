@@ -1,0 +1,69 @@
+id: stdlib_deep_dive_46
+title: "io.StringIO Lets a File-Expecting Function Read In-Memory Text -- No Real File Needed"
+language: python
+level: 247
+objective: "Fix code that calls a function requiring a real file object by manually splitting a string into lines (reimplementing what file-like reading already does), when io.StringIO wraps a string in the same interface a real file object provides."
+explanation: |
+  A function written to accept a file-like object (something with
+  `.readline()`/iteration support, like anything returned by `open()`)
+  shouldn't need a real file on disk just to be exercised with known,
+  in-memory text -- writing a temp file for that is unnecessary
+  overhead, and manually reimplementing line-splitting duplicates logic
+  the function itself already has. `io.StringIO(text)` wraps a plain
+  string in the exact same file-like interface a real opened file
+  provides, so the function can be called directly against in-memory
+  text with no real file and no reimplementation needed.
+
+  The bug this exercise fixes manually splits a string into lines to
+  imitate a file, instead of just handing the function a real
+  file-like object. The fix uses `io.StringIO`.
+example_code: |
+  # The trap: manually reimplements the file-line-splitting the function needs.
+  def count_lines(f):
+      return sum(1 for _ in f)
+
+  def count_lines_in_text_trap(text):
+      lines = text.split("\n")
+      return len(lines)
+
+  text = "a\nb\nc"
+  print(count_lines_in_text_trap(text))
+  # 3 -- happens to be numerically right here, but it's a hand-rolled
+  # reimplementation of line splitting instead of actually exercising
+  # count_lines with a real file-like object at all
+
+  # The fix: StringIO wraps the string in the real file-like interface.
+  import io
+
+  def count_lines_in_text(text):
+      return count_lines(io.StringIO(text))
+
+  print(count_lines_in_text(text))
+  # 3 -- correctly calls the real count_lines function against in-memory text
+starter_code: |
+  def count_lines(f):
+      return sum(1 for _ in f)
+
+  def count_lines_in_text(text):
+      lines = text.split("\n")
+      return len(lines)
+
+  text = "a\nb\nc"
+  print(count_lines_in_text(text))
+challenge: |
+  Fix `count_lines_in_text` so it calls `count_lines(io.StringIO(text))`
+  (importing `io`), instead of manually splitting the string into
+  lines. It should still print `3`.
+expected_output: |
+  3
+hints:
+  - "import io, then: return count_lines(io.StringIO(text))."
+  - "io.StringIO wraps a plain string in the same file-like interface a real open() file provides, so file-expecting functions can be called directly against in-memory text."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 46
+difficulty: core
+contains_patterns:
+  - "count_lines\\(io\\.StringIO\\(text\\)\\)"
+concept_tags: [io, stringio]

@@ -1,0 +1,62 @@
+id: ai_163
+title: "Many Tool Results Accumulated Over a Long Run Can Exceed the Context Budget Too"
+language: ai
+level: 163
+objective: "Fix a context-assembly function that appends every tool result from the entire agent run with no size check at all, letting a long-running agent with many tool calls silently exceed the context window -- the same budget concern this app's RAG category covers for retrieved chunks, here from an agent's own accumulated history instead."
+explanation: |
+  This app's RAG category already established that a context window
+  has a real, finite budget -- but that budget applies just as much to
+  an agent's own accumulated tool results over a long run as it does to
+  retrieved documents. A short agent run with two or three tool calls
+  poses no problem; a long-running one that's made twenty or thirty
+  tool calls, each returning a chunk of text, can accumulate well past
+  the available context before anyone thought to check.
+
+  The bug this exercise fixes appends every tool result unconditionally,
+  with no running size check at all. The fix tracks the accumulated
+  size and stops appending (dropping the oldest results, or truncating,
+  depending on the strategy) once the budget would be exceeded --
+  simply detecting the overflow here, since the appropriate strategy
+  once detected depends on context this exercise's scope doesn't cover.
+example_code: |
+  # The trap: appends every result, with NO size check at all.
+  def assemble_trap(tool_results, budget):
+      return "".join(tool_results)
+
+  tool_results = ["x" * 40 for _ in range(10)]   # 10 results, 40 chars each = 400 chars total
+  print(len(assemble_trap(tool_results, budget=100)))   # 400 -- way over the 100-char budget, never even checked
+
+  # The fix: track accumulated size, stop before exceeding the budget.
+  def assemble(tool_results, budget):
+      combined = ""
+      for result in tool_results:
+          if len(combined) + len(result) > budget:
+              break
+          combined += result
+      return combined
+
+  print(len(assemble(tool_results, budget=100)))   # 80 -- correctly stopped before exceeding the budget
+starter_code: |
+  def assemble(tool_results, budget):
+      return "".join(tool_results)
+
+  tool_results = ["x" * 40 for _ in range(10)]
+  print(len(assemble(tool_results, budget=100)))
+challenge: |
+  Fix `assemble` so it tracks the accumulated length and stops
+  appending once adding the next result would exceed `budget`, instead
+  of concatenating every result unconditionally. It should print `80`,
+  not `400`.
+expected_output: |
+  80
+hints:
+  - "Track combined = \"\" and check `if len(combined) + len(result) > budget: break` before appending each result."
+  - "Two 40-char results fit within the 100-char budget (80 total); a third would push it to 120, over budget, so the loop stops there."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 33
+difficulty: core
+contains_patterns:
+  - "len\\(combined\\) \\+ len\\(result\\) > budget"
+concept_tags: [agentic_frameworks, context_window, tool_calling]

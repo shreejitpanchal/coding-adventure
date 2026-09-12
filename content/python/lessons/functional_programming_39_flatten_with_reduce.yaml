@@ -1,0 +1,61 @@
+id: functional_programming_39
+title: "Flattening a Nested List Is Another Fold"
+language: python
+level: 374
+objective: "Rewrite a nested-loop that flattens a list of lists as a single functools.reduce fold, concatenating each sublist onto a running accumulator -- another example of an operation that looks structural but is really just a fold underneath."
+explanation: |
+  Flattening a list of lists with a nested `for` loop works, but --
+  like this category's earlier `my_map`-via-`reduce` lesson -- it's
+  really just a fold: start with an empty list, and for each sublist,
+  concatenate it onto the running accumulator. `reduce(lambda acc,
+  sublist: acc + sublist, nested, [])` expresses exactly that, as one
+  declarative expression instead of an explicit nested loop with a
+  mutating accumulator variable.
+
+  The fix rewrites the nested loop as a single `reduce` call.
+example_code: |
+  # The nested loop: mutates an accumulator across two levels of looping.
+  def flatten_loop(nested):
+      result = []
+      for sublist in nested:
+          for item in sublist:
+              result.append(item)
+      return result
+
+  print(flatten_loop([[1, 2], [3, 4], [5]]))
+  # [1, 2, 3, 4, 5]
+
+  # The fold: one expression, concatenating each sublist onto the accumulator.
+  from functools import reduce
+
+  def flatten(nested):
+      return reduce(lambda acc, sublist: acc + sublist, nested, [])
+
+  print(flatten([[1, 2], [3, 4], [5]]))
+  # [1, 2, 3, 4, 5] -- same result, expressed as a single fold
+starter_code: |
+  def flatten(nested):
+      result = []
+      for sublist in nested:
+          for item in sublist:
+              result.append(item)
+      return result
+
+  print(flatten([[1, 2], [3, 4], [5]]))
+challenge: |
+  Rewrite `flatten` using
+  `reduce(lambda acc, sublist: acc + sublist, nested, [])`, instead of
+  a nested loop. Keep the same output: [1, 2, 3, 4, 5].
+expected_output: |
+  [1, 2, 3, 4, 5]
+hints:
+  - "from functools import reduce, then: return reduce(lambda acc, sublist: acc + sublist, nested, [])."
+  - "Flattening is really just concatenating each sublist onto a running accumulator -- exactly what the fold expresses in one line."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 39
+difficulty: core
+contains_patterns:
+  - "reduce\\(lambda acc, sublist: acc \\+ sublist, nested, \\[\\]\\)"
+concept_tags: [functional_programming, reduce, fold]

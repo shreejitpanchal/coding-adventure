@@ -1,0 +1,75 @@
+id: functional_programming_36
+title: "A List of Middleware Functions Applied in Sequence, Data-Driven"
+language: python
+level: 371
+objective: "Replace a hardcoded sequence of function calls (each one editing the code to add a new step) with a plain list of functions applied in a loop, so adding a new processing step means appending to the list, not editing the call sequence."
+explanation: |
+  Hardcoding a sequence of processing steps as nested or sequential
+  function calls means every new step requires editing that exact
+  sequence of calls. Treating the steps as *data* -- a plain list of
+  functions, applied to a value one after another in a loop -- turns
+  "add a new step" into "append one more function to the list," with
+  no change needed to the code that actually runs the pipeline. This
+  is the same underlying idea as this category's `run_pipeline`/
+  `reduce`-based pipeline lesson, just expressed as an explicit loop
+  instead of a fold, and is the same shape web frameworks use for
+  "middleware" -- a configurable list of request-processing steps
+  applied in order.
+example_code: |
+  # The trap: hardcoded sequence -- a new step means editing this code.
+  def strip_step(s):
+      return s.strip()
+
+  def lower_step(s):
+      return s.lower()
+
+  def process_trap(text):
+      text = strip_step(text)
+      text = lower_step(text)
+      return text
+
+  print(process_trap("  HELLO  "))
+  # "hello" -- correct, but a new step means adding another line here
+
+  # The fix: steps are DATA -- a plain list, applied in a loop.
+  MIDDLEWARE = [strip_step, lower_step]
+
+  def process(text, middleware):
+      for step in middleware:
+          text = step(text)
+      return text
+
+  print(process("  HELLO  ", MIDDLEWARE))
+  # "hello" -- same result; a new step means appending to MIDDLEWARE, nothing else
+starter_code: |
+  def strip_step(s):
+      return s.strip()
+
+  def lower_step(s):
+      return s.lower()
+
+  def process(text):
+      text = strip_step(text)
+      text = lower_step(text)
+      return text
+
+  print(process("  HELLO  "))
+challenge: |
+  Rewrite this so `MIDDLEWARE = [strip_step, lower_step]` is a plain
+  list, and `process(text, middleware)` applies each step in a loop --
+  `for step in middleware: text = step(text)` -- instead of hardcoding
+  the two calls. Call it as `process("  HELLO  ", MIDDLEWARE)`. Keep
+  the same output: hello.
+expected_output: |
+  hello
+hints:
+  - "MIDDLEWARE = [strip_step, lower_step], then: def process(text, middleware): for step in middleware: text = step(text); return text."
+  - "Treating the steps as a plain list turns \"add a new step\" into \"append to the list\" -- no change needed to the loop that applies them."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 36
+difficulty: core
+contains_patterns:
+  - "for step in middleware:"
+concept_tags: [functional_programming, middleware, higher_order_functions]

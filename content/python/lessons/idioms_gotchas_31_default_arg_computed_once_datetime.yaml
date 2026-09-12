@@ -1,0 +1,69 @@
+id: idioms_gotchas_31
+title: "A Default Argument Like datetime.now() Is Computed Once, Not Per Call"
+language: python
+level: 100
+objective: "Fix a function whose default argument calls datetime.now() directly in the signature, when default values are evaluated exactly once at def time -- every call that relies on the default gets the exact same frozen object, not a fresh timestamp reflecting when it was actually called."
+explanation: |
+  This is the same "default arguments are evaluated once, at def time"
+  rule this category's very first lesson covers for mutable containers
+  -- it applies just as much to a function call like `datetime.now()`
+  sitting directly in a default value. `def log_event(message,
+  timestamp=datetime.datetime.now())` computes that timestamp exactly
+  once, the moment the function is defined, not once per call -- every
+  call relying on the default gets the identical frozen object,
+  regardless of how much real time has actually passed since then.
+
+  The bug this exercise fixes calls `datetime.datetime.now()` directly
+  in the default. The fix defaults to `None` and computes a fresh
+  timestamp inside the function body on every call.
+example_code: |
+  # The trap: datetime.now() in the default is computed ONCE, at def
+  # time -- every call gets the exact same frozen object.
+  import datetime
+
+  def log_event_trap(message, timestamp=datetime.datetime.now()):
+      return timestamp
+
+  t1_trap = log_event_trap("first")
+  t2_trap = log_event_trap("second")
+  print(t1_trap is t2_trap)
+  # True -- the SAME object both times, no matter how much time passed between calls
+
+  # The fix: default to None, compute a fresh timestamp inside the
+  # function body on every call.
+  def log_event(message, timestamp=None):
+      if timestamp is None:
+          timestamp = datetime.datetime.now()
+      return timestamp
+
+  t1 = log_event("first")
+  t2 = log_event("second")
+  print(t1 is t2)
+  # False -- a genuinely fresh object computed on each call
+starter_code: |
+  import datetime
+
+  def log_event(message, timestamp=datetime.datetime.now()):
+      return timestamp
+
+  t1 = log_event("first")
+  t2 = log_event("second")
+  print(t1 is t2)
+challenge: |
+  Fix `log_event` so it defaults `timestamp` to `None` and computes
+  `datetime.datetime.now()` inside the function body only `if
+  timestamp is None`, instead of calling it directly in the default.
+  It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change timestamp=datetime.datetime.now() to timestamp=None, then add: if timestamp is None: timestamp = datetime.datetime.now() inside the function body."
+  - "Checking object identity (is) here is what makes this reliably testable -- two freshly-created datetime objects are never the same object, even if their values happen to be equal."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 31
+difficulty: gotcha
+contains_patterns:
+  - "if timestamp is None:"
+concept_tags: [idioms, default_arguments, mutable_defaults]

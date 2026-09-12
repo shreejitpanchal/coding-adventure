@@ -1,0 +1,90 @@
+id: ai_246
+title: "A Chain Should Stop, Not Keep Running, Once a Step Signals Failure"
+language: ai
+level: 246
+objective: "Fix a sequential chain runner that keeps calling every remaining step even after an earlier step returned None (its failure sentinel), when a step signaling failure should stop the chain immediately instead of letting later steps run on data that was never actually valid."
+explanation: |
+  A hand-rolled chain step often signals "this failed, there's nothing
+  meaningful to pass forward" by returning `None` rather than raising --
+  and the runner has to actually check for that and stop, or every
+  later step ends up running on a `None` that was never real data,
+  potentially producing plausible-looking (but meaningless) output
+  further down the pipeline instead of surfacing the failure where it
+  actually happened.
+
+  The bug this exercise fixes runs every step unconditionally, even
+  after an earlier one returned `None`. The fix checks after each step
+  and stops immediately if the result is `None`.
+example_code: |
+  # The trap: keeps running every step regardless of an earlier
+  # step's None result.
+  def run_chain_trap(steps, x):
+      for step in steps:
+          x = step(x)
+      return x
+
+  calls = []
+  def parse(x):
+      calls.append("parse")
+      return None if x == "bad" else x.upper()
+  def shout(x):
+      calls.append("shout")
+      return f"{x}!!!"
+
+  steps = [parse, shout]
+  run_chain_trap(steps, "bad")
+  print(len(calls))   # 2 -- shout ran even though parse signaled failure with None
+
+  # The fix: stop immediately once a step returns None.
+  def run_chain(steps, x):
+      for step in steps:
+          x = step(x)
+          if x is None:
+              return None
+      return x
+
+  calls2 = []
+  def parse2(x):
+      calls2.append("parse")
+      return None if x == "bad" else x.upper()
+  def shout2(x):
+      calls2.append("shout")
+      return f"{x}!!!"
+
+  run_chain([parse2, shout2], "bad")
+  print(len(calls2))   # 1 -- correctly stopped right after parse signaled failure
+starter_code: |
+  calls = []
+
+  def parse(x):
+      calls.append("parse")
+      return None if x == "bad" else x.upper()
+
+  def shout(x):
+      calls.append("shout")
+      return f"{x}!!!"
+
+  def run_chain(steps, x):
+      for step in steps:
+          x = step(x)
+      return x
+
+  run_chain([parse, shout], "bad")
+  print(len(calls))
+challenge: |
+  Fix `run_chain` so it checks `if x is None: return None` right after
+  each step runs, instead of always continuing to the next step
+  regardless. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Inside the for loop, right after x = step(x), add: if x is None: return None."
+  - "Once a step's own None return value has already signaled failure, nothing later in the chain has valid data to work with."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 26
+difficulty: gotcha
+contains_patterns:
+  - "if x is None:"
+concept_tags: [langchain, chain_composition, short_circuit]

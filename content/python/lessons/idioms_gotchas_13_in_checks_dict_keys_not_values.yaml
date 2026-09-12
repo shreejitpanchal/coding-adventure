@@ -1,0 +1,56 @@
+id: idioms_gotchas_13
+title: "'in' on a Dict Checks Its Keys, Never Its Values"
+language: python
+level: 82
+objective: "Fix a membership check written against a dict when the value being searched for is actually a VALUE in that dict, not a key -- 'in' on a plain dict only ever looks at keys."
+explanation: |
+  `x in some_dict` checks whether `x` is one of the dict's *keys* --
+  it has no idea what the associated values even are, and never looks
+  at them. Searching for something that's actually a value (a role
+  name, a status string) using plain `in` against the dict itself
+  silently checks the wrong thing entirely: it can return `False` for
+  a value that's genuinely present, because it was never a key in the
+  first place.
+
+  The bug this exercise fixes checks `role in user_roles`, treating a
+  dict of `{name: role}` as if `in` searched values. The fix checks
+  `role in user_roles.values()` instead.
+example_code: |
+  # The trap: "in" on a dict checks its KEYS -- but "admin" here is a
+  # VALUE, never a key at all.
+  def has_admin_trap(user_roles):
+      return "admin" in user_roles
+
+  user_roles = {"ada": "admin", "bo": "editor"}
+  print(has_admin_trap(user_roles))
+  # False -- WRONG, "admin" IS present, just as a value, not a key
+
+  # The fix: check .values() explicitly.
+  def has_admin(user_roles):
+      return "admin" in user_roles.values()
+
+  print(has_admin(user_roles))
+  # True -- correctly found among the actual values
+starter_code: |
+  def has_admin(user_roles):
+      return "admin" in user_roles
+
+  user_roles = {"ada": "admin", "bo": "editor"}
+  print(has_admin(user_roles))
+challenge: |
+  Fix `has_admin` so it checks `"admin" in user_roles.values()`,
+  instead of `"admin" in user_roles` (which only checks keys). It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add .values() to search the dict's values instead of its keys: \"admin\" in user_roles.values()."
+  - "user_roles's keys here are the usernames (\"ada\", \"bo\") -- \"admin\" was never going to be found among those."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 13
+difficulty: warmup
+contains_patterns:
+  - "\"admin\" in user_roles\\.values\\(\\)"
+concept_tags: [idioms, dict_membership, operators]

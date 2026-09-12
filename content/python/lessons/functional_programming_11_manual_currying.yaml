@@ -1,0 +1,61 @@
+id: functional_programming_11
+title: "Currying: Turning a Multi-Argument Function Into a Chain of One-Argument Ones"
+language: python
+level: 346
+objective: "Write a curried version of add(a, b) -- add(a)(b) -- as nested closures, instead of calling the original two-argument function directly, demonstrating how currying transforms any multi-argument function into a chain of single-argument functions."
+explanation: |
+  Currying transforms a function taking several arguments into a chain
+  of functions that each take exactly *one* argument, returning the
+  next function in the chain until all arguments have been supplied.
+  `add(a, b)` becomes `add(a)(b)`: calling `add(3)` doesn't compute
+  anything yet -- it returns a *new* function that remembers `3` (a
+  closure, exactly like this category's function-factory lesson) and
+  is waiting for the second argument; calling *that* function with `4`
+  finally computes and returns `7`. This is a foundational pattern in
+  languages built around currying by default (Haskell, for instance),
+  and shows up in Python whenever partial application is expressed as
+  nested closures rather than `functools.partial`.
+
+  The fix defines `add` as a function returning a function, instead of
+  a plain two-argument function called directly.
+example_code: |
+  # Without currying: a plain two-argument function, called directly.
+  def add_plain(a, b):
+      return a + b
+
+  print(add_plain(3, 4))              # 7
+
+  # Curried: add(a) returns a NEW function waiting for b.
+  def add(a):
+      def inner(b):
+          return a + b
+      return inner
+
+  print(add(3)(4))                    # 7 -- same result, via a chain of one-arg calls
+
+  # The intermediate function can be saved and reused:
+  add_three = add(3)
+  print(add_three(10))                # 13
+  print(add_three(20))                # 23
+starter_code: |
+  def add(a, b):
+      return a + b
+
+  print(add(3, 4))
+challenge: |
+  Rewrite `add` as a curried function -- `add(a)` returns an inner
+  function taking `b` and returning `a + b` -- then call it as
+  `add(3)(4)` instead of `add(3, 4)`. Keep the same output: 7.
+expected_output: |
+  7
+hints:
+  - "def add(a): def inner(b): return a + b; return inner."
+  - "add(3) returns a new function remembering a=3 -- calling THAT function with 4 finally computes the result."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "def inner\\(b\\):"
+concept_tags: [functional_programming, currying, closures]

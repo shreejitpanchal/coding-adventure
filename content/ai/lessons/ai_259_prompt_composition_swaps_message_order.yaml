@@ -1,0 +1,55 @@
+id: ai_259
+title: "Composing a System and Human Template Must Keep System First"
+language: ai
+level: 259
+objective: "Fix a prompt-composition function that puts the formatted human template ahead of the formatted system template, when combining the two into one messages list must preserve the same system-first ordering this category's earlier chat-message lesson established."
+explanation: |
+  Composing a chat prompt from separate system and human templates is
+  really just this category's earlier system-first message ordering
+  lesson, one level up: instead of two hardcoded dicts, each half is
+  now its own formatted template, but the same rule still applies --
+  the system message has to come first so it actually sets context
+  before the human turn arrives. A composition function that formats
+  both templates correctly but assembles them in the wrong order still
+  produces exactly the same problem: a model that "sees" the user's
+  message before its own operating instructions.
+
+  The bug this exercise fixes puts the formatted human template first,
+  system template last. The fix keeps the system template first.
+example_code: |
+  # The trap: SWAPS the order -- the human message ends up first, the
+  # system message last.
+  def compose_prompt_trap(system_template, human_template, variables):
+      return [human_template.format(**variables), system_template.format(**variables)]
+
+  print(compose_prompt_trap("You are a {role}.", "Help with: {task}", {"role": "assistant", "task": "billing"})[0])
+  # "Help with: billing" -- wrong, the system message should set context FIRST
+
+  # The fix: system template stays first.
+  def compose_prompt(system_template, human_template, variables):
+      return [system_template.format(**variables), human_template.format(**variables)]
+
+  print(compose_prompt("You are a {role}.", "Help with: {task}", {"role": "assistant", "task": "billing"})[0])
+  # "You are a assistant." -- correctly first
+starter_code: |
+  def compose_prompt(system_template, human_template, variables):
+      return [human_template.format(**variables), system_template.format(**variables)]
+
+  print(compose_prompt("You are a {role}.", "Help with: {task}", {"role": "assistant", "task": "billing"})[0])
+challenge: |
+  Fix `compose_prompt` so the returned list has the formatted
+  `system_template` first, and the formatted `human_template` second.
+  It should print `You are a assistant.`, not `Help with: billing`.
+expected_output: |
+  You are a assistant.
+hints:
+  - "Swap the two list entries: [system_template.format(**variables), human_template.format(**variables)]."
+  - "This is the same system-first ordering rule as building raw message dicts directly -- it doesn't change just because each half is now a formatted template."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 39
+difficulty: warmup
+contains_patterns:
+  - "system_template\\.format\\(\\*\\*variables\\), human_template\\.format"
+concept_tags: [langchain, chat_prompt_template, message_ordering]

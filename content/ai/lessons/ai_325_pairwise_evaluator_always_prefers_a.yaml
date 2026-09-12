@@ -1,0 +1,52 @@
+id: ai_325
+title: "A Pairwise Comparison Must Use the Judge's Actual Verdict, Not Always Pick A"
+language: ai
+level: 325
+objective: "Fix a pairwise-comparison evaluator that always declares response A the winner regardless of what the judge actually decided, when the whole point of the comparison is to report the judge's real verdict, not a fixed default."
+explanation: |
+  Pairwise comparison asks a judge (a model, a human reviewer) which of
+  two candidate responses is better, and the evaluator's whole job is
+  to faithfully report that verdict back -- not to always return the
+  same fixed answer regardless of what was actually decided. Always
+  returning `"A"` produces a function that runs without error and
+  looks like a real comparison, while silently discarding the judge's
+  actual decision every single time.
+
+  The bug this exercise fixes returns the literal `"A"` unconditionally.
+  The fix returns `judge_verdict` itself.
+example_code: |
+  # The trap: ALWAYS prefers A, ignoring the judge's actual verdict
+  # entirely.
+  def compare_trap(response_a, response_b, judge_verdict):
+      return "A"
+
+  print(compare_trap("short answer", "detailed correct answer", judge_verdict="B"))
+  # "A" -- ignored the judge's verdict
+
+  # The fix: return the judge's actual verdict.
+  def compare(response_a, response_b, judge_verdict):
+      return judge_verdict
+
+  print(compare("short answer", "detailed correct answer", judge_verdict="B"))
+  # "B" -- correctly reflects what the judge actually decided
+starter_code: |
+  def compare(response_a, response_b, judge_verdict):
+      return "A"
+
+  print(compare("short answer", "detailed correct answer", judge_verdict="B"))
+challenge: |
+  Fix `compare` so it returns `judge_verdict` directly, instead of the
+  hardcoded literal `"A"`. It should print `B`, not `A`.
+expected_output: |
+  B
+hints:
+  - "Replace return \"A\" with return judge_verdict."
+  - "A comparison function that always returns the same value regardless of its inputs isn't actually comparing anything."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 15
+difficulty: warmup
+contains_patterns:
+  - "return judge_verdict"
+concept_tags: [langsmith, pairwise_comparison, evaluators]

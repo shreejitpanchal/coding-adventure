@@ -1,0 +1,55 @@
+id: ai_354
+title: "A Lower-Is-Better Metric Needs Its Threshold Check Pointed the Right Way"
+language: ai
+level: 354
+objective: "Fix a threshold check that treats latency like a higher-is-better metric, when a lower latency is what's actually good -- applying the wrong comparison direction fails genuinely fast responses and passes genuinely slow ones."
+explanation: |
+  Most evaluation metrics (accuracy, relevance) are higher-is-better,
+  but some -- latency chief among them -- are the opposite: lower is
+  what you actually want. A threshold check copied from a
+  higher-is-better pattern without flipping the comparison direction
+  produces exactly backwards results: a fast response that should pass
+  gets marked as failing, and a slow one that should fail could
+  wrongly pass, depending on which side of the threshold it happens to
+  land on.
+
+  The bug this exercise fixes checks `latency_ms >= threshold`, the
+  higher-is-better direction. The fix checks `latency_ms <= threshold`
+  instead.
+example_code: |
+  # The trap: treats latency like a HIGHER-is-better metric -- but a
+  # LOWER latency is what's actually good.
+  def passes_threshold_trap(latency_ms, threshold):
+      return latency_ms >= threshold
+
+  print(passes_threshold_trap(50, threshold=200))
+  # False -- wrongly failed a genuinely fast (good) latency
+
+  # The fix: flip the comparison -- lower is better for latency.
+  def passes_threshold(latency_ms, threshold):
+      return latency_ms <= threshold
+
+  print(passes_threshold(50, threshold=200))
+  # True -- correctly passed, since 50ms is well under the 200ms threshold
+starter_code: |
+  def passes_threshold(latency_ms, threshold):
+      return latency_ms >= threshold
+
+  print(passes_threshold(50, threshold=200))
+challenge: |
+  Fix `passes_threshold` so it checks `latency_ms <= threshold`
+  instead of `latency_ms >= threshold`. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Flip the comparison operator from >= to <=."
+  - "For a lower-is-better metric like latency, \"passing\" means the value is AT OR BELOW the threshold, not at or above it."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "latency_ms <= threshold"
+concept_tags: [langsmith, evaluators, threshold_direction]

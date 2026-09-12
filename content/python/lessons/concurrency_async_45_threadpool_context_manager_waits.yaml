@@ -1,0 +1,67 @@
+id: concurrency_async_45
+title: "Without the 'with' Block, Nothing Actually Waits for the Pool's Work to Finish"
+language: python
+level: 335
+objective: "Fix code that submits work to a ThreadPoolExecutor without using it as a context manager, so the main thread checks the results before the submitted work has necessarily finished -- 'with ThreadPoolExecutor(...) as pool:' blocks on exit until every submitted task completes."
+explanation: |
+  A `ThreadPoolExecutor` constructed and used directly (no `with`
+  block, no explicit `.shutdown(wait=True)` call) doesn't make the
+  main thread wait for anything -- `pool.submit(...)` hands work off to
+  a background worker and returns immediately, so code right after a
+  loop of `submit()` calls can easily run *before* any of that work has
+  actually finished. Using the pool as a context manager --
+  `with ThreadPoolExecutor(...) as pool:` -- fixes this structurally:
+  exiting the `with` block calls `pool.shutdown(wait=True)`
+  automatically, which blocks until every task submitted to the pool
+  has genuinely completed, before the code after the block ever runs.
+
+  The fix wraps the pool's usage in a `with` block.
+example_code: |
+  # The trap: no "with" block -- nothing waits for the submitted work.
+  from concurrent.futures import ThreadPoolExecutor
+
+  def double_into(i, results):
+      results.append(i * 2)
+
+  results_trap = []
+  pool_trap = ThreadPoolExecutor(2)
+  for i in range(3):
+      pool_trap.submit(double_into, i, results_trap)
+  print(len(results_trap) == 3)
+  # Not reliably True -- the main thread may check before all 3 tasks finish
+
+  # The fix: "with" waits for everything on exit.
+  results = []
+  with ThreadPoolExecutor(2) as pool:
+      for i in range(3):
+          pool.submit(double_into, i, results)
+  print(len(results) == 3)
+  # True -- correctly waited for every submitted task to finish first
+starter_code: |
+  from concurrent.futures import ThreadPoolExecutor
+
+  def double_into(i, results):
+      results.append(i * 2)
+
+  results = []
+  pool = ThreadPoolExecutor(2)
+  for i in range(3):
+      pool.submit(double_into, i, results)
+  print(len(results) == 3)
+challenge: |
+  Fix this by using `with ThreadPoolExecutor(2) as pool:` around the
+  submit loop, instead of constructing the pool directly with no
+  context manager. It should reliably print `True`.
+expected_output: |
+  True
+hints:
+  - "with ThreadPoolExecutor(2) as pool: for i in range(3): pool.submit(double_into, i, results)."
+  - "Exiting a \"with ThreadPoolExecutor(...)\" block calls shutdown(wait=True) automatically -- that's what actually blocks until every submitted task has finished."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "with ThreadPoolExecutor\\(2\\) as pool:"
+concept_tags: [threading, executors, concurrency]

@@ -1,0 +1,63 @@
+id: ai_149
+title: "A Cost Budget Needs to Track the Running Total, Not Just the Last Call"
+language: ai
+level: 149
+objective: "Fix a budget check that only compares the most recent call's cost against the limit, instead of accumulating every call's cost across the whole agent run -- a series of individually-small calls can still add up to a genuinely large total."
+explanation: |
+  A per-agent-run cost cap needs to track spending across the *entire*
+  run, not just whether any single call was expensive on its own. An
+  agent that makes twenty calls at $0.10 each has spent $2.00 total,
+  even though every individual call looked cheap -- checking only the
+  latest call's cost against the budget never notices the accumulated
+  total crossing the actual limit at all.
+
+  The bug this exercise fixes checks each call's cost against the
+  budget independently, with no running total tracked across calls at
+  all. The fix accumulates a running total across every call and checks
+  *that* against the budget, correctly catching the case where many
+  small calls add up to exceed it.
+example_code: |
+  # The trap: checks each call's cost INDEPENDENTLY -- never notices
+  # that many small calls have added up to exceed the real budget.
+  def within_budget_trap(call_cost, budget):
+      return call_cost <= budget
+
+  budget = 1.00
+  calls = [0.10] * 15   # 15 calls at $0.10 each = $1.50 total, over budget
+  print(all(within_budget_trap(c, budget) for c in calls))   # True -- EVERY individual call looks fine on its own
+
+  # The fix: accumulate a RUNNING TOTAL across every call, check THAT.
+  def check_budget(calls, budget):
+      running_total = 0
+      for cost in calls:
+          running_total += cost
+          if running_total > budget:
+              return False
+      return True
+
+  print(check_budget(calls, budget))   # False -- correctly catches the accumulated total exceeding budget
+starter_code: |
+  def check_budget(calls, budget):
+      return all(cost <= budget for cost in calls)
+
+  budget = 1.00
+  calls = [0.10] * 15
+  print(check_budget(calls, budget))
+challenge: |
+  Fix `check_budget` so it accumulates a running total across every
+  call in `calls` and returns `False` the moment that running total
+  exceeds `budget`, instead of checking each call's cost independently.
+  It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Track running_total = 0, adding each call's cost to it inside a loop, and returning False the moment running_total > budget."
+  - "15 calls at $0.10 each sum to $1.50, which exceeds the $1.00 budget -- even though no single call was ever expensive on its own."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 19
+difficulty: gotcha
+contains_patterns:
+  - "running_total \\+= cost"
+concept_tags: [agentic_frameworks, cost_tracking, budget]

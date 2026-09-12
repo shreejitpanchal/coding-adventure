@@ -1,0 +1,70 @@
+id: gotcha_gauntlet_30
+title: "The Infinite Recursion That Got Mistaken for 'No Results'"
+language: python
+level: 275
+objective: "Fix a recursive function with no base case, whose RecursionError gets silently swallowed by an overly broad except clause and reported as an empty, valid-looking result instead of the real crash it actually is."
+explanation: |
+  A recursive function needs a base case that stops the recursion once
+  the input reaches some terminal condition -- without one, every call
+  keeps recursing deeper until Python's call-stack limit is hit,
+  raising `RecursionError`. Wrapping the *call site* in a broad
+  `except Exception:` that returns an empty, plausible-looking
+  fallback value hides that crash completely: the function "returns
+  successfully" with an empty list, which looks exactly like "there
+  were no matching results" instead of "this function is infinitely
+  recursive and never had a chance to finish." That's a far more
+  dangerous failure mode than a raw crash, since nothing about the
+  output signals that anything is actually broken.
+
+  The fix is adding the missing base case so the recursion actually
+  terminates, rather than papering over the crash with a broad
+  `except` at the call site.
+example_code: |
+  # The trap: no base case at all -- always recurses, and the broad except
+  # hides the resulting crash as an innocent-looking empty result.
+  def countdown_trap(n):
+      return [n] + countdown_trap(n - 1)      # never stops!
+
+  try:
+      result_trap = countdown_trap(5)
+  except Exception:
+      result_trap = []
+
+  print(result_trap)
+  # [] -- WRONG, this LOOKS like a valid empty result, but it's actually
+  # a RecursionError being silently swallowed
+
+  # The fix: add the missing base case so recursion actually terminates.
+  def countdown(n):
+      if n <= 0:
+          return []
+      return [n] + countdown(n - 1)
+
+  print(countdown(5))
+  # [5, 4, 3, 2, 1] -- correctly terminates, no crash to hide at all
+starter_code: |
+  def countdown(n):
+      return [n] + countdown(n - 1)
+
+  try:
+      result = countdown(5)
+  except Exception:
+      result = []
+
+  print(result)
+challenge: |
+  Fix `countdown` by adding a base case: `if n <= 0: return []` before
+  the recursive call. It should print `[5, 4, 3, 2, 1]`, not `[]`.
+expected_output: |
+  [5, 4, 3, 2, 1]
+hints:
+  - "Add if n <= 0: return [] as the first line inside countdown."
+  - "A broad except around a recursive call can hide a missing base case as an innocent-looking empty result, instead of the real RecursionError it actually is."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 30
+difficulty: gotcha
+contains_patterns:
+  - "if n <= 0:"
+concept_tags: [recursion, exceptions, gotchas]

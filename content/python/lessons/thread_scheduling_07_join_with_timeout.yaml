@@ -1,0 +1,79 @@
+id: thread_scheduling_07
+title: "join() With No Timeout Waits However Long the Thread Takes"
+language: python
+level: 427
+objective: "Fix code calling t.join() with no timeout, which blocks for however long the thread actually takes to finish, when t.join(timeout) returns after AT MOST that many seconds regardless -- checking is_alive() afterward tells you whether it actually finished or you just gave up waiting."
+explanation: |
+  `t.join()` with no argument blocks the calling thread until `t` has
+  completely finished, no matter how long that takes -- for a thread
+  doing genuinely slow work, that means the caller has no way to check
+  back in sooner and do something else in the meantime. `t.join
+  (timeout)` returns after *at most* `timeout` seconds, whether or not
+  the thread has actually finished by then -- it doesn't wait longer,
+  and it doesn't raise anything either way. Since `join(timeout)`
+  returning doesn't itself say whether the thread finished or the
+  timeout simply elapsed, checking `t.is_alive()` immediately
+  afterward is what actually distinguishes the two: still `True` means
+  it's still running, `False` means it genuinely completed within the
+  window.
+
+  The fix uses `t.join(timeout)` with a bounded wait, instead of an
+  unbounded `t.join()`.
+example_code: |
+  # The trap: no timeout -- blocks for the thread's FULL duration, however long.
+  import threading, time
+
+  def wait_briefly_trap(t):
+      t.join()                    # blocks until t is COMPLETELY done
+      return "waited"
+
+  t_trap = threading.Thread(target=lambda: time.sleep(0.2))
+  t_trap.start()
+  start_trap = time.monotonic()
+  wait_briefly_trap(t_trap)
+  print(time.monotonic() - start_trap < 0.1)
+  # False -- WRONG if the intent was checking back quickly, without waiting it out
+
+  # The fix: join(timeout) bounds the wait -- is_alive() tells you what actually happened.
+  def wait_briefly(t, timeout):
+      t.join(timeout)
+      return not t.is_alive()
+
+  t = threading.Thread(target=lambda: time.sleep(0.2))
+  t.start()
+  start = time.monotonic()
+  finished = wait_briefly(t, 0.01)
+  print(time.monotonic() - start < 0.1)
+  # True -- correctly returned quickly, without waiting for the full 0.2s duration
+  t.join()
+starter_code: |
+  import threading, time
+
+  def wait_briefly(t):
+      t.join()
+      return "waited"
+
+  t = threading.Thread(target=lambda: time.sleep(0.2))
+  t.start()
+  start = time.monotonic()
+  wait_briefly(t)
+  print(time.monotonic() - start < 0.1)
+  t.join()
+challenge: |
+  Fix `wait_briefly` so it takes a `timeout` parameter, calls
+  `t.join(timeout)`, and returns `not t.is_alive()`. Call it as
+  `wait_briefly(t, 0.01)`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "def wait_briefly(t, timeout): t.join(timeout); return not t.is_alive()."
+  - "join(timeout) returns after AT MOST timeout seconds either way -- is_alive() afterward is what tells you whether the thread actually finished, or you just gave up waiting."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "t\\.join\\(timeout\\)"
+  - "not t\\.is_alive\\(\\)"
+concept_tags: [threading, join, timeout]

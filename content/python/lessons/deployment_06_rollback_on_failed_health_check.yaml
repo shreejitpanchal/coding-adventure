@@ -1,0 +1,86 @@
+id: deployment_06
+title: "The Deploy That Left a Broken Version Running"
+language: python
+level: 396
+objective: "Fix a deploy function that switches traffic to a new version and never checks whether it's actually healthy afterward, when checking post-deploy health -- and automatically rolling back to the previous version if it fails -- catches a bad deploy before it stays live."
+explanation: |
+  Switching traffic to a newly deployed version and simply declaring
+  success trusts that the new version actually works, with nothing
+  verifying that trust -- a genuinely broken deploy (a crashed
+  process, a missing config value, an unreachable dependency) stays
+  live indefinitely, serving broken responses to real traffic, until a
+  human notices and intervenes manually. Checking the new version's
+  health immediately after switching -- and automatically reverting
+  back to the previous, known-good version the instant that check
+  fails -- turns a bad deploy into a brief, self-healing blip instead
+  of an extended outage.
+
+  The fix calls a health check right after switching, rolling back
+  automatically if it reports unhealthy.
+example_code: |
+  # The trap: switches traffic, never actually checks if it's healthy.
+  current_version_trap = "v1"
+
+  def deploy_trap(new_version):
+      global current_version_trap
+      current_version_trap = new_version
+      return "deployed"
+
+  def check_health(version):
+      return version != "v2-broken"     # simulates v2-broken actually being unhealthy
+
+  print(deploy_trap("v2-broken"))
+  print(current_version_trap)
+  # deployed
+  # v2-broken -- WRONG, a genuinely broken version is left running live
+
+  # The fix: check health after switching, roll back automatically if it fails.
+  current_version = "v1"
+
+  def deploy(new_version):
+      global current_version
+      previous = current_version
+      current_version = new_version
+      if not check_health(current_version):
+          current_version = previous
+          return "rolled back"
+      return "deployed"
+
+  print(deploy("v2-broken"))
+  print(current_version)
+  # rolled back
+  # v1 -- correctly reverted to the known-good version instead of staying broken
+starter_code: |
+  current_version = "v1"
+
+  def check_health(version):
+      return version != "v2-broken"
+
+  def deploy(new_version):
+      global current_version
+      current_version = new_version
+      return "deployed"
+
+  print(deploy("v2-broken"))
+  print(current_version)
+challenge: |
+  Fix `deploy` so it remembers `previous = current_version` before
+  switching, checks `check_health(current_version)` afterward, and
+  rolls back to `previous` (returning `"rolled back"`) if the check
+  fails. It should print `rolled back` then `v1`, not `deployed` then
+  `v2-broken`.
+expected_output: |
+  rolled back
+  v1
+hints:
+  - "previous = current_version, before reassigning current_version = new_version."
+  - "if not check_health(current_version): current_version = previous; return \"rolled back\"."
+xp_reward: 15
+achievement: null
+category: deployment
+category_level: 6
+difficulty: deep_dive
+contains_patterns:
+  - "previous = current_version"
+  - "current_version = previous"
+concept_tags: [deployment, rollback, health_checks]

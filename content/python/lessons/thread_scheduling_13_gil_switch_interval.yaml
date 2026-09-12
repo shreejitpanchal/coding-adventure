@@ -1,0 +1,63 @@
+id: thread_scheduling_13
+title: "sys.setswitchinterval Controls How Often the GIL Actually Changes Hands"
+language: python
+level: 433
+objective: "Fix a stub that ignores sys.setswitchinterval entirely, when the switch interval controls how long a thread holding the GIL runs before CPython considers giving another thread a turn -- a shorter interval means more frequent, fairer switching between CPU-bound threads."
+explanation: |
+  CPython's GIL doesn't hand off between threads after every single
+  bytecode instruction -- it checks whether to switch roughly every
+  `sys.getswitchinterval()` seconds (5 milliseconds, by default),
+  which is frequent enough not to matter for most programs, but is a
+  real, tunable knob: `sys.setswitchinterval(seconds)` changes it.
+  A *shorter* interval makes CPU-bound threads trade off the GIL more
+  often, giving each one a fairer, more frequent turn at the cost of a
+  little extra switching overhead; a *longer* interval reduces that
+  overhead but lets one CPU-bound thread monopolize the GIL for longer
+  stretches before yielding. This is a genuinely tunable setting, not
+  just a fixed constant -- reading it back after setting it should
+  reflect whatever was actually configured.
+
+  The fix actually calls `sys.setswitchinterval` and returns the value
+  read back from `sys.getswitchinterval()`.
+example_code: |
+  # The trap: ignores the requested interval, always reports a hardcoded value.
+  import sys
+
+  def configure_switch_interval_trap(seconds):
+      return 0.005              # WRONG -- always the untouched default, ignores seconds
+
+  print(configure_switch_interval_trap(0.001))
+  # 0.005 -- WRONG, the requested 0.001 was never actually applied at all
+
+  # The fix: actually set it, then read back the real, current value.
+  def configure_switch_interval(seconds):
+      sys.setswitchinterval(seconds)
+      return sys.getswitchinterval()
+
+  print(configure_switch_interval(0.001))
+  # 0.001 -- correctly applied and read back
+starter_code: |
+  import sys
+
+  def configure_switch_interval(seconds):
+      return 0.005
+
+  print(configure_switch_interval(0.001))
+challenge: |
+  Fix `configure_switch_interval` so it calls
+  `sys.setswitchinterval(seconds)` and returns
+  `sys.getswitchinterval()`, instead of a hardcoded `0.005`. It should
+  print `0.001`, not `0.005`.
+expected_output: |
+  0.001
+hints:
+  - "sys.setswitchinterval(seconds), then return sys.getswitchinterval()."
+  - "A shorter switch interval makes CPU-bound threads trade off the GIL more often, giving each a fairer turn -- it's a real, tunable setting, not a fixed constant."
+xp_reward: 15
+achievement: null
+category: thread_scheduling
+category_level: 13
+difficulty: deep_dive
+contains_patterns:
+  - "sys\\.setswitchinterval\\(seconds\\)"
+concept_tags: [threading, gil, scheduling]

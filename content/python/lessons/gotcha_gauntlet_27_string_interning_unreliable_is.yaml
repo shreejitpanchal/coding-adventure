@@ -1,0 +1,61 @@
+id: gotcha_gauntlet_27
+title: "The String Comparison That Failed Because 'is' Isn't '=='"
+language: python
+level: 272
+objective: "Fix a string comparison using 'is' (identity) when '==' (value equality) is what's actually needed -- a string built at runtime via joining pieces is a genuinely different object from an equal-content literal, even though their characters match exactly."
+explanation: |
+  `is` checks whether two names refer to the exact same object in
+  memory -- it has nothing to do with whether their *contents* are
+  equal. Short string literals that look identical in source code are
+  often automatically reused (interned) by CPython as an optimization,
+  which can make `is` *appear* to work for those specific cases -- but
+  a string assembled at runtime, such as `"".join(["a", "b", "c"])`,
+  is a freshly constructed object with no such automatic reuse, even
+  though its characters exactly match the literal `"abc"`. Relying on
+  `is` for string comparison is fragile in general, since whether two
+  equal-content strings happen to be the same object is an
+  implementation detail, not something Python's language semantics
+  ever promise.
+
+  The fix is always using `==` for comparing string *values* --
+  correct and reliable regardless of how either string was actually
+  constructed.
+example_code: |
+  # The trap: 'is' checks IDENTITY, not value equality.
+  def matches_trap(parts, target):
+      built = "".join(parts)
+      return built is target
+
+  print(matches_trap(["a", "b", "c"], "abc"))
+  # False -- WRONG, the runtime-built string is a genuinely different
+  # object from the literal, even though its characters are identical
+
+  # The fix: == checks VALUE equality, correctly, regardless of identity.
+  def matches(parts, target):
+      built = "".join(parts)
+      return built == target
+
+  print(matches(["a", "b", "c"], "abc"))
+  # True -- correctly compares the actual string content
+starter_code: |
+  def matches(parts, target):
+      built = "".join(parts)
+      return built is target
+
+  print(matches(["a", "b", "c"], "abc"))
+challenge: |
+  Fix `matches` so it returns `built == target`, instead of `built is
+  target`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "return built == target."
+  - "is checks whether two names point to the exact same object -- a string built at runtime is essentially never the same object as an equal-content literal."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "return built == target"
+concept_tags: [strings, identity, equality, gotchas]

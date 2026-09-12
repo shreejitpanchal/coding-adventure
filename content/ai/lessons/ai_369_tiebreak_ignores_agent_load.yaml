@@ -1,0 +1,55 @@
+id: ai_369
+title: "Among Several Matching Agents, Route to the Least Loaded One"
+language: ai
+level: 369
+objective: "Fix an agent selector that always picks the first matching agent, when several agents advertising the same capability should be chosen between based on which one currently has the most spare capacity -- not an arbitrary fixed order."
+explanation: |
+  When more than one agent can genuinely handle a task, blindly picking
+  the first one in some list means every task with multiple valid
+  candidates piles onto that same agent while others sit comparatively
+  idle. Choosing the least-loaded candidate instead spreads work
+  roughly evenly across every agent capable of doing it, rather than
+  overloading whichever one happens to be listed first.
+
+  The bug this exercise fixes returns `matching_agents[0]`. The fix
+  selects whichever candidate currently has the lowest `current_load`.
+example_code: |
+  # The trap: always picks the FIRST match, ignoring current load
+  # entirely.
+  def find_agent_trap(matching_agents):
+      return matching_agents[0]["name"]
+
+  matching_agents = [{"name": "agent-a", "current_load": 8}, {"name": "agent-b", "current_load": 2}]
+  print(find_agent_trap(matching_agents))
+  # "agent-a" -- wrong, this one is already heavily loaded
+
+  # The fix: select whichever candidate has the lowest current_load.
+  def find_agent(matching_agents):
+      return min(matching_agents, key=lambda a: a["current_load"])["name"]
+
+  print(find_agent(matching_agents))
+  # "agent-b" -- correctly the least-loaded candidate
+starter_code: |
+  def find_agent(matching_agents):
+      return matching_agents[0]["name"]
+
+  matching_agents = [{"name": "agent-a", "current_load": 8}, {"name": "agent-b", "current_load": 2}]
+  print(find_agent(matching_agents))
+challenge: |
+  Fix `find_agent` so it returns `min(matching_agents, key=lambda a:
+  a["current_load"])["name"]`, instead of always
+  `matching_agents[0]["name"]`. It should print `agent-b`, not
+  `agent-a`.
+expected_output: |
+  agent-b
+hints:
+  - "Use min() with a key function pulling out each candidate's current_load."
+  - "Picking a fixed position in the list (like [0]) has no relationship at all to which agent actually has spare capacity right now."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 14
+difficulty: warmup
+contains_patterns:
+  - "min\\(matching_agents, key=lambda a: a\\[\"current_load\"\\]\\)"
+concept_tags: [solace_agent_mesh, agent_card, load_balancing]

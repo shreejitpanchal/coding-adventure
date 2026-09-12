@@ -1,0 +1,62 @@
+id: ai_404
+title: "A Reply Must Be Translated Back Into the Originating Transport's Own Shape"
+language: ai
+level: 404
+objective: "Fix a reply builder that always returns the same generic shape regardless of which transport the original request came from, when Slack (and other transports) need their own specific reply structure to render correctly -- a generic shape that happens to work for one transport doesn't automatically work for all of them."
+explanation: |
+  This category's opening lesson covered translating an inbound payload
+  into one common shape regardless of transport -- the outbound path
+  needs the exact opposite operation: translating the agent's own
+  common result *back* into whatever shape the originating transport
+  actually expects. Slack doesn't render a plain `{"text": ...}` dict
+  the way its own Block Kit format requires; sending it that shape
+  anyway means the reply either renders incorrectly or doesn't render
+  at all.
+
+  The bug this exercise fixes always returns `{"text": task_result}`,
+  regardless of `source_transport`. The fix builds Slack's own
+  block-based shape specifically when replying to a Slack-originated
+  request.
+example_code: |
+  # The trap: always returns the SAME generic shape regardless of
+  # source_transport -- Slack needs its own specific reply structure.
+  def build_reply_trap(task_result, source_transport):
+      return {"text": task_result}
+
+  reply_trap = build_reply_trap("done!", source_transport="slack")
+  print("blocks" in reply_trap)
+  # False -- Slack replies need a "blocks" field to render correctly
+
+  # The fix: build the transport's own expected shape.
+  def build_reply(task_result, source_transport):
+      if source_transport == "slack":
+          return {"blocks": [{"type": "section", "text": task_result}]}
+      return {"text": task_result}
+
+  reply = build_reply("done!", source_transport="slack")
+  print("blocks" in reply)
+  # True -- correctly shaped for Slack's own rendering requirements
+starter_code: |
+  def build_reply(task_result, source_transport):
+      return {"text": task_result}
+
+  reply = build_reply("done!", source_transport="slack")
+  print("blocks" in reply)
+challenge: |
+  Fix `build_reply` so it returns `{"blocks": [{"type": "section",
+  "text": task_result}]}` specifically when `source_transport ==
+  "slack"`, instead of always the generic `{"text": task_result}`
+  shape. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add: if source_transport == \"slack\": return {\"blocks\": [{\"type\": \"section\", \"text\": task_result}]}, before the generic fallback."
+  - "The outbound translation is the reverse of the inbound one this category opened with -- normalized result back into transport-specific shape, instead of transport-specific payload into normalized shape."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 49
+difficulty: core
+contains_patterns:
+  - "\"blocks\": \\[\\{\"type\": \"section\", \"text\": task_result\\}\\]"
+concept_tags: [solace_agent_mesh, entrypoint, outbound_translation]

@@ -1,0 +1,86 @@
+id: thread_scheduling_12
+title: "A Hardcoded Thread Name Can't Tell Two Workers Apart in a Log"
+language: python
+level: 432
+objective: "Fix worker threads that all log the same hardcoded name string, making them indistinguishable from each other, when threading.get_ident() gives each currently-running thread a genuinely unique identifier -- distinct for every thread actually alive at the same time."
+explanation: |
+  A hardcoded `name="worker"` given to every thread a factory function
+  creates means every one of them logs the exact same string -- fine
+  if there's only ever one at a time, but useless the moment two
+  workers are genuinely running concurrently and something needs to
+  tell their log lines apart. `threading.get_ident()` returns an
+  integer identifier that's guaranteed unique among every thread that's
+  currently alive at the same time (an id can be reused later, once a
+  thread has actually finished, but never while two threads are both
+  genuinely running) -- exactly the property needed to distinguish
+  concurrently-running workers' log lines from each other.
+
+  The fix logs `threading.get_ident()` instead of a hardcoded name
+  string.
+example_code: |
+  # The trap: every worker logs the SAME hardcoded name -- indistinguishable.
+  import threading
+
+  def make_worker_trap(log):
+      def work():
+          log.append(threading.current_thread().name)
+      return threading.Thread(target=work, name="worker")
+
+  log_trap = []
+  t1_trap = make_worker_trap(log_trap)
+  t2_trap = make_worker_trap(log_trap)
+  t1_trap.start()
+  t2_trap.start()
+  t1_trap.join()
+  t2_trap.join()
+  print(len(set(log_trap)))
+  # 1 -- WRONG, both workers logged the exact same identifier
+
+  # The fix: get_ident() is genuinely unique among currently-alive threads.
+  def make_worker(log):
+      def work():
+          log.append(threading.get_ident())
+      return threading.Thread(target=work)
+
+  log = []
+  t1 = make_worker(log)
+  t2 = make_worker(log)
+  t1.start()
+  t2.start()
+  t1.join()
+  t2.join()
+  print(len(set(log)))
+  # 2 -- correctly distinct identifiers, since both threads were alive at once
+starter_code: |
+  import threading
+
+  def make_worker(log):
+      def work():
+          log.append(threading.current_thread().name)
+      return threading.Thread(target=work, name="worker")
+
+  log = []
+  t1 = make_worker(log)
+  t2 = make_worker(log)
+  t1.start()
+  t2.start()
+  t1.join()
+  t2.join()
+  print(len(set(log)))
+challenge: |
+  Fix `make_worker` so its inner `work` function logs
+  `threading.get_ident()`, and the `Thread` is constructed with no
+  hardcoded `name=` at all. It should print `2`, not `1`.
+expected_output: |
+  2
+hints:
+  - "log.append(threading.get_ident()) inside work, and drop name=\"worker\" from the Thread constructor entirely."
+  - "get_ident() is guaranteed unique among threads that are genuinely alive at the same time -- a hardcoded name string is just the same value every time, no matter how many workers exist."
+xp_reward: 10
+achievement: null
+category: thread_scheduling
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "threading\\.get_ident\\(\\)"
+concept_tags: [threading, get_ident, debugging]

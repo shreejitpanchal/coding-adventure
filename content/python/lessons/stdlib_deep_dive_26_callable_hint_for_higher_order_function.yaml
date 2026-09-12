@@ -1,0 +1,53 @@
+id: stdlib_deep_dive_26
+title: "typing.Callable Documents What a Higher-Order Function's Callback Actually Looks Like"
+language: python
+level: 227
+objective: "Add a typing.Callable type hint documenting a callback parameter's expected signature, instead of leaving a higher-order function's parameter unannotated."
+explanation: |
+  A higher-order function's parameter that's itself a function (a
+  callback) is exactly the case `typing.Callable` exists to document:
+  `Callable[[int], int]` says "a function taking one int and returning
+  one int," which is real, useful information about what kind of
+  callback is actually expected -- an unannotated parameter documents
+  nothing at all about what shape a valid callback needs to have.
+
+  The bug this exercise fixes has no type hint on the callback
+  parameter. The fix adds `Callable[[int], int]`.
+example_code: |
+  # No hint at all -- nothing documents what shape f is supposed to have.
+  def apply_twice_loop(f, x):
+      return f(f(x))
+
+  print("f" in apply_twice_loop.__annotations__)
+  # False -- no information about the expected callback shape
+
+  # Callable documents the expected callback signature directly.
+  from typing import Callable
+
+  def apply_twice(f: Callable[[int], int], x: int) -> int:
+      return f(f(x))
+
+  print("f" in apply_twice.__annotations__)
+  # True -- correctly documents that f takes one int and returns one int
+starter_code: |
+  def apply_twice(f, x):
+      return f(f(x))
+
+  print("f" in apply_twice.__annotations__)
+challenge: |
+  Fix `apply_twice` by importing `Callable` from `typing` and
+  annotating `f: Callable[[int], int]`. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "from typing import Callable, then: def apply_twice(f: Callable[[int], int], x: int) -> int:."
+  - "Callable[[int], int] reads as \"a function taking one int argument and returning an int\" -- real documentation for what a valid callback looks like."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "f: Callable\\[\\[int\\], int\\]"
+concept_tags: [typing, callable]

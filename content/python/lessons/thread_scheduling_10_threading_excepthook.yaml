@@ -1,0 +1,82 @@
+id: thread_scheduling_10
+title: "A Thread's Exception Prints to stderr by Default -- Nothing Catches It For You"
+language: python
+level: 430
+objective: "Fix code expecting to somehow be notified when a worker thread's target function raises, when by default an uncaught exception inside a thread just gets printed to stderr via threading.excepthook and nothing else -- overriding threading.excepthook is what lets a program actually observe and react to it."
+explanation: |
+  An exception raised inside a thread's target function doesn't
+  propagate to the thread that started it, and doesn't crash the main
+  thread either -- there's no `try/except` anywhere that could catch
+  it across a thread boundary that way. By default, Python's
+  `threading.excepthook` handles it by printing a traceback to
+  `stderr` and otherwise doing nothing -- the exception is genuinely
+  gone from any program logic's perspective once that's happened.
+  Actually observing that a worker thread failed (to log it centrally,
+  set an alert flag, retry the work) requires overriding `threading.
+  excepthook` itself with a custom function, which receives the
+  failure's details (`args.exc_value`, among others) and can react to
+  it however the program actually needs.
+
+  The fix overrides `threading.excepthook`, capturing the exception
+  instead of relying on its default stderr-only behavior.
+example_code: |
+  # The trap: relies on the DEFAULT excepthook -- prints to stderr, nothing else.
+  import threading
+
+  caught_trap = []
+
+  def worker_trap():
+      raise ValueError("worker failed")
+
+  t_trap = threading.Thread(target=worker_trap)
+  t_trap.start()
+  t_trap.join()
+  print(len(caught_trap))
+  # 0 -- WRONG if the program needed to actually observe the failure somehow
+
+  # The fix: override threading.excepthook to capture it.
+  caught = []
+
+  def custom_excepthook(args):
+      caught.append(args.exc_value)
+
+  threading.excepthook = custom_excepthook
+
+  def worker():
+      raise ValueError("worker failed")
+
+  t = threading.Thread(target=worker)
+  t.start()
+  t.join()
+  print(len(caught))
+  # 1 -- correctly captured the worker thread's exception
+starter_code: |
+  import threading
+
+  caught = []
+
+  def worker():
+      raise ValueError("worker failed")
+
+  t = threading.Thread(target=worker)
+  t.start()
+  t.join()
+  print(len(caught))
+challenge: |
+  Fix this by defining `custom_excepthook(args)` that appends
+  `args.exc_value` to `caught`, and setting
+  `threading.excepthook = custom_excepthook` before starting the
+  thread. It should print `1`, not `0`.
+expected_output: |
+  1
+hints:
+  - "def custom_excepthook(args): caught.append(args.exc_value), then threading.excepthook = custom_excepthook before t.start()."
+  - "By default, an exception raised inside a thread just gets printed to stderr and is otherwise gone -- overriding threading.excepthook is the only way to actually observe it programmatically."
+xp_reward: 15
+achievement: null
+category: thread_scheduling
+category_level: 10
+difficulty: deep_dive
+contains_patterns:
+  - "threading\\.excepthook = custom_excepthook"
+concept_tags: [threading, exceptions, excepthook]

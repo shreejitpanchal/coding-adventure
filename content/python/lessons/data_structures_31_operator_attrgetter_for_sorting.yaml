@@ -1,0 +1,55 @@
+id: data_structures_31
+title: "operator.attrgetter Reads an Object's Attribute Directly, No Lambda Needed"
+language: python
+level: 188
+objective: "Replace a small lambda reading an object's attribute with operator.attrgetter, the standard-library tool built specifically for sorting by an attribute."
+explanation: |
+  `lambda p: p.age` as a sort key reads an attribute off each object --
+  `operator.attrgetter("age")` does the identical thing, naming the
+  attribute being extracted as a plain string instead of requiring an
+  inline function. It's the object-attribute counterpart to
+  `itemgetter` (which reads by index or key instead), and both exist
+  in the standard library for the same reason: a common, simple
+  extraction doesn't need a full lambda to express it.
+example_code: |
+  # A lambda reading an attribute off each object.
+  class Person:
+      def __init__(self, name, age):
+          self.name = name
+          self.age = age
+
+  people = [Person("Bo", 30), Person("Ada", 25)]
+  sorted_loop = sorted(people, key=lambda p: p.age)
+  print([p.name for p in sorted_loop])      # ['Ada', 'Bo']
+
+  # operator.attrgetter reads the same attribute directly.
+  from operator import attrgetter
+
+  sorted_people = sorted(people, key=attrgetter("age"))
+  print([p.name for p in sorted_people])    # ['Ada', 'Bo']
+starter_code: |
+  class Person:
+      def __init__(self, name, age):
+          self.name = name
+          self.age = age
+
+  people = [Person("Bo", 30), Person("Ada", 25)]
+  sorted_people = sorted(people, key=lambda p: p.age)
+  print([p.name for p in sorted_people])
+challenge: |
+  Rewrite the sort key as `attrgetter("age")` (imported from
+  `operator`), instead of `lambda p: p.age`. Keep the same output:
+  ['Ada', 'Bo'].
+expected_output: |
+  ['Ada', 'Bo']
+hints:
+  - "from operator import attrgetter, then: sorted(people, key=attrgetter(\"age\"))."
+  - "attrgetter(\"age\") is functionally identical to lambda p: p.age -- it just names the attribute as a plain string instead of an inline function."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 31
+difficulty: warmup
+contains_patterns:
+  - "key=attrgetter\\(\"age\"\\)"
+concept_tags: [sorting, operator_module]

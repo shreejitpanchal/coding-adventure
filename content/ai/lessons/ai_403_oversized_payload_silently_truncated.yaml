@@ -1,0 +1,64 @@
+id: ai_403
+title: "An Oversized Payload Should Be Rejected, Not Silently Truncated"
+language: ai
+level: 403
+objective: "Fix a message-sending function that silently truncates a payload exceeding the size limit, when a receiver getting only part of a message with no indication anything was cut off is far worse than a clear, immediate rejection that at least says what went wrong."
+explanation: |
+  Silently cutting a payload down to fit a size limit produces a
+  corrupted, incomplete message with nothing to tell the receiver it's
+  incomplete -- the receiving agent has no way to know it's looking at
+  half of something rather than the whole thing. Rejecting an oversized
+  payload outright, with a clear error naming the limit, at least
+  surfaces the problem where it can actually be fixed, instead of
+  quietly delivering broken data downstream.
+
+  The bug this exercise fixes slices the payload down to `max_size`.
+  The fix raises a clear error instead, rejecting the oversized payload
+  outright.
+example_code: |
+  # The trap: silently TRUNCATES an oversized payload -- the receiver
+  # gets a corrupted, incomplete message with no indication anything
+  # was cut.
+  def send_message_trap(payload, max_size):
+      return payload[:max_size]
+
+  print(len(send_message_trap("x" * 100, max_size=50)))
+  # 50 -- silently corrupted, half the real payload is just gone
+
+  # The fix: reject an oversized payload outright, with a clear error.
+  def send_message(payload, max_size):
+      if len(payload) > max_size:
+          raise ValueError(f"payload exceeds max size of {max_size} bytes")
+      return payload
+
+  try:
+      send_message("x" * 100, max_size=50)
+  except ValueError as e:
+      print(str(e))
+  # "payload exceeds max size of 50 bytes" -- correctly rejected instead of silently corrupted
+starter_code: |
+  def send_message(payload, max_size):
+      return payload[:max_size]
+
+  try:
+      print(len(send_message("x" * 100, max_size=50)))
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `send_message` so it raises `ValueError(f"payload exceeds max
+  size of {max_size} bytes")` when `len(payload) > max_size`, instead
+  of silently truncating with `payload[:max_size]`. It should print
+  `payload exceeds max size of 50 bytes`, not `50`.
+expected_output: |
+  payload exceeds max size of 50 bytes
+hints:
+  - "Add: if len(payload) > max_size: raise ValueError(f\"payload exceeds max size of {max_size} bytes\"), before the return."
+  - "A receiver getting a silently truncated payload has no way to know it's incomplete -- an explicit rejection at least surfaces the problem."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 48
+difficulty: core
+contains_patterns:
+  - "len\\(payload\\) > max_size"
+concept_tags: [solace_agent_mesh, a2a_protocol, payload_limits]

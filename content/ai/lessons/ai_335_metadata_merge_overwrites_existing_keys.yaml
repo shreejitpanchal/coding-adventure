@@ -1,0 +1,61 @@
+id: ai_335
+title: "Merging New Metadata Should Add to What's There, Not Replace It Wholesale"
+language: ai
+level: 335
+objective: "Fix a metadata-merge function that replaces the entire nested metadata dict with whatever's newly added, when adding a new metadata field should combine with what's already recorded, not discard it."
+explanation: |
+  A trace often accumulates metadata over the course of a run -- an
+  environment tag set early on, an experiment id added later -- and
+  each addition is supposed to combine with what's already there, the
+  same "assign, don't replace" principle this app's LangChain category
+  covers for `RunnablePassthrough.assign`. Replacing the whole nested
+  metadata dict with just the newly added fields silently erases
+  everything recorded before that point.
+
+  The bug this exercise fixes assigns `existing["metadata"] = new`
+  directly. The fix merges the new fields into a copy of what's
+  already there.
+example_code: |
+  # The trap: REPLACES the entire nested metadata dict, losing
+  # whatever keys were already there.
+  def merge_metadata_trap(existing, new):
+      existing["metadata"] = new
+
+  existing_trap = {"metadata": {"env": "prod"}}
+  merge_metadata_trap(existing_trap, {"experiment": "exp-42"})
+  print(sorted(existing_trap["metadata"].keys()))
+  # ['experiment'] -- "env" was completely discarded
+
+  # The fix: merge the new fields into a copy of what's already there.
+  def merge_metadata(existing, new):
+      existing["metadata"] = {**existing.get("metadata", {}), **new}
+
+  existing2 = {"metadata": {"env": "prod"}}
+  merge_metadata(existing2, {"experiment": "exp-42"})
+  print(sorted(existing2["metadata"].keys()))
+  # ['env', 'experiment'] -- correctly combined
+starter_code: |
+  def merge_metadata(existing, new):
+      existing["metadata"] = new
+
+  existing = {"metadata": {"env": "prod"}}
+  merge_metadata(existing, {"experiment": "exp-42"})
+  print(sorted(existing["metadata"].keys()))
+challenge: |
+  Fix `merge_metadata` so it sets `existing["metadata"] =
+  {**existing.get("metadata", {}), **new}`, combining both dicts,
+  instead of replacing the whole thing with `new`. It should print
+  `['env', 'experiment']`, not `['experiment']`.
+expected_output: |
+  ['env', 'experiment']
+hints:
+  - "Replace existing[\"metadata\"] = new with existing[\"metadata\"] = {**existing.get(\"metadata\", {}), **new}."
+  - "Dict unpacking with ** combines both dicts into a new one -- keys from new win on a collision, but nothing from the original is lost unless new explicitly overwrites it."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "\\{\\*\\*existing\\.get\\(\"metadata\", \\{\\}\\), \\*\\*new\\}"
+concept_tags: [langsmith, run_metadata, merging]

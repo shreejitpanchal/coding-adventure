@@ -1,0 +1,74 @@
+id: ai_68
+title: "Random Forest Needs Feature Subsampling, Not Just Bootstrap Rows"
+language: ai
+level: 68
+objective: "Fix a random forest split-selection function that considers every feature at every split, missing the second source of randomness (a random subset of features per split) that decorrelates trees beyond what bootstrap resampling alone provides."
+explanation: |
+  A plain bagging ensemble of decision trees (this category's bagging
+  lesson) already resamples *rows* independently per tree, but that
+  alone doesn't decorrelate the trees as much as it could: if one
+  feature is a strong predictor, nearly every tree will pick it for its
+  first split regardless of which rows it happened to see, making the
+  trees more similar to each other than bagging's row-resampling alone
+  would suggest. Random forest adds a second, independent source of
+  randomness specifically to break this: at *each split*, only a
+  random subset of features is even considered as candidates, so a
+  dominant feature can't monopolize the top of every tree.
+
+  The bug this exercise fixes considers every feature at every split,
+  skipping this feature-subsampling step entirely -- so no matter what
+  `subset_size` is passed in, every one of the 3 available features
+  gets considered as a candidate every time. The fix restricts
+  candidates to a genuine random sample of exactly `subset_size`
+  features first, so the number of features actually considered
+  matches what was asked for, not the full feature set every time.
+example_code: |
+  # The trap: considers EVERY feature regardless of subset_size --
+  # ignores the whole point of feature subsampling.
+  def best_split_feature_trap(feature_scores, subset_size, seed):
+      candidates = list(feature_scores.keys())
+      chosen = max(candidates, key=feature_scores.get)
+      return chosen, len(candidates)
+
+  feature_scores = {"income": 0.9, "age": 0.3, "zipcode": 0.1}
+  _, n_considered_trap = best_split_feature_trap(feature_scores, subset_size=1, seed=1)
+  print(n_considered_trap)   # 3 -- WRONG, subset_size=1 was completely ignored
+
+  # The fix: restrict candidates to a genuine random sample of subset_size features.
+  import random
+
+  def best_split_feature(feature_scores, subset_size, seed):
+      rng = random.Random(seed)
+      candidates = rng.sample(list(feature_scores.keys()), subset_size)
+      chosen = max(candidates, key=feature_scores.get)
+      return chosen, len(candidates)
+
+  _, n_considered = best_split_feature(feature_scores, subset_size=1, seed=1)
+  print(n_considered)   # 1 -- correctly honors subset_size
+starter_code: |
+  def best_split_feature(feature_scores, subset_size, seed):
+      candidates = list(feature_scores.keys())
+      chosen = max(candidates, key=feature_scores.get)
+      return chosen, len(candidates)
+
+  feature_scores = {"income": 0.9, "age": 0.3, "zipcode": 0.1}
+  _, n_considered = best_split_feature(feature_scores, subset_size=1, seed=1)
+  print(n_considered)
+challenge: |
+  Fix `best_split_feature` so it samples exactly `subset_size` random
+  candidate features (using `random.Random(seed).sample(...)`) before
+  picking the best one, instead of always considering every feature. It
+  should print `1`, not `3`.
+expected_output: |
+  1
+hints:
+  - "Add `import random` and inside the function: rng = random.Random(seed); candidates = rng.sample(list(feature_scores.keys()), subset_size)."
+  - "len(candidates) will then correctly equal subset_size (1), instead of always equaling the full number of features (3)."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 28
+difficulty: deep_dive
+contains_patterns:
+  - "rng\\.sample\\("
+concept_tags: [ml_fundamentals, random_forest, ensemble_methods, feature_subsampling]

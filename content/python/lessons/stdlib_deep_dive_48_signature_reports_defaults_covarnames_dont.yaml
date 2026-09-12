@@ -1,0 +1,65 @@
+id: stdlib_deep_dive_48
+title: "inspect.signature Reports Default Values -- __code__.co_varnames Only Lists Bare Names"
+language: python
+level: 249
+objective: "Fix code that inspects a function's parameters via __code__.co_varnames (a low-level tuple of local variable names with no default-value information at all), when inspect.signature exposes each parameter's actual default value through a real Parameter object."
+explanation: |
+  `func.__code__.co_varnames` is a low-level implementation detail --
+  a plain tuple of every local variable name used in the function body
+  (parameters AND locals mixed together), with no information about
+  which ones are parameters, let alone what their default values are.
+  `inspect.signature(func).parameters` gives a proper, documented view
+  of the function's actual signature: an ordered mapping of parameter
+  names to `Parameter` objects, each exposing `.default` directly.
+
+  The bug this exercise fixes tries to read a default value off
+  `co_varnames`, which doesn't carry default information at all and
+  crashes trying to treat a bare name as if it held one. The fix uses
+  `inspect.signature`, which correctly exposes the real default.
+example_code: |
+  # The trap: co_varnames is just bare names -- no default-value info at all.
+  def greet(name, greeting="Hello"):
+      return f"{greeting}, {name}"
+
+  def get_default_trap(func, param_name):
+      return param_name in func.__code__.co_varnames
+      # True, but this only proves the NAME exists -- it can't tell you
+      # what greeting's actual default value is, because co_varnames
+      # carries no default information whatsoever
+
+  # The fix: inspect.signature exposes each parameter's real default value.
+  import inspect
+
+  def get_default(func, param_name):
+      return inspect.signature(func).parameters[param_name].default
+
+  print(get_default(greet, "greeting"))
+  # "Hello" -- correctly retrieved the actual default value
+starter_code: |
+  import inspect
+
+  def greet(name, greeting="Hello"):
+      return f"{greeting}, {name}"
+
+  def get_default(func, param_name):
+      return param_name in func.__code__.co_varnames
+
+  print(get_default(greet, "greeting"))
+challenge: |
+  Fix `get_default` so it returns
+  `inspect.signature(func).parameters[param_name].default` instead of
+  checking membership in `__code__.co_varnames`. It should print
+  `Hello`, not `True`.
+expected_output: |
+  Hello
+hints:
+  - "return inspect.signature(func).parameters[param_name].default."
+  - "co_varnames is just a flat tuple of bare local-variable names -- it carries no notion of default values at all. inspect.signature's Parameter objects do."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 48
+difficulty: deep_dive
+contains_patterns:
+  - "inspect\\.signature\\(func\\)\\.parameters\\[param_name\\]\\.default"
+concept_tags: [inspect, signature, introspection]

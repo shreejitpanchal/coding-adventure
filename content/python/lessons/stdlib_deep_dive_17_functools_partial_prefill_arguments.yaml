@@ -1,0 +1,53 @@
+id: stdlib_deep_dive_17
+title: "functools.partial Pre-Fills Some Arguments, Leaving the Rest for Later"
+language: python
+level: 218
+objective: "Replace a small wrapper function that just calls another function with one argument fixed with functools.partial, which does the same thing directly."
+explanation: |
+  Writing a tiny wrapper function purely to call another function with
+  one argument already fixed (`def double(x): return multiply(x, 2)`)
+  works, but it's exactly what `functools.partial` exists to replace:
+  `partial(multiply, 2)` (or `partial(multiply, y=2)` for a keyword
+  argument) returns a new callable with that argument already bound,
+  needing only the remaining ones supplied when it's actually called --
+  with no separate `def` needed for something that's really just "the
+  same function, with part of it already filled in."
+example_code: |
+  # A small wrapper, purely to fix one argument.
+  def multiply(x, y):
+      return x * y
+
+  def double_loop(x):
+      return multiply(x, 2)
+
+  print(double_loop(5))                     # 10
+
+  # functools.partial does this directly, with no separate def needed.
+  from functools import partial
+
+  double = partial(multiply, y=2)
+  print(double(5))                          # 10
+starter_code: |
+  def multiply(x, y):
+      return x * y
+
+  def double(x):
+      return multiply(x, 2)
+
+  print(double(5))
+challenge: |
+  Replace the `double` function with `double = partial(multiply,
+  y=2)`, using `functools.partial`. Keep the same output: 10.
+expected_output: |
+  10
+hints:
+  - "from functools import partial, then: double = partial(multiply, y=2)."
+  - "partial returns a new callable with the given argument already bound -- calling double(5) is equivalent to calling multiply(5, y=2)."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 17
+difficulty: core
+contains_patterns:
+  - "partial\\(multiply, y=2\\)"
+concept_tags: [functools, partial]

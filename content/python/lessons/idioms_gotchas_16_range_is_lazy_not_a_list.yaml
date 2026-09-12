@@ -1,0 +1,57 @@
+id: idioms_gotchas_16
+title: "range() Is Lazy -- It's Not a List, Even Though It Acts Like One"
+language: python
+level: 85
+objective: "Fix a function that assumes range() returns a list, when it actually returns its own lazy range object -- indexing and len() both still work, but it's genuinely a different type, and code checking its type directly needs to know that."
+explanation: |
+  `range(n)` doesn't build a list of `n` integers up front -- it
+  returns a lightweight `range` object that computes each value only
+  when it's actually needed, which is why `range(10_000_000)` is
+  instant and uses almost no memory, unlike actually materializing that
+  many integers into a list. It supports indexing, slicing, and `len()`
+  just like a list does, which makes it easy to forget it isn't one --
+  until something checks `isinstance(x, list)` directly, or tries to
+  call a list-only method like `.append()` on it.
+
+  The bug this exercise fixes assumes `range(n)` is already a list. The
+  fix explicitly converts it with `list(...)` when an actual list is
+  required.
+example_code: |
+  # The trap: assumes range() IS a list -- it isn't, it's its own lazy
+  # range type.
+  def make_indices_trap(n):
+      return range(n)
+
+  result_trap = make_indices_trap(5)
+  print(isinstance(result_trap, list))
+  # False -- range() returns a range object, never an actual list
+
+  # The fix: convert explicitly when a real list is required.
+  def make_indices(n):
+      return list(range(n))
+
+  result = make_indices(5)
+  print(isinstance(result, list))
+  # True -- correctly a real list now
+starter_code: |
+  def make_indices(n):
+      return range(n)
+
+  result = make_indices(5)
+  print(isinstance(result, list))
+challenge: |
+  Fix `make_indices` so it returns `list(range(n))`, instead of the
+  bare `range(n)` object. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Wrap the range() call in list(...): return list(range(n))."
+  - "range() supports indexing and len() just like a list does, which is exactly what makes it easy to forget it isn't one."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 16
+difficulty: warmup
+contains_patterns:
+  - "return list\\(range\\(n\\)\\)"
+concept_tags: [idioms, range, lazy_evaluation]

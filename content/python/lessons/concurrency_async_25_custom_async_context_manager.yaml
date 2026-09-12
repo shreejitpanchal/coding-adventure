@@ -1,0 +1,90 @@
+id: concurrency_async_25
+title: "A Regular Context Manager Can't Do Async Setup -- __aenter__/__aexit__ Can"
+language: python
+level: 315
+objective: "Fix a class meant to be used with 'async with' that only defines __enter__/__exit__ (the synchronous protocol), when 'async with' specifically requires __aenter__/__aexit__ -- the async versions, needed when setup or teardown involves an await."
+explanation: |
+  `async with` doesn't work with a plain `__enter__`/`__exit__` class --
+  it specifically looks for `__aenter__`/`__aexit__`, the *async*
+  versions of the context-manager protocol, which are coroutine
+  methods that can themselves `await` something during setup or
+  teardown (opening a network connection, say). A class with only
+  the synchronous `__enter__`/`__exit__` methods raises `TypeError:
+  'X' object does not support the asynchronous context manager
+  protocol` the instant it's used with `async with`, since Python
+  checks for the async-specific methods, not the synchronous ones.
+
+  The fix renames the methods to `__aenter__`/`__aexit__` (as `async
+  def`, so they're coroutines Python can `await` internally).
+example_code: |
+  # The trap: only __enter__/__exit__ -- async with looks for __aenter__/__aexit__.
+  import asyncio
+
+  class ConnectionTrap:
+      def __enter__(self):
+          return self
+
+      def __exit__(self, *args):
+          pass
+
+  async def main_trap():
+      try:
+          async with ConnectionTrap() as conn:
+              print("connected")
+      except TypeError:
+          print("crashed")
+
+  asyncio.run(main_trap())
+  # "crashed" -- ConnectionTrap doesn't support the async context manager protocol
+
+  # The fix: __aenter__/__aexit__ are the async versions async with needs.
+  class Connection:
+      async def __aenter__(self):
+          await asyncio.sleep(0)          # setup could genuinely await here
+          return self
+
+      async def __aexit__(self, *args):
+          await asyncio.sleep(0)          # teardown could genuinely await here
+
+  async def main():
+      async with Connection() as conn:
+          print("connected")
+
+  asyncio.run(main())
+  # "connected" -- correctly supports async with
+starter_code: |
+  import asyncio
+
+  class Connection:
+      def __enter__(self):
+          return self
+
+      def __exit__(self, *args):
+          pass
+
+  async def main():
+      try:
+          async with Connection() as conn:
+              print("connected")
+      except TypeError:
+          print("crashed")
+
+  asyncio.run(main())
+challenge: |
+  Fix `Connection` so it defines `async def __aenter__(self):` and
+  `async def __aexit__(self, *args):`, instead of the synchronous
+  `__enter__`/`__exit__`. It should print `connected`, not `crashed`.
+expected_output: |
+  connected
+hints:
+  - "async def __aenter__(self): return self, and async def __aexit__(self, *args): pass."
+  - "async with specifically checks for __aenter__/__aexit__ -- the synchronous __enter__/__exit__ protocol is a completely different pair of methods it never looks at."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 25
+difficulty: deep_dive
+contains_patterns:
+  - "async def __aenter__\\(self\\):"
+  - "async def __aexit__\\(self, \\*args\\):"
+concept_tags: [asyncio, async_context_manager, concurrency]

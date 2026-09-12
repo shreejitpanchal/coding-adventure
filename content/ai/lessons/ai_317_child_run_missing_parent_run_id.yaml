@@ -1,0 +1,56 @@
+id: ai_317
+title: "A Child Run Needs Its Own parent_run_id to Be Reconstructed as a Child at All"
+language: ai
+level: 317
+objective: "Fix a run-creation function that never records which run it's nested under, when reconstructing the trace tree later depends entirely on every child run carrying its own parent_run_id."
+explanation: |
+  A trace's tree structure isn't stored as an actual nested data
+  structure while a run is executing -- it's reconstructed afterward
+  from a flat collection of run records, each one carrying a
+  `parent_run_id` pointing back at whichever run it was nested under.
+  A run created without that field looks, once reconstruction happens,
+  exactly like an unrelated root run: there's nothing in the record
+  itself that says it was ever anyone's child.
+
+  The bug this exercise fixes builds a run dict with no
+  `parent_run_id` field at all. The fix includes it.
+example_code: |
+  # The trap: never records parent_run_id at all -- rebuilding the
+  # tree later can't tell this apart from a root run.
+  def create_child_run_trap(name, parent_run_id):
+      return {"name": name}
+
+  child_trap = create_child_run_trap("tool_call", parent_run_id="root-1")
+  print("parent_run_id" in child_trap)
+  # False -- no way to reconstruct that this was nested under root-1
+
+  # The fix: include parent_run_id in the record.
+  def create_child_run(name, parent_run_id):
+      return {"name": name, "parent_run_id": parent_run_id}
+
+  child = create_child_run("tool_call", parent_run_id="root-1")
+  print("parent_run_id" in child)
+  # True -- correctly recorded
+starter_code: |
+  def create_child_run(name, parent_run_id):
+      return {"name": name}
+
+  child = create_child_run("tool_call", parent_run_id="root-1")
+  print("parent_run_id" in child)
+challenge: |
+  Fix `create_child_run` so it also includes `"parent_run_id":
+  parent_run_id` in the returned dict. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"parent_run_id\": parent_run_id as a second key in the returned dict, alongside \"name\"."
+  - "Without this field, reconstructing the trace tree later has no way to tell this run apart from an unrelated root run."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 7
+difficulty: warmup
+contains_patterns:
+  - "\"parent_run_id\": parent_run_id"
+concept_tags: [langsmith, tracing, parent_run_id]

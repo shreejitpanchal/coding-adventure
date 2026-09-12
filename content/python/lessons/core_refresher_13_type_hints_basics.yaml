@@ -1,0 +1,52 @@
+id: core_refresher_13
+title: "Type Hints Are Real, Introspectable Metadata -- Not Just Comments"
+language: python
+level: 126
+objective: "Add type hints to a function's parameters and return value, and confirm they're stored in the function's actual __annotations__ dict."
+explanation: |
+  A type hint like `def add(a: int, b: int) -> int:` doesn't change
+  how the function actually runs -- Python never enforces annotations
+  at call time on its own. But they aren't just comments either: they're
+  stored in the function object's real `__annotations__` dict,
+  genuinely inspectable at runtime, and that's exactly what tools like
+  `mypy`, IDEs, and `dataclasses` rely on to check types statically or
+  generate code, without needing to parse docstrings or guess intent
+  from parameter names.
+
+  The bug this exercise fixes has no type hints at all, so
+  `__annotations__` is empty. The fix adds them, populating the dict.
+example_code: |
+  # No type hints -- __annotations__ is empty, nothing to introspect.
+  def add_loose(a, b):
+      return a + b
+
+  print("return" in add_loose.__annotations__)
+  # False -- no metadata about types at all
+
+  # With type hints -- genuinely stored, introspectable metadata.
+  def add(a: int, b: int) -> int:
+      return a + b
+
+  print("return" in add.__annotations__)
+  # True -- correctly stored in the function's own __annotations__ dict
+starter_code: |
+  def add(a, b):
+      return a + b
+
+  print("return" in add.__annotations__)
+challenge: |
+  Fix `add` by adding type hints (`a: int, b: int) -> int`). It should
+  print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Rewrite the signature as: def add(a: int, b: int) -> int:."
+  - "The -> int after the closing parenthesis annotates the RETURN type specifically -- that's what populates the \"return\" key."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "def add\\(a: int, b: int\\) -> int:"
+concept_tags: [type_hints, annotations]

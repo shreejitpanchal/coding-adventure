@@ -1,0 +1,91 @@
+id: concurrency_async_20
+title: "The Save That Got Cancelled Mid-Flight When Its Timeout Fired"
+language: python
+level: 310
+objective: "Fix code where a timed-out wait_for() cancels a critical save operation mid-flight, losing its result entirely, when asyncio.shield protects that inner coroutine from being cancelled by the outer timeout, letting it keep running to completion in the background."
+explanation: |
+  `asyncio.wait_for(coro, timeout=...)` cancels `coro` itself the
+  instant its deadline passes -- correct when the coroutine really
+  should stop early, but a problem when `coro` is doing something that
+  shouldn't be interrupted partway through, like a save that's already
+  writing data. If the caller only cares about *not waiting past* the
+  timeout, but the save itself should still finish in the background
+  regardless, `wait_for` cancelling it outright loses that in-progress
+  work entirely. `asyncio.shield(coro)` wraps a coroutine so that
+  cancelling the *outer* operation (like a `wait_for` timing out)
+  doesn't propagate the cancellation down into `coro` itself -- the
+  shielded coroutine keeps running to completion independently, even
+  though the code that was waiting on it gave up early.
+
+  The fix wraps the save call in `asyncio.shield(...)` before handing
+  it to `wait_for`.
+example_code: |
+  # The trap: a timed-out wait_for() cancels save() mid-flight -- it never finishes.
+  import asyncio
+
+  async def save_trap(log):
+      await asyncio.sleep(0.05)
+      log.append("saved")
+
+  async def main_trap():
+      log = []
+      try:
+          await asyncio.wait_for(save_trap(log), timeout=0.01)
+      except asyncio.TimeoutError:
+          pass
+      await asyncio.sleep(0.1)      # give it time, in case it's still running
+      print(log)
+
+  asyncio.run(main_trap())
+  # [] -- WRONG, save_trap() was cancelled when the timeout fired
+
+  # The fix: shield() protects the save from the outer timeout's cancellation.
+  async def save(log):
+      await asyncio.sleep(0.05)
+      log.append("saved")
+
+  async def main():
+      log = []
+      try:
+          await asyncio.wait_for(asyncio.shield(save(log)), timeout=0.01)
+      except asyncio.TimeoutError:
+          pass
+      await asyncio.sleep(0.1)
+      print(log)
+
+  asyncio.run(main())
+  # ['saved'] -- correctly completed in the background, despite the outer timeout
+starter_code: |
+  import asyncio
+
+  async def save(log):
+      await asyncio.sleep(0.05)
+      log.append("saved")
+
+  async def main():
+      log = []
+      try:
+          await asyncio.wait_for(save(log), timeout=0.01)
+      except asyncio.TimeoutError:
+          pass
+      await asyncio.sleep(0.1)
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it wraps the save call in `asyncio.shield(save(log))`
+  before handing it to `wait_for`, protecting it from the outer
+  timeout's cancellation. It should print `['saved']`, not `[]`.
+expected_output: |
+  ['saved']
+hints:
+  - "await asyncio.wait_for(asyncio.shield(save(log)), timeout=0.01)."
+  - "wait_for() cancels its coroutine argument the instant the deadline passes -- shield() specifically protects the coroutine inside it from that outer cancellation, letting it keep running."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 20
+difficulty: deep_dive
+contains_patterns:
+  - "asyncio\\.shield\\(save\\(log\\)\\)"
+concept_tags: [asyncio, shield, cancellation, concurrency]

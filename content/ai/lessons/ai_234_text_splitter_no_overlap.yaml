@@ -1,0 +1,62 @@
+id: ai_234
+title: "A Text Splitter Needs Real Overlap Between Chunks, Not a Hard Cut"
+language: ai
+level: 234
+objective: "Fix a text-splitting function that ignores the requested overlap entirely, slicing chunks back-to-back with a hard cut between them, when adjacent chunks should share some overlapping text so context isn't lost right at a chunk boundary."
+explanation: |
+  Splitting a long document into fixed-size chunks for embedding or
+  retrieval loses context exactly at each cut point -- a sentence split
+  right down the middle becomes two chunks, neither of which contains
+  the whole thought. Overlap is the standard fix: each chunk shares a
+  bit of text with its neighbor, so a boundary that would otherwise cut
+  through something meaningful still has that content fully present in
+  at least one of the two adjacent chunks.
+
+  The bug this exercise fixes ignores the `overlap` parameter entirely,
+  advancing by the full `chunk_size` every time. The fix advances by
+  `chunk_size - overlap` instead, so consecutive chunks genuinely share
+  text.
+example_code: |
+  # The trap: advances by the FULL chunk_size every time -- no overlap
+  # between chunks at all, regardless of the overlap parameter.
+  def split_text_trap(text, chunk_size, overlap):
+      return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+  text = "ABCDEFGHIJ"
+  print(len(split_text_trap(text, 4, 2)))   # 3 -- overlap was never actually applied
+
+  # The fix: advance by chunk_size - overlap, so chunks genuinely share text.
+  def split_text(text, chunk_size, overlap):
+      step = chunk_size - overlap
+      chunks = []
+      i = 0
+      while i < len(text):
+          chunks.append(text[i:i + chunk_size])
+          i += step
+      return chunks
+
+  print(len(split_text(text, 4, 2)))   # 5 -- correctly produces overlapping chunks
+starter_code: |
+  def split_text(text, chunk_size, overlap):
+      return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+  text = "ABCDEFGHIJ"
+  print(len(split_text(text, 4, 2)))
+challenge: |
+  Fix `split_text` so it advances the window by `chunk_size - overlap`
+  (via a `while` loop), instead of always advancing by the full
+  `chunk_size` and ignoring `overlap` entirely. It should print `5`,
+  not `3`.
+expected_output: |
+  5
+hints:
+  - "step = chunk_size - overlap, then loop with i += step (starting i at 0) instead of range(0, len(text), chunk_size)."
+  - "With chunk_size=4 and overlap=2, each chunk shares its last 2 characters with the start of the next one."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 14
+difficulty: core
+contains_patterns:
+  - "step = chunk_size - overlap"
+concept_tags: [langchain, text_splitter, chunk_overlap]

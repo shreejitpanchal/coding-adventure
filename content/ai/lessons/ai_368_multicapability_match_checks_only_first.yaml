@@ -1,0 +1,72 @@
+id: ai_368
+title: "A Task Needing Multiple Capabilities Must Find an Agent With ALL of Them"
+language: ai
+level: 368
+objective: "Fix a capability matcher that only checks the first of several required capabilities, when a task genuinely needing two or more capabilities at once should only be routed to an agent whose card advertises every single one of them, not just the first checked."
+explanation: |
+  A task can legitimately need more than one capability to complete --
+  rendering a chart from data pulled via a database query needs both
+  `chart_rendering` and `database_query`. Matching against only the
+  first required capability finds an agent that can handle *part* of
+  the task while having no ability to do the rest, which surfaces as a
+  failure only once execution is already underway inside the wrong
+  agent.
+
+  The bug this exercise fixes checks only `required_capabilities[0]`.
+  The fix requires every capability in the list to be present on the
+  candidate agent.
+example_code: |
+  # The trap: only checks the FIRST required capability, ignoring the
+  # rest of the list entirely.
+  def find_agent_trap(required_capabilities, agent_registry):
+      for agent in agent_registry:
+          if required_capabilities[0] in agent["capabilities"]:
+              return agent["name"]
+      return None
+
+  agent_registry = [
+      {"name": "partial-agent", "capabilities": ["chart_rendering"]},
+      {"name": "full-agent", "capabilities": ["chart_rendering", "pdf_export"]},
+  ]
+  print(find_agent_trap(["chart_rendering", "pdf_export"], agent_registry))
+  # "partial-agent" -- wrong, it can't actually do pdf_export
+
+  # The fix: require EVERY capability in the list to be present.
+  def find_agent(required_capabilities, agent_registry):
+      for agent in agent_registry:
+          if all(cap in agent["capabilities"] for cap in required_capabilities):
+              return agent["name"]
+      return None
+
+  print(find_agent(["chart_rendering", "pdf_export"], agent_registry))
+  # "full-agent" -- correctly the only agent that can do BOTH
+starter_code: |
+  def find_agent(required_capabilities, agent_registry):
+      for agent in agent_registry:
+          if required_capabilities[0] in agent["capabilities"]:
+              return agent["name"]
+      return None
+
+  agent_registry = [
+      {"name": "partial-agent", "capabilities": ["chart_rendering"]},
+      {"name": "full-agent", "capabilities": ["chart_rendering", "pdf_export"]},
+  ]
+  print(find_agent(["chart_rendering", "pdf_export"], agent_registry))
+challenge: |
+  Fix `find_agent` so it checks `all(cap in agent["capabilities"] for
+  cap in required_capabilities)`, instead of only
+  `required_capabilities[0]`. It should print `full-agent`, not
+  `partial-agent`.
+expected_output: |
+  full-agent
+hints:
+  - "Replace the [0]-indexed check with all(cap in agent[\"capabilities\"] for cap in required_capabilities)."
+  - "\"partial-agent\" only advertises chart_rendering -- it satisfies the first requirement but not the second, so all() correctly rules it out."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "all\\(cap in agent\\[\"capabilities\"\\] for cap in required_capabilities\\)"
+concept_tags: [solace_agent_mesh, agent_card, multi_capability_matching]

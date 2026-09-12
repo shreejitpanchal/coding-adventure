@@ -1,0 +1,57 @@
+id: stdlib_deep_dive_29
+title: "re.match Only Anchors at the Start -- re.fullmatch Requires the Whole String"
+language: python
+level: 230
+objective: "Fix a validation check using re.match, when match() only requires the pattern to succeed at the BEGINNING of the string, ignoring anything left over after it -- re.fullmatch is what actually requires the entire string to match."
+explanation: |
+  `re.match(pattern, s)` only checks that the pattern matches starting
+  from the very beginning of `s` -- it says nothing at all about what
+  comes after the match ends. A pattern like `\d{3}` matching against
+  `"123abc"` succeeds under `match()` because the first three
+  characters genuinely are digits, even though the string clearly
+  isn't a clean 3-digit code once you look at what follows.
+  `re.fullmatch(pattern, s)` is the version that actually requires the
+  *entire* string to match the pattern, not just its beginning.
+
+  The bug this exercise fixes validates with `re.match`, which ignores
+  trailing content. The fix uses `re.fullmatch`, which doesn't.
+example_code: |
+  # The trap: match() only checks the START -- trailing garbage after
+  # the match is completely ignored.
+  import re
+
+  def is_valid_code_trap(code):
+      return bool(re.match(r"\d{3}", code))
+
+  print(is_valid_code_trap("123abc"))
+  # True -- WRONG, there's extra trailing content after the 3 digits
+
+  # The fix: fullmatch() requires the ENTIRE string to match.
+  def is_valid_code(code):
+      return bool(re.fullmatch(r"\d{3}", code))
+
+  print(is_valid_code("123abc"))
+  # False -- correctly rejected, since the whole string isn't just 3 digits
+starter_code: |
+  import re
+
+  def is_valid_code(code):
+      return bool(re.match(r"\d{3}", code))
+
+  print(is_valid_code("123abc"))
+challenge: |
+  Fix `is_valid_code` so it uses `re.fullmatch` instead of `re.match`.
+  It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace re.match with re.fullmatch."
+  - "match() succeeds the instant the pattern matches at the start -- fullmatch() additionally requires nothing else be left over afterward."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 29
+difficulty: gotcha
+contains_patterns:
+  - "re\\.fullmatch\\("
+concept_tags: [regex, re_module]

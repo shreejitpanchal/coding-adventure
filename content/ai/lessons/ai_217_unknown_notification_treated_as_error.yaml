@@ -1,0 +1,59 @@
+id: ai_217
+title: "An Unknown Notification Should Be Ignored, Not Errored"
+language: ai
+level: 217
+objective: "Fix a dispatch function that returns an error for every unrecognized method, when an unrecognized NOTIFICATION (no id, so no response is even possible) must be silently ignored rather than treated the same as an unrecognized request."
+explanation: |
+  A notification has no `id`, which means there is nowhere to even send
+  an error response back to -- the sender isn't waiting for one. The
+  spec's answer to an unrecognized notification method is simply to
+  ignore it, while an unrecognized *request* (which does have an id,
+  and a sender waiting on a response) legitimately gets a "method not
+  found" error back. Treating every unrecognized method the same way,
+  regardless of whether it came in with an id, means the server ends up
+  trying to "error out" a notification that has no channel to receive
+  that error at all.
+
+  The bug this exercise fixes always returns an error dict regardless
+  of `has_id`. The fix returns `None` for a notification (no id) and
+  only errors for an actual unrecognized request.
+example_code: |
+  # The trap: errors out on EVERY unknown method, even notifications
+  # (which have no id and nowhere to send an error response to).
+  def handle_incoming_trap(method, has_id):
+      return {"error": "method not found"}
+
+  print(handle_incoming_trap("notifications/unknown_thing", False))
+  # {"error": "method not found"} -- wrong, notifications can't even receive an error response
+
+  # The fix: silently ignore unknown notifications; only error on
+  # unknown requests (which have an id).
+  def handle_incoming(method, has_id):
+      if not has_id:
+          return None
+      return {"error": "method not found"}
+
+  print(handle_incoming("notifications/unknown_thing", False))
+  # None -- unknown notifications are silently ignored, not errored
+starter_code: |
+  def handle_incoming(method, has_id):
+      return {"error": "method not found"}
+
+  print(handle_incoming("notifications/unknown_thing", False))
+challenge: |
+  Fix `handle_incoming` so it returns `None` when `has_id` is `False`,
+  instead of always returning an error dict. It should print `None`,
+  not `{'error': 'method not found'}`.
+expected_output: |
+  None
+hints:
+  - "Add: if not has_id: return None before the error-returning line."
+  - "A notification has no id, so there's no request waiting for a response -- there's nowhere for an error to even go."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "if not has_id:"
+concept_tags: [mcp, notifications, unknown_method]

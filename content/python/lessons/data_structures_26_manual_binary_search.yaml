@@ -1,0 +1,64 @@
+id: data_structures_26
+title: "Binary Search Halves the Remaining Range Every Step, Instead of Scanning Every Element"
+language: python
+level: 183
+objective: "Replace a linear scan through a sorted list with a manually written binary search, which discards half the remaining candidates on every comparison."
+explanation: |
+  Scanning a sorted list element by element to find a target value
+  (`for i, n in enumerate(...)`) is O(n), and it never actually takes
+  advantage of the list already being sorted. Binary search does:
+  compare the target against the middle element, and because
+  everything is sorted, an entire half of the remaining range can be
+  discarded immediately based on that one comparison -- target smaller
+  means the answer can only be in the left half, target larger means
+  only the right half. Repeating this halves the search space every
+  step, giving O(log n) instead of O(n).
+example_code: |
+  # A linear scan -- checks every element, one at a time.
+  def find_index_loop(sorted_nums, target):
+      for i, n in enumerate(sorted_nums):
+          if n == target:
+              return i
+      return -1
+
+  print(find_index_loop([1, 3, 5, 7, 9, 11], 7))    # 3
+
+  # Binary search -- halves the remaining range every step.
+  def find_index(sorted_nums, target):
+      lo, hi = 0, len(sorted_nums) - 1
+      while lo <= hi:
+          mid = (lo + hi) // 2
+          if sorted_nums[mid] == target:
+              return mid
+          elif sorted_nums[mid] < target:
+              lo = mid + 1
+          else:
+              hi = mid - 1
+      return -1
+
+  print(find_index([1, 3, 5, 7, 9, 11], 7))          # 3
+starter_code: |
+  def find_index(sorted_nums, target):
+      for i, n in enumerate(sorted_nums):
+          if n == target:
+              return i
+      return -1
+
+  print(find_index([1, 3, 5, 7, 9, 11], 7))
+challenge: |
+  Rewrite `find_index` as a manual binary search using `lo`/`hi`
+  pointers and a `mid = (lo + hi) // 2` midpoint, instead of a linear
+  scan. Keep the same output: 3.
+expected_output: |
+  3
+hints:
+  - "lo, hi = 0, len(sorted_nums) - 1, then while lo <= hi: mid = (lo + hi) // 2, comparing sorted_nums[mid] against target to narrow lo or hi."
+  - "Each comparison at mid discards an entire half of the remaining range -- that's what makes this O(log n) instead of O(n)."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 26
+difficulty: core
+contains_patterns:
+  - "mid = \\(lo \\+ hi\\) // 2"
+concept_tags: [binary_search, algorithms]

@@ -1,0 +1,65 @@
+id: ai_356
+title: "Comparing Two Experiments Must Handle an Example Missing From One of Them"
+language: ai
+level: 356
+objective: "Fix an experiment comparison that crashes with a raw KeyError the moment the candidate run is missing an example the baseline has, when a genuinely incomplete candidate run should be reported as a difference, not crash the whole comparison."
+explanation: |
+  A candidate experiment run can legitimately be missing results for
+  an example the baseline covered -- a run that errored out partway
+  through, an example added to the dataset after the baseline ran.
+  Indexing directly into the candidate's results for every baseline
+  example, with no check for whether that example is even there,
+  crashes the entire comparison the moment a single example is
+  missing, instead of reporting the mismatch as the meaningful finding
+  it actually is.
+
+  The bug this exercise fixes indexes `candidate_by_id[eid]` directly.
+  The fix checks whether the id exists in `candidate_by_id` first,
+  treating a missing example as a difference rather than a crash.
+example_code: |
+  # The trap: crashes with a raw KeyError if candidate_by_id is
+  # MISSING an example that baseline_by_id has.
+  def compare_experiments_trap(baseline_by_id, candidate_by_id):
+      return [eid for eid in baseline_by_id if baseline_by_id[eid] != candidate_by_id[eid]]
+
+  baseline_by_id = {"e1": 1, "e2": 0}
+  candidate_by_id = {"e1": 1}   # "e2" is missing from the candidate run entirely
+  # compare_experiments_trap(baseline_by_id, candidate_by_id)  # KeyError: 'e2'
+
+  # The fix: treat a missing example as a difference, not a crash.
+  def compare_experiments(baseline_by_id, candidate_by_id):
+      return [
+          eid for eid in baseline_by_id
+          if eid not in candidate_by_id or baseline_by_id[eid] != candidate_by_id[eid]
+      ]
+
+  print(compare_experiments(baseline_by_id, candidate_by_id))
+  # ['e2'] -- correctly reported the missing example as a difference
+starter_code: |
+  def compare_experiments(baseline_by_id, candidate_by_id):
+      return [eid for eid in baseline_by_id if baseline_by_id[eid] != candidate_by_id[eid]]
+
+  baseline_by_id = {"e1": 1, "e2": 0}
+  candidate_by_id = {"e1": 1}
+  try:
+      print(compare_experiments(baseline_by_id, candidate_by_id))
+  except KeyError:
+      print("unhandled")
+challenge: |
+  Fix `compare_experiments` so its condition also checks `eid not in
+  candidate_by_id`, treating a missing example as a difference,
+  instead of crashing on the direct index. It should print `['e2']`,
+  not `unhandled`.
+expected_output: |
+  ['e2']
+hints:
+  - "Change the condition to: eid not in candidate_by_id or baseline_by_id[eid] != candidate_by_id[eid]."
+  - "\"or\" short-circuits here -- when eid isn't in candidate_by_id at all, the second half never even runs, so it can't raise a KeyError."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 46
+difficulty: gotcha
+contains_patterns:
+  - "eid not in candidate_by_id or baseline_by_id\\[eid\\] != candidate_by_id\\[eid\\]"
+concept_tags: [langsmith, experiments, missing_data]

@@ -1,0 +1,74 @@
+id: data_structures_37
+title: "An LRU Cache Must Evict the Oldest Entry, Not the One Just Added"
+language: python
+level: 194
+objective: "Fix an LRU eviction that calls OrderedDict.popitem() with no argument, which removes the LAST (most recently added) item, when the whole point of an LRU cache is evicting the OLDEST entry instead."
+explanation: |
+  `OrderedDict.popitem()` removes the *last* item by default -- exactly
+  the wrong end for a Least-Recently-Used cache, whose entire purpose
+  is evicting the *oldest* entry once it's full, keeping whatever was
+  added or accessed most recently. Calling `popitem()` with no argument
+  the instant a new entry pushes the cache over capacity evicts that
+  very entry that was just added, which defeats the cache immediately:
+  nothing new ever actually stays in it. `popitem(last=False)` removes
+  from the *front* instead -- the genuinely oldest entry.
+
+  The bug this exercise fixes calls `popitem()` with no argument. The
+  fix passes `last=False`, evicting from the correct end.
+example_code: |
+  # The trap: popitem() with no argument removes the LAST item -- the
+  # one that was just added, not the oldest one.
+  from collections import OrderedDict
+
+  cache_trap = OrderedDict()
+  def put_trap(key, value, capacity):
+      cache_trap[key] = value
+      if len(cache_trap) > capacity:
+          cache_trap.popitem()
+
+  for k, v in [("a", 1), ("b", 2), ("c", 3)]:
+      put_trap(k, v, 2)
+  print(list(cache_trap.keys()))
+  # ['a', 'b'] -- WRONG, "c" (the newest entry) was evicted immediately, and "a" (the oldest) was never removed at all
+
+  # The fix: popitem(last=False) evicts from the correct end -- the
+  # genuinely OLDEST entry.
+  cache = OrderedDict()
+  def put(key, value, capacity):
+      cache[key] = value
+      if len(cache) > capacity:
+          cache.popitem(last=False)
+
+  for k, v in [("a", 1), ("b", 2), ("c", 3)]:
+      put(k, v, 2)
+  print(list(cache.keys()))
+  # ['b', 'c'] -- correctly evicted "a" (the oldest), kept the two most recent
+starter_code: |
+  from collections import OrderedDict
+
+  cache = OrderedDict()
+  def put(key, value, capacity):
+      cache[key] = value
+      if len(cache) > capacity:
+          cache.popitem()
+
+  for k, v in [("a", 1), ("b", 2), ("c", 3)]:
+      put(k, v, 2)
+  print(list(cache.keys()))
+challenge: |
+  Fix `put` so it calls `cache.popitem(last=False)`, instead of
+  `cache.popitem()` with no argument. It should print `['b', 'c']`,
+  not `['a', 'b']`.
+expected_output: |
+  ['b', 'c']
+hints:
+  - "Add last=False as the argument to popitem()."
+  - "popitem() defaults to removing from the END -- but the oldest entry in an LRU cache is always at the FRONT, since new entries get appended there."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "cache\\.popitem\\(last=False\\)"
+concept_tags: [ordereddict, lru_cache]

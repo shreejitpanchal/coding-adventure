@@ -1,0 +1,68 @@
+id: ai_167
+title: "A Model's Tool-Call JSON Can Arrive Wrapped in Prose Too"
+language: ai
+level: 167
+objective: "Fix a tool-call argument parser that assumes the model's response is pure JSON with nothing else around it, crashing the moment the model wraps its tool call in a little explanatory text -- the same realistic 'JSON plus narration' shape this app's RAG category already covers for retrieved answers."
+explanation: |
+  A model asked to emit a tool call as JSON doesn't always produce
+  *only* JSON -- it can wrap it in a sentence (`"I'll call the search
+  tool: {\"query\": \"refund policy\"}"`) even when instructed not to,
+  the same realistic shape this app's RAG category already names for
+  generated answers. A parser that calls `json.loads()` directly on the
+  full response crashes the instant there's a single character of
+  surrounding text, instead of locating and parsing just the embedded
+  JSON object.
+
+  The bug this exercise fixes parses the model's raw response directly
+  as JSON, with no tolerance for surrounding text at all. The fix
+  locates the JSON object within the response first (the same
+  find-the-braces technique this app's RAG category uses for exactly
+  this problem) before parsing just that substring.
+example_code: |
+  # The trap: parses the RAW response directly -- crashes the instant
+  # there's any text surrounding the actual JSON tool call.
+  import json
+
+  def parse_tool_call_trap(raw_response):
+      return json.loads(raw_response)
+
+  raw_response = 'I\\'ll call the search tool: {"query": "refund policy"}'
+  # parse_tool_call_trap(raw_response)  # json.decoder.JSONDecodeError -- crashes on the surrounding prose
+
+  # The fix: locate the JSON object within the response FIRST.
+  def parse_tool_call(raw_response):
+      start = raw_response.find("{")
+      end = raw_response.rfind("}")
+      if start == -1 or end == -1:
+          raise ValueError(f"no JSON object found in model response: {raw_response!r}")
+      return json.loads(raw_response[start:end + 1])
+
+  result = parse_tool_call(raw_response)
+  print(result["query"])   # "refund policy" -- correctly parsed despite the surrounding prose
+starter_code: |
+  import json
+
+  def parse_tool_call(raw_response):
+      return json.loads(raw_response)
+
+  raw_response = 'I\'ll call the search tool: {"query": "refund policy"}'
+  result = parse_tool_call(raw_response)
+  print(result["query"])
+challenge: |
+  Fix `parse_tool_call` so it locates the JSON object (from the first
+  `{` to the last `}`) within `raw_response` before parsing, instead of
+  passing the entire raw response to `json.loads` directly. It should
+  print `refund policy`, not crash with a `JSONDecodeError`.
+expected_output: |
+  refund policy
+hints:
+  - "start = raw_response.find(\"{\"); end = raw_response.rfind(\"}\")."
+  - "json.loads(raw_response[start:end + 1]) parses only the embedded JSON substring, ignoring the surrounding prose entirely."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 37
+difficulty: gotcha
+contains_patterns:
+  - "raw_response\\.find\\(.\\{.\\)"
+concept_tags: [agentic_frameworks, tool_calling, json_parsing]

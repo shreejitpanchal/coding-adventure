@@ -1,0 +1,89 @@
+id: observability_10
+title: "Tracking 'Currently Active' Needs a Gauge -- A Counter Can Only Go Up"
+language: python
+level: 410
+objective: "Fix an 'active connections' metric modeled as an increment-only counter, which has no way to actually decrease when a connection closes, when a Gauge -- supporting both inc() and dec() -- correctly represents a value that genuinely goes up and down over time."
+explanation: |
+  This category's counter lesson covers the simplest metric type --
+  increment-only, correct for anything that only ever accumulates
+  (total requests served, total errors). "Currently active connections"
+  is a fundamentally different kind of metric: it needs to go *up*
+  when a connection opens and *down* when one closes, something an
+  increment-only counter has no way to express at all -- modeling it
+  as a counter means "closing a connection" can only ever increment
+  the same number, never actually reflect a connection going away. A
+  gauge is the metric type built for exactly this: it supports both
+  `inc()` and `dec()` (or setting an absolute value directly),
+  correctly representing something that moves in both directions.
+
+  The fix replaces the increment-only counter with a `Gauge` class
+  supporting both `inc()` and `dec()`.
+example_code: |
+  # The trap: modeled as a counter -- closing a connection can only increment.
+  metrics_trap = {"active_connections": 0}
+
+  def connection_opened_trap():
+      metrics_trap["active_connections"] += 1
+
+  def connection_closed_trap():
+      metrics_trap["active_connections"] += 1   # BUG: no way to decrease at all
+
+  connection_opened_trap()
+  connection_opened_trap()
+  connection_closed_trap()
+  print(metrics_trap["active_connections"])
+  # 3 -- WRONG, one connection closed, so only 1 should still be active
+
+  # The fix: a Gauge supports going UP and DOWN.
+  class Gauge:
+      def __init__(self):
+          self.value = 0
+      def inc(self):
+          self.value += 1
+      def dec(self):
+          self.value -= 1
+
+  active_connections = Gauge()
+
+  def connection_opened():
+      active_connections.inc()
+
+  def connection_closed():
+      active_connections.dec()
+
+  connection_opened()
+  connection_opened()
+  connection_closed()
+  print(active_connections.value)
+  # 1 -- correctly reflects one connection closing after two opened
+starter_code: |
+  metrics = {"active_connections": 0}
+
+  def connection_opened():
+      metrics["active_connections"] += 1
+
+  def connection_closed():
+      metrics["active_connections"] += 1
+
+  connection_opened()
+  connection_opened()
+  connection_closed()
+  print(metrics["active_connections"])
+challenge: |
+  Fix this by defining a `Gauge` class with `inc()` and `dec()`
+  methods, using an `active_connections = Gauge()` instance instead of
+  a plain increment-only dict counter, with `connection_closed` calling
+  `.dec()`. It should print `1`, not `3`.
+expected_output: |
+  1
+hints:
+  - "class Gauge: def __init__(self): self.value = 0; def inc(self): self.value += 1; def dec(self): self.value -= 1."
+  - "connection_closed() should call active_connections.dec(), not increment anything -- a counter has no concept of decreasing at all."
+xp_reward: 15
+achievement: null
+category: observability
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "def dec\\(self\\):"
+concept_tags: [observability, metrics, gauge]

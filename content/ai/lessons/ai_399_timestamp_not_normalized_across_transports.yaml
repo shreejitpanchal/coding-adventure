@@ -1,0 +1,62 @@
+id: ai_399
+title: "Timestamps From Different Transports Must Normalize to One Common Format"
+language: ai
+level: 399
+objective: "Fix a timestamp normalizer that returns a source's raw value unchanged, when one transport delivering a Unix timestamp (a plain integer) and another delivering an ISO string means downstream code checking for a consistent format breaks the moment it receives the 'wrong' one."
+explanation: |
+  Just as this category's foundational lesson requires every entrypoint
+  to translate its payload into one common `{text, source}` task shape,
+  any timestamp embedded in that payload needs the same kind of
+  normalization -- a Unix integer from one transport and an ISO-8601
+  string from another are both "a timestamp," but code downstream that
+  expects one consistent representation breaks the moment it's handed
+  the other.
+
+  The bug this exercise fixes returns `raw_timestamp` completely
+  unchanged, regardless of `source_format`. The fix converts a Unix
+  timestamp into the same ISO string format every other source
+  produces.
+example_code: |
+  # The trap: returns whatever format the source happened to use,
+  # unnormalized -- downstream code expecting one consistent format
+  # breaks.
+  def normalize_timestamp_trap(raw_timestamp, source_format):
+      return raw_timestamp
+
+  print(isinstance(normalize_timestamp_trap(1768464000, "unix"), str))
+  # False -- a unix-format timestamp came through as a raw int, not normalized at all
+
+  # The fix: convert a unix timestamp into the same ISO format every
+  # other source produces.
+  import datetime
+
+  def normalize_timestamp(raw_timestamp, source_format):
+      if source_format == "unix":
+          return datetime.datetime.fromtimestamp(raw_timestamp, tz=datetime.timezone.utc).isoformat()
+      return raw_timestamp
+
+  print(isinstance(normalize_timestamp(1768464000, "unix"), str))
+  # True -- correctly normalized to the same ISO string format as every other source
+starter_code: |
+  def normalize_timestamp(raw_timestamp, source_format):
+      return raw_timestamp
+
+  print(isinstance(normalize_timestamp(1768464000, "unix"), str))
+challenge: |
+  Fix `normalize_timestamp` so, when `source_format == "unix"`, it
+  returns `datetime.datetime.fromtimestamp(raw_timestamp,
+  tz=datetime.timezone.utc).isoformat()`, instead of returning
+  `raw_timestamp` unchanged. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "import datetime, then: if source_format == \"unix\": return datetime.datetime.fromtimestamp(raw_timestamp, tz=datetime.timezone.utc).isoformat()."
+  - "A raw int and an ISO string are both technically \"a timestamp,\" but only one of them is the common format every other source already produces."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 44
+difficulty: core
+contains_patterns:
+  - "datetime\\.datetime\\.fromtimestamp\\(raw_timestamp, tz=datetime\\.timezone\\.utc\\)"
+concept_tags: [solace_agent_mesh, entrypoint, timestamp_normalization]

@@ -1,0 +1,62 @@
+id: ai_123
+title: "A Context-Window Budget Is Measured in Tokens, Not Characters"
+language: ai
+level: 123
+objective: "Fix a context-budget check that compares character count against a token limit, when characters and tokens are different units entirely -- a string can be well within a character-count guess while still exceeding the model's real token budget."
+explanation: |
+  This category's context-window-budget lesson established that a
+  model's context limit is real and must be respected -- but that
+  limit is defined in **tokens**, not characters, and the two don't
+  convert at any fixed, simple ratio. A token is often a few
+  characters (roughly 4 for English text, on average, though it varies
+  by tokenizer and language), so comparing a raw character count
+  directly against a token limit systematically underestimates how
+  much of the budget a string actually consumes -- text that looks
+  comfortably under budget by character count can be dangerously close
+  to, or over, the actual token limit.
+
+  The bug this exercise fixes compares `len(text)` (characters) directly
+  against a token limit, as if the two units were interchangeable. The
+  fix applies a rough characters-to-tokens conversion (dividing by an
+  average characters-per-token ratio) before comparing against the
+  token limit, correctly accounting for the unit mismatch instead of
+  treating characters and tokens as the same number.
+example_code: |
+  # The trap: compares CHARACTER count directly against a TOKEN limit --
+  # treats two different units as if they were interchangeable.
+  def fits_in_budget_trap(text, token_limit):
+      return len(text) <= token_limit
+
+  text = "x" * 350   # 350 characters
+  print(fits_in_budget_trap(text, token_limit=100))   # False -- but this comparison was never valid to begin with
+
+  # The fix: convert characters to an ESTIMATED token count first.
+  def fits_in_budget(text, token_limit, chars_per_token=4):
+      estimated_tokens = len(text) / chars_per_token
+      return estimated_tokens <= token_limit
+
+  print(fits_in_budget(text, token_limit=100))   # True -- 350 chars is roughly 87.5 estimated tokens, comfortably under 100
+starter_code: |
+  def fits_in_budget(text, token_limit, chars_per_token=4):
+      return len(text) <= token_limit
+
+  text = "x" * 350
+  print(fits_in_budget(text, token_limit=100))
+challenge: |
+  Fix `fits_in_budget` so it estimates the token count as `len(text) /
+  chars_per_token` before comparing against `token_limit`, instead of
+  comparing raw character count directly. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Compute estimated_tokens = len(text) / chars_per_token, then return estimated_tokens <= token_limit."
+  - "350 characters / 4 chars-per-token = 87.5 estimated tokens, which is under the 100-token limit -- even though 350 itself (compared directly) would exceed it."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 38
+difficulty: warmup
+contains_patterns:
+  - "len\\(text\\) / chars_per_token"
+concept_tags: [rag, context_window, tokenization]

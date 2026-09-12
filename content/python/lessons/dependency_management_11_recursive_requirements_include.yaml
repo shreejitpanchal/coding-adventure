@@ -1,0 +1,74 @@
+id: dependency_management_11
+title: "'-r base.txt' Is Meant to Be Expanded, Not Treated as a Literal Package"
+language: python
+level: 421
+objective: "Fix a requirements-file parser that returns '-r base.txt' as a literal (bogus) entry, when that line is actually an INCLUDE directive meaning 'recursively pull in every line from base.txt here' -- a genuinely common pattern for a dev-requirements file building on a base one."
+explanation: |
+  A `-r other_file.txt` line inside a requirements file isn't a
+  package requirement at all -- it's an include directive, telling the
+  installer (or anything else parsing the file) to recursively pull in
+  every requirement from that other file at this point, which is how a
+  project commonly splits `requirements-dev.txt` (test tools, linters)
+  from a shared `requirements.txt` base without duplicating every
+  entry across both files. A parser that treats every line uniformly,
+  without recognizing the `-r ` prefix, returns that directive as a
+  literal, meaningless "package name" instead of actually expanding
+  it into the base file's real requirements.
+
+  The fix recognizes the `-r ` prefix and recursively expands it into
+  the referenced file's own lines.
+example_code: |
+  # The trap: treats "-r base.txt" as a literal, bogus package entry.
+  def parse_file_trap(filename, files):
+      return files[filename]
+
+  files = {
+      "base.txt": ["flet==0.86.5"],
+      "dev.txt": ["-r base.txt", "pytest==8.0.0"],
+  }
+  print(parse_file_trap("dev.txt", files))
+  # ['-r base.txt', 'pytest==8.0.0'] -- WRONG, that first entry isn't a real package
+
+  # The fix: recognize -r and recursively expand the included file.
+  def parse_file(filename, files):
+      result = []
+      for line in files[filename]:
+          line = line.strip()
+          if line.startswith("-r "):
+              included_file = line[3:].strip()
+              result.extend(parse_file(included_file, files))
+          else:
+              result.append(line)
+      return result
+
+  print(parse_file("dev.txt", files))
+  # ['flet==0.86.5', 'pytest==8.0.0'] -- correctly expanded base.txt's own requirements
+starter_code: |
+  files = {
+      "base.txt": ["flet==0.86.5"],
+      "dev.txt": ["-r base.txt", "pytest==8.0.0"],
+  }
+
+  def parse_file(filename, files):
+      return files[filename]
+
+  print(parse_file("dev.txt", files))
+challenge: |
+  Fix `parse_file` so it checks each stripped line for a `"-r "`
+  prefix, recursively expanding the referenced file's own lines
+  instead of returning the raw directive as a literal entry. It should
+  print `['flet==0.86.5', 'pytest==8.0.0']`, not
+  `['-r base.txt', 'pytest==8.0.0']`.
+expected_output: |
+  ['flet==0.86.5', 'pytest==8.0.0']
+hints:
+  - "if line.startswith(\"-r \"): included_file = line[3:].strip(); result.extend(parse_file(included_file, files))."
+  - "\"-r other.txt\" is an include directive, not a package requirement -- it needs to be recursively expanded into that file's own lines, not returned as-is."
+xp_reward: 15
+achievement: null
+category: dependency_management
+category_level: 11
+difficulty: deep_dive
+contains_patterns:
+  - "line\\.startswith\\(\"-r \"\\)"
+concept_tags: [dependency_management, requirements_txt, recursion]

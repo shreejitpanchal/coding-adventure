@@ -1,0 +1,66 @@
+id: concurrency_async_28
+title: "A Non-Daemon Background Thread Keeps the Whole Program Alive"
+language: python
+level: 318
+objective: "Fix a program meant to exit promptly that hangs waiting for a background thread that's meant to run forever, when marking that thread daemon=True lets Python exit without waiting for it."
+explanation: |
+  By default, a `threading.Thread` is *non-daemon* -- Python's
+  interpreter won't actually exit until every non-daemon thread has
+  finished, even if the main thread's own code has already reached its
+  end. A background thread meant to run forever (a heartbeat loop, a
+  periodic cleanup task) as a plain, non-daemon thread means the whole
+  program can never exit normally at all, since that thread never
+  finishes on its own. Marking a thread `daemon=True` tells Python
+  it's fine to kill that thread abruptly the instant every non-daemon
+  thread (including the main one) has finished -- exactly the right
+  behavior for background work that should never be the reason the
+  program keeps running.
+
+  The fix passes `daemon=True` when constructing the thread.
+example_code: |
+  # The trap: a non-daemon thread that runs forever -- the program can
+  # never exit normally while it's still alive.
+  import threading, time
+
+  def heartbeat_trap():
+      while True:
+          time.sleep(1)
+
+  # threading.Thread(target=heartbeat_trap).start()   # NEVER exits on its own
+
+  # The fix: daemon=True lets Python exit without waiting for it.
+  def heartbeat():
+      while True:
+          time.sleep(1)
+
+  t = threading.Thread(target=heartbeat, daemon=True)
+  t.start()
+  print(t.daemon)
+  # True -- correctly marked so it won't block the program from exiting
+starter_code: |
+  import threading, time
+
+  def heartbeat():
+      while True:
+          time.sleep(1)
+
+  t = threading.Thread(target=heartbeat)
+  t.start()
+  print(t.daemon)
+challenge: |
+  Fix this by constructing the thread with `daemon=True` --
+  `threading.Thread(target=heartbeat, daemon=True)`. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "threading.Thread(target=heartbeat, daemon=True)."
+  - "A non-daemon thread that never finishes on its own keeps the WHOLE program alive -- daemon=True tells Python it's fine to end abruptly once every non-daemon thread is done."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 28
+difficulty: core
+contains_patterns:
+  - "daemon=True"
+concept_tags: [threading, daemon_threads, concurrency]

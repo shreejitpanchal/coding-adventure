@@ -1,0 +1,55 @@
+id: idioms_gotchas_28
+title: "NaN Never Equals Anything -- Not Even Another NaN"
+language: python
+level: 97
+objective: "Fix a NaN-detection function that compares a value against a NaN literal with '==', when NaN famously never equals anything -- including another NaN -- so that comparison can never return True, no matter what."
+explanation: |
+  `float('nan')` ("not a number") has a genuinely bizarre property
+  required by the IEEE 754 floating-point standard: it doesn't equal
+  anything, including itself. `float('nan') == float('nan')` is
+  `False`. That makes `x == float('nan')` a comparison that can never
+  succeed, for any `x` -- there's no way to detect NaN by comparing it
+  to a NaN literal at all. The standard (if surprising) idiom for
+  detecting NaN relies on exactly this property in reverse: checking
+  `x != x` is `True` for precisely one value in all of Python -- NaN
+  itself.
+
+  The bug this exercise fixes compares against `float('nan')` with
+  `==`, which can never detect it. The fix uses the `x != x` idiom.
+example_code: |
+  # The trap: compares against a NaN literal with == -- but NaN never
+  # equals ANYTHING, including another NaN, so this can NEVER return True.
+  def is_nan_trap(x):
+      return x == float('nan')
+
+  print(is_nan_trap(float('nan')))
+  # False -- WRONG, this genuinely IS NaN, but this check can never detect it
+
+  # The fix: NaN is the one value where x != x is True.
+  def is_nan(x):
+      return x != x
+
+  print(is_nan(float('nan')))
+  # True -- correctly detected via NaN's own defining property
+starter_code: |
+  def is_nan(x):
+      return x == float('nan')
+
+  print(is_nan(float('nan')))
+challenge: |
+  Fix `is_nan` so it returns `x != x`, instead of comparing against a
+  NaN literal with `==` (which can never succeed). It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Replace x == float('nan') with x != x."
+  - "NaN is required by the IEEE 754 standard to never equal anything, including itself -- that's exactly what makes x != x true only for it."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 28
+difficulty: gotcha
+contains_patterns:
+  - "return x != x"
+concept_tags: [idioms, nan, floating_point]

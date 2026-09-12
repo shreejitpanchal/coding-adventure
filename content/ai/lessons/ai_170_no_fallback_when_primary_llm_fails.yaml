@@ -1,0 +1,72 @@
+id: ai_170
+title: "A Failed Primary Model Call Should Trigger a Fallback, Not a Hard Crash"
+language: ai
+level: 170
+objective: "Fix a response function that lets an exception from the primary model call propagate directly to the caller, instead of catching it and falling back to a simpler heuristic response -- some response, even a degraded one, beats a hard failure for the user."
+explanation: |
+  A model provider can have an outage, return a malformed response, or
+  simply time out -- and when that happens, propagating the raw
+  exception straight to the user is rarely the best available outcome.
+  A **fallback** -- a simpler, rule-based response, or a cached
+  previous answer -- degrades gracefully instead of failing completely,
+  the same graceful-degradation principle this app's Architecture
+  track covers for circuit breakers generally, applied here to the
+  model call itself rather than a downstream tool.
+
+  The bug this exercise fixes calls the primary model with no
+  exception handling at all, letting any failure crash the whole
+  response generation. The fix catches a primary-model failure and
+  falls back to a simpler heuristic response instead of failing
+  completely.
+example_code: |
+  # The trap: NO fallback at all -- any primary model failure crashes
+  # the entire response generation.
+  def generate_response_trap(primary_model_fn, query):
+      return primary_model_fn(query)
+
+  def flaky_primary_model(query):
+      raise ConnectionError("model provider is down")
+
+  # generate_response_trap(flaky_primary_model, "hello")  # ConnectionError -- the user gets NOTHING at all
+
+  # The fix: catch a primary failure, fall back to a simpler heuristic response.
+  def generate_response(primary_model_fn, query, fallback_fn):
+      try:
+          return primary_model_fn(query)
+      except Exception:
+          return fallback_fn(query)
+
+  def simple_fallback(query):
+      return "I'm having trouble processing that right now -- please try again shortly."
+
+  print(generate_response(flaky_primary_model, "hello", simple_fallback))
+  # correctly degrades gracefully instead of crashing entirely
+starter_code: |
+  def generate_response(primary_model_fn, query, fallback_fn):
+      return primary_model_fn(query)
+
+  def flaky_primary_model(query):
+      raise ConnectionError("model provider is down")
+
+  def simple_fallback(query):
+      return "I'm having trouble processing that right now -- please try again shortly."
+
+  print(generate_response(flaky_primary_model, "hello", simple_fallback))
+challenge: |
+  Fix `generate_response` so it wraps the call to `primary_model_fn` in
+  a `try/except`, calling `fallback_fn(query)` on any exception instead
+  of letting it propagate. It should print the fallback message, not
+  raise a `ConnectionError`.
+expected_output: |
+  I'm having trouble processing that right now -- please try again shortly.
+hints:
+  - "Wrap `return primary_model_fn(query)` in a try block, with `except Exception: return fallback_fn(query)`."
+  - "Catching the broad Exception class here is appropriate specifically because ANY primary-model failure should trigger the same graceful fallback."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 40
+difficulty: warmup
+contains_patterns:
+  - "except Exception"
+concept_tags: [agentic_frameworks, fallback, error_handling]

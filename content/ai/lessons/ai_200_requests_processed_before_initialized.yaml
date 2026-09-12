@@ -1,0 +1,57 @@
+id: ai_200
+title: "Requests Shouldn't Be Handled Until the Client Confirms It's Initialized"
+language: ai
+level: 200
+objective: "Fix a request handler that processes any incoming request regardless of handshake state, when it should reject everything except 'initialize' itself until the client's 'notifications/initialized' has actually arrived."
+explanation: |
+  MCP's handshake has a specific order: the client sends `initialize`,
+  the server responds with its capabilities, and only *after* the
+  client sends the `notifications/initialized` notification back is the
+  connection considered ready for normal traffic. A server that handles
+  any request the moment it arrives, without tracking whether that
+  handshake actually completed, can end up serving `tools/list` or
+  `tools/call` before the client has even acknowledged the server's
+  capabilities -- working by accident when a client happens to behave
+  well, but with no real guarantee the negotiation finished first.
+
+  The bug this exercise fixes handles every request unconditionally.
+  The fix rejects anything other than `initialize` itself until the
+  `initialized` flag has actually been set.
+example_code: |
+  # The trap: handles ANY request regardless of whether the handshake
+  # ever actually completed.
+  def handle_request_trap(method, initialized):
+      return {"status": "handled"}
+
+  print(handle_request_trap("tools/list", False))   # {"status": "handled"} -- served before the handshake finished
+
+  # The fix: reject anything but "initialize" until initialized is True.
+  def handle_request(method, initialized):
+      if not initialized and method != "initialize":
+          return {"status": "rejected"}
+      return {"status": "handled"}
+
+  print(handle_request("tools/list", False))   # {"status": "rejected"} -- correctly refused, the handshake never finished
+starter_code: |
+  def handle_request(method, initialized):
+      return {"status": "handled"}
+
+  print(handle_request("tools/list", False)["status"])
+challenge: |
+  Fix `handle_request` so it returns `{"status": "rejected"}` whenever
+  `initialized` is `False` and `method` isn't `"initialize"`, instead of
+  always handling the request. It should print `rejected`, not
+  `handled`.
+expected_output: |
+  rejected
+hints:
+  - "Add: if not initialized and method != \"initialize\": return {\"status\": \"rejected\"} before the normal handling path."
+  - "\"initialize\" itself must still be allowed through even when initialized is False -- it's the request that starts the handshake."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 25
+difficulty: warmup
+contains_patterns:
+  - "not initialized and method != \"initialize\""
+concept_tags: [mcp, handshake, initialized_notification]

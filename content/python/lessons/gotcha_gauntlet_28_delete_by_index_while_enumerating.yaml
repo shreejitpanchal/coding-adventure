@@ -1,0 +1,66 @@
+id: gotcha_gauntlet_28
+title: "The Cleanup Loop That Skipped Every Second Bad Entry"
+language: python
+level: 273
+objective: "Fix a loop that removes items from a list by index while walking forward through it with enumerate(), which silently skips elements whenever two removable items sit next to each other -- walking the indices BACKWARD avoids the shift entirely."
+explanation: |
+  Removing an item at index `i` shifts every element after it one
+  position to the left -- the element that used to be at `i + 1` is
+  now at `i`. A forward loop that's already moved on to checking index
+  `i + 1` next has no idea this shift just happened, so it ends up
+  looking at what *used to be* the element at `i + 2`, silently
+  skipping straight past the one that just slid into `i + 1`. Two
+  removable items sitting next to each other in the list is exactly
+  when this bites: the second one gets skipped entirely, invisible to
+  the loop, with no error to signal anything went wrong.
+
+  The fix is walking the indices *backward* instead: removing from the
+  end of the list first means every index still to be visited is
+  *before* the removal, completely unaffected by any shift a later
+  removal caused. `for i in reversed(range(len(data))):` gets this
+  right without needing a separate snapshot copy at all.
+example_code: |
+  # The trap: forward index walk -- removing shifts everything after it,
+  # silently skipping the very next element when two negatives are adjacent.
+  data_trap = [1, -2, -3, 4, 5]
+  for i, val in enumerate(data_trap):
+      if val < 0:
+          data_trap.pop(i)
+
+  print(data_trap)
+  # [1, -3, 4, 5] -- WRONG, -3 slid into the just-vacated slot and got skipped
+
+  # The fix: walk the indices BACKWARD, so removals never affect what's
+  # still left to visit.
+  data = [1, -2, -3, 4, 5]
+  for i in reversed(range(len(data))):
+      if data[i] < 0:
+          data.pop(i)
+
+  print(data)
+  # [1, 4, 5] -- correctly removed BOTH negatives, none skipped
+starter_code: |
+  data = [1, -2, -3, 4, 5]
+  for i, val in enumerate(data):
+      if val < 0:
+          data.pop(i)
+
+  print(data)
+challenge: |
+  Fix this so it walks the indices backward --
+  `for i in reversed(range(len(data))): if data[i] < 0: data.pop(i)`
+  -- instead of removing while walking forward with `enumerate`. It
+  should print `[1, 4, 5]`, not `[1, -3, 4, 5]`.
+expected_output: |
+  [1, 4, 5]
+hints:
+  - "for i in reversed(range(len(data))): if data[i] < 0: data.pop(i)."
+  - "Removing an element shifts everything after it left by one -- walking backward means every index still ahead of the current one is untouched by that shift."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 28
+difficulty: gotcha
+contains_patterns:
+  - "reversed\\(range\\(len\\(data\\)\\)\\)"
+concept_tags: [lists, iteration, mutation, gotchas]

@@ -59,7 +59,7 @@ hints:
   - "tool_result.get(\"is_final\") == True -- change the key name from \"final\" to \"is_final\"."
   - "Nothing else about the function needs to change -- the bug is purely the mismatched key name."
 xp_reward: 15
-achievement: agentic_frameworks_master
+achievement: null
 category: agentic_frameworks
 category_level: 5
 difficulty: deep_dive

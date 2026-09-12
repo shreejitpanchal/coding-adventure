@@ -1,0 +1,61 @@
+id: gotcha_gauntlet_16
+title: "The Feature Flag Check That Only Worked for Exactly One True Value"
+language: python
+level: 261
+objective: "Fix a condition written as 'if x == True:', which fails for any truthy value that isn't the literal True object, when 'if x:' correctly accepts any truthy value the way real code actually produces one."
+explanation: |
+  `x == True` only succeeds when `x` is *exactly* equal to the literal
+  `True` -- and in Python, `2 == True` is `False`, even though `2` is
+  unmistakably truthy in every other context (`if 2:` runs its body
+  just fine). Real-world values that are "truthy but not literally
+  `True`" show up constantly: a count of matching records, a
+  non-empty string, a non-zero setting loaded from a config file --
+  none of these equal the boolean `True` by `==`, so a feature-flag
+  check written as `if enabled_count == True:` silently fails for every
+  one of them, even when the intent was clearly "if this is any kind
+  of truthy value, treat the feature as on."
+
+  The fix is to drop the `== True` entirely -- `if x:` already checks
+  truthiness directly, accepting anything Python considers truthy, not
+  just the one specific `True` object.
+example_code: |
+  # The trap: == True only matches the EXACT True object, not truthiness.
+  def feature_enabled_trap(flag):
+      if flag == True:
+          return "on"
+      return "off"
+
+  print(feature_enabled_trap(2))
+  # "off" -- WRONG, 2 is truthy, but 2 == True is False
+
+  # The fix: check truthiness directly, with no == True at all.
+  def feature_enabled(flag):
+      if flag:
+          return "on"
+      return "off"
+
+  print(feature_enabled(2))
+  # "on" -- correctly recognized as truthy
+starter_code: |
+  def feature_enabled(flag):
+      if flag == True:
+          return "on"
+      return "off"
+
+  print(feature_enabled(2))
+challenge: |
+  Fix `feature_enabled` so it checks `if flag:` directly, instead of
+  `if flag == True:`. It should print `on`, not `off`.
+expected_output: |
+  on
+hints:
+  - "Replace if flag == True: with if flag:."
+  - "== True only matches the literal True object -- a plain if x: check accepts any truthy value at all, which is almost always what's actually intended."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 16
+difficulty: gotcha
+contains_patterns:
+  - "if flag:"
+concept_tags: [booleans, truthiness, gotchas]

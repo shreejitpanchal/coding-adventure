@@ -1,0 +1,60 @@
+id: stdlib_deep_dive_24
+title: "TypedDict Declares a Dict's Expected Shape as Real, Inspectable Metadata"
+language: python
+level: 225
+objective: "Fix a plain dict-subclass with no declared field types, when typing.TypedDict is what actually documents a dict's expected keys and value types as genuine, inspectable class annotations."
+explanation: |
+  A plain dict (or a bare `class User(dict): pass`) carries no
+  information anywhere about which keys it's supposed to have or what
+  type each one's value should be -- a typo'd key or a wrong-typed
+  value is completely invisible to any tool, since nothing declares
+  the intended shape in the first place. `typing.TypedDict` fixes
+  this the same way ordinary type hints document a function's
+  parameters: `class User(TypedDict): name: str; age: int` stores
+  real, inspectable annotations describing the dict's expected shape,
+  for static type checkers (and human readers) to check against --
+  still with zero runtime enforcement, the same "gradual typing"
+  trade-off this category's earlier type-hints lesson covers.
+
+  The bug this exercise fixes is a plain dict subclass with no
+  declared shape at all. The fix uses `TypedDict` to declare it.
+example_code: |
+  # The trap: a plain dict subclass -- no declared field types
+  # anywhere, nothing documents the expected shape.
+  class UserTrap(dict):
+      pass
+
+  print(bool(getattr(UserTrap, "__annotations__", {})))
+  # False -- no schema declared at all
+
+  # The fix: TypedDict declares the expected shape as real annotations.
+  from typing import TypedDict
+
+  class User(TypedDict):
+      name: str
+      age: int
+
+  print(bool(User.__annotations__))
+  # True -- correctly documents the expected shape: {'name': str, 'age': int}
+starter_code: |
+  class User(dict):
+      pass
+
+  print(bool(getattr(User, "__annotations__", {})))
+challenge: |
+  Fix this so `User` is a `TypedDict` (imported from `typing`) with
+  `name: str` and `age: int` fields, instead of a plain, undeclared
+  dict subclass. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from typing import TypedDict, then: class User(TypedDict): name: str; age: int."
+  - "Like ordinary type hints, TypedDict provides zero runtime enforcement -- its entire value is the real, inspectable annotation metadata it stores."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "class User\\(TypedDict\\):"
+concept_tags: [typing, typeddict]

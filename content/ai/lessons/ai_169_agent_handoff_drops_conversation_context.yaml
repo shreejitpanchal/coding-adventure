@@ -1,0 +1,59 @@
+id: ai_169
+title: "Handing Off Between Agents Needs to Carry the Conversation Context Along"
+language: ai
+level: 169
+objective: "Fix an agent handoff function that starts the receiving agent with a blank conversation history, discarding everything the user already said to the first agent -- forcing them to repeat themselves after a handoff that should have been invisible."
+explanation: |
+  When a billing agent hands a conversation off to a technical-support
+  agent (this category's own sub-agent delegation lesson, applied at
+  the level of a full conversation rather than one subtask), the user
+  shouldn't have to repeat information they already provided just
+  because a different agent is now handling the conversation. A clean
+  handoff carries the existing conversation history along to the
+  receiving agent, so it has full context from the very first message
+  it processes.
+
+  The bug this exercise fixes starts the receiving agent with a
+  completely blank history, discarding everything from before the
+  handoff. The fix passes the existing conversation history along
+  during the handoff, so the new agent starts already informed.
+example_code: |
+  # The trap: the receiving agent starts with a BLANK history --
+  # everything the user already said is gone.
+  def handoff_trap(conversation_history, new_agent_name):
+      return {"agent": new_agent_name, "history": []}
+
+  history = ["User: my payment failed", "Agent: let me check that", "User: it's still not working"]
+  result_trap = handoff_trap(history, "tech_support_agent")
+  print(len(result_trap["history"]))   # 0 -- the user would have to repeat everything they already said
+
+  # The fix: carry the existing history along to the receiving agent.
+  def handoff(conversation_history, new_agent_name):
+      return {"agent": new_agent_name, "history": list(conversation_history)}
+
+  result = handoff(history, "tech_support_agent")
+  print(len(result["history"]))   # 3 -- the new agent starts already informed
+starter_code: |
+  def handoff(conversation_history, new_agent_name):
+      return {"agent": new_agent_name, "history": []}
+
+  history = ["User: my payment failed", "Agent: let me check that", "User: it's still not working"]
+  result = handoff(history, "tech_support_agent")
+  print(len(result["history"]))
+challenge: |
+  Fix `handoff` so it carries `conversation_history` along into the
+  returned dict's `"history"` field, instead of always starting with an
+  empty list. It should print `3`, not `0`.
+expected_output: |
+  3
+hints:
+  - "Change \"history\": [] to \"history\": list(conversation_history) -- copying the existing history into the handoff result."
+  - "The receiving agent should start with the SAME conversation context the previous agent had, not a blank slate."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 39
+difficulty: warmup
+contains_patterns:
+  - "list\\(conversation_history\\)"
+concept_tags: [agentic_frameworks, multi_agent, handoff]

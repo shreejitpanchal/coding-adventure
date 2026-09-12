@@ -1,0 +1,84 @@
+id: core_refresher_47
+title: "@property + @abstractmethod Enforces a Computed Attribute, Not Just a Method"
+language: python
+level: 160
+objective: "Fix a base class whose 'area' property has a placeholder implementation, when combining @property with @abstractmethod refuses to let a subclass be instantiated without genuinely overriding it -- a plain placeholder property provides no such protection."
+explanation: |
+  This category's earlier lesson covered `ABC` + `@abstractmethod`
+  enforcing that a plain method gets overridden -- the same combination
+  works for a `@property` too, just stacked: `@property` above
+  `@abstractmethod` (in that order) declares an attribute-style
+  computed value that every concrete subclass is required to actually
+  implement. A plain `@property` with a placeholder body provides no
+  such enforcement at all; a subclass that forgets to override it
+  silently inherits the placeholder's wrong value.
+
+  The bug this exercise fixes has a plain `@property` returning a
+  hardcoded placeholder. The fix makes it abstract, refusing
+  instantiation of any subclass that doesn't override it.
+example_code: |
+  # A plain property placeholder -- silently inherited if forgotten.
+  class ShapeLoop:
+      @property
+      def area(self):
+          return 0
+
+  class CircleLoop(ShapeLoop):
+      def __init__(self, r):
+          self.r = r
+      # forgot to override area -- silently inherits the placeholder 0
+
+  c_loop = CircleLoop(5)
+  print(c_loop.area)                       # 0 -- WRONG, but nothing caught it
+
+  # @property + @abstractmethod refuses to let this happen.
+  from abc import ABC, abstractmethod
+
+  class Shape(ABC):
+      @property
+      @abstractmethod
+      def area(self):
+          ...
+
+  class Circle(Shape):
+      def __init__(self, r):
+          self.r = r
+
+  try:
+      c = Circle(5)
+      print(c.area)
+  except TypeError:
+      print("cannot instantiate")
+  # "cannot instantiate" -- correctly refused
+starter_code: |
+  class Shape:
+      @property
+      def area(self):
+          return 0
+
+  class Circle(Shape):
+      def __init__(self, r):
+          self.r = r
+
+  try:
+      c = Circle(5)
+      print(c.area)
+  except TypeError:
+      print("cannot instantiate")
+challenge: |
+  Fix `Shape` so it's an `ABC` with `area` decorated by both
+  `@property` and `@abstractmethod`. It should print
+  `cannot instantiate`, not `0`.
+expected_output: |
+  cannot instantiate
+hints:
+  - "from abc import ABC, abstractmethod, then class Shape(ABC): with @property directly above @abstractmethod above def area(self): ..."
+  - "@property must come FIRST (outermost), with @abstractmethod directly above the function definition -- the order of the two decorators matters."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 47
+difficulty: core
+contains_patterns:
+  - "@abstractmethod"
+concept_tags: [abstract_properties, abc]

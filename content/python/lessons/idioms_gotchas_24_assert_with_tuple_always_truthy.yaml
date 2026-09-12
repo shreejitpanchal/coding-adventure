@@ -1,0 +1,66 @@
+id: idioms_gotchas_24
+title: "assert (condition, message) Is a Tuple -- and a Tuple Is Always Truthy"
+language: python
+level: 93
+objective: "Fix an assert statement that wraps its condition and message in parentheses, forming a tuple that's always truthy regardless of the actual condition -- so the assertion can never fail, no matter what value is being checked."
+explanation: |
+  `assert` expects a condition, optionally followed by a comma and a
+  message -- `assert condition, message` -- with no parentheses at
+  all. Writing `assert (condition, message)` instead (a very easy
+  mistake, especially when a multi-line assert seems to invite
+  wrapping parentheses) creates a single 2-element *tuple* as the thing
+  being asserted, and a non-empty tuple is always truthy in a boolean
+  context, completely independent of what `condition` actually
+  evaluates to. The assertion silently stops checking anything at all,
+  with no syntax error to flag it.
+
+  The bug this exercise fixes wraps `(x > 0, "x must be positive")` in
+  parentheses, forming an always-truthy tuple. The fix drops the
+  parentheses, restoring the real `condition, message` form.
+example_code: |
+  # The trap: parenthesized -- this is a TUPLE (condition, message),
+  # and a non-empty tuple is ALWAYS truthy, no matter what condition is.
+  def validate_trap(x):
+      assert (x > 0, "x must be positive")
+      return "valid"
+
+  print(validate_trap(-5))
+  # "valid" -- WRONGLY passed validation despite x being negative; the assert never had a chance to fail
+
+  # The fix: no parentheses -- a real condition and a separate message.
+  def validate(x):
+      assert x > 0, "x must be positive"
+      return "valid"
+
+  try:
+      validate(-5)
+  except AssertionError as e:
+      print(str(e))
+  # "x must be positive" -- correctly caught the invalid input
+starter_code: |
+  def validate(x):
+      assert (x > 0, "x must be positive")
+      return "valid"
+
+  try:
+      print(validate(-5))
+  except AssertionError as e:
+      print(str(e))
+challenge: |
+  Fix `validate` so it uses `assert x > 0, "x must be positive"`
+  (no parentheses), instead of `assert (x > 0, "x must be positive")`
+  (a tuple, always truthy). It should print `x must be positive`, not
+  `valid`.
+expected_output: |
+  x must be positive
+hints:
+  - "Remove the parentheses entirely: assert x > 0, \"x must be positive\"."
+  - "A non-empty tuple is ALWAYS truthy -- assert (anything, \"message\") can never fail, regardless of what \"anything\" actually is."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 24
+difficulty: gotcha
+contains_patterns:
+  - "assert x > 0, \"x must be positive\""
+concept_tags: [idioms, assert_statement, gotchas]

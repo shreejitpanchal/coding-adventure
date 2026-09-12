@@ -1,0 +1,65 @@
+id: data_structures_19
+title: "Two Pointers Find a Pair Sum in a Sorted List Without Checking Every Pair"
+language: python
+level: 176
+objective: "Replace a nested-loop pair-sum check with the two-pointer technique, which exploits the list already being sorted to avoid checking every possible pair."
+explanation: |
+  Checking every pair of elements for a target sum (`for i: for j:`)
+  is O(n²) regardless of any structure in the data. If the list is
+  already *sorted*, the two-pointer technique does the same job in
+  O(n): start one pointer at each end, and move whichever one moves
+  the sum in the right direction -- if the current pair's sum is too
+  small, the only way to increase it is moving the left pointer
+  inward (since everything is sorted, that's the only direction that
+  helps); if it's too large, move the right pointer inward instead.
+  Each pointer only ever moves forward, so the whole scan is linear.
+example_code: |
+  # Nested loop -- checks every possible pair, O(n^2).
+  def has_pair_sum_loop(sorted_nums, target):
+      for i in range(len(sorted_nums)):
+          for j in range(i + 1, len(sorted_nums)):
+              if sorted_nums[i] + sorted_nums[j] == target:
+                  return True
+      return False
+
+  print(has_pair_sum_loop([1, 2, 4, 7, 11, 15], 15))  # True
+
+  # Two pointers -- exploits the sorted order, O(n).
+  def has_pair_sum(sorted_nums, target):
+      left, right = 0, len(sorted_nums) - 1
+      while left < right:
+          s = sorted_nums[left] + sorted_nums[right]
+          if s == target:
+              return True
+          elif s < target:
+              left += 1
+          else:
+              right -= 1
+      return False
+
+  print(has_pair_sum([1, 2, 4, 7, 11, 15], 15))       # True
+starter_code: |
+  def has_pair_sum(sorted_nums, target):
+      for i in range(len(sorted_nums)):
+          for j in range(i + 1, len(sorted_nums)):
+              if sorted_nums[i] + sorted_nums[j] == target:
+                  return True
+      return False
+
+  print(has_pair_sum([1, 2, 4, 7, 11, 15], 15))
+challenge: |
+  Rewrite `has_pair_sum` using the two-pointer technique instead of a
+  nested loop. Keep the same output: True.
+expected_output: |
+  True
+hints:
+  - "left, right = 0, len(sorted_nums) - 1, then while left < right: check the sum, and move left up or right down depending on whether it's too small or too large."
+  - "Since the list is sorted, moving left forward only ever increases the sum, and moving right backward only ever decreases it -- that's what lets each pointer move just once."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "left, right = 0, len\\(sorted_nums\\) - 1"
+concept_tags: [two_pointers, algorithms]

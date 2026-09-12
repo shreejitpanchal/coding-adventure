@@ -1,0 +1,51 @@
+id: ai_202
+title: "A Destructive Tool Should Say So via Its Annotations"
+language: ai
+level: 202
+objective: "Fix a tool-annotation builder that never records whether a tool is destructive, so a client has no way to warn a user (or require confirmation) before invoking something that deletes or overwrites data."
+explanation: |
+  MCP tools can carry annotations like `destructiveHint` -- metadata a
+  client can use to decide whether to ask for confirmation before
+  invoking a tool, independent of whatever the tool's description
+  happens to say in prose. A tool-registration path that never sets
+  this annotation leaves every tool looking equally safe to a client,
+  even ones that delete files or drop database rows.
+
+  The bug this exercise fixes returns an empty annotations dict
+  regardless of whether the tool is actually destructive. The fix
+  records the `destructiveHint` flag explicitly.
+example_code: |
+  # The trap: never records destructiveHint at all, regardless of
+  # whether the tool actually is destructive.
+  def build_tool_annotation_trap(is_destructive):
+      return {}
+
+  print("destructiveHint" in build_tool_annotation_trap(True))   # False -- a client has no way to know this tool is dangerous
+
+  # The fix: record the destructiveHint flag explicitly.
+  def build_tool_annotation(is_destructive):
+      return {"destructiveHint": is_destructive}
+
+  print("destructiveHint" in build_tool_annotation(True))   # True -- a client can now warn or require confirmation
+starter_code: |
+  def build_tool_annotation(is_destructive):
+      return {}
+
+  print("destructiveHint" in build_tool_annotation(True))
+challenge: |
+  Fix `build_tool_annotation` so it returns `{"destructiveHint":
+  is_destructive}` instead of an always-empty dict. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Return {\"destructiveHint\": is_destructive} instead of {}."
+  - "The annotation lets a client decide on confirmation UX without having to parse the tool's free-text description."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 27
+difficulty: warmup
+contains_patterns:
+  - "\"destructiveHint\": is_destructive"
+concept_tags: [mcp, tool_annotations, destructive_hint]

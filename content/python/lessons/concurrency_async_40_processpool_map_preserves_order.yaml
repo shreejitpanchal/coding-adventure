@@ -1,0 +1,65 @@
+id: concurrency_async_40
+title: "ProcessPoolExecutor.map Preserves Input Order Too, Just Like the Others"
+language: python
+level: 330
+objective: "Confirm and use the same input-order guarantee this category's gather() and ThreadPoolExecutor.map() lessons cover, now for ProcessPoolExecutor.map -- results always come back in the same order as the input, regardless of which worker process finishes first."
+explanation: |
+  Every one of this category's `.map()`-style concurrency tools --
+  `asyncio.gather`, `ThreadPoolExecutor.map`, and
+  `ProcessPoolExecutor.map` -- makes the exact same promise: whatever
+  order the *inputs* were given in is the order the *results* come
+  back in, completely independent of which one actually finishes
+  first. A slower item at index 0 and a faster one at index 1 don't
+  swap positions in the results just because the faster one completed
+  sooner -- the result list is reordered back to match the input
+  before it's ever handed back to the caller.
+
+  This exercise replaces a sequential list comprehension (correct, but
+  not actually parallel) with `ProcessPoolExecutor.map`, confirming the
+  same ordering guarantee holds for process-based parallelism too.
+example_code: |
+  # Sequential -- correct results, but no real parallelism at all.
+  def cpu_bound(n):
+      return sum(i * i for i in range(n))
+
+  def process_all_loop(nums):
+      return [cpu_bound(n) for n in nums]
+
+  # ProcessPoolExecutor.map -- runs in parallel, SAME input order preserved.
+  from concurrent.futures import ProcessPoolExecutor
+
+  def process_all(nums):
+      with ProcessPoolExecutor(2) as pool:
+          return list(pool.map(cpu_bound, nums))
+
+  if __name__ == "__main__":
+      print(process_all([500, 100, 300]))
+      # [41541750, 328350, 8955050] -- SAME order as the input, regardless of
+      # which worker actually finished computing its value first
+starter_code: |
+  def cpu_bound(n):
+      return sum(i * i for i in range(n))
+
+  def process_all(nums):
+      return [cpu_bound(n) for n in nums]
+
+  if __name__ == "__main__":
+      print(process_all([500, 100, 300]))
+challenge: |
+  Rewrite `process_all` using `ProcessPoolExecutor(2).map(cpu_bound,
+  nums)` inside a `with` block, instead of a sequential list
+  comprehension. Keep the same output:
+  `[41541750, 328350, 8955050]`.
+expected_output: |
+  [41541750, 328350, 8955050]
+hints:
+  - "from concurrent.futures import ProcessPoolExecutor, then: with ProcessPoolExecutor(2) as pool: return list(pool.map(cpu_bound, nums))."
+  - "Every .map()-style tool in this category makes the same promise: results come back in INPUT order, never completion order, regardless of which worker finishes first."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 40
+difficulty: deep_dive
+contains_patterns:
+  - "ProcessPoolExecutor\\(2\\) as pool"
+concept_tags: [multiprocessing, ordering, concurrency]

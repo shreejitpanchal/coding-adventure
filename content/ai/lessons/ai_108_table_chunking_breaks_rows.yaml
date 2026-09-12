@@ -1,0 +1,73 @@
+id: ai_108
+title: "Naive Fixed-Size Chunking Can Split a Table Row in Half"
+language: ai
+level: 108
+objective: "Fix a chunker that splits structured, row-based data by a fixed character count with no awareness of row boundaries, potentially cutting a single table row across two separate chunks and destroying its meaning in either one."
+explanation: |
+  This category's own chunking lesson already covers a boundary-
+  straddling phrase getting split mid-sentence -- structured, row-based
+  data (a CSV export, a table converted to text) has the exact same
+  risk, but arguably worse: a table row usually only makes sense as a
+  complete unit (`Product: Widget, Price: $19.99`), and splitting it
+  mid-row can leave two chunks each containing a fragment that's
+  meaningless (or actively misleading) on its own, unlike a sentence
+  fragment that's at least still recognizable as incomplete.
+
+  The bug this exercise fixes chunks by a fixed character count with no
+  regard for where row boundaries actually fall, happily cutting a row
+  in half if that's where the character count lands. The fix chunks
+  along row boundaries instead -- grouping whole rows together up to a
+  target size, never splitting a single row across two chunks.
+example_code: |
+  # The trap: chunks by a FIXED CHARACTER COUNT -- can cut a row clean
+  # in half with no regard for where rows actually begin or end.
+  def chunk_by_chars_trap(rows, chunk_size):
+      text = "\\n".join(rows)
+      return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+  rows = ["Product: Widget, Price: $19.99", "Product: Gadget, Price: $29.99", "Product: Gizmo, Price: $9.99"]
+  chunks_trap = chunk_by_chars_trap(rows, chunk_size=40)
+  print(chunks_trap[0].endswith("$19.99"))   # False -- the first chunk is cut off mid-way into the SECOND row
+
+  # The fix: chunk along ROW BOUNDARIES, never splitting a single row.
+  def chunk_by_rows(rows, max_chunk_size):
+      chunks, current = [], []
+      current_len = 0
+      for row in rows:
+          if current and current_len + len(row) > max_chunk_size:
+              chunks.append("\\n".join(current))
+              current, current_len = [], 0
+          current.append(row)
+          current_len += len(row)
+      if current:
+          chunks.append("\\n".join(current))
+      return chunks
+
+  chunks = chunk_by_rows(rows, max_chunk_size=40)
+  print(chunks[0].endswith("$19.99"))   # True -- the first chunk ends cleanly at the end of a whole row
+starter_code: |
+  def chunk_by_rows(rows, max_chunk_size):
+      text = "\n".join(rows)
+      return [text[i:i + max_chunk_size] for i in range(0, len(text), max_chunk_size)]
+
+  rows = ["Product: Widget, Price: $19.99", "Product: Gadget, Price: $29.99", "Product: Gizmo, Price: $9.99"]
+  chunks = chunk_by_rows(rows, max_chunk_size=40)
+  print(chunks[0].count("Product:") == 1 and chunks[0].endswith("$19.99"))
+challenge: |
+  Fix `chunk_by_rows` so it groups whole rows together (joined with
+  `"\n"`), never splitting a single row across two chunks, stopping a
+  chunk once adding the next row would exceed `max_chunk_size`. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Build chunks by appending whole rows to a `current` list, tracking `current_len`, and starting a new chunk (joining `current` with \"\\n\" first) only BETWEEN rows, never inside one."
+  - "The first chunk should end up as exactly the complete first row (\"Product: Widget, Price: $19.99\"), ending cleanly at \"$19.99\" rather than being cut off mid-row."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 23
+difficulty: deep_dive
+contains_patterns:
+  - "current_len \\+ len\\(row\\) > max_chunk_size"
+concept_tags: [rag, chunking, structured_data]

@@ -1,0 +1,81 @@
+id: sync_vs_async_10
+title: "A File Object Only Supports Plain 'with' -- 'async with' Raises Immediately"
+language: python
+level: 440
+objective: "Fix code using 'async with' on a plain file object (which only implements the synchronous __enter__/__exit__ protocol, not __aenter__/__aexit__), when a genuinely synchronous context manager needs a plain 'with', even from inside an async function -- not everything used inside async code needs to itself be async."
+explanation: |
+  This category's earlier lesson covers implementing a class that
+  supports `async with` -- but the mistake can go the other direction
+  too: using `async with` on something that's *already* a perfectly
+  ordinary synchronous context manager, like a file object from
+  `open()`. A plain file object only implements `__enter__`/
+  `__exit__`, never `__aenter__`/`__aexit__`, so `async with open(...)
+  as f:` raises `TypeError: 'async with' received an object without
+  __aenter__` immediately -- being inside an `async def` function
+  doesn't mean *everything* used inside it needs to be async too; a
+  genuinely synchronous, fast operation like reading a small local
+  file is fine with a plain `with`, even from async code.
+
+  The fix uses a plain `with` for the file object, instead of `async
+  with`.
+example_code: |
+  # The trap: "async with" on a plain file object -- it has no __aenter__ at all.
+  import asyncio, tempfile, os
+
+  async def main_trap(path):
+      try:
+          async with open(path) as f:
+              return f.read()
+      except TypeError:
+          return "crashed"
+
+  with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+      tmp.write("hello")
+      path = tmp.name
+  print(asyncio.run(main_trap(path)))
+  os.unlink(path)
+  # "crashed" -- a file object only supports the SYNCHRONOUS with protocol
+
+  # The fix: a plain "with" works fine, even from inside an async function.
+  async def main(path):
+      with open(path) as f:
+          return f.read()
+
+  with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+      tmp.write("hello")
+      path2 = tmp.name
+  print(asyncio.run(main(path2)))
+  os.unlink(path2)
+  # "hello" -- correctly used a plain with, since open() is a synchronous context manager
+starter_code: |
+  import asyncio, tempfile, os
+
+  async def main(path):
+      async with open(path) as f:
+          return f.read()
+
+  with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+      tmp.write("hello")
+      path = tmp.name
+
+  try:
+      print(asyncio.run(main(path)))
+  except TypeError:
+      print("crashed")
+  os.unlink(path)
+challenge: |
+  Fix `main` so it uses a plain `with open(path) as f:` instead of
+  `async with`. It should print `hello`, not `crashed`.
+expected_output: |
+  hello
+hints:
+  - "Change async with open(path) as f: to with open(path) as f:."
+  - "A file object only ever implements __enter__/__exit__ -- being inside an async function doesn't make it support the separate __aenter__/__aexit__ protocol."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 10
+difficulty: gotcha
+contains_patterns:
+  - "with open\\(path\\) as f:"
+concept_tags: [asyncio, context_managers, sync_vs_async, gotchas]

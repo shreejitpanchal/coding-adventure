@@ -1,0 +1,57 @@
+id: dependency_management_14
+title: "'Different From Latest' Isn't the Same Question as 'Older Than Latest'"
+language: python
+level: 424
+objective: "Fix an 'is this package outdated' check using != (any difference at all counts as outdated), which incorrectly flags an installed version that's NEWER than the published latest (a dev build, a pre-release) as outdated too -- only a genuinely OLDER installed version should ever be reported that way."
+explanation: |
+  "Outdated" specifically means "there's a newer version available than
+  what's installed" -- it's a one-directional comparison, not a plain
+  inequality check. `installed != latest` also flags the case where
+  the installed version is *newer* than whatever the latest published
+  release happens to be (a locally-built dev version, an internal
+  pre-release) as if it needed upgrading, which is backward: there's
+  nothing to upgrade *to* in that case at all. The correct check
+  compares the two numerically and only reports outdated when the
+  installed version is genuinely *less than* the latest.
+
+  The fix compares parsed version tuples with `<`, instead of a plain
+  `!=` inequality check.
+example_code: |
+  # The trap: != flags ANY difference, including a NEWER installed version.
+  def is_outdated_trap(installed, latest):
+      return installed != latest
+
+  print(is_outdated_trap("3.0.0", "2.5.0"))
+  # True -- WRONG, 3.0.0 is actually NEWER than the published "latest" of 2.5.0
+
+  # The fix: only genuinely OLDER counts as outdated.
+  def parse(v):
+      return tuple(int(p) for p in v.split("."))
+
+  def is_outdated(installed, latest):
+      return parse(installed) < parse(latest)
+
+  print(is_outdated("3.0.0", "2.5.0"))
+  # False -- correctly not outdated, since installed is actually the newer one
+starter_code: |
+  def is_outdated(installed, latest):
+      return installed != latest
+
+  print(is_outdated("3.0.0", "2.5.0"))
+challenge: |
+  Fix `is_outdated` so it parses both versions into tuples and returns
+  `parse(installed) < parse(latest)`, instead of a plain `!=`
+  comparison. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "def parse(v): return tuple(int(p) for p in v.split(\".\")), then return parse(installed) < parse(latest)."
+  - "\"Outdated\" means genuinely OLDER than latest -- a plain != also (wrongly) flags an installed version that's actually newer than the published latest."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 14
+difficulty: gotcha
+contains_patterns:
+  - "return parse\\(installed\\) < parse\\(latest\\)"
+concept_tags: [dependency_management, versioning, gotchas]

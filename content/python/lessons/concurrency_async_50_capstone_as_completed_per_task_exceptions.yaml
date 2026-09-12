@@ -1,0 +1,100 @@
+id: concurrency_async_50
+title: "Capstone: Process Results As They Finish, Without Letting One Failure Sink the Rest"
+language: python
+level: 340
+objective: "Combine ThreadPoolExecutor.submit, as_completed, and per-future exception handling into one pattern: react to each task's result the moment it's ready, in COMPLETION order, while a single failing task only loses ITS OWN result, not everyone else's."
+explanation: |
+  This category has built up every piece this capstone combines
+  separately: `ThreadPoolExecutor` for I/O-bound concurrency,
+  `as_completed` for reacting to whichever future finishes first
+  rather than waiting in submission order, and per-future `try/except`
+  so one failing task doesn't take down every other result the way a
+  bare `pool.map(...)` collection would. Put together, this is the
+  realistic, production-shaped pattern for "run several independent
+  I/O-bound operations concurrently, process each one's result as soon
+  as it's ready, and don't let one of them failing lose everyone
+  else's work."
+
+  The bug this exercise fixes uses `pool.map(...)`, which -- like this
+  category's earlier `ProcessPoolExecutor.map` lesson -- loses every
+  result the instant it reaches the one that failed. The fix submits
+  each task individually and handles each one's outcome separately via
+  `as_completed`.
+example_code: |
+  # The trap: map() -- ONE failing item loses every other result too.
+  from concurrent.futures import ThreadPoolExecutor
+
+  def fetch_trap(n):
+      if n == 2:
+          raise ValueError(f"failed on {n}")
+      return n * 100
+
+  def run_all_trap(nums):
+      with ThreadPoolExecutor(3) as pool:
+          return list(pool.map(fetch_trap, nums))
+
+  try:
+      print(run_all_trap([1, 2, 3]))
+  except ValueError:
+      print("crashed, lost results for 1 and 3 too")
+
+  # The fix: submit individually, react to each as it completes, handle
+  # each one's exception separately.
+  from concurrent.futures import ThreadPoolExecutor, as_completed
+
+  def fetch(n):
+      if n == 2:
+          raise ValueError(f"failed on {n}")
+      return n * 100
+
+  def run_all(nums):
+      results = {}
+      with ThreadPoolExecutor(3) as pool:
+          futures = {pool.submit(fetch, n): n for n in nums}
+          for future in as_completed(futures):
+              n = futures[future]
+              try:
+                  results[n] = future.result()
+              except ValueError:
+                  results[n] = None
+      return [results[n] for n in nums]
+
+  print(run_all([1, 2, 3]))
+  # [100, None, 300] -- correctly kept BOTH successful results, only 2 failed
+starter_code: |
+  from concurrent.futures import ThreadPoolExecutor
+
+  def fetch(n):
+      if n == 2:
+          raise ValueError(f"failed on {n}")
+      return n * 100
+
+  def run_all(nums):
+      with ThreadPoolExecutor(3) as pool:
+          return list(pool.map(fetch, nums))
+
+  try:
+      print(run_all([1, 2, 3]))
+  except ValueError:
+      print("crashed, lost results for 1 and 3 too")
+challenge: |
+  Fix `run_all` so it submits each item individually with
+  `pool.submit(fetch, n)`, reacts to each one as it completes via
+  `as_completed`, and catches each future's `ValueError` separately
+  (storing `None` for that entry), instead of using `pool.map(...)`.
+  It should print `[100, None, 300]`, not
+  `crashed, lost results for 1 and 3 too`.
+expected_output: |
+  [100, None, 300]
+hints:
+  - "futures = {pool.submit(fetch, n): n for n in nums}, then for future in as_completed(futures): try: results[n] = future.result() except ValueError: results[n] = None."
+  - "map() propagates the FIRST failure it reaches and discards every other result -- submitting individually and reacting via as_completed lets each task's success or failure be handled entirely on its own."
+xp_reward: 20
+achievement: concurrency_async_master
+category: concurrency_async
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "pool\\.submit\\(fetch, n\\)"
+  - "as_completed\\(futures\\)"
+concept_tags: [threading, futures, exceptions, capstone]

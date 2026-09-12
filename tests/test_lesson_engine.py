@@ -4,9 +4,44 @@ from app.engine import lesson_engine as lesson_engine_module
 
 def test_loads_python_content():
     engine = ExerciseEngine("python")
-    assert len(engine) == 75
+    assert len(engine) == 455
     assert engine.has("idioms_gotchas_01")
+    assert engine.has("idioms_gotchas_50")
+    assert engine.has("core_refresher_50")
+    assert engine.has("data_structures_50")
+    assert engine.has("stdlib_deep_dive_50")
+    assert engine.has("gotcha_gauntlet_50")
+    assert engine.has("concurrency_async_50")
+    assert engine.has("functional_programming_50")
+    assert engine.has("packaging_15")
+    assert engine.has("deployment_15")
+    assert engine.has("observability_15")
+    assert engine.has("dependency_management_15")
+    assert engine.has("thread_scheduling_15")
+    assert engine.has("sync_vs_async_15")
+    assert engine.has("recursion_15")
     assert not engine.has("does_not_exist")
+    # All 14 Python-track categories have now been expanded: the seven
+    # broad categories (idioms_gotchas, core_refresher, data_structures,
+    # stdlib_deep_dive, gotcha_gauntlet, concurrency_async,
+    # functional_programming) to 50 exercises each, and the seven narrow
+    # categories (packaging, deployment, observability,
+    # dependency_management, thread_scheduling, sync_vs_async, recursion)
+    # to 15 exercises each -- 350 + 105 = 455 total.
+    assert len(engine.lessons_in_category("idioms_gotchas")) == 50
+    assert len(engine.lessons_in_category("core_refresher")) == 50
+    assert len(engine.lessons_in_category("data_structures")) == 50
+    assert len(engine.lessons_in_category("stdlib_deep_dive")) == 50
+    assert len(engine.lessons_in_category("gotcha_gauntlet")) == 50
+    assert len(engine.lessons_in_category("concurrency_async")) == 50
+    assert len(engine.lessons_in_category("functional_programming")) == 50
+    assert len(engine.lessons_in_category("packaging")) == 15
+    assert len(engine.lessons_in_category("deployment")) == 15
+    assert len(engine.lessons_in_category("observability")) == 15
+    assert len(engine.lessons_in_category("dependency_management")) == 15
+    assert len(engine.lessons_in_category("thread_scheduling")) == 15
+    assert len(engine.lessons_in_category("sync_vs_async")) == 15
+    assert len(engine.lessons_in_category("recursion")) == 15
 
 
 def test_categories_derived_from_content():
@@ -138,9 +173,9 @@ def test_loads_spring_content():
 
 def test_loads_ai_content():
     engine = ExerciseEngine("ai")
-    assert len(engine) == 45
+    assert len(engine) == 405
     assert engine.has("ai_01")
-    assert engine.has("ai_45")
+    assert engine.has("ai_405")
     categories = engine.categories()
     assert len(categories) == 9
     assert categories == [
@@ -154,8 +189,23 @@ def test_loads_ai_content():
         "langsmith",
         "solace_agent_mesh",
     ]
-    for category in categories:
-        assert len(engine.lessons_in_category(category)) == 5
+    # Every AI-track category has been expanded from 5 to 50 exercises,
+    # except microsoft_agent_365 (deliberately staying at 5, since it's
+    # conceptual comprehension-check content with no hand-codeable
+    # mechanic to expand).
+    expected_sizes = {
+        "ml_fundamentals": 50,
+        "rag": 50,
+        "agentic_frameworks": 50,
+        "mcp": 50,
+        "microsoft_agent_365": 5,
+        "langchain": 50,
+        "langgraph": 50,
+        "langsmith": 50,
+        "solace_agent_mesh": 50,
+    }
+    for category, expected_count in expected_sizes.items():
+        assert len(engine.lessons_in_category(category)) == expected_count, category
 
     no_code_categories = {"microsoft_agent_365"}
     for ex in engine.all_in_order():

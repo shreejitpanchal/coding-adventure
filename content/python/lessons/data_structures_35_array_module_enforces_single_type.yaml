@@ -1,0 +1,70 @@
+id: data_structures_35
+title: "array.array Enforces a Single Numeric Type -- a Plain List Never Does"
+language: python
+level: 192
+objective: "Fix code that stores numbers in a plain list, when a plain list happily accepts a value of any type mixed in, silently corrupting what was meant to be a purely numeric collection -- array.array refuses anything that doesn't match its declared type."
+explanation: |
+  A plain `list` places no restriction at all on what types its
+  elements can be -- appending a string into what was meant to be a
+  list of numbers succeeds silently, with nothing to catch the mistake
+  until something downstream tries to do arithmetic on it and fails
+  confusingly. `array.array(typecode, values)` is a genuinely
+  type-restricted, memory-compact sequence: every element has to match
+  the declared typecode (`'i'` for signed integers, here), and
+  attempting to store anything else raises `TypeError` immediately, at
+  the point of the actual mistake.
+
+  The bug this exercise fixes stores numbers in a plain list, which
+  silently accepts a non-numeric value. The fix uses `array.array`,
+  which refuses it outright.
+example_code: |
+  # The trap: a plain list happily accepts a non-numeric value,
+  # silently corrupting what was meant to be a purely numeric collection.
+  def build_numbers_trap():
+      numbers = [1, 2, 3]
+      numbers.append("oops")
+      return numbers
+
+  print(build_numbers_trap())
+  # [1, 2, 3, 'oops'] -- silently accepted a type that doesn't belong here
+
+  # The fix: array.array enforces a single declared numeric type.
+  import array
+
+  def build_numbers():
+      numbers = array.array('i', [1, 2, 3])
+      try:
+          numbers.append("oops")
+          return list(numbers)
+      except TypeError:
+          return "rejected"
+
+  print(build_numbers())
+  # "rejected" -- correctly refused the wrong type immediately
+starter_code: |
+  def build_numbers():
+      numbers = [1, 2, 3]
+      try:
+          numbers.append("oops")
+          return numbers
+      except TypeError:
+          return "rejected"
+
+  print(build_numbers())
+challenge: |
+  Fix `build_numbers` so `numbers` is `array.array('i', [1, 2, 3])`,
+  instead of a plain list. It should print `rejected`, not
+  `[1, 2, 3, 'oops']`.
+expected_output: |
+  rejected
+hints:
+  - "import array, then: numbers = array.array('i', [1, 2, 3])."
+  - "A plain list has no concept of a \"declared type\" for its elements at all -- array.array does, and enforces it on every insertion."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 35
+difficulty: gotcha
+contains_patterns:
+  - "array\\.array\\('i', \\[1, 2, 3\\]\\)"
+concept_tags: [array_module, type_safety]

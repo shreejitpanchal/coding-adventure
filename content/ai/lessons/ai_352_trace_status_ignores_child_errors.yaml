@@ -1,0 +1,62 @@
+id: ai_352
+title: "A Trace's Overall Status Must Reflect Every Child Run, Not Just the Root's Own Status"
+language: ai
+level: 352
+objective: "Fix a trace-status rollup that only checks the root run's own status, when a child run failing somewhere deeper in the tree should make the whole trace report as failed -- a trace can't genuinely be a success if any part of it actually errored."
+explanation: |
+  A trace is only as successful as its least successful run -- if a
+  tool call three levels deep in the tree raised an exception, the
+  trace as a whole did not succeed, regardless of what the root run's
+  own status field happens to say (a root that merely orchestrates
+  other steps might never itself raise anything, even when something
+  it called did). Only checking the root's own status misses every
+  failure that happened underneath it.
+
+  The bug this exercise fixes returns `root_run["status"]` alone. The
+  fix recursively checks every descendant, reporting `"error"` if any
+  of them failed.
+example_code: |
+  # The trap: only looks at the ROOT's own status, ignoring whether
+  # any child actually errored.
+  def trace_status_trap(root_run):
+      return root_run["status"]
+
+  root_run = {"status": "success", "children": [{"status": "error", "children": []}]}
+  print(trace_status_trap(root_run))
+  # "success" -- wrong, a child run actually failed
+
+  # The fix: recursively check every descendant too.
+  def trace_status(run):
+      if run["status"] == "error":
+          return "error"
+      for child in run["children"]:
+          if trace_status(child) == "error":
+              return "error"
+      return "success"
+
+  print(trace_status(root_run))
+  # "error" -- correctly reflects that something in the trace actually failed
+starter_code: |
+  def trace_status(run):
+      return run["status"]
+
+  root_run = {"status": "success", "children": [{"status": "error", "children": []}]}
+  print(trace_status(root_run))
+challenge: |
+  Fix `trace_status` so it recursively checks every child's own status
+  (via `trace_status(child)`), returning `"error"` if any of them
+  failed, instead of only checking `run["status"]` directly. It should
+  print `error`, not `success`.
+expected_output: |
+  error
+hints:
+  - "After checking the run's own status, loop over run[\"children\"] and recurse: if trace_status(child) == \"error\": return \"error\"."
+  - "This is the same recursive-tree-walk shape as this category's rollup lessons -- here checking for any failure instead of summing a number."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 42
+difficulty: core
+contains_patterns:
+  - "if trace_status\\(child\\) == \"error\":"
+concept_tags: [langsmith, trace_status, run_tree]

@@ -1,0 +1,63 @@
+id: recursion_14
+title: "Generating Every Permutation: Pick Each Item First, Recurse on What's Left"
+language: python
+level: 454
+objective: "Fix a stub that treats the input as its own only permutation, when generating every permutation recursively means trying EACH item as the first element in turn, recursively permuting whatever remains, and combining the two -- a classic recursive backtracking pattern."
+explanation: |
+  Generating every possible ordering of a list is a classic recursive
+  backtracking problem: for each item in the list, try it as the
+  *first* element, then recursively generate every permutation of
+  everything else, prepending the chosen item to each one. Doing this
+  for every possible choice of "first item" and combining all the
+  results together produces every permutation of the whole list. The
+  base case is a list of length 0 or 1, which only has one possible
+  ordering -- itself.
+
+  The fix tries each item as the first element in turn, recursing on
+  the rest and prepending, instead of treating the input as its own
+  single permutation.
+example_code: |
+  # The trap: treats the input as its own ONLY permutation.
+  def permutations_trap(items):
+      return [items]
+
+  print(len(permutations_trap([1, 2, 3])))
+  # 1 -- WRONG, there are 3! = 6 distinct orderings of a 3-item list
+
+  # The fix: try each item as the first element, recurse on what's left.
+  def permutations(items):
+      if len(items) <= 1:
+          return [items]
+      result = []
+      for i in range(len(items)):
+          rest = items[:i] + items[i + 1:]
+          for p in permutations(rest):
+              result.append([items[i]] + p)
+      return result
+
+  print(len(permutations([1, 2, 3])))
+  # 6 -- correctly every distinct ordering, generated recursively
+starter_code: |
+  def permutations(items):
+      return [items]
+
+  print(len(permutations([1, 2, 3])))
+challenge: |
+  Fix `permutations` so its base case (`len(items) <= 1`) returns
+  `[items]`, and otherwise loops over each index, building `rest`
+  (everything except that item), recursing on `rest`, and prepending
+  the chosen item to each resulting permutation. It should print `6`,
+  not `1`.
+expected_output: |
+  6
+hints:
+  - "for i in range(len(items)): rest = items[:i] + items[i + 1:]; for p in permutations(rest): result.append([items[i]] + p)."
+  - "Trying EVERY item as the first element, and recursing on what's left after removing it, is what generates every distinct ordering -- not just one."
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 14
+difficulty: deep_dive
+contains_patterns:
+  - "rest = items\\[:i\\] \\+ items\\[i \\+ 1:\\]"
+concept_tags: [recursion, backtracking, permutations]

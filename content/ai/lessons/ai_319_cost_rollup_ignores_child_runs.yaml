@@ -1,0 +1,56 @@
+id: ai_319
+title: "A Trace's Total Cost Must Roll Up Every Child Run, Not Just the Parent's Own"
+language: ai
+level: 319
+objective: "Fix a cost-rollup function that only reports a run's own cost, ignoring every child run nested under it, when the trace's true total cost has to include everything that ran as part of it."
+explanation: |
+  A parent run's own cost might be zero or negligible (a plain
+  orchestration step with no model call of its own), while the real
+  expense lives entirely in the LLM calls and tool invocations nested
+  underneath it. Reporting only the parent's own cost, with no rollup
+  of its children, radically understates what a trace actually cost --
+  potentially reporting a trace that spent real money as if it cost
+  nothing at all.
+
+  The bug this exercise fixes returns `run["own_cost"]` alone. The fix
+  recursively adds every child's rolled-up cost too.
+example_code: |
+  # The trap: only counts the run's OWN cost -- every child's cost is
+  # completely ignored.
+  def rollup_cost_trap(run):
+      return run["own_cost"]
+
+  run = {"own_cost": 0, "children": [{"own_cost": 2, "children": []}, {"own_cost": 3, "children": []}]}
+  print(rollup_cost_trap(run))
+  # 0 -- ignored both children's costs entirely
+
+  # The fix: recursively add every child's rolled-up cost too.
+  def rollup_cost(run):
+      return run["own_cost"] + sum(rollup_cost(child) for child in run["children"])
+
+  print(rollup_cost(run))
+  # 5 -- correctly rolled up the parent's own cost plus both children's
+starter_code: |
+  def rollup_cost(run):
+      return run["own_cost"]
+
+  run = {"own_cost": 0, "children": [{"own_cost": 2, "children": []}, {"own_cost": 3, "children": []}]}
+  print(rollup_cost(run))
+challenge: |
+  Fix `rollup_cost` so it returns `run["own_cost"] +
+  sum(rollup_cost(child) for child in run["children"])`, recursively
+  including every child, instead of just `run["own_cost"]` alone. It
+  should print `5`, not `0`.
+expected_output: |
+  5
+hints:
+  - "Add sum(rollup_cost(child) for child in run[\"children\"]) to run[\"own_cost\"] in the return statement."
+  - "This needs to be recursive -- a child could itself have its own children whose costs also need to be rolled up."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "sum\\(rollup_cost\\(child\\) for child in run\\[\"children\"\\]\\)"
+concept_tags: [langsmith, cost_tracking, run_tree]

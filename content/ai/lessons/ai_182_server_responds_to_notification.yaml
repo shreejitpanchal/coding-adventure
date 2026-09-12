@@ -1,0 +1,57 @@
+id: ai_182
+title: "A Server Must Never Send a Response Back for a Notification"
+language: ai
+level: 182
+objective: "Fix a message handler that sends a response for every incoming message, including notifications (messages with no 'id') -- the receiving side must recognize a notification and process it silently, with no response sent back at all."
+explanation: |
+  This category's previous lesson established that a notification
+  carries no `id` field, precisely because the sender isn't expecting
+  a response. The receiving side has to honor that: a handler that
+  responds to *every* incoming message regardless of whether it had an
+  `id` violates the notification contract from the other direction --
+  sending an unsolicited response the original sender has no `id` to
+  match it against, and no expectation of receiving at all.
+
+  The bug this exercise fixes sends a response for every message,
+  fabricating an `id` when none was present. The fix checks whether the
+  incoming message actually has an `id` first, only sending a response
+  for genuine requests and processing a notification silently.
+example_code: |
+  # The trap: sends a response for EVERY message, even a notification
+  # that never had an "id" to correlate a response to in the first place.
+  def handle_message_trap(message):
+      return {"jsonrpc": "2.0", "id": message.get("id", 0), "result": "processed"}
+
+  notification = {"jsonrpc": "2.0", "method": "notifications/progress", "params": {"progress": 50}}
+  print(handle_message_trap(notification) is not None)   # True -- sent an unsolicited response to a notification!
+
+  # The fix: check for "id" FIRST -- only respond to genuine requests.
+  def handle_message(message):
+      if "id" not in message:
+          return None   # a notification: processed silently, no response sent
+      return {"jsonrpc": "2.0", "id": message["id"], "result": "processed"}
+
+  print(handle_message(notification) is not None)   # False -- correctly sends nothing back
+starter_code: |
+  def handle_message(message):
+      return {"jsonrpc": "2.0", "id": message.get("id", 0), "result": "processed"}
+
+  notification = {"jsonrpc": "2.0", "method": "notifications/progress", "params": {"progress": 50}}
+  print(handle_message(notification) is not None)
+challenge: |
+  Fix `handle_message` so it returns `None` when `"id" not in message`
+  (a notification), instead of always fabricating a response. It should
+  print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add: if \"id\" not in message: return None, as the first check in the function."
+  - "Only build and return a response dict once you know the incoming message genuinely had its own id -- a notification never does."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 7
+difficulty: gotcha
+contains_patterns:
+  - "if \"id\" not in message"
+concept_tags: [mcp, json_rpc, notifications]

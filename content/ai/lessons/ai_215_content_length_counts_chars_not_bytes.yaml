@@ -1,0 +1,53 @@
+id: ai_215
+title: "A Content-Length Header Must Count Encoded Bytes, Not Characters"
+language: ai
+level: 215
+objective: "Fix a framing-header builder that uses Python's character count for a message body, when the transport's Content-Length must be the number of actual UTF-8 encoded bytes -- which differ the moment the body has any multi-byte character."
+explanation: |
+  A framing header like `Content-Length` describes how many bytes the
+  receiver needs to read off the wire, and bytes are what a transport
+  actually deals in -- not Python string characters. For plain ASCII
+  text the two numbers happen to match, which is exactly what makes
+  this bug easy to miss: it only shows up once the body contains a
+  multi-byte UTF-8 character, at which point `len(body)` under-counts
+  and the receiver reads one byte short, corrupting the frame boundary
+  for everything that follows.
+
+  The bug this exercise fixes uses `len(body)` directly -- a character
+  count. The fix encodes the body to UTF-8 first and measures the
+  actual byte length.
+example_code: |
+  # The trap: uses len(body) -- a CHARACTER count, not the actual byte
+  # length once the body is encoded.
+  def build_header_trap(body):
+      return "Content-Length: " + str(len(body))
+
+  print(build_header_trap("café"))   # "Content-Length: 4" -- wrong, the encoded bytes are actually 5
+
+  # The fix: measure the actual UTF-8 encoded byte length.
+  def build_header(body):
+      return "Content-Length: " + str(len(body.encode("utf-8")))
+
+  print(build_header("café"))   # "Content-Length: 5" -- correctly counts encoded bytes, not characters
+starter_code: |
+  def build_header(body):
+      return "Content-Length: " + str(len(body))
+
+  print(build_header("café"))
+challenge: |
+  Fix `build_header` so it measures `len(body.encode("utf-8"))` instead
+  of `len(body)` directly. It should print `Content-Length: 5`, not
+  `Content-Length: 4`.
+expected_output: |
+  Content-Length: 5
+hints:
+  - "Wrap body in .encode(\"utf-8\") before taking len() of it."
+  - "The character é is one Python character but two UTF-8 bytes -- that's exactly the gap this bug hides in plain-ASCII testing."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 40
+difficulty: gotcha
+contains_patterns:
+  - "len\\(body\\.encode\\(\"utf-8\"\\)\\)"
+concept_tags: [mcp, encoding, message_framing]

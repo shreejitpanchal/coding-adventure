@@ -1,0 +1,42 @@
+id: core_refresher_08
+title: "A Generator Expression Avoids Building an Intermediate List"
+language: python
+level: 121
+objective: "Pass a generator expression directly into sum() instead of building a full intermediate list first."
+explanation: |
+  `sum([x * x for x in range(n)])` builds the *entire* list of squares
+  in memory before `sum()` ever starts adding them up -- for a large
+  `n`, that's a lot of memory spent on a list that's discarded the
+  instant `sum()` finishes with it. Dropping the square brackets turns
+  the same expression into a generator expression, which `sum()`
+  consumes lazily, one value at a time, with no intermediate list ever
+  materialized at all. The syntax difference is tiny (brackets vs. no
+  brackets, since the parentheses `sum(...)` already provides), but the
+  memory behavior is genuinely different.
+example_code: |
+  # Builds the FULL list of squares first, then sums it.
+  total_loop = sum([x * x for x in range(5)])
+  print(total_loop)                        # 30
+
+  # A generator expression -- no intermediate list ever built.
+  total = sum(x * x for x in range(5))
+  print(total)                             # 30
+starter_code: |
+  total = sum([x * x for x in range(5)])
+  print(total)
+challenge: |
+  Rewrite this so sum() consumes a generator expression directly,
+  with no intermediate list built. Keep the same output: 30.
+expected_output: |
+  30
+hints:
+  - "Drop the square brackets -- sum()'s own parentheses are enough to contain the expression."
+  - "sum(x * x for x in range(5))"
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 8
+difficulty: core
+contains_patterns:
+  - "sum\\(x \\* x for x in range\\(5\\)\\)"
+concept_tags: [generators, comprehensions]

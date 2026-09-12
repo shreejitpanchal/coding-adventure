@@ -1,0 +1,55 @@
+id: stdlib_deep_dive_22
+title: "Path.suffix Gets Only the Last Extension -- Path.suffixes Gets All of Them"
+language: python
+level: 223
+objective: "Fix code using Path.suffix on a multi-extension filename, when .suffix only ever returns the single LAST extension -- .suffixes (plural) returns every dot-segment as a list, for filenames like 'archive.tar.gz' that genuinely have more than one."
+explanation: |
+  `Path("archive.tar.gz").suffix` gives just `".gz"` -- the singular
+  `.suffix` property was only ever designed to report the one final
+  extension, the same piece `with_suffix()` (this category's previous
+  lesson) replaces. For a filename that genuinely carries more than
+  one meaningful extension, `.suffixes` (plural) is the property that
+  returns *all* of them, as a list, in order.
+
+  The bug this exercise fixes uses `.suffix`, capturing only the last
+  extension. The fix uses `.suffixes`, capturing every one.
+example_code: |
+  # The trap: .suffix only returns the LAST extension.
+  from pathlib import Path
+
+  def get_extensions_trap(filename):
+      return [Path(filename).suffix]
+
+  print(get_extensions_trap("archive.tar.gz"))
+  # ['.gz'] -- missing ".tar" entirely
+
+  # The fix: .suffixes (plural) returns every extension, as a list.
+  def get_extensions(filename):
+      return Path(filename).suffixes
+
+  print(get_extensions("archive.tar.gz"))
+  # ['.tar', '.gz'] -- correctly captured both
+starter_code: |
+  from pathlib import Path
+
+  def get_extensions(filename):
+      return [Path(filename).suffix]
+
+  print(get_extensions("archive.tar.gz"))
+challenge: |
+  Fix `get_extensions` so it returns `Path(filename).suffixes`
+  (plural), instead of a one-item list built from `.suffix`. It
+  should print `['.tar', '.gz']`, not `['.gz']`.
+expected_output: |
+  ['.tar', '.gz']
+hints:
+  - "Replace [Path(filename).suffix] with Path(filename).suffixes."
+  - ".suffixes already returns a list of every extension -- there's no need to wrap it in another list."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 22
+difficulty: warmup
+contains_patterns:
+  - "return Path\\(filename\\)\\.suffixes"
+concept_tags: [pathlib, file_extensions]

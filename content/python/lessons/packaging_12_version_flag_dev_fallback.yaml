@@ -1,0 +1,69 @@
+id: packaging_12
+title: "A --version Flag That Crashes in Editable/Dev Mode"
+language: python
+level: 392
+objective: "Fix a --version implementation that crashes with PackageNotFoundError when the package hasn't actually been pip-installed (a common situation when running straight from a source checkout during development), when a fallback dev version string keeps the flag working either way."
+explanation: |
+  A CLI tool's `--version` flag commonly reads its own installed
+  version via `importlib.metadata.version(__package__)` -- but that
+  only works when the package has genuinely gone through `pip
+  install`, registering real metadata Python can look up. Running
+  straight from a source checkout during development (no install step
+  at all, just `python -m mypackage`) means that metadata simply
+  doesn't exist yet, and the lookup raises `PackageNotFoundError` --
+  crashing the one flag that's supposed to be the most reliable,
+  lowest-risk thing a CLI tool can do.
+
+  The fix catches that specific exception and falls back to a
+  recognizable dev-mode version string, so `--version` never crashes
+  regardless of how the tool is currently being run.
+example_code: |
+  # The trap: crashes outright when metadata genuinely isn't available.
+  from importlib import metadata
+
+  def get_version_trap(name):
+      return metadata.version(name)
+
+  try:
+      print(get_version_trap("definitely_not_installed_xyz"))
+      print("ok")
+  except metadata.PackageNotFoundError:
+      print("crashed")
+  # "crashed" -- WRONG for a --version flag, which should never just crash
+
+  # The fix: fall back to a dev-mode string when metadata isn't available.
+  def get_version(name):
+      try:
+          return metadata.version(name)
+      except metadata.PackageNotFoundError:
+          return "0.0.0-dev"
+
+  print(get_version("definitely_not_installed_xyz"))
+  # 0.0.0-dev -- correctly falls back instead of crashing
+starter_code: |
+  from importlib import metadata
+
+  def get_version(name):
+      return metadata.version(name)
+
+  try:
+      print(get_version("definitely_not_installed_xyz"))
+  except metadata.PackageNotFoundError:
+      print("crashed")
+challenge: |
+  Fix `get_version` so it catches `metadata.PackageNotFoundError` and
+  returns `"0.0.0-dev"` instead of crashing. It should print
+  `0.0.0-dev`, not `crashed`.
+expected_output: |
+  0.0.0-dev
+hints:
+  - "try: return metadata.version(name) except metadata.PackageNotFoundError: return \"0.0.0-dev\"."
+  - "Running straight from a source checkout, with no pip install step, means the metadata a --version flag depends on genuinely doesn't exist yet -- a fallback keeps it working anyway."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "\"0\\.0\\.0-dev\""
+concept_tags: [packaging, importlib_metadata, cli]

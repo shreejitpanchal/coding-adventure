@@ -1,0 +1,66 @@
+id: ai_394
+title: "Each Channel Needs Its Own Session, Not One Shared Across All of Them"
+language: ai
+level: 394
+objective: "Fix a session lookup that always uses a single shared session regardless of which channel a request came from, when two entirely separate conversations (two different Slack channels, two different email threads) should never share memory just because they both happen to route through the same agent."
+explanation: |
+  A user's conversation in one Slack channel has nothing to do with an
+  entirely different conversation happening in another channel, even
+  if both are talking to the same agent -- keying session state by
+  channel is what keeps those two conversations from bleeding into each
+  other. A lookup that always fetches (or creates) the same fixed
+  session regardless of which channel the request actually came from
+  means one conversation's context silently leaks into a completely
+  unrelated one.
+
+  The bug this exercise fixes always uses the fixed key `"shared"`.
+  The fix uses the actual `channel_id` as the session key.
+example_code: |
+  # The trap: uses ONE shared session key regardless of which channel
+  # this actually is.
+  def get_session_trap(channel_id, all_sessions):
+      return all_sessions.setdefault("shared", {})
+
+  all_sessions = {}
+  s1_trap = get_session_trap("channel-a", all_sessions)
+  s1_trap["topic"] = "billing"
+  s2_trap = get_session_trap("channel-b", all_sessions)
+  print("topic" in s2_trap)
+  # True -- channel-b's session was polluted with channel-a's data
+
+  # The fix: use the actual channel_id as the session key.
+  def get_session(channel_id, all_sessions):
+      return all_sessions.setdefault(channel_id, {})
+
+  all_sessions2 = {}
+  s1 = get_session("channel-a", all_sessions2)
+  s1["topic"] = "billing"
+  s2 = get_session("channel-b", all_sessions2)
+  print("topic" in s2)
+  # False -- correctly isolated per channel
+starter_code: |
+  def get_session(channel_id, all_sessions):
+      return all_sessions.setdefault("shared", {})
+
+  all_sessions = {}
+  s1 = get_session("channel-a", all_sessions)
+  s1["topic"] = "billing"
+  s2 = get_session("channel-b", all_sessions)
+  print("topic" in s2)
+challenge: |
+  Fix `get_session` so it calls `all_sessions.setdefault(channel_id,
+  {})`, keyed by the actual `channel_id`, instead of the fixed literal
+  `"shared"`. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Replace all_sessions.setdefault(\"shared\", {}) with all_sessions.setdefault(channel_id, {})."
+  - "Two entirely different conversations shouldn't share memory just because they both happen to route through the same agent."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 39
+difficulty: gotcha
+contains_patterns:
+  - "all_sessions\\.setdefault\\(channel_id, \\{\\}\\)"
+concept_tags: [solace_agent_mesh, entrypoint, session_isolation]

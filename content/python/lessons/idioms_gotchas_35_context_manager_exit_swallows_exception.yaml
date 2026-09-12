@@ -1,0 +1,85 @@
+id: idioms_gotchas_35
+title: "__exit__ Returning True Silently Swallows Whatever Exception Was Raised"
+language: python
+level: 104
+objective: "Fix a context manager whose __exit__ method returns True unconditionally, when that return value tells Python 'this exception was handled' -- silently discarding it entirely, with no trace it ever happened, regardless of what the exception actually was."
+explanation: |
+  A context manager's `__exit__(self, exc_type, exc_val, exc_tb)`
+  method is called when the `with` block ends, exception or not -- and
+  its *return value* decides what happens next: returning a truthy
+  value tells Python the exception was handled and should be
+  suppressed entirely; returning `False` (or `None`, the default) lets
+  it propagate normally. Returning `True` unconditionally, regardless
+  of what the exception actually was, means every single exception
+  raised inside the `with` block just vanishes -- the code after it
+  keeps running as if nothing happened, with no error, no log, nothing.
+
+  The bug this exercise fixes returns `True` from `__exit__`
+  unconditionally. The fix returns `False`, letting exceptions
+  propagate normally.
+example_code: |
+  # The trap: __exit__ returns True UNCONDITIONALLY -- every exception
+  # raised inside the with block is silently swallowed, no trace at all.
+  class SuppressorTrap:
+      def __enter__(self):
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          return True
+
+  def run_trap():
+      with SuppressorTrap():
+          raise ValueError("something broke")
+      return "completed"
+
+  print(run_trap())
+  # "completed" -- the ValueError was silently swallowed, with no trace it ever happened
+
+  # The fix: return False, letting exceptions propagate normally.
+  class Suppressor:
+      def __enter__(self):
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          return False
+
+  def run():
+      with Suppressor():
+          raise ValueError("something broke")
+      return "completed"
+
+  try:
+      print(run())
+  except ValueError as e:
+      print(str(e))
+  # "something broke" -- correctly propagated, nothing silently hidden
+starter_code: |
+  class Suppressor:
+      def __enter__(self):
+          return self
+      def __exit__(self, exc_type, exc_val, exc_tb):
+          return True
+
+  def run():
+      with Suppressor():
+          raise ValueError("something broke")
+      return "completed"
+
+  try:
+      print(run())
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `Suppressor.__exit__` so it returns `False` instead of `True`.
+  It should print `something broke`, not `completed`.
+expected_output: |
+  something broke
+hints:
+  - "Change return True to return False."
+  - "Returning a truthy value from __exit__ is specifically the signal \"this exception was handled\" -- there's no partial or conditional version of that."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 35
+difficulty: gotcha
+contains_patterns:
+  - "return False"
+concept_tags: [idioms, context_managers, exception_suppression]

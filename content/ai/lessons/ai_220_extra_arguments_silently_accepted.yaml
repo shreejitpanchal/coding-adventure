@@ -1,0 +1,56 @@
+id: ai_220
+title: "Arguments Outside the Declared Schema Should Be Rejected, Not Accepted"
+language: ai
+level: 220
+objective: "Fix an argument validator that accepts any arguments at all, when a tool's declared schema should reject fields that aren't part of it -- silently accepting extras defeats the point of declaring a schema in the first place."
+explanation: |
+  A tool's input schema names exactly which fields it accepts, and a
+  validator that never checks for anything outside that list lets a
+  caller pass arbitrary extra fields the tool never declared support
+  for -- fields that might be silently ignored, might trigger unintended
+  behavior deep inside the tool's implementation, or might simply
+  indicate the caller is confused about which tool it's actually
+  calling. A schema that isn't enforced isn't really a contract, just a
+  suggestion.
+
+  The bug this exercise fixes always returns `True` regardless of what
+  extra fields showed up in `args`. The fix checks for any field not in
+  `allowed_fields` and rejects the call if one is found.
+example_code: |
+  # The trap: accepts ANY arguments, even ones outside the declared
+  # schema entirely.
+  def validate_args_trap(args, allowed_fields):
+      return True
+
+  print(validate_args_trap({"name": "x", "extra_hack": "y"}, ["name"]))
+  # True -- wrongly accepted, "extra_hack" was never part of the schema
+
+  # The fix: reject any field that isn't in allowed_fields.
+  def validate_args(args, allowed_fields):
+      extra = [f for f in args if f not in allowed_fields]
+      return len(extra) == 0
+
+  print(validate_args({"name": "x", "extra_hack": "y"}, ["name"]))
+  # False -- correctly rejected, "extra_hack" isn't in the declared schema
+starter_code: |
+  def validate_args(args, allowed_fields):
+      return True
+
+  print(validate_args({"name": "x", "extra_hack": "y"}, ["name"]))
+challenge: |
+  Fix `validate_args` so it builds a list of fields in `args` that
+  aren't in `allowed_fields`, and returns `True` only when that list is
+  empty. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "extra = [f for f in args if f not in allowed_fields], then return len(extra) == 0."
+  - "A schema that never actually gets enforced is just a comment, not a real contract callers have to follow."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "f for f in args if f not in allowed_fields"
+concept_tags: [mcp, input_schema, additional_properties]

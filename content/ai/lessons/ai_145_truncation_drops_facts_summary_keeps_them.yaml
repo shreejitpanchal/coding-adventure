@@ -1,0 +1,76 @@
+id: ai_145
+title: "Truncating Old Conversation Turns Loses Facts a Summary Would Keep"
+language: ai
+level: 145
+objective: "Fix a conversation-trimming function that drops the oldest messages outright once the history gets long, when summarizing them into a compact note preserves the important facts a plain drop would lose entirely."
+explanation: |
+  When conversation history grows past a manageable size, simply
+  dropping the oldest messages is the cheapest way to shrink it -- but
+  it's also the most destructive: any fact established early in the
+  conversation (a name, a stated preference, an important constraint)
+  is gone the moment it ages out, even if it's still relevant much
+  later. Replacing dropped messages with a compact **summary** instead
+  keeps the important facts in a much smaller form, trading some detail
+  for keeping the substance.
+
+  The bug this exercise fixes drops the oldest messages once the
+  history exceeds a length limit, with nothing replacing them at all.
+  The fix summarizes the messages being dropped into one compact note
+  and keeps that note in place of the original messages, preserving
+  their substance in far less space.
+example_code: |
+  # The trap: drops the oldest messages outright -- whatever facts they
+  # held are simply GONE, with nothing left in their place.
+  def trim_trap(conversation, max_length):
+      if len(conversation) <= max_length:
+          return conversation
+      return conversation[-max_length:]   # the dropped messages leave NO trace behind
+
+  conversation = ["My name is Alex.", "I live in Denver.", "What's the weather like?", "Any good restaurants nearby?"]
+  trimmed_trap = trim_trap(conversation, max_length=2)
+  print(any("Alex" in m for m in trimmed_trap))   # False -- the name is just GONE
+
+  # The fix: summarize dropped messages into a compact note, keep that instead.
+  def trim_with_summary(conversation, max_length, summarize_fn):
+      if len(conversation) <= max_length:
+          return conversation
+      dropped = conversation[:-max_length]
+      summary = summarize_fn(dropped)
+      return [summary] + conversation[-max_length:]
+
+  def fake_summarize(messages):
+      return "Summary: " + "; ".join(messages)
+
+  trimmed = trim_with_summary(conversation, max_length=2, summarize_fn=fake_summarize)
+  print(any("Alex" in m for m in trimmed))   # True -- the name survives inside the summary
+starter_code: |
+  def trim_with_summary(conversation, max_length, summarize_fn):
+      if len(conversation) <= max_length:
+          return conversation
+      return conversation[-max_length:]
+
+  conversation = ["My name is Alex.", "I live in Denver.", "What's the weather like?", "Any good restaurants nearby?"]
+
+  def fake_summarize(messages):
+      return "Summary: " + "; ".join(messages)
+
+  trimmed = trim_with_summary(conversation, max_length=2, summarize_fn=fake_summarize)
+  print(any("Alex" in m for m in trimmed))
+challenge: |
+  Fix `trim_with_summary` so it summarizes the dropped older messages
+  (via `summarize_fn`) and keeps that summary in place of them, instead
+  of dropping them with nothing left behind. It should print `True`,
+  not `False`.
+expected_output: |
+  True
+hints:
+  - "Compute dropped = conversation[:-max_length], then summary = summarize_fn(dropped)."
+  - "Return [summary] + conversation[-max_length:] -- the summary replaces the dropped messages instead of them vanishing entirely."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 15
+difficulty: core
+contains_patterns:
+  - "summarize_fn\\(dropped\\)"
+concept_tags: [agentic_frameworks, memory, conversation_summarization]

@@ -1,0 +1,60 @@
+id: ai_256
+title: "Aggregating a Stream Means Joining Every Chunk, Not Just Keeping the Last One"
+language: ai
+level: 256
+objective: "Fix a stream-aggregation function that overwrites its result on each incoming chunk, ending up with only the final chunk, when it should concatenate every chunk into the complete streamed output."
+explanation: |
+  Streaming delivers a response incrementally, chunk by chunk, and
+  something has to be responsible for reassembling those chunks back
+  into the full text once streaming completes -- the same way TCP
+  segments need reassembling into the original message. An aggregator
+  that assigns each incoming chunk to the same variable, overwriting
+  whatever was there before, ends up holding only the very last chunk
+  once streaming finishes -- everything streamed before that is
+  silently gone.
+
+  The bug this exercise fixes overwrites `result` with each new chunk.
+  The fix joins every chunk together into the complete text.
+example_code: |
+  # The trap: OVERWRITES result with each chunk -- only the LAST chunk
+  # survives once streaming finishes.
+  def aggregate_stream_trap(chunks):
+      result = None
+      for chunk in chunks:
+          result = chunk
+      return result
+
+  chunks = ["The ", "answer ", "is ", "42."]
+  print(aggregate_stream_trap(chunks))   # "42." -- only the last chunk, the rest were discarded
+
+  # The fix: join every chunk together into the complete text.
+  def aggregate_stream(chunks):
+      return "".join(chunks)
+
+  print(aggregate_stream(chunks))   # "The answer is 42." -- correctly reassembled
+starter_code: |
+  def aggregate_stream(chunks):
+      result = None
+      for chunk in chunks:
+          result = chunk
+      return result
+
+  chunks = ["The ", "answer ", "is ", "42."]
+  print(aggregate_stream(chunks))
+challenge: |
+  Fix `aggregate_stream` so it returns `"".join(chunks)` instead of
+  overwriting `result` on every iteration and keeping only the last
+  one. It should print `The answer is 42.`, not `42.`.
+expected_output: |
+  The answer is 42.
+hints:
+  - "Replace the whole loop with a single line: return \"\".join(chunks)."
+  - "Streamed text needs to be concatenated in order, not overwritten -- each chunk is a piece of the whole, not a replacement for the previous one."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 36
+difficulty: warmup
+contains_patterns:
+  - "\"\"\\.join\\(chunks\\)"
+concept_tags: [langchain, streaming, aggregation]

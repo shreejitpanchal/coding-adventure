@@ -1,0 +1,59 @@
+id: ai_180
+title: "End to End: An Action Needs Every Guardrail to Pass, Not Just One"
+language: ai
+level: 180
+objective: "Fix a final action-readiness gate that only checks ONE of this category's several safety mechanisms (permission scope, budget, approval requirement, guardrail policy) instead of requiring ALL of them to pass together before a real action is allowed to execute."
+explanation: |
+  This category has built up several independent safety mechanisms one
+  at a time: permission scoping (an agent can't call a tool outside its
+  allowed set), budget tracking (a run can't exceed its cost cap),
+  human approval gates (a high-stakes action needs explicit
+  confirmation), and guardrail policies (a destructive action pattern
+  gets blocked outright). A genuinely safe action-execution gate needs
+  *all* of these to pass together -- checking only one of them (even
+  correctly) still leaves every other one it skipped as an open gap a
+  real production agent could fall through.
+
+  The bug this exercise fixes only checks the permission-scope
+  condition, ignoring budget, approval, and guardrail status entirely.
+  The fix requires every one of this category's four safety checks to
+  pass before allowing an action through, tying the whole category's
+  separate lessons into one final, combined gate.
+example_code: |
+  # The trap: only checks PERMISSION scope -- ignores budget, approval,
+  # and guardrail status entirely, even though all of them matter.
+  def is_action_ready_trap(has_permission, within_budget, is_approved, passes_guardrails):
+      return has_permission
+
+  print(is_action_ready_trap(has_permission=True, within_budget=False, is_approved=True, passes_guardrails=True))
+  # True -- WRONG, this run is OVER budget, but that was never even checked
+
+  # The fix: require EVERY safety check to pass together.
+  def is_action_ready(has_permission, within_budget, is_approved, passes_guardrails):
+      return has_permission and within_budget and is_approved and passes_guardrails
+
+  print(is_action_ready(has_permission=True, within_budget=False, is_approved=True, passes_guardrails=True))
+  # False -- correctly blocked because the budget check alone failed
+starter_code: |
+  def is_action_ready(has_permission, within_budget, is_approved, passes_guardrails):
+      return has_permission
+
+  print(is_action_ready(has_permission=True, within_budget=False, is_approved=True, passes_guardrails=True))
+challenge: |
+  Fix `is_action_ready` so it returns `True` only when ALL FOUR checks
+  (`has_permission`, `within_budget`, `is_approved`, `passes_guardrails`)
+  are true, instead of checking `has_permission` alone. It should print
+  `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change the return statement to: return has_permission and within_budget and is_approved and passes_guardrails."
+  - "Even though has_permission and is_approved and passes_guardrails are all True here, within_budget is False -- and the combined check must fail if even one condition fails."
+xp_reward: 15
+achievement: agentic_frameworks_master
+category: agentic_frameworks
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "has_permission and within_budget and is_approved and passes_guardrails"
+concept_tags: [agentic_frameworks, safety, guardrails, action_gating]

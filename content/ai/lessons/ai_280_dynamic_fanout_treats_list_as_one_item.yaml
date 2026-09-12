@@ -1,0 +1,58 @@
+id: ai_280
+title: "A Dynamic Fan-Out Runs the Worker Once Per Item, Not Once on the Whole List"
+language: ai
+level: 280
+objective: "Fix a dynamic fan-out (Send-style) runner that calls the worker function once with the entire list of items, when it should call the worker once per individual item and collect one result per item."
+explanation: |
+  LangGraph's `Send` mechanism lets a node fan out dynamically over a
+  list whose length isn't known until runtime -- run this worker once
+  for each item in a retrieved document set, say, rather than a fixed
+  number of parallel branches declared ahead of time. Calling the
+  worker function once with the whole list treats the entire collection
+  as a single unit of work instead of many, producing one combined
+  (and almost certainly wrong) result instead of one result per item.
+
+  The bug this exercise fixes calls `worker_fn(items)` once, on the
+  whole list. The fix calls `worker_fn(item)` once per item.
+example_code: |
+  # The trap: calls worker_fn ONCE on the whole list, not once per item.
+  def run_for_each_trap(items, worker_fn):
+      return worker_fn(items)
+
+  items = ["a", "b", "c"]
+  worker_fn = lambda x: f"processed:{x}"
+  print(run_for_each_trap(items, worker_fn))
+  # "processed:['a', 'b', 'c']" -- treated the whole list as one item
+
+  # The fix: call worker_fn once per item, collecting one result each.
+  def run_for_each(items, worker_fn):
+      return [worker_fn(item) for item in items]
+
+  print(run_for_each(items, worker_fn))
+  # ['processed:a', 'processed:b', 'processed:c'] -- correctly one result per item
+starter_code: |
+  def run_for_each(items, worker_fn):
+      return worker_fn(items)
+
+  items = ["a", "b", "c"]
+  worker_fn = lambda x: f"processed:{x}"
+  print(run_for_each(items, worker_fn))
+challenge: |
+  Fix `run_for_each` so it returns `[worker_fn(item) for item in
+  items]`, calling the worker once per item, instead of
+  `worker_fn(items)` once on the whole list. It should print
+  `['processed:a', 'processed:b', 'processed:c']`, not
+  `processed:['a', 'b', 'c']`.
+expected_output: |
+  ['processed:a', 'processed:b', 'processed:c']
+hints:
+  - "Replace worker_fn(items) with a list comprehension: [worker_fn(item) for item in items]."
+  - "The dynamic part of a dynamic fan-out is not knowing the list's length ahead of time -- but each item still needs its own individual worker call."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 15
+difficulty: warmup
+contains_patterns:
+  - "\\[worker_fn\\(item\\) for item in items\\]"
+concept_tags: [langgraph, dynamic_fanout, send]

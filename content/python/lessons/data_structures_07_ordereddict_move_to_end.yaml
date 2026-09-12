@@ -1,0 +1,50 @@
+id: data_structures_07
+title: "Moving a Key to the End Without Rebuilding the Whole Dict"
+language: python
+level: 164
+objective: "Use collections.OrderedDict's move_to_end() to reorder a single key, instead of manually rebuilding the dict to change its order."
+explanation: |
+  A plain dict preserves insertion order, but has no built-in way to
+  *change* an existing key's position without removing and re-adding
+  it (which loses its original value unless you save it first, and
+  rebuilds internal structure either way). `collections.OrderedDict`
+  adds exactly that operation: `.move_to_end(key)` repositions an
+  existing key to the end in place, in O(1), with no manual delete-and-
+  reinsert dance needed -- useful for anything that needs to track
+  "most recently used" order, like a simple LRU cache's recency
+  tracking.
+example_code: |
+  # Manually rebuilding the dict just to move one key to the end.
+  d_loop = {"a": 1, "b": 2, "c": 3}
+  value = d_loop.pop("a")
+  d_loop["a"] = value
+  print(list(d_loop.keys()))                # ['b', 'c', 'a']
+
+  # OrderedDict.move_to_end() does this directly, in place.
+  from collections import OrderedDict
+
+  d = OrderedDict({"a": 1, "b": 2, "c": 3})
+  d.move_to_end("a")
+  print(list(d.keys()))                     # ['b', 'c', 'a']
+starter_code: |
+  d = {"a": 1, "b": 2, "c": 3}
+  value = d.pop("a")
+  d["a"] = value
+  print(list(d.keys()))
+challenge: |
+  Rewrite this using `collections.OrderedDict` and `.move_to_end("a")`,
+  instead of manually popping and re-adding the key. Keep the same
+  output: ['b', 'c', 'a'].
+expected_output: |
+  ['b', 'c', 'a']
+hints:
+  - "from collections import OrderedDict, then d = OrderedDict({...}), then d.move_to_end(\"a\")."
+  - "move_to_end() repositions an existing key in place -- no need to pop it out and reassign its value by hand."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 7
+difficulty: core
+contains_patterns:
+  - "move_to_end\\(\"a\"\\)"
+concept_tags: [ordereddict, collections]

@@ -1,0 +1,65 @@
+id: ai_194
+title: "A Cancellation Notification Needs to Actually Stop the Right In-Flight Request"
+language: ai
+level: 194
+objective: "Fix a cancellation handler that acknowledges a cancel notification without ever marking the matching in-flight request as cancelled, so the original operation just keeps running to completion anyway -- an acknowledged cancellation that doesn't cancel anything."
+explanation: |
+  A client can send a `notifications/cancelled` message naming the
+  `requestId` of an in-flight request it no longer wants -- and this
+  only accomplishes anything if the server actually looks up that
+  specific request and marks it cancelled, the same `id`-based
+  correlation this category's request/response lesson relies on,
+  applied here to stopping work instead of matching a result. A
+  cancellation handler that does nothing but acknowledge the
+  notification leaves the original operation running to completion
+  regardless, wasting exactly the work the client was trying to avoid.
+
+  The bug this exercise fixes doesn't touch the tracked in-flight
+  requests at all. The fix looks up the request by its `requestId` and
+  marks it cancelled, so whatever's actually running that operation can
+  check the flag and stop.
+example_code: |
+  # The trap: does nothing to the tracked in-flight requests at all --
+  # the original operation just keeps running regardless.
+  in_flight_trap = {"req-7": {"status": "running"}}
+
+  def handle_cancel_trap(request_id, in_flight):
+      pass   # bug: never actually marks anything as cancelled
+
+  handle_cancel_trap("req-7", in_flight_trap)
+  print(in_flight_trap["req-7"]["status"])   # "running" -- still running, despite the "cancellation"
+
+  # The fix: look up the request by requestId, mark it cancelled.
+  in_flight = {"req-7": {"status": "running"}}
+
+  def handle_cancel(request_id, in_flight):
+      if request_id in in_flight:
+          in_flight[request_id]["status"] = "cancelled"
+
+  handle_cancel("req-7", in_flight)
+  print(in_flight["req-7"]["status"])   # "cancelled" -- correctly marked, so the running operation can check and stop
+starter_code: |
+  in_flight = {"req-7": {"status": "running"}}
+
+  def handle_cancel(request_id, in_flight):
+      pass
+
+  handle_cancel("req-7", in_flight)
+  print(in_flight["req-7"]["status"])
+challenge: |
+  Fix `handle_cancel` so it looks up `request_id` in `in_flight` and
+  sets its `"status"` to `"cancelled"`, instead of doing nothing at
+  all. It should print `cancelled`, not `running`.
+expected_output: |
+  cancelled
+hints:
+  - "Add: if request_id in in_flight: in_flight[request_id][\"status\"] = \"cancelled\"."
+  - "The check guards against a cancellation naming a request_id that's already finished or was never tracked -- but for a genuinely in-flight request, this correctly marks it."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 19
+difficulty: warmup
+contains_patterns:
+  - "in_flight\\[request_id\\]\\[.status.\\] = .cancelled."
+concept_tags: [mcp, cancellation, request_correlation]

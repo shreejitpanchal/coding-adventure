@@ -1,0 +1,66 @@
+id: ai_261
+title: "Wrapping a Plain Function as a Runnable Means It Actually Needs .invoke()"
+language: ai
+level: 261
+objective: "Fix a wrapping function that returns the raw, unwrapped function unchanged, when composing it like any other Runnable elsewhere in a chain requires it to genuinely have an .invoke() method -- a bare function doesn't."
+explanation: |
+  `RunnableLambda` exists to let an ordinary function participate in
+  chain composition (`|`, `RunnableParallel`, `.batch()`) the same way
+  any other Runnable does -- and that only works if wrapping actually
+  produces something with a real `.invoke()` method. Returning the raw
+  function untouched might look like "wrapping succeeded" since nothing
+  crashes yet, but the moment anything downstream tries to call
+  `.invoke()` on it, the illusion breaks: a plain function has no such
+  method at all.
+
+  The bug this exercise fixes returns `fn` completely unchanged. The
+  fix wraps it in a small class that actually provides `.invoke()`.
+example_code: |
+  # The trap: returns the raw function UNCHANGED -- it has no .invoke()
+  # method, so it can't be composed like other Runnables at all.
+  def wrap_as_runnable_trap(fn):
+      return fn
+
+  plain_fn = lambda x: x + 1
+  wrapped_trap = wrap_as_runnable_trap(plain_fn)
+  print(hasattr(wrapped_trap, "invoke"))
+  # False -- can't be used anywhere a Runnable's .invoke() is expected
+
+  # The fix: wrap it in a class that actually provides .invoke().
+  class RunnableLambda:
+      def __init__(self, fn):
+          self.fn = fn
+      def invoke(self, x):
+          return self.fn(x)
+
+  def wrap_as_runnable(fn):
+      return RunnableLambda(fn)
+
+  wrapped = wrap_as_runnable(plain_fn)
+  print(hasattr(wrapped, "invoke"))
+  # True -- correctly composable like any other Runnable
+starter_code: |
+  def wrap_as_runnable(fn):
+      return fn
+
+  plain_fn = lambda x: x + 1
+  wrapped = wrap_as_runnable(plain_fn)
+  print(hasattr(wrapped, "invoke"))
+challenge: |
+  Fix `wrap_as_runnable` so it returns a `RunnableLambda(fn)` instance
+  (a small class with an `.invoke()` method that calls `self.fn(x)`),
+  instead of returning the raw `fn` unchanged. It should print `True`,
+  not `False`.
+expected_output: |
+  True
+hints:
+  - "Define class RunnableLambda with __init__(self, fn) storing self.fn = fn, and def invoke(self, x): return self.fn(x). Then return RunnableLambda(fn)."
+  - "A bare function object has no .invoke() attribute at all -- hasattr on it will always be False until it's actually wrapped in something that defines one."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 41
+difficulty: warmup
+contains_patterns:
+  - "return RunnableLambda\\(fn\\)"
+concept_tags: [langchain, runnable_lambda, wrapping]

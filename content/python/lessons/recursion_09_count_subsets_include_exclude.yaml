@@ -1,0 +1,58 @@
+id: recursion_09
+title: "Counting Subsets: Every Item Doubles the Count of What Came Before It"
+language: python
+level: 449
+objective: "Fix a subset-counting function that just returns the number of items (not the number of subsets at all), when every additional item genuinely DOUBLES the total subset count -- each item can independently be included or excluded from any subset of the rest."
+explanation: |
+  The number of subsets of a set with `n` items is `2**n`, and the
+  recursive argument for why is itself a clean example of "include or
+  exclude" recursive thinking: every subset of `items[1:]` (the items
+  after the first) can either have the first item added to it, or not
+  -- two independent choices for each one of those subsets, so there
+  are exactly *twice* as many subsets of the full list as there are of
+  the list without its first item. `count_subsets([])` is the base
+  case: the empty list has exactly one subset (the empty subset
+  itself), and every additional item doubles that count going forward.
+
+  The fix recurses on `items[1:]`, doubling the result, instead of
+  just counting items.
+example_code: |
+  # The trap: just counts the items -- not the number of SUBSETS at all.
+  def count_subsets_trap(items):
+      return len(items)
+
+  print(count_subsets_trap([1, 2, 3]))
+  # 3 -- WRONG, there are far more than 3 subsets of a 3-item set
+
+  # The fix: every item DOUBLES the subset count of what came before it.
+  def count_subsets(items):
+      if not items:
+          return 1
+      rest_count = count_subsets(items[1:])
+      return rest_count + rest_count
+  # each subset of items[1:] can independently include or exclude items[0]
+
+  print(count_subsets([1, 2, 3]))
+  # 8 -- correctly 2**3, since each of 3 items doubles the count once
+starter_code: |
+  def count_subsets(items):
+      return len(items)
+
+  print(count_subsets([1, 2, 3]))
+challenge: |
+  Fix `count_subsets` so its base case (`not items`) returns `1`, and
+  otherwise returns `count_subsets(items[1:])` doubled (added to
+  itself), instead of `len(items)`. It should print `8`, not `3`.
+expected_output: |
+  8
+hints:
+  - "if not items: return 1, then: rest_count = count_subsets(items[1:]); return rest_count + rest_count."
+  - "Every subset of items[1:] can either include or exclude items[0] -- exactly twice as many subsets of the full list as of the list without its first item."
+xp_reward: 15
+achievement: null
+category: recursion
+category_level: 9
+difficulty: deep_dive
+contains_patterns:
+  - "rest_count = count_subsets\\(items\\[1:\\]\\)"
+concept_tags: [recursion, combinatorics]

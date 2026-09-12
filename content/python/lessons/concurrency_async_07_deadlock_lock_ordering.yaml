@@ -1,0 +1,86 @@
+id: concurrency_async_07
+title: "Always Acquire Locks in the Same Order, or Risk a Deadlock"
+language: python
+level: 297
+objective: "Fix a transfer function that acquires two accounts' locks in whichever order they're passed in, which risks a deadlock if another thread transfers in the opposite direction -- always acquiring in a fixed, consistent order (by account id) eliminates that risk entirely."
+explanation: |
+  A deadlock between two locks happens when one thread holds lock A
+  and waits for lock B, while another thread simultaneously holds lock
+  B and waits for lock A -- neither can ever proceed, since each is
+  waiting on something the other is holding. A `transfer(from_acc,
+  to_acc)` function that always acquires `from_acc`'s lock first,
+  then `to_acc`'s, is exactly this risk: a transfer from account 1 to
+  account 2 acquires lock 1 then lock 2, while a *simultaneous*
+  transfer from account 2 to account 1 acquires lock 2 then lock 1 --
+  the opposite order, which is precisely the deadlock pattern.
+
+  The fix is a simple, well-known discipline: always acquire locks in
+  the *same* fixed order, regardless of which "direction" the
+  operation is conceptually going -- sorting by a stable id and always
+  acquiring the lower-id lock first means every thread agrees on the
+  order, so the circular-wait condition that causes deadlock can never
+  arise.
+example_code: |
+  # The trap: acquires in whatever order the accounts are PASSED IN --
+  # a transfer the other direction would acquire in the opposite order.
+  class AccountTrap:
+      def __init__(self, acc_id):
+          self.id = acc_id
+
+  def transfer_trap(log, from_acc, to_acc):
+      log.append(from_acc.id)
+      log.append(to_acc.id)
+
+  acc1, acc2 = AccountTrap(1), AccountTrap(2)
+  log_trap = []
+  transfer_trap(log_trap, acc2, acc1)   # transfer FROM 2 TO 1
+  print(log_trap)
+  # [2, 1] -- WRONG ordering risk: a transfer(acc1, acc2) elsewhere would
+  # acquire [1, 2] -- opposite order, a real deadlock risk under real locks
+
+  # The fix: always acquire in a FIXED order -- lower id first, always.
+  class Account:
+      def __init__(self, acc_id):
+          self.id = acc_id
+
+  def transfer(log, from_acc, to_acc):
+      first, second = sorted([from_acc, to_acc], key=lambda a: a.id)
+      log.append(first.id)
+      log.append(second.id)
+
+  a1, a2 = Account(1), Account(2)
+  log = []
+  transfer(log, a2, a1)                 # still a transfer FROM 2 TO 1
+  print(log)
+  # [1, 2] -- correctly acquires the LOWER id first regardless of direction
+starter_code: |
+  class Account:
+      def __init__(self, acc_id):
+          self.id = acc_id
+
+  def transfer(log, from_acc, to_acc):
+      log.append(from_acc.id)
+      log.append(to_acc.id)
+
+  a1, a2 = Account(1), Account(2)
+  log = []
+  transfer(log, a2, a1)
+  print(log)
+challenge: |
+  Fix `transfer` so it always acquires (logs) the lower-id account
+  first, via `first, second = sorted([from_acc, to_acc], key=lambda a:
+  a.id)`, instead of logging in whatever order they were passed. It
+  should print `[1, 2]`, not `[2, 1]`.
+expected_output: |
+  [1, 2]
+hints:
+  - "first, second = sorted([from_acc, to_acc], key=lambda a: a.id), then log.append(first.id); log.append(second.id)."
+  - "Two threads transferring in opposite directions, both acquiring in \"from, then to\" order, acquire their locks in OPPOSITE orders -- exactly the setup for a deadlock. A fixed, consistent order removes that risk."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 7
+difficulty: deep_dive
+contains_patterns:
+  - "sorted\\(\\[from_acc, to_acc\\], key=lambda a: a\\.id\\)"
+concept_tags: [threading, deadlock, locks, concurrency]

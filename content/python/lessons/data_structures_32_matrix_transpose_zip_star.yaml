@@ -1,0 +1,61 @@
+id: data_structures_32
+title: "zip(*matrix) Transposes Rows and Columns Without a Manual Nested Loop"
+language: python
+level: 189
+objective: "Replace a manual nested-loop matrix transpose with zip(*matrix), which swaps rows and columns directly."
+explanation: |
+  Transposing a matrix by hand needs a fresh result grid sized in
+  advance and a double loop copying each element into its swapped
+  position -- easy to get an index backward. `zip(*matrix)` transposes
+  directly: unpacking the matrix's rows as separate arguments to
+  `zip()` pairs up each row's first elements, then each row's second
+  elements, and so on, which is exactly what a transpose is -- turning
+  rows into columns, with no manual indexing at all.
+example_code: |
+  # A manual nested loop, indexing into a pre-sized result grid.
+  def transpose_loop(matrix):
+      rows = len(matrix)
+      cols = len(matrix[0])
+      result = [[None] * rows for _ in range(cols)]
+      for i in range(rows):
+          for j in range(cols):
+              result[j][i] = matrix[i][j]
+      return result
+
+  print(transpose_loop([[1, 2, 3], [4, 5, 6]]))
+  # [[1, 4], [2, 5], [3, 6]]
+
+  # zip(*matrix) transposes directly.
+  def transpose(matrix):
+      return [list(row) for row in zip(*matrix)]
+
+  print(transpose([[1, 2, 3], [4, 5, 6]]))
+  # [[1, 4], [2, 5], [3, 6]]
+starter_code: |
+  def transpose(matrix):
+      rows = len(matrix)
+      cols = len(matrix[0])
+      result = [[None] * rows for _ in range(cols)]
+      for i in range(rows):
+          for j in range(cols):
+              result[j][i] = matrix[i][j]
+      return result
+
+  print(transpose([[1, 2, 3], [4, 5, 6]]))
+challenge: |
+  Rewrite `transpose` using `[list(row) for row in zip(*matrix)]`,
+  instead of the manual nested loop. Keep the same output:
+  [[1, 4], [2, 5], [3, 6]].
+expected_output: |
+  [[1, 4], [2, 5], [3, 6]]
+hints:
+  - "Replace the whole function body with: return [list(row) for row in zip(*matrix)]."
+  - "Unpacking the matrix's rows as separate arguments to zip() pairs up corresponding positions across all the rows -- exactly what a transpose needs."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "zip\\(\\*matrix\\)"
+concept_tags: [matrices, zip]

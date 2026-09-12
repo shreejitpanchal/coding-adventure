@@ -1,0 +1,51 @@
+id: data_structures_36
+title: "A Circular Buffer Index Must Wrap Around, Not Just Keep Incrementing"
+language: python
+level: 193
+objective: "Fix a circular-buffer index calculation that just increments without ever wrapping, when reaching the end of a fixed-size buffer should wrap back around to index 0, not walk off the end entirely."
+explanation: |
+  A circular (ring) buffer reuses a fixed block of slots by wrapping
+  the index back to `0` once it reaches the end, instead of growing
+  without bound. Modulo arithmetic (`% size`) is exactly the operation
+  that does this: `(index + 1) % size` increments normally everywhere
+  except right at the boundary, where it wraps back to `0` instead of
+  producing an index that's genuinely out of the buffer's valid range.
+
+  The bug this exercise fixes just increments the index with no wraparound
+  at all. The fix uses `% size` to wrap correctly at the boundary.
+example_code: |
+  # The trap: just increments -- no wraparound at all once the end of
+  # the buffer is reached.
+  def circular_next_trap(index, size):
+      return index + 1
+
+  print(circular_next_trap(4, 5))
+  # 5 -- out of bounds for a buffer of size 5 (valid indices are 0-4)
+
+  # The fix: modulo wraps the index back to 0 at the boundary.
+  def circular_next(index, size):
+      return (index + 1) % size
+
+  print(circular_next(4, 5))
+  # 0 -- correctly wrapped back to the start of the buffer
+starter_code: |
+  def circular_next(index, size):
+      return index + 1
+
+  print(circular_next(4, 5))
+challenge: |
+  Fix `circular_next` so it returns `(index + 1) % size`, instead of
+  `index + 1` alone. It should print `0`, not `5`.
+expected_output: |
+  0
+hints:
+  - "Wrap the increment in modulo: return (index + 1) % size."
+  - "% size is what confines the result to the buffer's actual valid range (0 through size - 1), wrapping back to 0 right at the boundary."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 36
+difficulty: warmup
+contains_patterns:
+  - "return \\(index \\+ 1\\) % size"
+concept_tags: [circular_buffer, modulo_arithmetic]

@@ -1,0 +1,66 @@
+id: stdlib_deep_dive_49
+title: "warnings.catch_warnings Captures Warnings for Inspection -- They Otherwise Just Print and Vanish"
+language: python
+level: 250
+objective: "Fix code that calls warnings.warn and tries to check whether a warning happened by inspecting a return value (warnings don't return anything or raise by default), when warnings.catch_warnings as a context manager actually records emitted warnings for inspection."
+explanation: |
+  `warnings.warn(msg)` by default just prints the warning to stderr
+  (often only once per location) and returns `None` -- there's no
+  return value or exception to inspect afterward to confirm a warning
+  actually fired. `warnings.catch_warnings(record=True)` used as a
+  context manager, combined with `warnings.simplefilter("always")`
+  inside it, captures every warning raised during that block into a
+  real list your code can inspect afterward, which is the correct way
+  to assert "a warning was actually emitted" in a test or in code that
+  needs to react to one.
+
+  The bug this exercise fixes tries to detect a warning by checking
+  `warnings.warn(...)`'s return value, which is always `None`. The fix
+  uses `catch_warnings(record=True)` to actually capture it.
+example_code: |
+  # The trap: warn() has no return value to check for "did it happen".
+  import warnings
+
+  def did_warn_trap():
+      result = warnings.warn("careful")
+      return result is not None
+
+  print(did_warn_trap())
+  # False -- WRONG, warn() always returns None regardless of whether it fired
+
+  # The fix: catch_warnings(record=True) actually captures emitted warnings.
+  def did_warn():
+      with warnings.catch_warnings(record=True) as caught:
+          warnings.simplefilter("always")
+          warnings.warn("careful")
+          return len(caught) > 0
+
+  print(did_warn())
+  # True -- correctly detected that a warning was actually emitted
+starter_code: |
+  import warnings
+
+  def did_warn():
+      result = warnings.warn("careful")
+      return result is not None
+
+  print(did_warn())
+challenge: |
+  Fix `did_warn` so it uses `with warnings.catch_warnings(record=True)
+  as caught:` plus `warnings.simplefilter("always")`, then returns
+  `len(caught) > 0`, instead of checking `warn()`'s return value. It
+  should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "with warnings.catch_warnings(record=True) as caught: warnings.simplefilter(\"always\"); warnings.warn(\"careful\"); return len(caught) > 0."
+  - "warnings.warn() always returns None -- catch_warnings(record=True) is what actually gives you a real list of emitted warnings to check."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 49
+difficulty: deep_dive
+contains_patterns:
+  - "catch_warnings\\(record=True\\)"
+  - "len\\(caught\\) > 0"
+concept_tags: [warnings, catch_warnings]

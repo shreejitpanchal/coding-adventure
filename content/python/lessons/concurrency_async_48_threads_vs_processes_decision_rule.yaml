@@ -1,0 +1,66 @@
+id: concurrency_async_48
+title: "Picking the Right Concurrency Tool for the Kind of Work Actually Being Done"
+language: python
+level: 338
+objective: "Fix a helper that always recommends ThreadPoolExecutor regardless of workload type, when this category's running theme -- threads help I/O-bound work, processes are needed for genuine CPU-bound parallelism -- means the right tool depends on which kind of work is actually being scheduled."
+explanation: |
+  This category has built up one consistent, recurring rule across
+  many separate lessons: threads (and `asyncio`) genuinely help
+  I/O-bound work, because the GIL is released while waiting on I/O,
+  letting other threads run meanwhile -- but they do *nothing* for
+  CPU-bound work, since the GIL is never released for pure
+  computation, meaning every thread still takes turns on one
+  interpreter. `ProcessPoolExecutor` sidesteps the GIL entirely with
+  separate processes, each with its own interpreter, which is what
+  CPU-bound work actually needs to see real parallelism. A helper that
+  always recommends the same tool regardless of which kind of work is
+  actually being scheduled gets this backward for half of all cases.
+
+  The fix makes the choice depend on the workload type: `"cpu_bound"`
+  work should get `ProcessPoolExecutor`, anything else (I/O-bound)
+  should get `ThreadPoolExecutor`.
+example_code: |
+  # The trap: always recommends threads, regardless of the actual workload.
+  def choose_executor_trap(workload_type):
+      return "ThreadPoolExecutor"
+
+  print(choose_executor_trap("cpu_bound"))
+  # "ThreadPoolExecutor" -- WRONG, the GIL prevents any real speedup here
+
+  # The fix: match the tool to the kind of work actually being done.
+  def choose_executor(workload_type):
+      if workload_type == "cpu_bound":
+          return "ProcessPoolExecutor"
+      return "ThreadPoolExecutor"
+
+  print(choose_executor("cpu_bound"))
+  print(choose_executor("io_bound"))
+  # ProcessPoolExecutor
+  # ThreadPoolExecutor
+  # -- correctly matched to what actually benefits each kind of workload
+starter_code: |
+  def choose_executor(workload_type):
+      return "ThreadPoolExecutor"
+
+  print(choose_executor("cpu_bound"))
+  print(choose_executor("io_bound"))
+challenge: |
+  Fix `choose_executor` so it returns `"ProcessPoolExecutor"` when
+  `workload_type == "cpu_bound"`, and `"ThreadPoolExecutor"`
+  otherwise. It should print `ProcessPoolExecutor` then
+  `ThreadPoolExecutor`, not `ThreadPoolExecutor` twice.
+expected_output: |
+  ProcessPoolExecutor
+  ThreadPoolExecutor
+hints:
+  - "if workload_type == \"cpu_bound\": return \"ProcessPoolExecutor\", then return \"ThreadPoolExecutor\"."
+  - "Threads (and asyncio) help I/O-bound work because the GIL releases during I/O waits -- CPU-bound work never releases it, so only separate processes give real parallelism there."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 48
+difficulty: core
+contains_patterns:
+  - "workload_type == \"cpu_bound\""
+  - "\"ProcessPoolExecutor\""
+concept_tags: [concurrency, gil, decision_rule]

@@ -1,0 +1,70 @@
+id: idioms_gotchas_50
+title: "Capstone: The Mutable Default Trap, One More Time"
+language: python
+level: 119
+objective: "Fix a batch processor with a mutable default argument, tying this category back to its very first lesson -- the exact same 'evaluated once, at def time' bug, just showing up again in a slightly different shape: a function meant to build up a fresh list per call that instead keeps leaking state between completely unrelated calls."
+explanation: |
+  This category opened with the single most common real-world Python
+  footgun: a mutable default argument is created exactly once, at
+  `def` time, and every call that doesn't supply its own value shares
+  that identical object. Across everything else this category has
+  covered since -- truthiness, scoping, hashability, copying, sort
+  stability -- this original lesson is worth returning to directly one
+  more time, since it's exactly the kind of bug that resurfaces in
+  slightly different clothing throughout a real codebase: here, as a
+  batch processor whose second, entirely unrelated call inherits
+  leftover items from the first.
+
+  The bug this exercise fixes gives `process_batch` a mutable default
+  list. The fix uses the standard `None`-sentinel pattern from this
+  category's opening lesson.
+example_code: |
+  # The trap: a mutable default argument, created ONCE -- every call
+  # that doesn't pass its own `seen` list shares the exact same one.
+  def process_batch_trap(items, seen=[]):
+      for item in items:
+          seen.append(item)
+      return seen
+
+  batch1_trap = process_batch_trap([1, 2])
+  batch2_trap = process_batch_trap([3, 4])
+  print(len(batch2_trap))
+  # 4 -- WRONG, inherited batch1's leftover items due to the shared mutable default
+
+  # The fix: the standard None-sentinel pattern.
+  def process_batch(items, seen=None):
+      seen = seen if seen is not None else []
+      for item in items:
+          seen.append(item)
+      return seen
+
+  batch1 = process_batch([1, 2])
+  batch2 = process_batch([3, 4])
+  print(len(batch2))
+  # 2 -- correctly independent, unaffected by the earlier unrelated call
+starter_code: |
+  def process_batch(items, seen=[]):
+      for item in items:
+          seen.append(item)
+      return seen
+
+  batch1 = process_batch([1, 2])
+  batch2 = process_batch([3, 4])
+  print(len(batch2))
+challenge: |
+  Fix `process_batch` so it defaults `seen` to `None` and does `seen =
+  seen if seen is not None else []` inside the function body, instead
+  of the mutable default `seen=[]`. It should print `2`, not `4`.
+expected_output: |
+  2
+hints:
+  - "Change seen=[] to seen=None, then add: seen = seen if seen is not None else [] as the first line inside the function."
+  - "This is the exact same bug this category opened with, back in its very first lesson -- it's worth recognizing on sight by now, in whatever shape it shows up next."
+xp_reward: 20
+achievement: idioms_gotchas_master
+category: idioms_gotchas
+category_level: 50
+difficulty: deep_dive
+contains_patterns:
+  - "seen = seen if seen is not None else \\[\\]"
+concept_tags: [idioms, capstone, mutable_default_argument]

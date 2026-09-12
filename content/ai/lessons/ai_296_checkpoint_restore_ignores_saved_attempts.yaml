@@ -1,0 +1,59 @@
+id: ai_296
+title: "Restoring From a Checkpoint Must Use the Saved Progress, Not a Fresh Reset"
+language: ai
+level: 296
+objective: "Fix a restore function that always returns a fresh, zeroed default regardless of what was actually checkpointed, when resuming should pick up exactly from the saved attempt count -- not silently reset it back to zero."
+explanation: |
+  This category's earlier lessons covered saving a checkpoint at the
+  right time -- this one is about the other half of the mechanism:
+  actually using the saved checkpoint when resuming, instead of quietly
+  falling back to a fresh default regardless of what was saved. If a
+  retry cycle's counter gets reset to zero on every resume, a node that
+  had already failed three times before the crash starts back at
+  attempt one, potentially retrying far longer than the original
+  `max_attempts` budget was ever meant to allow.
+
+  The bug this exercise fixes always returns `fresh_defaults`,
+  completely ignoring `checkpoint`. The fix returns the checkpoint when
+  one exists, falling back to fresh defaults only when there isn't one.
+example_code: |
+  # The trap: ignores the checkpoint entirely -- always restarts from
+  # a fresh, zeroed state.
+  def restore_trap(checkpoint, fresh_defaults):
+      return fresh_defaults
+
+  checkpoint = {"attempts": 3}
+  fresh_defaults = {"attempts": 0}
+  print(restore_trap(checkpoint, fresh_defaults)["attempts"])
+  # 0 -- lost the fact that 3 attempts already happened
+
+  # The fix: use the checkpoint when one exists.
+  def restore(checkpoint, fresh_defaults):
+      return checkpoint if checkpoint else fresh_defaults
+
+  print(restore(checkpoint, fresh_defaults)["attempts"])
+  # 3 -- correctly resumed from the checkpointed attempt count
+starter_code: |
+  def restore(checkpoint, fresh_defaults):
+      return fresh_defaults
+
+  checkpoint = {"attempts": 3}
+  fresh_defaults = {"attempts": 0}
+  print(restore(checkpoint, fresh_defaults)["attempts"])
+challenge: |
+  Fix `restore` so it returns `checkpoint if checkpoint else
+  fresh_defaults`, instead of always returning `fresh_defaults`. It
+  should print `3`, not `0`.
+expected_output: |
+  3
+hints:
+  - "Replace return fresh_defaults with return checkpoint if checkpoint else fresh_defaults."
+  - "An empty checkpoint (falsy, meaning there genuinely wasn't a previous run) should still fall back to fresh_defaults -- only a real, non-empty checkpoint should win."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 31
+difficulty: warmup
+contains_patterns:
+  - "return checkpoint if checkpoint else fresh_defaults"
+concept_tags: [langgraph, checkpointing, resume]

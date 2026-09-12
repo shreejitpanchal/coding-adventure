@@ -1,0 +1,66 @@
+id: stdlib_deep_dive_44
+title: "base64 Encoding Is Reversible -- Decoding Gives Back the Exact Original Bytes"
+language: python
+level: 245
+objective: "Fix code that base64-encodes data but then tries to compare the encoded bytes directly against the original (which will never match, since encoding changes the representation), when decoding the encoded form correctly recovers the exact original bytes."
+explanation: |
+  `base64.b64encode(data)` produces a different byte representation of
+  the same underlying data -- comparing the encoded bytes directly
+  against the original data can never be equal, since base64 encoding
+  deliberately re-represents the bytes in a larger, ASCII-safe
+  alphabet. The round-trip guarantee is specifically that
+  `base64.b64decode(base64.b64encode(data)) == data` -- decoding the
+  encoded form recovers the exact original bytes, not that the encoded
+  form itself resembles the original.
+
+  The bug this exercise fixes compares the encoded bytes directly
+  against the original, which is always `False`. The fix decodes the
+  encoded form first, which correctly recovers the original and
+  compares equal.
+example_code: |
+  # The trap: compares the ENCODED bytes directly against the original.
+  import base64
+
+  def round_trips_trap(data):
+      encoded = base64.b64encode(data)
+      return encoded == data
+
+  data = b"hello world"
+  print(round_trips_trap(data))
+  # False -- WRONG comparison, encoded bytes are never equal to the original
+
+  # The fix: decode the encoded form to recover the original bytes.
+  def round_trips(data):
+      encoded = base64.b64encode(data)
+      decoded = base64.b64decode(encoded)
+      return decoded == data
+
+  print(round_trips(data))
+  # True -- correctly recovers the exact original bytes after decoding
+starter_code: |
+  import base64
+
+  def round_trips(data):
+      encoded = base64.b64encode(data)
+      return encoded == data
+
+  data = b"hello world"
+  print(round_trips(data))
+challenge: |
+  Fix `round_trips` so it decodes `encoded` back with
+  `base64.b64decode(encoded)` and compares THAT against `data`, instead
+  of comparing the still-encoded bytes directly. It should print
+  `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "decoded = base64.b64decode(encoded), then return decoded == data."
+  - "The encoded form is never equal to the original -- only decoding it back recovers the exact original bytes."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "base64\\.b64decode\\(encoded\\)"
+concept_tags: [base64, encoding]

@@ -1,0 +1,58 @@
+id: ai_392
+title: "An Agent Shouldn't Advertise a Capability It Currently Has No Way to Deliver"
+language: ai
+level: 392
+objective: "Fix an agent-card builder that advertises every capability regardless of whether the broker connection needed to actually deliver on them is even up, when a capability the agent genuinely can't fulfill right now shouldn't be advertised as available at all."
+explanation: |
+  Every capability an agent advertises depends on the underlying event
+  broker connection actually being up -- without it, the agent can't
+  receive delegated tasks or publish results, no matter how genuinely
+  capable it would otherwise be. Advertising capabilities regardless of
+  connection health means other agents (and the routing logic that
+  matches tasks to capabilities) get told this agent can help, when in
+  reality any task routed to it right now would simply fail to reach
+  it at all.
+
+  The bug this exercise fixes always advertises `capabilities`
+  unconditionally. The fix advertises an empty list whenever the
+  broker connection isn't actually up.
+example_code: |
+  # The trap: advertises every capability regardless of whether the
+  # broker connection (needed to actually deliver on them) is even up.
+  def build_agent_card_trap(capabilities, broker_connected):
+      return {"capabilities": capabilities}
+
+  card_trap = build_agent_card_trap(["chart_rendering"], broker_connected=False)
+  print(len(card_trap["capabilities"]))
+  # 1 -- advertised a capability it currently has no way to actually deliver on
+
+  # The fix: advertise nothing while the broker connection is down.
+  def build_agent_card(capabilities, broker_connected):
+      return {"capabilities": capabilities if broker_connected else []}
+
+  card = build_agent_card(["chart_rendering"], broker_connected=False)
+  print(len(card["capabilities"]))
+  # 0 -- correctly advertises nothing while disconnected
+starter_code: |
+  def build_agent_card(capabilities, broker_connected):
+      return {"capabilities": capabilities}
+
+  card = build_agent_card(["chart_rendering"], broker_connected=False)
+  print(len(card["capabilities"]))
+challenge: |
+  Fix `build_agent_card` so it sets `"capabilities": capabilities if
+  broker_connected else []`, instead of always advertising
+  `capabilities` unconditionally. It should print `0`, not `1`.
+expected_output: |
+  0
+hints:
+  - "Replace \"capabilities\": capabilities with \"capabilities\": capabilities if broker_connected else []."
+  - "Every advertised capability depends on the broker connection actually being up -- there's no point advertising what can't currently be delivered on."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 37
+difficulty: core
+contains_patterns:
+  - "capabilities if broker_connected else \\[\\]"
+concept_tags: [solace_agent_mesh, agent_card, health_gating]

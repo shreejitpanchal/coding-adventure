@@ -1,0 +1,59 @@
+id: ai_174
+title: "A User-Facing Response Can Include WHY, Not Just WHAT"
+language: ai
+level: 174
+objective: "Fix a response formatter that shows the user only the agent's final answer, discarding the reasoning that led there entirely -- for many tasks, showing which facts the agent relied on builds trust that a bare answer alone doesn't."
+explanation: |
+  An agent's final answer alone -- with no indication of what it was
+  based on -- asks the user to simply trust it, with no way to spot-check
+  whether the reasoning actually makes sense. Surfacing a short,
+  readable summary of the key facts the agent relied on (not
+  necessarily the full internal scratchpad this category's own
+  debugging lesson covers, which is often too detailed and technical
+  for an end user) lets a user quickly sanity-check the answer
+  themselves, building trust that a bare conclusion alone can't.
+
+  The bug this exercise fixes formats a response with only the final
+  answer, discarding the supporting facts entirely. The fix includes a
+  brief "Based on:" section summarizing the key facts relied on,
+  alongside the answer itself.
+example_code: |
+  # The trap: shows ONLY the final answer -- the user has no way to
+  # spot-check what it was actually based on.
+  def format_response_trap(answer, supporting_facts):
+      return answer
+
+  answer = "Your order will arrive Thursday."
+  supporting_facts = ["Shipped Monday via standard shipping", "Standard shipping takes 3-4 business days"]
+  print("Based on:" in format_response_trap(answer, supporting_facts))   # False -- no reasoning shown at all
+
+  # The fix: include a brief "Based on:" section with the key facts relied on.
+  def format_response(answer, supporting_facts):
+      facts_section = "Based on: " + "; ".join(supporting_facts)
+      return f"{answer}\\n{facts_section}"
+
+  print("Based on:" in format_response(answer, supporting_facts))   # True -- correctly shows the user what it relied on
+starter_code: |
+  def format_response(answer, supporting_facts):
+      return answer
+
+  answer = "Your order will arrive Thursday."
+  supporting_facts = ["Shipped Monday via standard shipping", "Standard shipping takes 3-4 business days"]
+  print("Based on:" in format_response(answer, supporting_facts))
+challenge: |
+  Fix `format_response` so it includes a `"Based on: "` section
+  summarizing `supporting_facts`, alongside the answer, instead of
+  returning just the bare answer. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Build facts_section = \"Based on: \" + \"; \".join(supporting_facts), then combine it with the answer in the returned string."
+  - "The literal substring \"Based on:\" needs to actually appear somewhere in the returned string for the check to pass."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 44
+difficulty: warmup
+contains_patterns:
+  - "Based on: "
+concept_tags: [agentic_frameworks, transparency, explainability]

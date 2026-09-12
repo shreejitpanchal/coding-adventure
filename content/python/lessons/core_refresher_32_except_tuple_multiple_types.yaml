@@ -1,0 +1,60 @@
+id: core_refresher_32
+title: "One except Clause Can Catch Several Exception Types at Once"
+language: python
+level: 145
+objective: "Combine two separate except blocks with identical handling code into one except clause catching a tuple of exception types."
+explanation: |
+  Two `except` blocks that do exactly the same thing in response to
+  different exception types duplicate the handling logic for no real
+  reason -- `except (ValueError, TypeError):` catches either one in a
+  single clause, running the shared handling code once instead of
+  copy-pasted across two separate blocks. This only makes sense when
+  the response really is identical either way; if the two exception
+  types genuinely need different handling, separate `except` blocks are
+  still the right tool.
+example_code: |
+  # Two separate except blocks with IDENTICAL handling code.
+  def parse_loop(x):
+      try:
+          return int(x)
+      except ValueError:
+          return None
+      except TypeError:
+          return None
+
+  print(parse_loop("abc"))                 # None
+
+  # One except clause, catching a tuple of exception types.
+  def parse(x):
+      try:
+          return int(x)
+      except (ValueError, TypeError):
+          return None
+
+  print(parse("abc"))                      # None
+starter_code: |
+  def parse(x):
+      try:
+          return int(x)
+      except ValueError:
+          return None
+      except TypeError:
+          return None
+
+  print(parse("abc"))
+challenge: |
+  Combine the two except blocks into one: `except (ValueError,
+  TypeError):`. Keep the same output: None.
+expected_output: |
+  None
+hints:
+  - "Replace the two except blocks with a single: except (ValueError, TypeError): return None."
+  - "The tuple of exception types goes inside parentheses right after except -- Python catches either type with the same handling code."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "except \\(ValueError, TypeError\\):"
+concept_tags: [exception_handling, multiple_exception_types]

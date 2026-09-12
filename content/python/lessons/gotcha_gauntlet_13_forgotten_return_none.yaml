@@ -1,0 +1,70 @@
+id: gotcha_gauntlet_13
+title: "The Total That Crashed Three Functions Away From the Actual Bug"
+language: python
+level: 258
+objective: "Fix a function that computes a value but forgets to return it, implicitly returning None, which then crashes with a TypeError far away from where the actual mistake was made."
+explanation: |
+  A function with no explicit `return` statement -- or a `return` with
+  no value -- always returns `None`, silently. Computing a value with
+  a local variable and never actually returning it is a purely
+  cosmetic difference from crashing outright: the function runs
+  without error, `None` comes back, and everything looks fine right up
+  until whatever calls it tries to actually use that result, at which
+  point `None + 5` (or whatever the real usage is) raises `TypeError:
+  unsupported operand type(s)`, often in a completely different
+  function, file, or module than the one with the actual missing
+  `return`.
+
+  This is the same "distance between cause and symptom" problem this
+  category's missing-`super().__init__()` lesson covers -- the fix
+  here is simpler (just add the `return`), but the lesson about a
+  quiet, error-free `None` propagating outward before finally crashing
+  somewhere unrelated is the same one.
+example_code: |
+  # The trap: computes total, but never actually returns it.
+  def compute_total_trap(prices):
+      total = sum(prices)
+      # forgot: return total
+
+  result_trap = compute_total_trap([10, 20, 30])
+  try:
+      print(result_trap + 5)
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- compute_total_trap silently returned None, and the
+  # actual bug (the missing return) is nowhere near this crash site
+
+  # The fix: return the computed value.
+  def compute_total(prices):
+      total = sum(prices)
+      return total
+
+  result = compute_total([10, 20, 30])
+  print(result + 5)
+  # 65 -- correctly returned the real computed value
+starter_code: |
+  def compute_total(prices):
+      total = sum(prices)
+
+  result = compute_total([10, 20, 30])
+  try:
+      print(result + 5)
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `compute_total` by adding `return total` as its last line. It
+  should print `65`, not `crashed`.
+expected_output: |
+  65
+hints:
+  - "Add return total as the function's last line."
+  - "A function with no explicit return always returns None -- the crash happens wherever the caller tries to USE that None, which can be far from the actual missing-return bug."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 13
+difficulty: gotcha
+contains_patterns:
+  - "return total"
+concept_tags: [functions, none, gotchas]

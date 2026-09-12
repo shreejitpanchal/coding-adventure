@@ -1,0 +1,73 @@
+id: ai_102
+title: "A Query Must Be Embedded by the Same Model That Embedded the Documents"
+language: ai
+level: 102
+objective: "Fix a search function that embeds an incoming query with a different embedding model than the one used to build the document index, producing meaningless similarity scores even though nothing crashes."
+explanation: |
+  Different embedding models place semantically similar text in
+  different coordinate spaces -- even if two models happen to produce
+  vectors of the exact same length (avoiding this category's earlier
+  dimension-mismatch crash entirely), comparing a query embedded by
+  model A against documents embedded by model B is comparing two
+  unrelated coordinate systems that just happen to have matching
+  dimensions. The similarity scores that come out are real numbers, not
+  errors, but they don't mean anything -- this is a much sneakier
+  version of the dimension-mismatch problem, since nothing crashes and
+  nothing looks obviously wrong.
+
+  The bug this exercise fixes embeds the document index with one model
+  and the incoming query with a *different* one, tracked here via each
+  embedding's own `model_name` tag. The fix checks that the query was
+  embedded with the exact same model the index was built with before
+  running any comparison at all, catching the mismatch explicitly
+  instead of silently returning meaningless scores.
+example_code: |
+  # The trap: embeds the query with a DIFFERENT model than the index --
+  # produces real-looking scores that are actually meaningless.
+  def embed_trap(text, model_name):
+      return {"vector": [len(text)], "model_name": model_name}
+
+  def search_trap(query, index_model_name):
+      query_embedding = embed_trap(query, model_name="model_v2")   # bug: hardcoded, ignores index_model_name
+      return query_embedding["model_name"] == index_model_name
+
+  print(search_trap("hello", index_model_name="model_v1"))   # False -- but the trap doesn't even CHECK this before searching
+
+  # The fix: embed the query with the SAME model the index used, and
+  # verify that explicitly before proceeding.
+  def embed(text, model_name):
+      return {"vector": [len(text)], "model_name": model_name}
+
+  def search(query, index_model_name):
+      query_embedding = embed(query, model_name=index_model_name)
+      if query_embedding["model_name"] != index_model_name:
+          raise ValueError("embedding model mismatch between query and index")
+      return True   # safe to proceed -- confirmed matching models
+
+  print(search("hello", index_model_name="model_v1"))   # True -- correctly embedded with the matching model
+starter_code: |
+  def embed(text, model_name):
+      return {"vector": [len(text)], "model_name": model_name}
+
+  def search(query, index_model_name):
+      query_embedding = embed(query, model_name="model_v2")
+      return query_embedding["model_name"] == index_model_name
+
+  print(search("hello", index_model_name="model_v1"))
+challenge: |
+  Fix `search` so it embeds the query using `index_model_name` (the
+  same model the index was built with), instead of a hardcoded
+  different model name. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change embed(query, model_name=\"model_v2\") to embed(query, model_name=index_model_name)."
+  - "The query must be embedded with the exact same model the document index used -- hardcoding a different model name defeats the whole comparison."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 17
+difficulty: gotcha
+contains_patterns:
+  - "embed\\(query, model_name=index_model_name\\)"
+concept_tags: [rag, embeddings, model_versioning]

@@ -1,0 +1,60 @@
+id: ai_181
+title: "An MCP Notification Must Have No 'id' Field at All"
+language: ai
+level: 181
+objective: "Fix a notification builder that includes an 'id' field, which turns it into a request the sender will now wait on a response for -- a notification is specifically a fire-and-forget message with no response expected, and JSON-RPC (which MCP is built on) uses the presence or absence of 'id' to distinguish the two."
+explanation: |
+  This category's earlier lessons covered `result`/`error` mutual
+  exclusivity and correlating responses to requests by `id` -- both
+  assume the message in question is a **request**, expecting a
+  response. JSON-RPC (and MCP, built directly on it) also has
+  **notifications**: fire-and-forget messages -- a progress update, a
+  log message -- that explicitly expect no response at all. The
+  mechanism distinguishing the two is simple and easy to miss: a
+  request has an `id` field; a notification has none. Include an `id`
+  on a notification by mistake, and the receiver may reasonably treat
+  it as a real request and wait for (or attempt to send) a response
+  that was never coming.
+
+  The bug this exercise fixes always includes an `id` field, even for
+  messages meant to be notifications. The fix omits `id` entirely for a
+  notification, correctly signaling "no response needed" the way the
+  spec expects.
+example_code: |
+  # The trap: includes an "id" even for a NOTIFICATION -- looks like a
+  # request the receiver should respond to, which was never the intent.
+  def build_notification_trap(method, params):
+      return {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
+
+  notif_trap = build_notification_trap("notifications/progress", {"progress": 50})
+  print("id" in notif_trap)   # True -- WRONG, this looks like a request now
+
+  # The fix: a notification has NO "id" field at all.
+  def build_notification(method, params):
+      return {"jsonrpc": "2.0", "method": method, "params": params}
+
+  notif = build_notification("notifications/progress", {"progress": 50})
+  print("id" in notif)   # False -- correctly signals "no response expected"
+starter_code: |
+  def build_notification(method, params):
+      return {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
+
+  notif = build_notification("notifications/progress", {"progress": 50})
+  print("id" in notif)
+challenge: |
+  Fix `build_notification` so the returned dict has no `"id"` key at
+  all, instead of including a hardcoded `"id": 1`. It should print
+  `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Remove the \"id\": 1 entry from the returned dict entirely."
+  - "The distinguishing feature of a JSON-RPC notification (versus a request) is specifically the ABSENCE of an id field -- not an id set to some special value."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 6
+difficulty: warmup
+contains_patterns:
+  - "\"params\": params\\}"
+concept_tags: [mcp, json_rpc, notifications]

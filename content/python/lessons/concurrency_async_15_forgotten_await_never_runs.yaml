@@ -1,0 +1,73 @@
+id: concurrency_async_15
+title: "The Save That Never Actually Happened Because 'await' Was Missing"
+language: python
+level: 305
+objective: "Fix code that calls an async function without awaiting it, which creates a coroutine object but never actually runs its body at all -- Python even warns about this with 'coroutine was never awaited', but the missing effect is easy to miss without reading stderr carefully."
+explanation: |
+  `save(log)` on an `async def save(...)` function doesn't run
+  `save`'s body -- it only constructs a coroutine object, exactly the
+  same as this category's `create_task` lesson covers. Without
+  `await` in front of it (or wrapping it in `create_task`/`gather`),
+  that coroutine object is simply discarded, its body never executed
+  at all. Python actually detects this specific mistake and prints
+  `RuntimeWarning: coroutine 'save' was never awaited` to stderr -- but
+  since warnings don't stop the program or show up in normal output,
+  it's easy to miss entirely, especially if stderr isn't being watched
+  closely, leaving the real bug (data that was supposed to be saved,
+  silently never was) undiagnosed.
+
+  The fix is simply adding the missing `await`.
+example_code: |
+  # The trap: missing "await" -- save() is called, but never actually runs.
+  import asyncio
+
+  async def save_trap(log):
+      log.append("saved")
+
+  async def main_trap():
+      log = []
+      save_trap(log)          # forgot "await" -- creates a coroutine, doesn't run it
+      print(log)
+
+  asyncio.run(main_trap())
+  # [] -- WRONG, save_trap()'s body never actually executed at all
+
+  # The fix: await actually drives the coroutine to completion.
+  async def save(log):
+      log.append("saved")
+
+  async def main():
+      log = []
+      await save(log)
+      print(log)
+
+  asyncio.run(main())
+  # ['saved'] -- correctly ran, since it was actually awaited
+starter_code: |
+  import asyncio
+
+  async def save(log):
+      log.append("saved")
+
+  async def main():
+      log = []
+      save(log)
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` by adding `await` before `save(log)`. It should print
+  `['saved']`, not `[]`.
+expected_output: |
+  ['saved']
+hints:
+  - "Change save(log) to await save(log)."
+  - "Calling an async function without await just creates a coroutine object -- its body never actually runs unless something drives it, whether await, create_task, or gather."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 15
+difficulty: warmup
+contains_patterns:
+  - "await save\\(log\\)"
+concept_tags: [asyncio, coroutines, gotchas]

@@ -1,0 +1,65 @@
+id: packaging_08
+title: "A 'v' Prefix Breaks Numeric Version Comparison Until It's Stripped"
+language: python
+level: 388
+objective: "Fix a version comparison that fails because one version string has a leading 'v' (a common git-tag convention) and the other doesn't, when normalizing both by stripping any leading 'v' before comparing fixes it."
+explanation: |
+  Git tags conventionally look like `v1.2.0`, but the version a package
+  actually declares in its metadata is usually the bare `1.2.0`, with
+  no `v` at all -- mixing the two formats breaks a naive comparison in
+  a couple of ways: splitting `"v1"` on `"."` and trying `int("v1")`
+  raises `ValueError` outright, since `"v1"` isn't a valid integer no
+  matter how you look at it. Normalizing both strings the same way
+  before comparing -- stripping any leading `"v"` -- makes the
+  comparison work regardless of which format either input happened to
+  use.
+
+  The fix strips a leading `"v"` from each version string before
+  splitting and comparing.
+example_code: |
+  # The trap: a leading "v" breaks int() conversion outright.
+  def is_newer_trap(a, b):
+      parse = lambda v: tuple(int(p) for p in v.split("."))
+      return parse(a) > parse(b)
+
+  try:
+      print(is_newer_trap("v1.2.0", "1.1.0"))
+      print("ok")
+  except ValueError:
+      print("crashed")
+  # "crashed" -- int("v1") raises ValueError
+
+  # The fix: strip a leading "v" from both before parsing.
+  def is_newer(a, b):
+      normalize = lambda v: v[1:] if v.startswith("v") else v
+      parse = lambda v: tuple(int(p) for p in normalize(v).split("."))
+      return parse(a) > parse(b)
+
+  print(is_newer("v1.2.0", "1.1.0"))
+  # True -- correctly compared, regardless of the "v" prefix on either side
+starter_code: |
+  def is_newer(a, b):
+      parse = lambda v: tuple(int(p) for p in v.split("."))
+      return parse(a) > parse(b)
+
+  try:
+      print(is_newer("v1.2.0", "1.1.0"))
+  except ValueError:
+      print("crashed")
+challenge: |
+  Fix `is_newer` by stripping a leading `"v"` from each version string
+  (`v[1:] if v.startswith("v") else v`) before parsing it into a tuple.
+  It should print `True`, not `crashed`.
+expected_output: |
+  True
+hints:
+  - "normalize = lambda v: v[1:] if v.startswith(\"v\") else v, applied to both a and b before splitting."
+  - "A leading \"v\" is a common git-tag convention, but int(\"v1\") always raises -- both sides need to be normalized the same way before comparing."
+xp_reward: 10
+achievement: null
+category: packaging
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "v\\[1:\\] if v\\.startswith\\(\"v\"\\) else v"
+concept_tags: [packaging, versioning, gotchas]

@@ -1,0 +1,66 @@
+id: data_structures_43
+title: "Counter.elements() Expands a Tally Back Into Individual Items"
+language: python
+level: 200
+objective: "Fix a function that lists each Counter key only once, ignoring its actual count entirely, when Counter.elements() is what expands a tally back into a flat iterable with each item repeated by its actual count."
+explanation: |
+  Iterating a `Counter` directly (`for k in counts`) yields each
+  distinct *key* exactly once, with no reflection of its count at all
+  -- which is correct for "what are the distinct items," but wrong for
+  "give me the original flat sequence of items back." `Counter.
+  elements()` is built specifically for that: it yields each key
+  repeated exactly as many times as its count, reconstructing (in some
+  order) a flat iterable that could have produced the tally in the
+  first place.
+
+  The bug this exercise fixes adds each key to the result only once,
+  ignoring its count. The fix uses `.elements()`, expanding each key
+  by its actual count.
+example_code: |
+  # The trap: adds each key only ONCE, ignoring its actual count entirely.
+  from collections import Counter
+
+  def expand_trap(counts):
+      result = []
+      for k in counts:
+          result.append(k)
+      return result
+
+  counts = Counter({"a": 2, "b": 1})
+  print(sorted(expand_trap(counts)))
+  # ['a', 'b'] -- WRONG, "a" should appear twice, since its count is 2
+
+  # The fix: .elements() expands each key by its actual count.
+  def expand(counts):
+      return list(counts.elements())
+
+  print(sorted(expand(counts)))
+  # ['a', 'a', 'b'] -- correctly reflects the actual tally
+starter_code: |
+  from collections import Counter
+
+  def expand(counts):
+      result = []
+      for k in counts:
+          result.append(k)
+      return result
+
+  counts = Counter({"a": 2, "b": 1})
+  print(sorted(expand(counts)))
+challenge: |
+  Fix `expand` so it returns `list(counts.elements())`, instead of a
+  loop that adds each key only once. It should print
+  `['a', 'a', 'b']`, not `['a', 'b']`.
+expected_output: |
+  ['a', 'a', 'b']
+hints:
+  - "Replace the whole loop with: return list(counts.elements())."
+  - "elements() yields each key repeated by its actual count -- that's the entire point of the method, versus plain iteration which yields each key exactly once."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 43
+difficulty: warmup
+contains_patterns:
+  - "list\\(counts\\.elements\\(\\)\\)"
+concept_tags: [counter, elements]

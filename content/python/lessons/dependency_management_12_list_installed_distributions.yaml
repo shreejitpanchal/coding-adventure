@@ -1,0 +1,60 @@
+id: dependency_management_12
+title: "Checking If a Package Is Installed by Actually Listing What's There"
+language: python
+level: 422
+objective: "Fix a stub that always reports a package as not installed, when importlib.metadata.distributions() actually iterates every installed package's real metadata -- checking each one's declared name (case-insensitively, since package names aren't case-sensitive) is how a genuine installed-check works."
+explanation: |
+  `importlib.metadata.distributions()` yields a `Distribution` object
+  for every package actually installed in the current environment,
+  each one exposing its own metadata (`dist.metadata["Name"]`, the
+  name it was actually registered under). Checking whether a specific
+  package is installed means iterating this real, current list and
+  comparing names -- case-insensitively, since Python packaging treats
+  `Flask` and `flask` as the same package, even though the exact
+  casing stored in metadata isn't guaranteed to match whatever casing
+  the caller happens to ask about.
+
+  The fix iterates `metadata.distributions()`, comparing each
+  distribution's name against the target, case-insensitively.
+example_code: |
+  # The trap: never actually checks anything -- always reports "not installed".
+  def find_installed_trap(target_name):
+      return False
+
+  print(find_installed_trap("pip"))
+  # False -- WRONG, pip is virtually always installed in any real Python environment
+
+  # The fix: actually iterate the real installed distributions.
+  from importlib import metadata
+
+  def find_installed(target_name):
+      for dist in metadata.distributions():
+          if dist.metadata["Name"].lower() == target_name.lower():
+              return True
+      return False
+
+  print(find_installed("pip"))
+  # True -- correctly found by actually checking the real installed packages
+starter_code: |
+  def find_installed(target_name):
+      return False
+
+  print(find_installed("pip"))
+challenge: |
+  Fix `find_installed` so it imports `metadata` from `importlib` and
+  iterates `metadata.distributions()`, returning `True` the moment a
+  distribution's `dist.metadata["Name"].lower()` matches
+  `target_name.lower()`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from importlib import metadata, then: for dist in metadata.distributions(): if dist.metadata[\"Name\"].lower() == target_name.lower(): return True."
+  - "distributions() yields every genuinely installed package's real metadata -- comparing case-insensitively matters, since package name casing isn't guaranteed to match exactly."
+xp_reward: 10
+achievement: null
+category: dependency_management
+category_level: 12
+difficulty: core
+contains_patterns:
+  - "metadata\\.distributions\\(\\)"
+concept_tags: [dependency_management, importlib_metadata]

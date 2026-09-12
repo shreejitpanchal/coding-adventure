@@ -1,0 +1,63 @@
+id: dependency_management_08
+title: "Direct Dependencies Aren't the Whole Story -- Transitive Ones Count Too"
+language: python
+level: 418
+objective: "Fix a function that only returns a package's DIRECT dependencies, when installing a package genuinely requires every transitive dependency too -- recursively walking the dependency graph collects the full set, not just the first level."
+explanation: |
+  A package's own declared dependencies are only the *direct* ones --
+  each of those dependencies can have its own further dependencies
+  (transitive ones), which also genuinely need to be installed for
+  anything to actually work. Returning only `deps[name]` stops at the
+  first level, silently missing everything those direct dependencies
+  themselves require. Correctly flattening the full dependency set
+  means recursively walking the graph: for each direct dependency, also
+  collect *its* dependencies, and so on, until there's nothing new left
+  to find -- tracking what's already been seen so a shared dependency
+  reached through two different paths isn't processed twice.
+
+  The fix recursively walks the dependency graph, collecting every
+  transitive dependency, not just the direct ones.
+example_code: |
+  # The trap: only the DIRECT dependencies -- transitive ones are missed entirely.
+  def flatten_deps_trap(deps, name):
+      return deps[name]
+
+  deps = {"a": ["b"], "b": ["c"], "c": []}
+  print(sorted(flatten_deps_trap(deps, "a")))
+  # ['b'] -- WRONG, "c" is a real transitive dependency of "a" through "b"
+
+  # The fix: recursively walk the graph, collecting every transitive dependency.
+  def flatten_deps(deps, name, seen=None):
+      if seen is None:
+          seen = set()
+      for dep in deps.get(name, []):
+          if dep not in seen:
+              seen.add(dep)
+              flatten_deps(deps, dep, seen)
+      return seen
+
+  print(sorted(flatten_deps(deps, "a")))
+  # ['b', 'c'] -- correctly includes the transitive dependency too
+starter_code: |
+  def flatten_deps(deps, name):
+      return deps[name]
+
+  deps = {"a": ["b"], "b": ["c"], "c": []}
+  print(sorted(flatten_deps(deps, "a")))
+challenge: |
+  Fix `flatten_deps` so it recursively collects every transitive
+  dependency into a `seen` set, instead of returning only the direct
+  ones. It should print `['b', 'c']`, not `['b']`.
+expected_output: |
+  ['b', 'c']
+hints:
+  - "def flatten_deps(deps, name, seen=None): if seen is None: seen = set(); for dep in deps.get(name, []): if dep not in seen: seen.add(dep); flatten_deps(deps, dep, seen); return seen."
+  - "Each direct dependency can have its own further dependencies -- only recursively walking the whole graph collects all of them, not just the first level."
+xp_reward: 15
+achievement: null
+category: dependency_management
+category_level: 8
+difficulty: deep_dive
+contains_patterns:
+  - "flatten_deps\\(deps, dep, seen\\)"
+concept_tags: [dependency_management, transitive_dependencies, recursion]

@@ -1,0 +1,75 @@
+id: gotcha_gauntlet_47
+title: "The Dataclass That Refused to Even Define Itself"
+language: python
+level: 292
+objective: "Fix a dataclass field assigned a mutable default directly (items: list = []), which raises ValueError at class-definition time -- dataclasses actively forbid this exact mistake, requiring field(default_factory=list) instead."
+explanation: |
+  A plain function's mutable default argument (`def f(items=[]):`)
+  silently shares one list across every call with no error at all --
+  the classic trap this app's very first idioms lesson covers.
+  `@dataclass` fields are stricter about the exact same underlying
+  danger: writing `items: list = []` directly as a field default
+  raises `ValueError: mutable default <class 'list'> for field items
+  is not allowed` the instant the class body is executed, refusing to
+  even let the class be defined, specifically *because* every instance
+  would otherwise share that one list, the same way the plain-function
+  version does silently.
+
+  The fix is `field(default_factory=list)` (imported from
+  `dataclasses`), which calls `list()` fresh for every new instance
+  instead of sharing one list constructed once at class-definition
+  time.
+example_code: |
+  # The trap: a bare mutable default on a dataclass field raises ValueError
+  # immediately, at class-definition time.
+  from dataclasses import dataclass
+
+  try:
+      @dataclass
+      class CartTrap:
+          items: list = []
+      print("defined ok")
+  except ValueError:
+      print("crashed")
+  # "crashed" -- ValueError: mutable default <class 'list'> for field
+  # items is not allowed
+
+  # The fix: field(default_factory=list) constructs a fresh list per instance.
+  from dataclasses import dataclass, field
+
+  @dataclass
+  class Cart:
+      items: list = field(default_factory=list)
+
+  a = Cart()
+  b = Cart()
+  a.items.append("apple")
+  print(a.items, b.items)
+  # ['apple'] [] -- correctly independent, since each instance got its own list
+starter_code: |
+  from dataclasses import dataclass
+
+  try:
+      @dataclass
+      class Cart:
+          items: list = []
+      print("defined ok")
+  except ValueError:
+      print("crashed")
+challenge: |
+  Fix `Cart` so `items` uses `field(default_factory=list)` (importing
+  `field` from `dataclasses`), instead of a bare `= []` default. It
+  should print `defined ok`, not `crashed`.
+expected_output: |
+  defined ok
+hints:
+  - "from dataclasses import dataclass, field, then: items: list = field(default_factory=list)."
+  - "@dataclass actively refuses a bare mutable default at class-definition time -- the exact same danger a plain function's mutable default argument allows silently."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 47
+difficulty: gotcha
+contains_patterns:
+  - "field\\(default_factory=list\\)"
+concept_tags: [dataclasses, mutable_defaults, gotchas]

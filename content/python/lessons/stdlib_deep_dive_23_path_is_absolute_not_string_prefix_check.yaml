@@ -1,0 +1,58 @@
+id: stdlib_deep_dive_23
+title: "Path.is_absolute() Understands the Real Platform Convention -- a Bare Prefix Check Doesn't"
+language: python
+level: 224
+objective: "Fix an absolute-path check that only recognizes the POSIX convention (a leading '/'), when a genuine cross-platform check needs to understand whatever convention the actual running platform uses -- Path.is_absolute() already does."
+explanation: |
+  Checking `path_str.startswith("/")` hardcodes one specific
+  operating system's convention for what an absolute path looks like
+  -- correct on POSIX systems, but blind to a Windows-style absolute
+  path like `"C:\\Users\\ada"`, which has no leading `/` at all.
+  `Path(path_str).is_absolute()` delegates to the actual platform
+  `pathlib` is running on, correctly recognizing whichever convention
+  that platform actually uses, instead of assuming one specific style
+  applies everywhere.
+
+  The bug this exercise fixes checks for a hardcoded `/` prefix. The
+  fix uses `Path(...).is_absolute()`, which understands the real
+  platform convention.
+example_code: |
+  # The trap: hardcodes the POSIX convention -- blind to a Windows-
+  # style absolute path with no leading "/" at all.
+  def check_absolute_trap(path_str):
+      return path_str.startswith("/")
+
+  print(check_absolute_trap("C:\\Users\\ada"))
+  # False -- WRONG on Windows, this genuinely IS an absolute path there
+
+  # The fix: Path.is_absolute() understands whatever convention the
+  # actual running platform uses.
+  from pathlib import Path
+
+  def check_absolute(path_str):
+      return Path(path_str).is_absolute()
+
+  print(check_absolute("C:\\Users\\ada"))
+  # True -- correctly recognized on Windows
+starter_code: |
+  def check_absolute(path_str):
+      return path_str.startswith("/")
+
+  print(check_absolute("C:\\Users\\ada"))
+challenge: |
+  Fix `check_absolute` so it returns `Path(path_str).is_absolute()`
+  (imported from `pathlib`), instead of a hardcoded `"/"` prefix check.
+  It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from pathlib import Path, then: return Path(path_str).is_absolute()."
+  - "is_absolute() defers to the actual platform pathlib is running on -- it never assumes one specific OS's convention is the only one that exists."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 23
+difficulty: gotcha
+contains_patterns:
+  - "Path\\(path_str\\)\\.is_absolute\\(\\)"
+concept_tags: [pathlib, cross_platform]

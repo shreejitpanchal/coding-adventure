@@ -1,0 +1,75 @@
+id: ai_120
+title: "Combining Scores on Different Scales Without Normalizing First Skews the Result"
+language: ai
+level: 120
+objective: "Fix a hybrid-ranking combination that adds a keyword score (an unbounded BM25-style score) directly to a vector similarity score (bounded between 0 and 1), letting whichever score happens to have the larger natural range dominate the combined result regardless of true relative importance."
+explanation: |
+  This category's hybrid-search lesson combined keyword and vector
+  scores with a weighted sum -- but that combination only behaves the
+  way the weights suggest if both scores are on comparable scales
+  first. A cosine similarity score is naturally bounded between `0` and
+  `1`. A raw BM25-style keyword score has no such bound and can easily
+  reach into the tens or hundreds for a strong match. Adding these two
+  directly means the keyword score's much larger natural range
+  overwhelms the vector score entirely, regardless of what weights were
+  intended -- a 50/50 weighting is meaningless if one input routinely
+  ranges 0-1 and the other routinely ranges 0-50.
+
+  The bug this exercise fixes combines both scores directly, with no
+  normalization at all. The fix normalizes each score to a common 0-1
+  range (dividing by the maximum score observed for that signal across
+  the candidate set) before combining, so the intended weights actually
+  reflect the intended relative importance.
+example_code: |
+  # The trap: combines scores DIRECTLY -- keyword score's much larger
+  # natural range completely overwhelms the vector score's 0-1 range.
+  def combined_score_trap(keyword_score, vector_score, keyword_weight=0.5, vector_weight=0.5):
+      return keyword_weight * keyword_score + vector_weight * vector_score
+
+  candidates = [
+      {"id": "a", "keyword_score": 45.0, "vector_score": 0.02},
+      {"id": "b", "keyword_score": 2.0, "vector_score": 0.95},
+  ]
+  ranked_trap = sorted(candidates, key=lambda c: combined_score_trap(c["keyword_score"], c["vector_score"]), reverse=True)
+  print(ranked_trap[0]["id"])   # "a" -- its raw keyword score (45) dominates regardless of the 50/50 weighting intent
+
+  # The fix: normalize each score to 0-1 (relative to the candidate set's max) BEFORE combining.
+  def rank_normalized(candidates, keyword_weight=0.5, vector_weight=0.5):
+      max_kw = max(c["keyword_score"] for c in candidates)
+      max_vec = max(c["vector_score"] for c in candidates)
+      def combined(c):
+          norm_kw = c["keyword_score"] / max_kw if max_kw else 0
+          norm_vec = c["vector_score"] / max_vec if max_vec else 0
+          return keyword_weight * norm_kw + vector_weight * norm_vec
+      return sorted(candidates, key=combined, reverse=True)
+
+  print(rank_normalized(candidates)[0]["id"])   # "b" -- correctly reflects the intended 50/50 balance
+starter_code: |
+  def rank_normalized(candidates, keyword_weight=0.5, vector_weight=0.5):
+      def combined(c):
+          return keyword_weight * c["keyword_score"] + vector_weight * c["vector_score"]
+      return sorted(candidates, key=combined, reverse=True)
+
+  candidates = [
+      {"id": "a", "keyword_score": 45.0, "vector_score": 0.02},
+      {"id": "b", "keyword_score": 2.0, "vector_score": 0.95},
+  ]
+  print(rank_normalized(candidates)[0]["id"])
+challenge: |
+  Fix `rank_normalized` so it normalizes each candidate's keyword and
+  vector scores against the candidate set's own maximums before
+  combining them, instead of combining the raw scores directly. It
+  should print `b`, not `a`.
+expected_output: |
+  b
+hints:
+  - "Compute max_kw = max(c[\"keyword_score\"] for c in candidates) and max_vec = max(c[\"vector_score\"] for c in candidates) once, outside the per-candidate combined() function."
+  - "Inside combined(c), divide each score by its own max before applying the weights: norm_kw = c[\"keyword_score\"] / max_kw, and likewise for norm_vec."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 35
+difficulty: deep_dive
+contains_patterns:
+  - "max_kw = max\\(c\\[.keyword_score.\\]"
+concept_tags: [rag, hybrid_search, score_normalization]

@@ -1,0 +1,61 @@
+id: gotcha_gauntlet_39
+title: "The Multi-Key Sort Where reverse=True Flipped a Key It Wasn't Supposed To"
+language: python
+level: 284
+objective: "Fix a multi-key sort using reverse=True on the whole sorted() call, which reverses EVERY key uniformly, when only ONE of the keys was actually meant to sort descending -- negating the numeric key achieves that selectively instead."
+explanation: |
+  `sorted(data, key=..., reverse=True)` reverses the *entire* sort
+  order uniformly -- every key the `key` function returns gets flipped
+  the same way, with no way to say "reverse just this one field, but
+  keep that other one ascending." Sorting records by name ascending
+  but score *descending* can't be expressed with a single tuple key
+  plus `reverse=True`, since that flips the name ordering too,
+  producing names in the wrong direction as a side effect of fixing
+  the score direction.
+
+  The fix, for a numeric field specifically, is negating it inside the
+  key function instead of reversing the whole sort -- `key=lambda r:
+  (r[0], -r[1])` sorts by name ascending and by the negated score,
+  which is equivalent to sorting the real score descending, with no
+  `reverse=True` needed at all.
+example_code: |
+  # The trap: reverse=True flips BOTH keys, not just the score.
+  records = [("bob", 90), ("ann", 90), ("cy", 80)]
+
+  def sort_records_trap(records):
+      return sorted(records, key=lambda r: (r[0], r[1]), reverse=True)
+
+  print(sort_records_trap(records))
+  # [('cy', 80), ('bob', 90), ('ann', 90)] -- WRONG, names got reversed too
+
+  # The fix: negate the numeric key instead of reversing the whole sort.
+  def sort_records(records):
+      return sorted(records, key=lambda r: (r[0], -r[1]))
+
+  print(sort_records(records))
+  # [('ann', 90), ('bob', 90), ('cy', 80)] -- names ascending, score descending
+starter_code: |
+  records = [("bob", 90), ("ann", 90), ("cy", 80)]
+
+  def sort_records(records):
+      return sorted(records, key=lambda r: (r[0], r[1]), reverse=True)
+
+  print(sort_records(records))
+challenge: |
+  Fix `sort_records` so it uses `key=lambda r: (r[0], -r[1])` with no
+  `reverse=True`, instead of reversing the whole sort. It should print
+  `[('ann', 90), ('bob', 90), ('cy', 80)]`, not
+  `[('cy', 80), ('bob', 90), ('ann', 90)]`.
+expected_output: |
+  [('ann', 90), ('bob', 90), ('cy', 80)]
+hints:
+  - "return sorted(records, key=lambda r: (r[0], -r[1]))."
+  - "reverse=True flips the ENTIRE sort order -- negating just the numeric field inside the key function is what reverses only that one field selectively."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 39
+difficulty: deep_dive
+contains_patterns:
+  - "key=lambda r: \\(r\\[0\\], -r\\[1\\]\\)"
+concept_tags: [sorting, multi_key, gotchas]

@@ -1,0 +1,61 @@
+id: gotcha_gauntlet_07
+title: "The Button Handlers That All Reported the Same Number"
+language: python
+level: 252
+objective: "Fix a loop that builds closures capturing a loop variable by reference, so every closure ends up seeing the loop's FINAL value instead of the value it had when the closure was created."
+explanation: |
+  A closure created inside a loop doesn't capture the loop variable's
+  *current value* at the moment it's defined -- it captures the
+  variable itself, by reference, and looks it up fresh every time the
+  closure actually runs. Since the loop keeps reassigning that same
+  variable on every iteration, by the time any of the closures are
+  finally called, the loop has already finished and the variable holds
+  its very last value -- so every closure reports that same final
+  value, not the distinct value each one was "supposed" to remember.
+
+  The standard fix is to force the current value to be captured
+  immediately, by binding it as a default argument value (`lambda i=i:
+  ...`) -- default argument values ARE evaluated once, at function
+  definition time, which is exactly the "capture now" behavior the
+  loop needs but doesn't get automatically.
+example_code: |
+  # The trap: each lambda captures the LOOP VARIABLE, not its value at
+  # the time -- by the time they're called, i is stuck at its final value.
+  handlers_broken = []
+  for i in range(3):
+      handlers_broken.append(lambda: i)
+
+  print([h() for h in handlers_broken])
+  # [2, 2, 2] -- WRONG, every closure reports the same final value of i
+
+  # The fix: bind the current value immediately via a default argument.
+  handlers = []
+  for i in range(3):
+      handlers.append(lambda i=i: i)
+
+  print([h() for h in handlers])
+  # [0, 1, 2] -- correctly captured each iteration's own value
+starter_code: |
+  handlers = []
+  for i in range(3):
+      handlers.append(lambda: i)
+
+  print([h() for h in handlers])
+challenge: |
+  Fix this so each lambda captures the value of `i` it had at the time
+  it was created, using `lambda i=i: i`, instead of capturing the
+  shared loop variable itself. It should print `[0, 1, 2]`, not
+  `[2, 2, 2]`.
+expected_output: |
+  [0, 1, 2]
+hints:
+  - "Change lambda: i to lambda i=i: i."
+  - "Default argument values are evaluated ONCE, at definition time -- that's what forces the current value to be captured immediately, instead of looked up later."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 7
+difficulty: gotcha
+contains_patterns:
+  - "lambda i=i: i"
+concept_tags: [closures, late_binding, gotchas]

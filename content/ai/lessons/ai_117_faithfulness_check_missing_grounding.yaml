@@ -1,0 +1,64 @@
+id: ai_117
+title: "A Faithfulness Check Must Verify the Claim Traces Back to Retrieved Text"
+language: ai
+level: 117
+objective: "Fix a groundedness check that only verifies the generated answer isn't empty, instead of actually checking whether the answer's claim is substantiated by the retrieved context it was supposed to be grounded in."
+explanation: |
+  A RAG answer is only as trustworthy as its connection to the actual
+  retrieved content -- a model can still generate something that sounds
+  fluent and confident while stating a fact the retrieved context never
+  actually said (a **hallucination**, even with real context sitting
+  right there unused or misread). A **faithfulness** (or groundedness)
+  check exists specifically to catch this: verifying that the specific
+  claim in the generated answer can actually be found in, or reasonably
+  derived from, the context that was retrieved to support it.
+
+  The bug this exercise fixes only checks that the generated answer is
+  a non-empty string -- true of both a well-grounded answer and a
+  complete fabrication with zero connection to the retrieved context.
+  The fix checks whether the answer's key claim actually appears in the
+  retrieved context, correctly distinguishing a grounded answer from an
+  ungrounded one.
+example_code: |
+  # The trap: only checks the answer isn't EMPTY -- says nothing about
+  # whether it's actually grounded in the retrieved context at all.
+  def is_grounded_trap(answer, retrieved_context):
+      return len(answer) > 0
+
+  retrieved_context = "The company was founded in 2015 and is headquartered in Austin."
+  hallucinated_answer = "The company was founded in 1998."   # retrieved context says 2015, NOT 1998
+  print(is_grounded_trap(hallucinated_answer, retrieved_context))   # True -- WRONG, this is a hallucination
+
+  # The fix: check the answer's key claim actually appears in the retrieved context.
+  def is_grounded(answer, retrieved_context):
+      import re
+      answer_numbers = re.findall(r"\d+", answer)
+      context_numbers = re.findall(r"\d+", retrieved_context)
+      return all(n in context_numbers for n in answer_numbers)
+
+  print(is_grounded(hallucinated_answer, retrieved_context))   # False -- correctly catches the ungrounded date
+starter_code: |
+  def is_grounded(answer, retrieved_context):
+      return len(answer) > 0
+
+  retrieved_context = "The company was founded in 2015 and is headquartered in Austin."
+  hallucinated_answer = "The company was founded in 1998."
+  print(is_grounded(hallucinated_answer, retrieved_context))
+challenge: |
+  Fix `is_grounded` so it extracts the numbers mentioned in `answer`
+  and checks that every one of them also appears among the numbers in
+  `retrieved_context`, instead of just checking the answer is
+  non-empty. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add `import re` and extract numbers with re.findall(r\"\\d+\", answer) and re.findall(r\"\\d+\", retrieved_context)."
+  - "Return all(n in context_numbers for n in answer_numbers) -- the answer's \"1998\" never appears in the context's numbers (\"2015\"), so this correctly returns False."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 32
+difficulty: deep_dive
+contains_patterns:
+  - "context_numbers"
+concept_tags: [rag, faithfulness, hallucination, grounding]

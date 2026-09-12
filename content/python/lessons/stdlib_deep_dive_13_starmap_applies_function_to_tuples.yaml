@@ -1,0 +1,59 @@
+id: stdlib_deep_dive_13
+title: "starmap Applies a Function to Each Tuple's Unpacked Arguments"
+language: python
+level: 214
+objective: "Replace a manual loop that indexes into each tuple to apply a function with itertools.starmap, which unpacks each tuple into the function's arguments directly."
+explanation: |
+  `map(func, iterable)` calls `func` with each element as a *single*
+  argument, which doesn't work when each element is itself a tuple of
+  several values meant to be separate arguments. Indexing into each
+  tuple by hand (`pair[0] * pair[1]`) works but hardcodes the tuple's
+  shape into the loop body. `itertools.starmap(func, iterable)` handles
+  this directly: it unpacks each tuple with `*` before calling `func`,
+  so `func` receives the tuple's elements as separate positional
+  arguments, exactly the way it would if called directly.
+example_code: |
+  # A manual loop, indexing into each tuple by hand.
+  def apply_all_loop(pairs):
+      result = []
+      for pair in pairs:
+          result.append(pair[0] * pair[1])
+      return result
+
+  print(apply_all_loop([(2, 3), (4, 5)]))
+  # [6, 20]
+
+  # starmap unpacks each tuple into the function's arguments directly.
+  from itertools import starmap
+  from operator import mul
+
+  def apply_all(pairs):
+      return list(starmap(mul, pairs))
+
+  print(apply_all([(2, 3), (4, 5)]))
+  # [6, 20]
+starter_code: |
+  def apply_all(pairs):
+      result = []
+      for pair in pairs:
+          result.append(pair[0] * pair[1])
+      return result
+
+  print(apply_all([(2, 3), (4, 5)]))
+challenge: |
+  Rewrite `apply_all` using `itertools.starmap(mul, pairs)` (with `mul`
+  imported from `operator`), instead of manually indexing into each
+  tuple. Keep the same output: [6, 20].
+expected_output: |
+  [6, 20]
+hints:
+  - "from itertools import starmap; from operator import mul, then: return list(starmap(mul, pairs))."
+  - "starmap unpacks each tuple with * before calling the function -- (2, 3) becomes mul(2, 3), not mul((2, 3))."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 13
+difficulty: core
+contains_patterns:
+  - "starmap\\(mul, pairs\\)"
+concept_tags: [itertools, starmap]

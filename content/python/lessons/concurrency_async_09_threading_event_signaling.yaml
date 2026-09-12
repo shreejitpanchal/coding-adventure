@@ -1,0 +1,89 @@
+id: concurrency_async_09
+title: "threading.Event Signals Readiness -- A Manual Flag Needs a Lock To Be Safe"
+language: python
+level: 299
+objective: "Fix code that signals a worker thread using a plain boolean flag polled in a sleep loop, when threading.Event provides a proper, efficient wait()/set() signaling mechanism built specifically for this."
+explanation: |
+  A plain `ready = False` flag, checked with `while not ready: time.
+  sleep(...)`, works in simple cases but has real problems: it wastes
+  CPU cycles re-checking on a timer instead of actually waking up the
+  instant the flag changes, and reading/writing a plain variable
+  across threads with no synchronization is only safe by
+  happenstance for something as simple as a boolean (CPython's GIL
+  makes a single attribute read/write atomic, but relying on that
+  incidental guarantee isn't the same as using a tool actually
+  designed for cross-thread signaling). `threading.Event` is that
+  tool: `event.wait()` blocks efficiently until `event.set()` is
+  called from another thread, waking up immediately rather than
+  polling on a timer, and it's explicitly documented as safe for
+  exactly this cross-thread signaling use case.
+
+  The fix replaces the manual flag and sleep loop with a
+  `threading.Event`, using `.wait()` and `.set()`.
+example_code: |
+  # The trap: a plain flag, polled in a sleep loop.
+  import threading, time
+
+  ready_trap = False
+
+  def worker_trap(log):
+      while not ready_trap:
+          time.sleep(0.001)
+      log.append("worker saw ready")
+
+  log_trap = []
+  t_trap = threading.Thread(target=worker_trap, args=(log_trap,))
+  t_trap.start()
+  ready_trap = True
+  t_trap.join()
+  print(log_trap)
+  # ['worker saw ready'] -- works, but via inefficient polling on a plain flag
+
+  # The fix: threading.Event blocks efficiently until set() is called.
+  event = threading.Event()
+
+  def worker(log):
+      event.wait()
+      log.append("worker saw ready")
+
+  log = []
+  t = threading.Thread(target=worker, args=(log,))
+  t.start()
+  event.set()
+  t.join()
+  print(log)
+  # ['worker saw ready'] -- correctly signaled, no polling loop needed
+starter_code: |
+  import threading, time
+
+  ready = False
+
+  def worker(log):
+      while not ready:
+          time.sleep(0.001)
+      log.append("worker saw ready")
+
+  log = []
+  t = threading.Thread(target=worker, args=(log,))
+  t.start()
+  ready = True
+  t.join()
+  print(log)
+challenge: |
+  Rewrite this using `threading.Event` -- `event.wait()` in the worker,
+  `event.set()` in the main thread -- instead of a plain flag polled in
+  a sleep loop. Keep the same output: `['worker saw ready']`.
+expected_output: |
+  ['worker saw ready']
+hints:
+  - "event = threading.Event(); worker calls event.wait(); main thread calls event.set()."
+  - "event.wait() blocks efficiently until set() is called from another thread -- no manual sleep-and-recheck polling loop needed."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 9
+difficulty: core
+contains_patterns:
+  - "threading\\.Event\\(\\)"
+  - "event\\.wait\\(\\)"
+concept_tags: [threading, event, concurrency]

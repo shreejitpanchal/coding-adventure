@@ -1,0 +1,46 @@
+id: core_refresher_45
+title: "type() Can Build a Class Dynamically, the Same One a class Statement Would"
+language: python
+level: 158
+objective: "Build the same class dynamically with the three-argument form of type() instead of an ordinary class statement, to see that a class statement is really just sugar over exactly this call."
+explanation: |
+  A `class` statement is itself sugar over a call to `type()` -- the
+  three-argument form, `type(name, bases, namespace)`, builds a genuine
+  class object directly: `name` becomes the class's `__name__`, `bases`
+  is a tuple of parent classes, and `namespace` is a dict of the
+  class's attributes and methods. `class Dog: sound = "woof"` and
+  `Dog = type("Dog", (), {"sound": "woof"})` produce equivalent class
+  objects -- the ordinary syntax is just a more readable way of
+  expressing the exact same underlying construction.
+example_code: |
+  # An ordinary class statement.
+  class DogClass:
+      sound = "woof"
+
+  print(DogClass().sound)                  # woof
+
+  # type()'s three-argument form builds the same kind of class object.
+  Dog = type("Dog", (), {"sound": "woof"})
+  print(Dog().sound)                       # woof
+starter_code: |
+  class Dog:
+      sound = "woof"
+
+  print(Dog().sound)
+challenge: |
+  Replace the `class Dog` statement with `Dog = type("Dog", (),
+  {"sound": "woof"})`, building the same class dynamically. Keep the
+  same output: woof.
+expected_output: |
+  woof
+hints:
+  - "Dog = type(\"Dog\", (), {\"sound\": \"woof\"})"
+  - "The three arguments to type() are: the class's name, a tuple of base classes, and a dict of its attributes -- exactly what a class statement expresses more readably."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 45
+difficulty: core
+contains_patterns:
+  - "type\\(\"Dog\", \\(\\), \\{\"sound\": \"woof\"\\}\\)"
+concept_tags: [metaprogramming, type_function]

@@ -1,0 +1,56 @@
+id: gotcha_gauntlet_26
+title: "The Config Backup That Wasn't Actually Independent"
+language: python
+level: 271
+objective: "Fix code that backs up a dict of lists with dict(original) (a shallow copy -- the inner lists are still the SAME shared objects), when copy.deepcopy is what actually produces independent inner lists too."
+explanation: |
+  `dict(original)` (or `original.copy()`) makes a shallow copy -- a
+  genuinely new outer dict, but every *value* inside it is still the
+  exact same object as in the original. For a dict whose values are
+  lists, that means mutating one of those inner lists through the
+  "backup" also mutates the original's corresponding list, since
+  there was never more than one list object in the first place. A
+  "backup before modifying" pattern built on a shallow copy silently
+  fails to actually protect anything nested.
+
+  `copy.deepcopy(original)` recursively copies every nested level, so
+  the backup's inner lists are genuinely independent objects --
+  mutating them afterward leaves the original completely untouched.
+example_code: |
+  # The trap: dict(original) only copies the OUTER dict -- inner lists are shared.
+  import copy
+
+  original_trap = {"tags": ["a", "b"]}
+  backup_trap = dict(original_trap)
+  backup_trap["tags"].append("c")
+  print(original_trap["tags"])
+  # ['a', 'b', 'c'] -- WRONG, mutating the "backup" corrupted the original
+
+  # The fix: deepcopy recursively copies every nested level.
+  original = {"tags": ["a", "b"]}
+  backup = copy.deepcopy(original)
+  backup["tags"].append("c")
+  print(original["tags"])
+  # ['a', 'b'] -- correctly untouched, since "tags" is a genuinely independent list
+starter_code: |
+  original = {"tags": ["a", "b"]}
+  backup = dict(original)
+  backup["tags"].append("c")
+  print(original["tags"])
+challenge: |
+  Fix this so `backup = copy.deepcopy(original)` (importing `copy`),
+  instead of `dict(original)`. It should print `['a', 'b']`, not
+  `['a', 'b', 'c']`.
+expected_output: |
+  ['a', 'b']
+hints:
+  - "import copy, then: backup = copy.deepcopy(original)."
+  - "dict(original) only duplicates the outer dict -- every value inside it, including nested lists, is still the exact same shared object as the original."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 26
+difficulty: gotcha
+contains_patterns:
+  - "copy\\.deepcopy\\(original\\)"
+concept_tags: [copy, deepcopy, gotchas]

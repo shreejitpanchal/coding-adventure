@@ -1,0 +1,55 @@
+id: ai_263
+title: "A Score Threshold Only Works If Low-Scoring Results Are Actually Dropped"
+language: ai
+level: 263
+objective: "Fix a threshold filter that returns every result regardless of score, when results below the configured relevance threshold should actually be excluded, not passed through unchanged."
+explanation: |
+  A retriever's score threshold exists to cut off results that are
+  technically the nearest available matches but still too weakly
+  related to be useful -- returning them anyway defeats the entire
+  purpose of having a threshold in the first place, letting
+  low-relevance content flow downstream as if it had passed a
+  relevance bar it never actually cleared.
+
+  The bug this exercise fixes returns `results` unchanged, ignoring
+  `threshold` entirely. The fix filters to only the results whose score
+  meets or exceeds it.
+example_code: |
+  # The trap: returns EVERYTHING, regardless of score -- the threshold
+  # is never actually applied.
+  def filter_by_threshold_trap(results, threshold):
+      return results
+
+  results = [{"doc": "a", "score": 0.9}, {"doc": "b", "score": 0.3}, {"doc": "c", "score": 0.6}]
+  print(len(filter_by_threshold_trap(results, 0.5)))
+  # 3 -- low-relevance doc "b" wasn't filtered out
+
+  # The fix: filter to only results meeting or exceeding the threshold.
+  def filter_by_threshold(results, threshold):
+      return [r for r in results if r["score"] >= threshold]
+
+  print(len(filter_by_threshold(results, 0.5)))
+  # 2 -- correctly excluded the low-relevance result
+starter_code: |
+  def filter_by_threshold(results, threshold):
+      return results
+
+  results = [{"doc": "a", "score": 0.9}, {"doc": "b", "score": 0.3}, {"doc": "c", "score": 0.6}]
+  print(len(filter_by_threshold(results, 0.5)))
+challenge: |
+  Fix `filter_by_threshold` so it returns `[r for r in results if
+  r["score"] >= threshold]`, instead of `results` unchanged. It should
+  print `2`, not `3`.
+expected_output: |
+  2
+hints:
+  - "Replace return results with return [r for r in results if r[\"score\"] >= threshold]."
+  - "Doc \"b\" has a score of 0.3, below the 0.5 threshold -- a correct filter excludes it entirely, not just flags it."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 43
+difficulty: warmup
+contains_patterns:
+  - "r\\[\"score\"\\] >= threshold"
+concept_tags: [langchain, retriever, score_threshold]

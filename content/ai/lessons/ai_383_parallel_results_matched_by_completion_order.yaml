@@ -1,0 +1,60 @@
+id: ai_383
+title: "Parallel Tool Results Must Be Matched by Name, Not by Completion Order"
+language: ai
+level: 383
+objective: "Fix a result-collection function that assumes tool results arrive in the same order the calls were requested, when concurrently executed tool calls can genuinely finish in a different order -- matching by position instead of name pairs each result with the wrong call."
+explanation: |
+  When several tool calls run concurrently, nothing guarantees they
+  finish in the order they were started -- a fast tool naturally
+  completes before a slow one that was actually requested first.
+  Zipping requested tool names against results by position silently
+  assumes an ordering guarantee that was never actually made, pairing
+  each result with whichever name happens to occupy the same list
+  index rather than the tool it actually came from.
+
+  The bug this exercise fixes assumes `results_in_completion_order`
+  lines up positionally with `tool_calls`. The fix builds a lookup by
+  each result's own tool name first.
+example_code: |
+  # The trap: assumes results arrive in the SAME order the calls were
+  # made -- but concurrently executed calls don't guarantee that.
+  def collect_results_trap(tool_calls, results_in_completion_order):
+      return {tool_calls[i]: results_in_completion_order[i] for i in range(len(tool_calls))}
+
+  tool_calls = ["get_weather", "get_time"]
+  results_in_completion_order = [("get_time", "3pm"), ("get_weather", "sunny")]   # "get_time" finished FIRST
+  print(collect_results_trap(tool_calls, results_in_completion_order)["get_weather"])
+  # "3pm" -- WRONG tool result entirely, mismatched by position
+
+  # The fix: build a lookup by each result's own tool name first.
+  def collect_results(tool_calls, results_in_completion_order):
+      results_by_name = dict(results_in_completion_order)
+      return {name: results_by_name[name] for name in tool_calls}
+
+  print(collect_results(tool_calls, results_in_completion_order)["get_weather"])
+  # "sunny" -- correctly matched by name, regardless of completion order
+starter_code: |
+  def collect_results(tool_calls, results_in_completion_order):
+      return {tool_calls[i]: results_in_completion_order[i] for i in range(len(tool_calls))}
+
+  tool_calls = ["get_weather", "get_time"]
+  results_in_completion_order = [("get_time", "3pm"), ("get_weather", "sunny")]
+  print(collect_results(tool_calls, results_in_completion_order)["get_weather"])
+challenge: |
+  Fix `collect_results` so it builds `results_by_name =
+  dict(results_in_completion_order)` and looks each tool up by its own
+  name, instead of matching purely by position. It should print
+  `sunny`, not `3pm`.
+expected_output: |
+  sunny
+hints:
+  - "results_by_name = dict(results_in_completion_order), then return {name: results_by_name[name] for name in tool_calls}."
+  - "get_time finished before get_weather in this example -- matching by position pairs get_weather with get_time's result purely by coincidence of list position."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 28
+difficulty: gotcha
+contains_patterns:
+  - "results_by_name = dict\\(results_in_completion_order\\)"
+concept_tags: [solace_agent_mesh, agent_reasoning_loop, result_correlation]

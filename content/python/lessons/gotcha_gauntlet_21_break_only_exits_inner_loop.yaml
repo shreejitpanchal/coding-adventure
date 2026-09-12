@@ -1,0 +1,78 @@
+id: gotcha_gauntlet_21
+title: "The break That Only Escaped the Inner Loop, Not Both"
+language: python
+level: 266
+objective: "Fix code that assumes break exits every loop it's nested inside, when break only ever exits the SINGLE loop directly containing it -- a found flag checked in the outer loop is what actually stops both."
+explanation: |
+  `break` only terminates the *innermost* loop it's textually inside --
+  it has no notion of "escape everything," no matter how many loops are
+  nested around it. Searching a 2D grid with a nested `for` loop and
+  calling `break` the instant a match is found only stops the *inner*
+  row-scanning loop; the *outer* loop keeps right on going to the next
+  row, still running the inner loop fresh each time, long after the
+  match was already found.
+
+  The standard fix is a flag checked by the outer loop: set `found =
+  True` alongside the `break` that stops the inner loop, then check
+  that flag immediately after the inner loop ends and `break` the
+  outer loop too if it's set -- correctly stopping both once a match is
+  found, not just the innermost one.
+example_code: |
+  # The trap: break only escapes the INNER loop -- the outer one keeps going.
+  grid = [[1, 2], [3, 4], [5, 6]]
+  visited_trap = 0
+
+  for row in grid:
+      for val in row:
+          visited_trap += 1
+          if val == 3:
+              break
+
+  print(visited_trap)
+  # 5 -- WRONG, kept scanning rows [3,4] fully skipped only ITS remainder,
+  # then still fully scanned [5, 6] afterward too
+
+  # The fix: a flag checked by the OUTER loop stops both.
+  visited = 0
+  found = False
+
+  for row in grid:
+      for val in row:
+          visited += 1
+          if val == 3:
+              found = True
+              break
+      if found:
+          break
+
+  print(visited)
+  # 3 -- correctly stopped scanning entirely, the instant 3 was found
+starter_code: |
+  grid = [[1, 2], [3, 4], [5, 6]]
+  visited = 0
+
+  for row in grid:
+      for val in row:
+          visited += 1
+          if val == 3:
+              break
+
+  print(visited)
+challenge: |
+  Fix this using a `found` flag: set it `True` alongside the inner
+  `break`, then check `if found: break` right after the inner loop to
+  also stop the outer loop. It should print `3`, not `5`.
+expected_output: |
+  3
+hints:
+  - "found = False before the outer loop; set found = True next to the inner break; add if found: break right after the inner for loop ends."
+  - "break only ever exits the ONE loop directly containing it -- an outer loop needs its own explicit break, triggered by a flag the inner loop sets."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 21
+difficulty: gotcha
+contains_patterns:
+  - "found = True"
+  - "if found:"
+concept_tags: [loops, break, gotchas]

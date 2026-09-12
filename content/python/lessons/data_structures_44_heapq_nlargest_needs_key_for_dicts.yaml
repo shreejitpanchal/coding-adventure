@@ -1,0 +1,64 @@
+id: data_structures_44
+title: "heapq.nlargest Needs a key Function to Compare Records by One Field"
+language: python
+level: 201
+objective: "Fix a call to heapq.nlargest that passes a list of dicts with no key function, when heapq has no way to compare two dicts directly -- a key function is what tells it which field to actually compare."
+explanation: |
+  `heapq.nlargest(n, iterable)` with no `key` argument compares
+  elements directly using their own default ordering -- which works
+  fine for plain numbers, but a dict has no default ordering at all,
+  so comparing two of them raises `TypeError` immediately, the moment
+  `nlargest` needs to determine which of two records is "larger." A
+  `key` function tells it exactly what to compare instead: `key=lambda
+  p: p["score"]` compares each record by its `"score"` field, without
+  ever needing to compare the dicts themselves.
+
+  The bug this exercise fixes calls `nlargest` with no `key` at all.
+  The fix adds one, extracting the field to actually compare by.
+example_code: |
+  # The trap: no key function -- heapq tries to compare the DICTS
+  # directly, which have no defined ordering at all.
+  import heapq
+
+  def top_scorer_trap(people):
+      return heapq.nlargest(1, people)
+
+  try:
+      top_scorer_trap([{"name": "Ada", "score": 90}, {"name": "Bo", "score": 95}])
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- TypeError comparing two dicts directly
+
+  # The fix: a key function tells heapq what field to compare by.
+  def top_scorer(people):
+      return heapq.nlargest(1, people, key=lambda p: p["score"])
+
+  print(top_scorer([{"name": "Ada", "score": 90}, {"name": "Bo", "score": 95}])[0]["name"])
+  # "Bo" -- correctly compared by score, never the dicts themselves
+starter_code: |
+  import heapq
+
+  def top_scorer(people):
+      return heapq.nlargest(1, people)
+
+  try:
+      print(top_scorer([{"name": "Ada", "score": 90}, {"name": "Bo", "score": 95}])[0]["name"])
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `top_scorer` so it passes `key=lambda p: p["score"]` to
+  `heapq.nlargest`. It should print `Bo`, not `crashed`.
+expected_output: |
+  Bo
+hints:
+  - "Add key=lambda p: p[\"score\"] as a third argument to heapq.nlargest."
+  - "With no key, nlargest tries to compare the dicts themselves to decide which is \"larger\" -- dicts simply have no ordering defined for that comparison to use."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 44
+difficulty: gotcha
+contains_patterns:
+  - "key=lambda p: p\\[\"score\"\\]"
+concept_tags: [heapq, key_functions]

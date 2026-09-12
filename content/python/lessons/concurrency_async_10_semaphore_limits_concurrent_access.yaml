@@ -1,0 +1,61 @@
+id: concurrency_async_10
+title: "A Semaphore Caps How Many Can Hold It at Once -- A Lock Only Ever Allows One"
+language: python
+level: 300
+objective: "Fix code using a Lock to limit access to a resource pool that legitimately supports more than one concurrent user, when a Semaphore(n) allows up to n holders at once instead of only ever one."
+explanation: |
+  A `Lock` only ever allows *one* holder at a time -- correct for
+  protecting a single shared value, but overly restrictive for a
+  resource pool that genuinely supports several simultaneous users,
+  like a fixed-size connection pool that can safely serve, say, three
+  requests at once. `threading.Semaphore(n)` generalizes this: it
+  maintains an internal counter starting at `n`, and up to `n`
+  separate `acquire()` calls can succeed before a `(n + 1)`th one has
+  to wait for a `release()` -- correctly modeling "up to N concurrent
+  holders," not just "exactly one."
+
+  The fix replaces the `Lock` (which only ever allows one acquire to
+  succeed before needing a release) with `Semaphore(3)`, correctly
+  allowing three concurrent acquisitions.
+example_code: |
+  # The trap: a Lock only EVER allows ONE holder before needing a release.
+  import threading
+
+  pool_trap = threading.Lock()
+  print(pool_trap.acquire(blocking=False))
+  print(pool_trap.acquire(blocking=False))
+  print(pool_trap.acquire(blocking=False))
+  # True False False -- WRONG if up to 3 concurrent holders should be allowed
+
+  # The fix: Semaphore(3) allows up to 3 holders before the 4th has to wait.
+  pool = threading.Semaphore(3)
+  print(pool.acquire(blocking=False))
+  print(pool.acquire(blocking=False))
+  print(pool.acquire(blocking=False))
+  # True True True -- correctly allowed all 3 concurrent acquisitions
+starter_code: |
+  import threading
+
+  pool = threading.Lock()
+  print(pool.acquire(blocking=False))
+  print(pool.acquire(blocking=False))
+  print(pool.acquire(blocking=False))
+challenge: |
+  Fix this so `pool = threading.Semaphore(3)` is used instead of
+  `threading.Lock()`. It should print `True` on all three lines, not
+  `True False False`.
+expected_output: |
+  True
+  True
+  True
+hints:
+  - "Change pool = threading.Lock() to pool = threading.Semaphore(3)."
+  - "A Lock only ever allows one successful acquire before needing a release -- Semaphore(n) allows up to n concurrent acquisitions, correctly modeling a resource pool bigger than 1."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 10
+difficulty: core
+contains_patterns:
+  - "threading\\.Semaphore\\(3\\)"
+concept_tags: [threading, semaphore, concurrency]

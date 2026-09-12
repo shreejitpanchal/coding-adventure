@@ -1,0 +1,66 @@
+id: ai_147
+title: "Aggregating Sub-Agent Results Means Combining All of Them, Not Just the Last"
+language: ai
+level: 147
+objective: "Fix an aggregation function that overwrites its result with each sub-agent's output in turn, ending up with only the LAST sub-agent's contribution instead of a combined result from all of them."
+explanation: |
+  A supervisor that delegates a task to several sub-agents (this
+  category's previous lesson) needs to actually combine their
+  individual results afterward -- a research task split across a
+  "market_data" sub-agent and a "competitor_analysis" sub-agent is only
+  useful once both contributions are synthesized together, not if one
+  quietly overwrites the other because of how the aggregation loop was
+  written.
+
+  The bug this exercise fixes assigns each sub-agent's result to the
+  same variable in a loop, so only the final sub-agent's output
+  survives by the time the loop ends -- every earlier contribution is
+  silently discarded. The fix collects every sub-agent's result into a
+  dict keyed by sub-agent name, preserving all of them.
+example_code: |
+  # The trap: overwrites the SAME variable each iteration -- only the
+  # LAST sub-agent's result survives once the loop finishes.
+  def aggregate_trap(subagent_results):
+      combined = None
+      for name, result in subagent_results.items():
+          combined = result   # bug: overwrites, doesn't accumulate
+      return combined
+
+  subagent_results = {"market_data": "Market grew 8%", "competitor_analysis": "3 new competitors entered"}
+  print(aggregate_trap(subagent_results))   # only ONE of the two results survives -- whichever was iterated last
+
+  # The fix: collect EVERY sub-agent's result, keyed by name.
+  def aggregate(subagent_results):
+      combined = {}
+      for name, result in subagent_results.items():
+          combined[name] = result
+      return combined
+
+  print(len(aggregate(subagent_results)))   # 2 -- correctly preserves both sub-agents' contributions
+starter_code: |
+  def aggregate(subagent_results):
+      combined = None
+      for name, result in subagent_results.items():
+          combined = result
+      return combined
+
+  subagent_results = {"market_data": "Market grew 8%", "competitor_analysis": "3 new competitors entered"}
+  print(len(aggregate(subagent_results)))
+challenge: |
+  Fix `aggregate` so it builds a dict collecting every sub-agent's
+  result under its own name, instead of overwriting a single variable
+  each iteration. `len(aggregate(subagent_results))` should print `2`,
+  not the length of just one string.
+expected_output: |
+  2
+hints:
+  - "Initialize combined = {} (a dict), and inside the loop do combined[name] = result instead of combined = result."
+  - "Returning a dict with one entry per sub-agent means len() correctly counts the number of sub-agents whose results were preserved."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 17
+difficulty: gotcha
+contains_patterns:
+  - "combined\\[name\\] = result"
+concept_tags: [agentic_frameworks, multi_agent, result_aggregation]

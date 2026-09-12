@@ -1,0 +1,61 @@
+id: ai_271
+title: "A Fan-Out Edge List Means Running Every Listed Node, Not Just the First"
+language: ai
+level: 271
+objective: "Fix a fan-out step that only runs the first node named in a list of outgoing edges, when a fan-out is supposed to trigger every listed node, not pick just one of them."
+explanation: |
+  Where a plain edge sends execution to exactly one next node, a
+  fan-out edge names *several* next nodes that should all run off the
+  same trigger -- notifying a user, logging an event, and updating a
+  database might all need to happen after one classification step,
+  with none of them depending on the others. Running only the first
+  node in that list silently drops every other listed node -- nothing
+  crashes, but everything after the first entry in the fan-out simply
+  never executes.
+
+  The bug this exercise fixes takes only `edges[node_name][0]`. The fix
+  loops over every node name in the fan-out list.
+example_code: |
+  # The trap: only runs the FIRST listed next node, ignoring the rest
+  # of the fan-out list entirely.
+  def run_fanout_trap(node_name, edges, nodes, state):
+      next_node = edges[node_name][0]
+      return [nodes[next_node](state)]
+
+  edges = {"classify": ["notify_user", "log_event", "update_db"]}
+  nodes = {"notify_user": lambda s: "notified", "log_event": lambda s: "logged", "update_db": lambda s: "updated"}
+  print(len(run_fanout_trap("classify", edges, nodes, {})))
+  # 1 -- only one of the three fan-out targets actually ran
+
+  # The fix: run every node named in the fan-out list.
+  def run_fanout(node_name, edges, nodes, state):
+      return [nodes[next_node](state) for next_node in edges[node_name]]
+
+  print(len(run_fanout("classify", edges, nodes, {})))
+  # 3 -- correctly ran all three fan-out targets
+starter_code: |
+  def run_fanout(node_name, edges, nodes, state):
+      next_node = edges[node_name][0]
+      return [nodes[next_node](state)]
+
+  edges = {"classify": ["notify_user", "log_event", "update_db"]}
+  nodes = {"notify_user": lambda s: "notified", "log_event": lambda s: "logged", "update_db": lambda s: "updated"}
+  print(len(run_fanout("classify", edges, nodes, {})))
+challenge: |
+  Fix `run_fanout` so it returns `[nodes[next_node](state) for
+  next_node in edges[node_name]]`, running every node in the fan-out
+  list, instead of only `edges[node_name][0]`. It should print `3`,
+  not `1`.
+expected_output: |
+  3
+hints:
+  - "Replace edges[node_name][0] with a list comprehension over edges[node_name]: [nodes[next_node](state) for next_node in edges[node_name]]."
+  - "A fan-out list names every node that should run, not just one -- indexing [0] silently discards everything after the first entry."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "for next_node in edges\\[node_name\\]"
+concept_tags: [langgraph, fan_out, parallel_nodes]

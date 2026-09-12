@@ -1,0 +1,78 @@
+id: functional_programming_15
+title: "frozen=True Makes Accidental Mutation a Real Error, Not a Silent Bug"
+language: python
+level: 350
+objective: "Fix a plain (mutable) dataclass whose instances get accidentally mutated somewhere far from where they were created, when @dataclass(frozen=True) makes any attempted mutation raise a real, catchable error instead of silently succeeding."
+explanation: |
+  A plain `@dataclass` is fully mutable -- `point.x = 99` anywhere in
+  the codebase silently succeeds, no matter how far from the object's
+  creation that mutation happens, or how much other code implicitly
+  assumed the value would never change. `@dataclass(frozen=True)`
+  makes every field read-only after construction: attempting to
+  assign to any field raises `dataclasses.FrozenInstanceError`
+  immediately, at the exact point the accidental mutation was
+  attempted -- turning what would otherwise be a silent, hard-to-trace
+  bug into a loud, immediate, easy-to-locate one.
+
+  The fix adds `frozen=True` to the `@dataclass` decorator.
+example_code: |
+  # The trap: a plain dataclass -- mutation anywhere succeeds silently.
+  from dataclasses import dataclass
+
+  @dataclass
+  class PointTrap:
+      x: int
+      y: int
+
+  p_trap = PointTrap(1, 2)
+  p_trap.x = 99                    # succeeds silently -- no signal anything unusual happened
+  print(p_trap.x)
+  # 99 -- WRONG if p_trap was meant to be treated as immutable everywhere
+
+  # The fix: frozen=True makes mutation a real, catchable error.
+  @dataclass(frozen=True)
+  class Point:
+      x: int
+      y: int
+
+  p = Point(1, 2)
+  try:
+      p.x = 99
+      print("ok")
+  except Exception:
+      print("crashed")
+  print(p.x)
+  # crashed
+  # 1 -- correctly rejected the mutation, original value preserved
+starter_code: |
+  from dataclasses import dataclass
+
+  @dataclass
+  class Point:
+      x: int
+      y: int
+
+  p = Point(1, 2)
+  try:
+      p.x = 99
+      print("ok")
+  except Exception:
+      print("crashed")
+  print(p.x)
+challenge: |
+  Fix `Point` by adding `frozen=True` to its `@dataclass` decorator.
+  It should print `crashed` then `1`, not `ok` then `99`.
+expected_output: |
+  crashed
+  1
+hints:
+  - "Change @dataclass to @dataclass(frozen=True)."
+  - "A plain dataclass silently allows mutation anywhere, no matter how far from creation -- frozen=True turns any attempted mutation into a loud, immediate, catchable error instead."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 15
+difficulty: gotcha
+contains_patterns:
+  - "@dataclass\\(frozen=True\\)"
+concept_tags: [functional_programming, dataclasses, immutability]

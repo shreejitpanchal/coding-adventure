@@ -1,0 +1,67 @@
+id: ai_176
+title: "A New Agent Run Shouldn't Inherit State Left Over From a Previous One"
+language: ai
+level: 176
+objective: "Fix an agent-run factory that reuses the same mutable state object across multiple separate runs, letting one run's leftover data silently leak into the next run's supposedly-fresh session -- the same mutable-default-argument-shaped bug this app's LangChain category covers, showing up here at the level of whole agent runs."
+explanation: |
+  Each agent run is supposed to start clean -- no memory of a previous,
+  unrelated run's conversation, tool results, or scratchpad contents.
+  If a run's state object is created once and reused (rather than
+  fresh state per run), leftover data from an earlier run can bleed
+  into a new one that has nothing to do with it, similar in spirit to
+  this app's LangChain category's mutable-default-argument trap, just
+  showing up at the level of an entire agent session instead of one
+  object's constructor.
+
+  The bug this exercise fixes creates the state dict once, outside the
+  run function, so every call to it shares and mutates the exact same
+  object. The fix creates a genuinely fresh state dict inside the run
+  function itself, so every run starts with a clean slate.
+example_code: |
+  # The trap: the state dict is created ONCE, outside the function --
+  # every "new" run actually shares and mutates the SAME object.
+  shared_state_trap = {}
+  def run_agent_trap(user_message):
+      shared_state_trap["messages"] = shared_state_trap.get("messages", []) + [user_message]
+      return shared_state_trap
+
+  run_agent_trap("Hi, I'm Alex")
+  result_trap = run_agent_trap("What's my order status?")   # a DIFFERENT, unrelated run
+  print(len(result_trap["messages"]))   # 2 -- the "new" run inherited the previous run's message too!
+
+  # The fix: create a genuinely FRESH state dict inside the function itself.
+  def run_agent(user_message, state=None):
+      state = state if state is not None else {}
+      state["messages"] = state.get("messages", []) + [user_message]
+      return state
+
+  result = run_agent("What's my order status?")   # no `state` passed -- starts fresh
+  print(len(result["messages"]))   # 1 -- correctly starts clean, no leftover from any previous run
+starter_code: |
+  shared_state = {}
+  def run_agent(user_message):
+      shared_state["messages"] = shared_state.get("messages", []) + [user_message]
+      return shared_state
+
+  run_agent("Hi, I'm Alex")
+  result = run_agent("What's my order status?")
+  print(len(result["messages"]))
+challenge: |
+  Fix `run_agent` so it creates a fresh state dict inside the function
+  itself (accepting an optional `state` parameter defaulting to `None`,
+  never a shared module-level dict), instead of mutating one shared
+  dict across every call. A run with no prior state passed in should
+  print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Change the signature to run_agent(user_message, state=None), and inside: state = state if state is not None else {}."
+  - "Since the second call in this exercise doesn't pass any prior state, it should start with a brand-new empty dict, containing only the ONE new message."
+xp_reward: 15
+achievement: null
+category: agentic_frameworks
+category_level: 46
+difficulty: deep_dive
+contains_patterns:
+  - "state = state if state is not None else \\{\\}"
+concept_tags: [agentic_frameworks, agent_state, isolation]

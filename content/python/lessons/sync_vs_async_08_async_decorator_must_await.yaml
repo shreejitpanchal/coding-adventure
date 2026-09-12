@@ -1,0 +1,111 @@
+id: sync_vs_async_08
+title: "A Non-Async Wrapper Logs 'After' Before the Async Work Has Even Run"
+language: python
+level: 438
+objective: "Fix a decorator wrapping an async function with a plain (non-async) wrapper, whose 'after' logging fires immediately after just CREATING the coroutine object, before the wrapped function's body has run at all -- the wrapper itself needs to be async and actually await the call to sequence correctly."
+explanation: |
+  Calling an `async def` function doesn't run its body -- it only
+  constructs a coroutine object, exactly like this category's earlier
+  never-awaited lesson covers. A plain, non-async `wrapper` that calls
+  `func(*args, **kwargs)` gets back that unstarted coroutine object
+  immediately, and anything the wrapper does *after* that call --
+  logging "after," say -- happens right away, before the coroutine has
+  actually been driven to completion (or even started) by anyone.
+  For the wrapper's "before"/"after" logging to genuinely bracket the
+  real work, the wrapper itself has to be `async def` and `await` the
+  call directly, so "after" only logs once the wrapped function has
+  actually finished running.
+
+  The fix makes `wrapper` an `async def` function that `await`s the
+  wrapped call, instead of a plain synchronous wrapper.
+example_code: |
+  # The trap: a non-async wrapper -- "after" logs before the real work even starts.
+  import asyncio
+
+  log_trap = []
+
+  def logged_trap(func):
+      def wrapper(*args, **kwargs):
+          log_trap.append("before")
+          result = func(*args, **kwargs)   # just CREATES the coroutine, doesn't run it
+          log_trap.append("after")          # fires immediately, work hasn't run yet
+          return result
+      return wrapper
+
+  @logged_trap
+  async def fetch_trap():
+      log_trap.append("fetch running")
+      return 42
+
+  async def main_trap():
+      await fetch_trap()
+      print(log_trap)
+
+  asyncio.run(main_trap())
+  # ['before', 'after', 'fetch running'] -- WRONG ORDER, "after" logged too early
+
+  # The fix: the wrapper itself must be async, awaiting the real call.
+  log = []
+
+  def logged(func):
+      async def wrapper(*args, **kwargs):
+          log.append("before")
+          result = await func(*args, **kwargs)
+          log.append("after")
+          return result
+      return wrapper
+
+  @logged
+  async def fetch():
+      log.append("fetch running")
+      return 42
+
+  async def main():
+      await fetch()
+      print(log)
+
+  asyncio.run(main())
+  # ['before', 'fetch running', 'after'] -- correctly logged only once the real work finished
+starter_code: |
+  import asyncio
+
+  log = []
+
+  def logged(func):
+      def wrapper(*args, **kwargs):
+          log.append("before")
+          result = func(*args, **kwargs)
+          log.append("after")
+          return result
+      return wrapper
+
+  @logged
+  async def fetch():
+      log.append("fetch running")
+      return 42
+
+  async def main():
+      await fetch()
+      print(log)
+
+  asyncio.run(main())
+challenge: |
+  Fix `wrapper` so it's an `async def` function that does
+  `result = await func(*args, **kwargs)` instead of calling `func`
+  directly. It should print
+  `['before', 'fetch running', 'after']`, not
+  `['before', 'after', 'fetch running']`.
+expected_output: |
+  ['before', 'fetch running', 'after']
+hints:
+  - "async def wrapper(*args, **kwargs): log.append(\"before\"); result = await func(*args, **kwargs); log.append(\"after\"); return result."
+  - "A non-async wrapper only ever creates the coroutine object -- it never actually drives it, so anything logged \"after\" the call fires before the real work has run at all."
+xp_reward: 15
+achievement: null
+category: sync_vs_async
+category_level: 8
+difficulty: deep_dive
+contains_patterns:
+  - "async def wrapper\\(\\*args, \\*\\*kwargs\\):"
+  - "await func\\(\\*args, \\*\\*kwargs\\)"
+concept_tags: [asyncio, decorators, sync_vs_async]

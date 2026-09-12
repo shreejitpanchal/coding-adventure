@@ -1,0 +1,72 @@
+id: stdlib_deep_dive_35
+title: "json.dumps/loads Round-Trips Nested Structures -- str() Doesn't Give You Real JSON Back"
+language: python
+level: 236
+objective: "Fix code that serializes a dict with str() (producing Python's repr-like syntax, not real JSON -- single quotes, True/False/None instead of true/false/null) when json.dumps/json.loads correctly round-trips through actual JSON syntax."
+explanation: |
+  `str(some_dict)` produces Python's own repr-style text -- single
+  quotes around strings, `True`/`False`/`None` for booleans and null --
+  which looks superficially similar to JSON but isn't valid JSON at
+  all, and `json.loads` will refuse to parse it. `json.dumps`/
+  `json.loads` correctly serialize to and parse real JSON syntax
+  (double-quoted strings, lowercase `true`/`false`/`null`), and
+  round-trip a nested structure back to an equal Python object.
+
+  The bug this exercise fixes serializes with `str()` and then tries
+  to parse that text back with `json.loads`, which raises
+  `json.JSONDecodeError` since it isn't valid JSON. The fix uses
+  `json.dumps` to produce real JSON in the first place.
+example_code: |
+  # The trap: str() produces Python repr syntax, not real JSON.
+  import json
+
+  def round_trip_trap(data):
+      text = str(data)
+      return json.loads(text)
+
+  data = {"active": True, "count": 3}
+  try:
+      round_trip_trap(data)
+      print("ok")
+  except json.JSONDecodeError:
+      print("crashed")
+  # "crashed" -- str(data) has single quotes and True, not valid JSON syntax
+
+  # The fix: json.dumps produces real JSON that json.loads can parse back.
+  def round_trip(data):
+      text = json.dumps(data)
+      return json.loads(text)
+
+  result = round_trip(data)
+  print(result == data)
+  # True -- correctly round-tripped through real JSON syntax
+starter_code: |
+  import json
+
+  def round_trip(data):
+      text = str(data)
+      return json.loads(text)
+
+  data = {"active": True, "count": 3}
+  try:
+      result = round_trip(data)
+      print(result == data)
+  except json.JSONDecodeError:
+      print("crashed")
+challenge: |
+  Fix `round_trip` so it uses `json.dumps(data)` instead of `str(data)`
+  to produce the intermediate text. It should print `True`, not
+  `crashed`.
+expected_output: |
+  True
+hints:
+  - "text = json.dumps(data), then return json.loads(text)."
+  - "str() on a dict produces Python repr syntax (single quotes, True/False/None) -- json.dumps produces real JSON syntax that json.loads can actually parse."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 35
+difficulty: gotcha
+contains_patterns:
+  - "json\\.dumps\\(data\\)"
+concept_tags: [json, serialization]

@@ -1,0 +1,65 @@
+id: idioms_gotchas_36
+title: "A Generator Is Exhausted After One Pass -- It Can't Be Reused"
+language: python
+level: 105
+objective: "Fix a function that iterates over the same generator twice, when a generator (unlike a list) has no way to reset itself -- once it's been fully consumed, every later attempt to iterate it again just yields nothing at all, silently."
+explanation: |
+  A generator produces its values lazily, one at a time, and forgets
+  each one the instant it's yielded -- there's no stored sequence to
+  "start over" from. Once a generator has been iterated to completion,
+  every subsequent attempt to iterate it again simply produces nothing,
+  with no error to flag that anything went wrong: `sum()` on an
+  already-exhausted generator just quietly returns `0`, the same as it
+  would for a genuinely empty one.
+
+  The bug this exercise fixes calls `sum(gen)` twice on the same
+  generator object. The fix materializes it into a list first, which
+  genuinely can be iterated more than once.
+example_code: |
+  # The trap: iterates the SAME generator twice -- but a generator can
+  # only be consumed ONCE.
+  def sum_twice_trap(gen):
+      total1 = sum(gen)
+      total2 = sum(gen)
+      return total1, total2
+
+  result_trap = sum_twice_trap(x for x in [1, 2, 3])
+  print(result_trap)
+  # (6, 0) -- the second sum() got nothing, since the generator was already fully consumed
+
+  # The fix: materialize into a list first, which CAN be iterated more
+  # than once.
+  def sum_twice(values):
+      values = list(values)
+      total1 = sum(values)
+      total2 = sum(values)
+      return total1, total2
+
+  result = sum_twice(x for x in [1, 2, 3])
+  print(result)
+  # (6, 6) -- correctly summed twice, since a list can be reused
+starter_code: |
+  def sum_twice(gen):
+      total1 = sum(gen)
+      total2 = sum(gen)
+      return total1, total2
+
+  result = sum_twice(x for x in [1, 2, 3])
+  print(result)
+challenge: |
+  Fix `sum_twice` so it first does `values = list(values)` (materializing
+  the generator into a reusable list) before summing it twice. It
+  should print `(6, 6)`, not `(6, 0)`.
+expected_output: |
+  (6, 6)
+hints:
+  - "Add values = list(values) as the first line inside the function, converting the parameter into a list before summing it twice."
+  - "A generator forgets each value the instant it's yielded -- there's no way to \"rewind\" it, unlike a list."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 36
+difficulty: gotcha
+contains_patterns:
+  - "values = list\\(values\\)"
+concept_tags: [idioms, generators, iteration]

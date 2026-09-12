@@ -1,0 +1,68 @@
+id: gotcha_gauntlet_42
+title: "The Parameter Name That Quietly Shadowed an Entire Imported Module"
+language: python
+level: 287
+objective: "Fix a function whose parameter is accidentally named the same as an imported module it also uses, which shadows the module inside that function -- the parameter's value is used instead of the real module, crashing when a module function is called."
+explanation: |
+  A parameter name and an imported module name live in the exact same
+  namespace inside a function body -- there's nothing special
+  protecting the module's name just because it was imported at the top
+  of the file. A parameter named `json` inside a function that also
+  wants to use the imported `json` module completely shadows that
+  module for the *entire* body of that function: every reference to
+  `json` inside it now refers to whatever was passed in as the
+  parameter, not the module, and calling `json.dumps(...)` crashes
+  with `AttributeError` the instant the parameter's actual value
+  doesn't happen to have a `.dumps` method.
+
+  The fix is simply renaming the parameter to something that doesn't
+  collide with the module's name, restoring access to the real `json`
+  module inside the function.
+example_code: |
+  # The trap: the parameter "json" shadows the imported json MODULE.
+  import json
+
+  def process_trap(data, json):
+      return json.dumps(data)
+
+  try:
+      process_trap({"a": 1}, "oops")
+      print("ok")
+  except AttributeError:
+      print("crashed")
+  # "crashed" -- "json" here is the string "oops", not the module
+
+  # The fix: rename the parameter so it no longer collides with the module.
+  def process(data, pretty=False):
+      return json.dumps(data, indent=2 if pretty else None)
+
+  print(process({"a": 1}))
+  # '{"a": 1}' -- correctly used the real json module, no shadowing at all
+starter_code: |
+  import json
+
+  def process(data, json):
+      return json.dumps(data)
+
+  try:
+      print(process({"a": 1}, "oops"))
+  except AttributeError:
+      print("crashed")
+challenge: |
+  Fix `process` by renaming its second parameter to `pretty=False`
+  (no longer colliding with the imported `json` module), and call
+  `json.dumps(data, indent=2 if pretty else None)`. Call it as
+  `process({"a": 1})`. It should print `{"a": 1}`, not `crashed`.
+expected_output: |
+  {"a": 1}
+hints:
+  - "def process(data, pretty=False): return json.dumps(data, indent=2 if pretty else None), then call process({\"a\": 1})."
+  - "A parameter name shadows anything else with that same name -- including an imported module -- for the ENTIRE body of that function."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 42
+difficulty: gotcha
+contains_patterns:
+  - "def process\\(data, pretty=False\\):"
+concept_tags: [scope, shadowing, imports, gotchas]

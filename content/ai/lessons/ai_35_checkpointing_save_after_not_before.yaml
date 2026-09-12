@@ -85,7 +85,7 @@ hints:
   - "Move the checkpoints[current] = dict(state) line to AFTER state = nodes[current](state), not before it."
   - "The order inside the loop should be: run the node (updating state), THEN snapshot that updated state into checkpoints, THEN follow the edge."
 xp_reward: 15
-achievement: langgraph_master
+achievement: null
 category: langgraph
 category_level: 5
 difficulty: deep_dive

@@ -1,0 +1,72 @@
+id: core_refresher_28
+title: "__iter__ and __next__ Implement the Iterator Protocol Directly"
+language: python
+level: 141
+objective: "Replace a function that builds and returns a full list with a class implementing __iter__ and __next__, producing values one at a time through the iterator protocol."
+explanation: |
+  A function that builds an entire list up front and returns it works
+  fine when the whole sequence needs to exist in memory anyway -- but
+  the iterator protocol (`__iter__` returning `self`, `__next__`
+  producing one value per call and raising `StopIteration` when done)
+  is the actual mechanism `for` loops and `list()` rely on to pull
+  values one at a time, without ever needing the whole sequence
+  materialized at once. Implementing it directly on a class is what
+  makes instances of that class genuinely iterable, usable anywhere a
+  built-in iterable would be.
+
+  The bug this exercise fixes builds a full list explicitly. The fix
+  implements `__iter__`/`__next__` directly on a class instead.
+example_code: |
+  # Builds the entire list up front, all at once.
+  def count_up_to_loop(n):
+      result = []
+      i = 1
+      while i <= n:
+          result.append(i)
+          i += 1
+      return result
+
+  print(count_up_to_loop(3))               # [1, 2, 3]
+
+  # The iterator protocol produces values one at a time.
+  class CountUpTo:
+      def __init__(self, n):
+          self.n = n
+          self.i = 0
+      def __iter__(self):
+          return self
+      def __next__(self):
+          self.i += 1
+          if self.i > self.n:
+              raise StopIteration
+          return self.i
+
+  print(list(CountUpTo(3)))                # [1, 2, 3]
+starter_code: |
+  def count_up_to(n):
+      result = []
+      i = 1
+      while i <= n:
+          result.append(i)
+          i += 1
+      return result
+
+  print(count_up_to(3))
+challenge: |
+  Replace `count_up_to` with a `CountUpTo` class implementing
+  `__iter__` (returning `self`) and `__next__` (incrementing and
+  raising `StopIteration` once past `n`), consumed via `list
+  (CountUpTo(3))`. Keep the same output: [1, 2, 3].
+expected_output: |
+  [1, 2, 3]
+hints:
+  - "def __iter__(self): return self, and def __next__(self): increment self.i, raise StopIteration once past self.n, otherwise return self.i."
+  - "list(...) calls __next__ repeatedly until it catches StopIteration -- that's the entire iterator protocol in action."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 28
+difficulty: core
+contains_patterns:
+  - "def __next__\\(self\\):"
+concept_tags: [iterator_protocol, dunder_methods]

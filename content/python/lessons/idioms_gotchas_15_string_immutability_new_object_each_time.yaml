@@ -1,0 +1,68 @@
+id: idioms_gotchas_15
+title: "Strings Are Immutable -- '+=' Builds a Brand-New Object Every Time"
+language: python
+level: 84
+objective: "Fix a loop that repeatedly builds up a string with '+=' inside a hot path expecting it to mutate in place, when every '+=' on a string actually allocates an entirely new string object -- str has no in-place append at all."
+explanation: |
+  Unlike a list, a string is immutable -- there's no way to append to
+  one in place, ever. `s += "x"` isn't shorthand for "mutate s"; it's
+  shorthand for `s = s + "x"`, which builds a brand-new string object
+  and rebinds `s` to point at it. Every single `+=` on a string
+  involves copying everything accumulated so far into a new object,
+  which is why building up a large string this way in a tight loop is
+  a well-known performance trap -- verified here not by timing it, but
+  by directly checking that the object identity genuinely changes on
+  every append, which is the whole reason the cost exists at all.
+
+  The bug this exercise fixes assumes `+=` mutates the string in
+  place, checking identity (`is`) against the original object. The fix
+  demonstrates (and checks) that a new object is created each time.
+example_code: |
+  # The trap: assumes += mutates the string in place -- but strings
+  # have no in-place append at all.
+  def build_and_check_identity_trap():
+      s = "a"
+      original = s
+      s += "b"
+      return s is original
+
+  print(build_and_check_identity_trap())
+  # True would mean "mutated in place" -- but this actually prints False,
+  # because += rebinds s to a brand-new string object every time
+
+  # The fix (understanding the real behavior): confirm a NEW object was
+  # created, rather than assuming in-place mutation.
+  def build_and_check_new_object():
+      s = "a"
+      original = s
+      s += "b"
+      return s is not original
+
+  print(build_and_check_new_object())
+  # True -- correctly confirms a new string object was created
+starter_code: |
+  def build_and_check_new_object():
+      s = "a"
+      original = s
+      s += "b"
+      return s is original
+
+  print(build_and_check_new_object())
+challenge: |
+  Fix `build_and_check_new_object` so it returns `s is not original`,
+  correctly confirming that `+=` created a brand-new string object,
+  instead of `s is original` (which wrongly assumes in-place mutation).
+  It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change s is original to s is not original."
+  - "Strings have no in-place append at all -- s += \"b\" always creates a new object and rebinds s to it, it never mutates the original."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 15
+difficulty: gotcha
+contains_patterns:
+  - "return s is not original"
+concept_tags: [idioms, string_immutability, identity]

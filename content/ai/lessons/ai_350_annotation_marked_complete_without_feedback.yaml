@@ -1,0 +1,68 @@
+id: ai_350
+title: "An Annotation Item Shouldn't Be Marked Complete Without Actual Feedback"
+language: ai
+level: 350
+objective: "Fix a completion function that always marks an annotation item complete regardless of whether feedback was ever actually submitted, when 'complete' should specifically mean a reviewer genuinely finished reviewing it, not just that the function was called."
+explanation: |
+  An annotation queue item's `"complete"` status is supposed to mean a
+  reviewer actually looked at it and submitted real feedback -- not
+  merely that some code path happened to call a completion function.
+  Marking an item complete regardless of whether feedback exists means
+  a queue could report 100% completion while containing items nobody
+  ever actually reviewed, silently defeating the entire point of
+  tracking completion in the first place.
+
+  The bug this exercise fixes sets `item["status"] = "complete"`
+  unconditionally. The fix refuses to do so when `feedback` is `None`.
+example_code: |
+  # The trap: marks complete regardless of whether feedback was ever
+  # actually submitted.
+  def mark_complete_trap(item, feedback):
+      item["status"] = "complete"
+
+  item_trap = {"status": "pending"}
+  mark_complete_trap(item_trap, feedback=None)
+  print(item_trap["status"])
+  # "complete" -- marked done despite no feedback ever being submitted
+
+  # The fix: refuse to mark complete without actual feedback.
+  def mark_complete(item, feedback):
+      if feedback is None:
+          raise ValueError("cannot mark complete without feedback")
+      item["status"] = "complete"
+
+  item = {"status": "pending"}
+  try:
+      mark_complete(item, feedback=None)
+      print(item["status"])
+  except ValueError as e:
+      print(str(e))
+  # "cannot mark complete without feedback" -- correctly refused
+starter_code: |
+  def mark_complete(item, feedback):
+      item["status"] = "complete"
+
+  item = {"status": "pending"}
+  try:
+      mark_complete(item, feedback=None)
+      print(item["status"])
+  except ValueError as e:
+      print(str(e))
+challenge: |
+  Fix `mark_complete` so it raises `ValueError("cannot mark complete
+  without feedback")` when `feedback is None`, instead of always
+  setting the status to `"complete"`. It should print
+  `cannot mark complete without feedback`, not `complete`.
+expected_output: |
+  cannot mark complete without feedback
+hints:
+  - "Add: if feedback is None: raise ValueError(\"cannot mark complete without feedback\"), as the first line of the function."
+  - "A queue reporting 100% completion should genuinely mean every item was reviewed -- not just that some function happened to run against it."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 40
+difficulty: warmup
+contains_patterns:
+  - "raise ValueError\\(\"cannot mark complete without feedback\"\\)"
+concept_tags: [langsmith, annotation_queue, completion_tracking]

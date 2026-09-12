@@ -1,0 +1,59 @@
+id: stdlib_deep_dive_40
+title: "statistics.median Resists Outliers -- statistics.mean Gets Pulled Toward Them"
+language: python
+level: 241
+objective: "Fix code that uses statistics.mean to summarize a dataset with an extreme outlier (which pulls the average far from where most of the data actually sits), when statistics.median reports the middle value, largely unaffected by extreme outliers."
+explanation: |
+  `statistics.mean` averages every value equally, so one extreme
+  outlier can pull the result far away from where the bulk of the data
+  actually sits -- a salary list of mostly-similar values plus one
+  extreme outlier produces a mean that isn't representative of a
+  typical entry at all. `statistics.median` reports the middle value
+  once the data is sorted, which is much more resistant to a small
+  number of extreme outliers, since it only cares about position, not
+  magnitude.
+
+  The bug this exercise fixes summarizes a dataset with an extreme
+  outlier using `mean`, producing a skewed, unrepresentative summary.
+  The fix uses `median`, which correctly stays representative.
+example_code: |
+  # The trap: mean gets pulled hard by one extreme outlier.
+  import statistics
+
+  def typical_value_trap(values):
+      return statistics.mean(values)
+
+  values = [40000, 42000, 41000, 43000, 1000000]
+  print(typical_value_trap(values))
+  # 233200.0 -- WRONG as a "typical" value, wildly skewed by the one outlier
+
+  # The fix: median stays representative despite the outlier.
+  def typical_value(values):
+      return statistics.median(values)
+
+  print(typical_value(values))
+  # 42000 -- correctly representative of where most of the data actually sits
+starter_code: |
+  import statistics
+
+  def typical_value(values):
+      return statistics.mean(values)
+
+  values = [40000, 42000, 41000, 43000, 1000000]
+  print(typical_value(values))
+challenge: |
+  Fix `typical_value` so it uses `statistics.median(values)` instead of
+  `statistics.mean(values)`. It should print `42000`, not `233200.0`.
+expected_output: |
+  42000
+hints:
+  - "return statistics.median(values)."
+  - "mean averages every value equally, so one extreme outlier pulls it far from the bulk of the data -- median only cares about sorted position, which resists that."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 40
+difficulty: core
+contains_patterns:
+  - "statistics\\.median\\(values\\)"
+concept_tags: [statistics, mean, median]

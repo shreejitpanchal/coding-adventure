@@ -1,0 +1,72 @@
+id: core_refresher_35
+title: "__slots__ Restricts Which Attributes a Class Can Ever Have"
+language: python
+level: 148
+objective: "Add __slots__ to a class so it can no longer accept arbitrary extra attributes, which also makes each instance more memory-efficient."
+explanation: |
+  An ordinary class instance carries a `__dict__` that lets any
+  attribute be set on it at any time, including ones that were never
+  declared anywhere -- `p.z = 99` on a `Point` with only `x` and `y`
+  just silently works, no matter how clearly unintended it was.
+  Declaring `__slots__ = ("x", "y")` removes the per-instance `__dict__`
+  entirely, restricting instances to exactly the named attributes --
+  assigning anything else raises `AttributeError` immediately, and as
+  a side benefit, instances use noticeably less memory since there's
+  no dict overhead per object.
+
+  The bug this exercise fixes has no `__slots__` at all, so extra
+  attributes are silently accepted. The fix adds `__slots__`,
+  restricting the class to its declared fields.
+example_code: |
+  # No __slots__ -- any extra attribute is silently accepted.
+  class PointLoop:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  p_loop = PointLoop(1, 2)
+  p_loop.z = 99                            # succeeds silently -- no restriction at all
+  print(hasattr(p_loop, "z"))              # True
+
+  # __slots__ restricts the class to exactly its declared fields.
+  class Point:
+      __slots__ = ("x", "y")
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  p = Point(1, 2)
+  try:
+      p.z = 99
+      print(hasattr(p, "z"))
+  except AttributeError:
+      print(False)
+  # False -- correctly refused, z was never a declared slot
+starter_code: |
+  class Point:
+      def __init__(self, x, y):
+          self.x = x
+          self.y = y
+
+  p = Point(1, 2)
+  try:
+      p.z = 99
+      print(hasattr(p, "z"))
+  except AttributeError:
+      print(False)
+challenge: |
+  Fix `Point` by adding `__slots__ = ("x", "y")`. It should print
+  `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Add __slots__ = (\"x\", \"y\") as the first line inside the class body, before __init__."
+  - "Declaring __slots__ removes the per-instance __dict__ entirely -- only the exact names listed can ever be assigned to an instance."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 35
+difficulty: core
+contains_patterns:
+  - "__slots__ = \\(\"x\", \"y\"\\)"
+concept_tags: [slots, memory_efficiency]

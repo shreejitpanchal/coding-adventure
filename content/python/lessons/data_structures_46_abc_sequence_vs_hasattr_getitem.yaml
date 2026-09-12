@@ -1,0 +1,59 @@
+id: data_structures_46
+title: "collections.abc.Sequence Checks the Real Category, Not Just One Method's Existence"
+language: python
+level: 203
+objective: "Fix a sequence check using hasattr(x, '__getitem__'), when a dict also defines __getitem__ despite being a mapping, not a sequence -- collections.abc.Sequence checks the genuine structural category instead of one incidentally-shared method."
+explanation: |
+  Checking for one specific dunder method's existence (`hasattr(x,
+  "__getitem__")`) can produce false positives whenever a completely
+  different kind of object happens to implement that same method for
+  its own unrelated reasons -- a `dict` defines `__getitem__` too
+  (`d["key"]`), despite being a mapping, not a sequence at all.
+  `collections.abc.Sequence` is a formally registered category that
+  genuinely distinguishes the two: `isinstance(x, Sequence)` correctly
+  recognizes lists, tuples, and strings as sequences, while correctly
+  excluding dicts, sets, and other non-sequence types, regardless of
+  which individual methods they happen to share.
+
+  The bug this exercise fixes checks with `hasattr(x, "__getitem__")`,
+  a false positive for dicts. The fix checks with `isinstance(x,
+  Sequence)` instead.
+example_code: |
+  # The trap: a dict ALSO defines __getitem__, so this wrongly treats
+  # it as a sequence.
+  def is_sequence_trap(x):
+      return hasattr(x, "__getitem__")
+
+  print(is_sequence_trap({"a": 1}))
+  # True -- WRONG, a dict is a mapping, not a sequence
+
+  # The fix: check the genuine structural category directly.
+  from collections.abc import Sequence
+
+  def is_sequence(x):
+      return isinstance(x, Sequence)
+
+  print(is_sequence({"a": 1}))
+  # False -- correctly excluded, since dict is registered as a Mapping, not a Sequence
+starter_code: |
+  def is_sequence(x):
+      return hasattr(x, "__getitem__")
+
+  print(is_sequence({"a": 1}))
+challenge: |
+  Fix `is_sequence` so it checks `isinstance(x, Sequence)` (imported
+  from `collections.abc`), instead of `hasattr(x, "__getitem__")`. It
+  should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "from collections.abc import Sequence, then: return isinstance(x, Sequence)."
+  - "hasattr only checks that ONE method exists -- it can't tell a mapping that happens to share that method apart from a genuine sequence."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 46
+difficulty: gotcha
+contains_patterns:
+  - "isinstance\\(x, Sequence\\)"
+concept_tags: [collections_abc, duck_typing]

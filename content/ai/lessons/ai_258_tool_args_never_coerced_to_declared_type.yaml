@@ -1,0 +1,65 @@
+id: ai_258
+title: "Tool Arguments Need to Be Coerced to Their Declared Types Before the Call"
+language: ai
+level: 258
+objective: "Fix a tool-calling wrapper that passes raw arguments straight through with no type coercion, when a value declared as a number in the tool's schema (but arriving as a string) needs to be converted to that type before the underlying function ever runs."
+explanation: |
+  A model emits tool-call arguments as text, which means a value the
+  schema declares as a number can still arrive as the string `"3"`
+  rather than the integer `3`. Passing that string straight through
+  into a function expecting a real number doesn't raise an obvious
+  error -- Python happily lets a number multiply a string, just not the
+  way anyone intended: it repeats the string instead of performing
+  arithmetic, quietly producing a wrong-typed result with no crash to
+  flag that anything went wrong.
+
+  The bug this exercise fixes passes `args` straight through with no
+  coercion. The fix converts each argument to its declared type via
+  `param_types` before calling the function.
+example_code: |
+  # The trap: passes raw args straight through -- no type coercion at
+  # all, even though the schema declares an expected type for each.
+  def call_tool_trap(tool_fn, args, param_types):
+      return tool_fn(**args)
+
+  def compute_total(price, quantity):
+      return price * quantity
+
+  result_trap = call_tool_trap(compute_total, {"price": 3, "quantity": "3"}, {"price": int, "quantity": int})
+  print(isinstance(result_trap, str))
+  # True -- "quantity" was never coerced to int, so the multiplication produced a repeated STRING instead of a number
+
+  # The fix: coerce each argument to its declared type first.
+  def call_tool(tool_fn, args, param_types):
+      coerced = {k: param_types[k](v) for k, v in args.items()}
+      return tool_fn(**coerced)
+
+  result = call_tool(compute_total, {"price": 3, "quantity": "3"}, {"price": int, "quantity": int})
+  print(isinstance(result, str))
+  # False -- correctly coerced to int first, giving a real numeric product
+starter_code: |
+  def call_tool(tool_fn, args, param_types):
+      return tool_fn(**args)
+
+  def compute_total(price, quantity):
+      return price * quantity
+
+  result = call_tool(compute_total, {"price": 3, "quantity": "3"}, {"price": int, "quantity": int})
+  print(isinstance(result, str))
+challenge: |
+  Fix `call_tool` so it builds a `coerced` dict (`{k: param_types[k](v)
+  for k, v in args.items()}`) and calls `tool_fn(**coerced)` instead of
+  `tool_fn(**args)` directly. It should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "coerced = {k: param_types[k](v) for k, v in args.items()}, then return tool_fn(**coerced)."
+  - "3 * \"3\" produces the string \"333\" (repeated, not multiplied) -- that's the observable symptom of the missing coercion."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 38
+difficulty: gotcha
+contains_patterns:
+  - "param_types\\[k\\]\\(v\\)"
+concept_tags: [langchain, tool_calling, type_coercion]

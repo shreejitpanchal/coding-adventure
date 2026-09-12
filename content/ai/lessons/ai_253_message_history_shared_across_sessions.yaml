@@ -1,0 +1,66 @@
+id: ai_253
+title: "Each Chat Session Needs Its Own History, Not One Shared Between All of Them"
+language: ai
+level: 253
+objective: "Fix a session-history lookup that always returns the same shared history regardless of session id, when RunnableWithMessageHistory's entire purpose is keeping each session's conversation history genuinely independent."
+explanation: |
+  `RunnableWithMessageHistory` keys a conversation's message history by
+  session id specifically so multiple concurrent conversations (User A,
+  User B) never see each other's messages. A lookup function that
+  ignores the session id and always fetches (or creates) the same
+  fixed history key defeats that isolation entirely -- every session
+  ends up reading and writing the exact same shared list, exactly the
+  kind of cross-conversation leakage this category's earlier
+  `ConversationMemory` lesson also covers, just at the session-lookup
+  layer instead of the mutable-default-argument layer.
+
+  The bug this exercise fixes always looks up (and creates) a fixed
+  `"shared"` key regardless of `session_id`. The fix uses the actual
+  `session_id` as the key.
+example_code: |
+  # The trap: always uses ONE shared history key, regardless of the
+  # actual session_id.
+  def get_history_trap(session_id, all_histories):
+      return all_histories.setdefault("shared", [])
+
+  all_histories = {}
+  h1 = get_history_trap("session_a", all_histories)
+  h1.append("hello from A")
+  h2 = get_history_trap("session_b", all_histories)
+  print(len(h2))   # 1 -- session_b's history is polluted with session_a's message!
+
+  # The fix: key the lookup by the actual session_id.
+  def get_history(session_id, all_histories):
+      return all_histories.setdefault(session_id, [])
+
+  all_histories2 = {}
+  h1b = get_history("session_a", all_histories2)
+  h1b.append("hello from A")
+  h2b = get_history("session_b", all_histories2)
+  print(len(h2b))   # 0 -- correctly independent
+starter_code: |
+  def get_history(session_id, all_histories):
+      return all_histories.setdefault("shared", [])
+
+  all_histories = {}
+  h1 = get_history("session_a", all_histories)
+  h1.append("hello from A")
+  h2 = get_history("session_b", all_histories)
+  print(len(h2))
+challenge: |
+  Fix `get_history` so it calls `all_histories.setdefault(session_id,
+  [])`, using the actual `session_id` as the key, instead of the fixed
+  literal `"shared"`. It should print `0`, not `1`.
+expected_output: |
+  0
+hints:
+  - "Replace all_histories.setdefault(\"shared\", []) with all_histories.setdefault(session_id, [])."
+  - "This is the same cross-conversation leakage bug as a mutable default argument -- here caused by a fixed lookup key instead."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 33
+difficulty: gotcha
+contains_patterns:
+  - "all_histories\\.setdefault\\(session_id, \\[\\]\\)"
+concept_tags: [langchain, message_history, session_isolation]

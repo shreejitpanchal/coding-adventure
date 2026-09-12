@@ -1,0 +1,57 @@
+id: recursion_11
+title: "Converting to Binary: The Recursive Half Comes First, the Remainder Bit Last"
+language: python
+level: 451
+objective: "Fix a stub that returns a number's plain decimal string, when converting to binary recursively means recursively converting n // 2, then appending n % 2 (the current bit) at the end -- the base case being any n less than 2, which is already its own single-digit binary representation."
+explanation: |
+  Converting a number to binary by hand works by repeatedly dividing
+  by 2 and reading the remainders in *reverse* order -- which is
+  exactly what a recursive "smaller problem, plus one piece" shape
+  naturally expresses: `to_binary(n)` recurses on `n // 2` (the
+  smaller problem), and appends `n % 2` (this step's own bit) *after*
+  that recursive result, so the recursion naturally unwinds the
+  remainders back into the correct, non-reversed order without needing
+  any manual list-reversal step at all. The base case is any `n` less
+  than 2 -- `0` or `1` -- which is already a valid single-digit binary
+  string on its own.
+
+  The fix recurses on `n // 2`, appending `str(n % 2)` at the end.
+example_code: |
+  # The trap: just the decimal string -- not binary at all.
+  def to_binary_trap(n):
+      return str(n)
+
+  print(to_binary_trap(13))
+  # "13" -- WRONG, this is decimal, not binary
+
+  # The fix: recurse on n // 2, append n % 2 (this step's bit) at the end.
+  def to_binary(n):
+      if n < 2:
+          return str(n)
+      return to_binary(n // 2) + str(n % 2)
+
+  print(to_binary(13))
+  # "1101" -- correctly 13 in binary
+starter_code: |
+  def to_binary(n):
+      return str(n)
+
+  print(to_binary(13))
+challenge: |
+  Fix `to_binary` so its base case (`n < 2`) returns `str(n)`, and
+  otherwise returns `to_binary(n // 2) + str(n % 2)`, instead of
+  always returning the plain decimal string. It should print `1101`,
+  not `13`.
+expected_output: |
+  1101
+hints:
+  - "if n < 2: return str(n), then: return to_binary(n // 2) + str(n % 2)."
+  - "Recursing on n // 2 FIRST, then appending n % 2 AFTER, is what naturally unwinds the remainders back into the correct order -- no manual reversal needed."
+xp_reward: 10
+achievement: null
+category: recursion
+category_level: 11
+difficulty: core
+contains_patterns:
+  - "to_binary\\(n // 2\\) \\+ str\\(n % 2\\)"
+concept_tags: [recursion, number_bases]

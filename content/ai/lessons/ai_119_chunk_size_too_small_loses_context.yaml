@@ -1,0 +1,73 @@
+id: ai_119
+title: "Chunks Too Small to Contain a Complete Thought Retrieve Poorly"
+language: ai
+level: 119
+objective: "Fix a chunking function that splits text into fixed pieces so small they routinely cut a complete idea in half, and recognize the real tradeoff: chunks too small lose context, chunks too large dilute the relevance signal a query is trying to match against."
+explanation: |
+  Chunk size is a genuine tradeoff, not a setting with one obviously
+  correct value. Chunks that are too *small* can cut a complete thought
+  in half -- a fact and the qualifier that changes its meaning end up in
+  two separate chunks, and only one of them might actually get
+  retrieved. Chunks that are too *large* dilute the relevance signal --
+  a chunk covering five different subtopics scores moderately relevant
+  to any one of five different queries, instead of scoring highly
+  relevant to the one query it should actually match best. There's no
+  universal right answer, but a chunk size small enough to regularly
+  split a single sentence in half is clearly on the wrong side of that
+  tradeoff for prose content.
+
+  The bug this exercise fixes uses a chunk size so small that it
+  routinely splits individual sentences across chunk boundaries. The
+  fix chunks by complete sentences instead, grouping whole sentences up
+  to a target size -- the same "never split the atomic unit" principle
+  this category's row-based chunking lesson applies to table rows,
+  applied here to sentences in prose.
+example_code: |
+  # The trap: a chunk size small enough to routinely cut a SENTENCE in half.
+  def chunk_trap(text, chunk_size):
+      return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+  text = "Revenue grew 12% this quarter. Costs remained flat. Profit margins improved significantly."
+  chunks_trap = chunk_trap(text, chunk_size=20)
+  print(chunks_trap[0].endswith("."))   # False -- cut mid-sentence, not ending on a real sentence boundary
+
+  # The fix: chunk by whole SENTENCES, never splitting one across chunks.
+  def chunk_by_sentences(text, max_chunk_size):
+      sentences = [s.strip() + "." for s in text.split(".") if s.strip()]
+      chunks, current = [], ""
+      for sentence in sentences:
+          if current and len(current) + len(sentence) > max_chunk_size:
+              chunks.append(current.strip())
+              current = ""
+          current += " " + sentence if current else sentence
+      if current:
+          chunks.append(current.strip())
+      return chunks
+
+  chunks = chunk_by_sentences(text, max_chunk_size=20)
+  print(chunks[0].endswith("."))   # True -- correctly ends on a complete sentence
+starter_code: |
+  def chunk_by_sentences(text, max_chunk_size):
+      return [text[i:i + max_chunk_size] for i in range(0, len(text), max_chunk_size)]
+
+  text = "Revenue grew 12% this quarter. Costs remained flat. Profit margins improved significantly."
+  chunks = chunk_by_sentences(text, max_chunk_size=20)
+  print(chunks[0].endswith("."))
+challenge: |
+  Fix `chunk_by_sentences` so it splits `text` into whole sentences
+  first, then groups them into chunks up to `max_chunk_size`, instead
+  of slicing by a fixed character count. It should print `True`, not
+  `False`.
+expected_output: |
+  True
+hints:
+  - "Split into sentences first: [s.strip() + \".\" for s in text.split(\".\") if s.strip()]."
+  - "Build chunks by appending whole sentences to a `current` string, starting a new chunk (after saving the current one) only when adding the next sentence would exceed max_chunk_size."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 34
+difficulty: deep_dive
+contains_patterns:
+  - "text\\.split\\(.\\.."
+concept_tags: [rag, chunking, chunk_size_tradeoff]

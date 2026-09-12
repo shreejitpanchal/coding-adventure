@@ -1,0 +1,64 @@
+id: core_refresher_24
+title: "@classmethod Gives a Class an Alternate, Named Constructor"
+language: python
+level: 137
+objective: "Replace a standalone factory function with a @classmethod on the class it constructs, receiving the class itself as its first argument."
+explanation: |
+  A standalone function that builds and returns an instance of some
+  class (`make_margherita()` returning a `Pizza`) works, but it lives
+  disconnected from the class it's actually about -- nothing ties the
+  two together except the function happening to reference the class by
+  name. `@classmethod` keeps that construction logic attached to the
+  class itself, receiving the class (conventionally named `cls`, not a
+  specific instance) as its first argument, which also means a
+  subclass calling the same classmethod gets an instance of *itself*,
+  not hardcoded to the base class.
+example_code: |
+  # A standalone factory function, disconnected from the class itself.
+  class PizzaLoop:
+      def __init__(self, toppings):
+          self.toppings = toppings
+
+  def make_margherita_loop():
+      return PizzaLoop(["cheese", "tomato"])
+
+  p_loop = make_margherita_loop()
+  print(p_loop.toppings)                   # ['cheese', 'tomato']
+
+  # @classmethod keeps the construction logic attached to the class.
+  class Pizza:
+      def __init__(self, toppings):
+          self.toppings = toppings
+      @classmethod
+      def margherita(cls):
+          return cls(["cheese", "tomato"])
+
+  p = Pizza.margherita()
+  print(p.toppings)                        # ['cheese', 'tomato']
+starter_code: |
+  class Pizza:
+      def __init__(self, toppings):
+          self.toppings = toppings
+
+  def make_margherita():
+      return Pizza(["cheese", "tomato"])
+
+  p = make_margherita()
+  print(p.toppings)
+challenge: |
+  Fix this by turning `make_margherita` into a `@classmethod` named
+  `margherita` on `Pizza` itself (using `cls` to construct), called as
+  `Pizza.margherita()`. Keep the same output: ['cheese', 'tomato'].
+expected_output: |
+  ['cheese', 'tomato']
+hints:
+  - "Move the function inside Pizza as @classmethod def margherita(cls): return cls([\"cheese\", \"tomato\"])."
+  - "cls inside a classmethod refers to the class itself -- calling cls(...) is the same as calling Pizza(...) directly, but works correctly for subclasses too."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 24
+difficulty: core
+contains_patterns:
+  - "@classmethod"
+concept_tags: [classmethod, alternate_constructors]

@@ -1,0 +1,64 @@
+id: ai_175
+title: "Calling the Same Tool With the Same Arguments Repeatedly Signals a Stuck Agent"
+language: ai
+level: 175
+objective: "Fix a loop-detection check that only looks at whether the SAME tool was called twice in a row, missing the more specific and more telling signal: the same tool called with the exact same arguments repeatedly -- a strong sign the agent isn't making progress at all."
+explanation: |
+  Calling the same *tool* twice in a row isn't necessarily a problem --
+  an agent might legitimately call `"search"` several times in a row
+  with genuinely different queries as its understanding evolves. What's
+  actually diagnostic of a stuck agent is calling the same tool with
+  the *exact same arguments* repeatedly -- that's not evolving
+  reasoning, that's the agent going in circles, asking the identical
+  question over and over with no new information changing between
+  attempts.
+
+  The bug this exercise fixes flags any repeated tool NAME as a loop,
+  which would incorrectly flag a search agent trying several different
+  legitimate queries in a row. The fix checks for the same tool AND the
+  same arguments repeated, correctly distinguishing genuine iteration
+  from an actual stuck loop.
+example_code: |
+  # The trap: flags ANY repeated tool NAME -- incorrectly treats
+  # legitimately different searches as if they were a stuck loop.
+  def is_stuck_trap(call_history):
+      if len(call_history) < 2:
+          return False
+      return call_history[-1][0] == call_history[-2][0]   # only compares tool NAME, ignores arguments
+
+  call_history = [("search", "refund policy"), ("search", "shipping policy")]
+  print(is_stuck_trap(call_history))   # True -- WRONG, these are two genuinely different, legitimate searches
+
+  # The fix: check for the SAME tool AND the SAME arguments repeated.
+  def is_stuck(call_history):
+      if len(call_history) < 2:
+          return False
+      return call_history[-1] == call_history[-2]
+
+  print(is_stuck(call_history))   # False -- correctly recognizes these as different, legitimate calls
+starter_code: |
+  def is_stuck(call_history):
+      if len(call_history) < 2:
+          return False
+      return call_history[-1][0] == call_history[-2][0]
+
+  call_history = [("search", "refund policy"), ("search", "shipping policy")]
+  print(is_stuck(call_history))
+challenge: |
+  Fix `is_stuck` so it compares the entire last two entries
+  (`call_history[-1] == call_history[-2]`, tool name AND arguments
+  together), instead of comparing tool names alone. It should print
+  `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "Change the comparison to: return call_history[-1] == call_history[-2] -- comparing the whole (tool, args) tuple, not just index [0]."
+  - "The two calls share the same tool name (\"search\") but have DIFFERENT arguments, so comparing the full tuples correctly recognizes they're not identical repeated calls."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 45
+difficulty: gotcha
+contains_patterns:
+  - "call_history\\[-1\\] == call_history\\[-2\\]"
+concept_tags: [agentic_frameworks, loop_detection, agent_monitoring]

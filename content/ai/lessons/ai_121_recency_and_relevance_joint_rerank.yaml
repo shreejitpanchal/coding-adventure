@@ -1,0 +1,70 @@
+id: ai_121
+title: "Ranking by Recency Alone Can Bury a Far More Relevant Older Result"
+language: ai
+level: 121
+objective: "Fix a ranking function that sorts purely by document date, ignoring relevance entirely -- the newest document always wins regardless of how loosely it actually relates to the query, burying a much more relevant older document."
+explanation: |
+  This category's earlier freshness lesson added a small recency
+  *bonus* on top of similarity -- a nudge, not a replacement. Sorting
+  by date **alone**, with no relevance signal at all, goes too far in
+  the opposite direction: the newest document in the index always wins
+  the top spot, even if it barely relates to the query, while a far
+  more relevant but slightly older document gets buried underneath it.
+  Both extremes -- pure similarity with no recency awareness, and pure
+  recency with no relevance awareness -- have the same underlying flaw:
+  ignoring one signal that clearly matters for the ranking to make
+  sense.
+
+  The bug this exercise fixes sorts by date only. The fix combines
+  relevance and recency into one joint score, so a highly relevant
+  older document can still outrank a barely-relevant newer one, while
+  recency still meaningfully tips the balance between similarly
+  relevant candidates.
+example_code: |
+  # The trap: sorts by DATE ALONE -- the newest document always wins,
+  # no matter how irrelevant it actually is to the query.
+  def rank_trap(candidates):
+      return sorted(candidates, key=lambda c: c["date"], reverse=True)
+
+  candidates = [
+      {"doc_id": "highly_relevant_old", "relevance": 0.95, "date": 2020},
+      {"doc_id": "barely_relevant_new", "relevance": 0.20, "date": 2024},
+  ]
+  print(rank_trap(candidates)[0]["doc_id"])   # "barely_relevant_new" -- newest wins despite being barely relevant
+
+  # The fix: combine relevance AND a small recency factor into one joint score.
+  def rank_joint(candidates, recency_weight=0.02):
+      max_date = max(c["date"] for c in candidates)
+      def score(c):
+          recency_factor = 1 - (max_date - c["date"]) * recency_weight
+          return c["relevance"] * recency_factor
+      return sorted(candidates, key=score, reverse=True)
+
+  print(rank_joint(candidates)[0]["doc_id"])   # "highly_relevant_old" -- correctly favors real relevance
+starter_code: |
+  def rank_joint(candidates, recency_weight=0.02):
+      return sorted(candidates, key=lambda c: c["date"], reverse=True)
+
+  candidates = [
+      {"doc_id": "highly_relevant_old", "relevance": 0.95, "date": 2020},
+      {"doc_id": "barely_relevant_new", "relevance": 0.20, "date": 2024},
+  ]
+  print(rank_joint(candidates)[0]["doc_id"])
+challenge: |
+  Fix `rank_joint` so it combines each candidate's `relevance` with a
+  recency factor (`1 - (max_date - c["date"]) * recency_weight`) into
+  one joint score, instead of sorting by date alone. It should print
+  `highly_relevant_old`, not `barely_relevant_new`.
+expected_output: |
+  highly_relevant_old
+hints:
+  - "Compute max_date = max(c[\"date\"] for c in candidates) once, then define score(c) = c[\"relevance\"] * (1 - (max_date - c[\"date\"]) * recency_weight)."
+  - "highly_relevant_old's score is 0.95 * (1 - 4*0.02) = 0.95 * 0.92 = 0.874; barely_relevant_new's is 0.20 * (1 - 0) = 0.20 -- relevance still dominates the outcome."
+xp_reward: 15
+achievement: null
+category: rag
+category_level: 36
+difficulty: deep_dive
+contains_patterns:
+  - "max_date - c\\[.date.\\]\\) \\* recency_weight"
+concept_tags: [rag, freshness, ranking, reranking]

@@ -1,0 +1,79 @@
+id: ai_168
+title: "The Same Tool Call Requested Twice in One Turn Doesn't Need to Run Twice"
+language: ai
+level: 168
+objective: "Fix a tool-call executor that runs every requested call even when two of them are identical (same tool, same arguments) within a single turn, wasting a call this category's own caching lesson would have avoided if the calls weren't back-to-back within the same batch."
+explanation: |
+  A model can sometimes request the same tool call more than once
+  within a single turn's batch of tool calls -- generating a slightly
+  redundant plan, or genuinely needing the same lookup for two
+  different parts of its reasoning without realizing it already asked
+  for it once. This category's caching lesson covers avoiding repeated
+  calls *across* turns; the same waste can happen *within* one turn's
+  own batch, and deduplicating identical calls before executing them
+  catches it just as effectively.
+
+  The bug this exercise fixes executes every requested call in the
+  batch, including exact duplicates. The fix deduplicates identical
+  (tool, arguments) pairs first, executing each unique call exactly
+  once and reusing that result for any duplicate requests within the
+  same batch.
+example_code: |
+  # The trap: executes EVERY requested call, including exact duplicates
+  # within the same batch.
+  call_count = 0
+  def get_price(product_id):
+      global call_count
+      call_count += 1
+      return f"$19.99 for {product_id}"
+
+  def execute_batch_trap(tool_calls):
+      return [get_price(args) for tool, args in tool_calls]
+
+  tool_calls = [("get_price", "widget"), ("get_price", "widget"), ("get_price", "gadget")]
+  execute_batch_trap(tool_calls)
+  print(call_count)   # 3 -- "widget" was looked up twice, identically, for no reason
+
+  # The fix: deduplicate identical (tool, arguments) pairs before executing.
+  call_count = 0
+  def execute_batch(tool_calls):
+      results = {}
+      for tool, args in tool_calls:
+          key = (tool, args)
+          if key not in results:
+              results[key] = get_price(args)
+      return [results[(tool, args)] for tool, args in tool_calls]
+
+  execute_batch(tool_calls)
+  print(call_count)   # 2 -- "widget" is only actually looked up once, reused for the duplicate request
+starter_code: |
+  call_count = 0
+  def get_price(product_id):
+      global call_count
+      call_count += 1
+      return f"$19.99 for {product_id}"
+
+  def execute_batch(tool_calls):
+      return [get_price(args) for tool, args in tool_calls]
+
+  tool_calls = [("get_price", "widget"), ("get_price", "widget"), ("get_price", "gadget")]
+  execute_batch(tool_calls)
+  print(call_count)
+challenge: |
+  Fix `execute_batch` so it deduplicates identical `(tool, args)` pairs,
+  calling `get_price` only once per unique pair and reusing that result
+  for any duplicate requests, instead of calling it once per entry in
+  the batch. It should print `2`, not `3`.
+expected_output: |
+  2
+hints:
+  - "Track a `results` dict keyed by `(tool, args)`, only calling get_price when that exact key hasn't been seen yet in the batch."
+  - "Build the final return list by looking up results[(tool, args)] for every original entry, so duplicates correctly reuse the cached result."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 38
+difficulty: core
+contains_patterns:
+  - "if key not in results"
+concept_tags: [agentic_frameworks, tool_calling, deduplication]

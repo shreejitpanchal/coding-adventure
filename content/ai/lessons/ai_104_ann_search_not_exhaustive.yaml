@@ -1,0 +1,68 @@
+id: ai_104
+title: "Approximate Nearest Neighbor Search Can Miss the True Best Match"
+language: ai
+level: 104
+objective: "Fix code that assumes an approximate nearest-neighbor (ANN) search always returns the mathematically exact top-k results, when ANN indexes trade a small amount of recall for large speed gains -- the true best match can occasionally be missed."
+explanation: |
+  An **exhaustive** search compares the query against every single
+  vector in the index and is guaranteed to find the true top-k matches
+  -- but that becomes far too slow once an index holds millions of
+  vectors. **Approximate Nearest Neighbor (ANN)** indexes (HNSW, IVF,
+  and similar structures) trade a small amount of *recall* -- the
+  guarantee of finding the true best matches -- for enormous speed
+  gains, by cleverly avoiding comparing against most of the index at
+  all. This tradeoff is deliberate and usually worth it, but code that
+  assumes ANN results are always mathematically exhaustive-equivalent
+  is making an assumption the index was never designed to guarantee.
+
+  This exercise checks that assumption directly: it compares an
+  exhaustive search's true top-1 result against a simulated ANN
+  search's result (deliberately configured here to skip over the true
+  best match, illustrating that ANN recall isn't perfect) and confirms
+  code shouldn't assume they'll always agree. The bug is a check that
+  asserts they must always match; the fix accepts that they can
+  legitimately disagree and reports that difference rather than
+  treating it as an error.
+example_code: |
+  # The trap: asserts ANN results must always exactly match exhaustive
+  # search -- an assumption ANN indexes never actually guarantee.
+  def assert_ann_matches_exhaustive_trap(exhaustive_top1, ann_top1):
+      assert exhaustive_top1 == ann_top1, "ANN result differs from exhaustive search!"
+      return True
+
+  exhaustive_top1 = "doc_true_best"
+  ann_top1 = "doc_approximate_best"   # ANN skipped over the true best match -- a real, expected possibility
+  # assert_ann_matches_exhaustive_trap(exhaustive_top1, ann_top1)  # AssertionError -- treats a NORMAL tradeoff as a bug
+
+  # The fix: accept that ANN and exhaustive search CAN legitimately
+  # disagree -- report it, don't assert it can never happen.
+  def compare_ann_to_exhaustive(exhaustive_top1, ann_top1):
+      return "match" if exhaustive_top1 == ann_top1 else "ann_missed_true_best"
+
+  print(compare_ann_to_exhaustive(exhaustive_top1, ann_top1))
+starter_code: |
+  def compare_ann_to_exhaustive(exhaustive_top1, ann_top1):
+      assert exhaustive_top1 == ann_top1, "ANN result differs from exhaustive search!"
+      return "match"
+
+  exhaustive_top1 = "doc_true_best"
+  ann_top1 = "doc_approximate_best"
+  print(compare_ann_to_exhaustive(exhaustive_top1, ann_top1))
+challenge: |
+  Fix `compare_ann_to_exhaustive` so it returns `"match"` when the two
+  agree and `"ann_missed_true_best"` when they don't, instead of
+  asserting they must always be equal. It should print
+  `ann_missed_true_best`, not raise an `AssertionError`.
+expected_output: |
+  ann_missed_true_best
+hints:
+  - "Replace the assert statement with: return \"match\" if exhaustive_top1 == ann_top1 else \"ann_missed_true_best\"."
+  - "ANN indexes trade some recall for speed -- disagreeing with an exhaustive search sometimes is expected behavior, not a bug to assert against."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 19
+difficulty: core
+contains_patterns:
+  - "ann_missed_true_best"
+concept_tags: [rag, approximate_nearest_neighbor, vector_search]

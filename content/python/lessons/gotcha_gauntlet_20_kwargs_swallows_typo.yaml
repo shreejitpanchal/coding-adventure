@@ -1,0 +1,64 @@
+id: gotcha_gauntlet_20
+title: "The Typo'd Keyword Argument That Vanished Without a Trace"
+language: python
+level: 265
+objective: "Fix a function that accepts **kwargs and reads a specific key out of it with .get(), which silently ignores a typo'd keyword argument name instead of raising an error -- an explicit named parameter correctly surfaces the exact same typo as a real TypeError."
+explanation: |
+  A function signature like `def connect(**kwargs):` accepts *any*
+  keyword argument at all, with no validation -- calling it with
+  `timout=10` (missing the second `e`) is just another entry in
+  `kwargs`, indistinguishable from a genuinely intended argument.
+  Reading the expected key out with `kwargs.get("timeout", 5)` then
+  quietly falls back to the default `5`, since the real key `"timeout"`
+  was never actually supplied -- the typo produces no error anywhere,
+  just a silently wrong value with no signal that anything was
+  misspelled.
+
+  An explicit named parameter (`def connect(timeout=5):`) doesn't have
+  this blind spot: calling it with the same typo'd `timout=10` raises
+  `TypeError: connect() got an unexpected keyword argument 'timout'`
+  immediately, at the actual call site, which is exactly where a typo
+  like this should be caught.
+example_code: |
+  # The trap: **kwargs silently accepts ANY keyword, typo included.
+  def connect_trap(**kwargs):
+      timeout = kwargs.get("timeout", 5)
+      return timeout
+
+  print(connect_trap(timout=10))
+  # 5 -- WRONG, the typo'd "timout" was silently ignored, default used instead
+
+  # The fix: an explicit named parameter catches the typo as a real error.
+  def connect(timeout=5):
+      return timeout
+
+  try:
+      print(connect(timout=10))
+  except TypeError:
+      print("caught typo")
+  # "caught typo" -- correctly surfaced the mistake instead of silently misbehaving
+starter_code: |
+  def connect(**kwargs):
+      timeout = kwargs.get("timeout", 5)
+      return timeout
+
+  print(connect(timout=10))
+challenge: |
+  Fix `connect` so it declares an explicit `timeout=5` parameter
+  instead of accepting `**kwargs`, and wrap the call in a
+  `try/except TypeError` printing `"caught typo"` when it fires. It
+  should print `caught typo`, not `5`.
+expected_output: |
+  caught typo
+hints:
+  - "def connect(timeout=5): return timeout, then: try: print(connect(timout=10)) except TypeError: print(\"caught typo\")."
+  - "**kwargs accepts absolutely any keyword name with zero validation -- an explicit named parameter is what actually turns a typo into a real, catchable error."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 20
+difficulty: gotcha
+contains_patterns:
+  - "def connect\\(timeout=5\\):"
+  - "caught typo"
+concept_tags: [kwargs, typos, gotchas]

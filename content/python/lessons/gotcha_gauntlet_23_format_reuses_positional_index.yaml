@@ -1,0 +1,55 @@
+id: gotcha_gauntlet_23
+title: "The Log Line That Silently Dropped Its Second Argument"
+language: python
+level: 268
+objective: "Fix a str.format() call that accidentally reuses positional index {0} twice, silently dropping the second value entirely, when each argument needs its own distinct index."
+explanation: |
+  `str.format()` positional placeholders (`{0}`, `{1}`, ...) refer to
+  arguments by index, and nothing stops the same index from being
+  written twice by accident -- `"{0} {0}".format(a, b)` is perfectly
+  valid syntax, it just means "insert argument 0 here, then insert
+  argument 0 again," completely ignoring whatever was passed as
+  argument 1. The typo is easy to miss because the call still runs
+  without any error at all -- it just silently produces a string
+  that's missing information the second argument was supposed to
+  provide.
+
+  The fix is making sure each argument actually gets its own distinct
+  index -- `{0} {1}` -- so both values that were passed actually show
+  up in the result.
+example_code: |
+  # The trap: {0} used TWICE -- the second argument, index 1, never appears.
+  def log_line_trap(user, action):
+      return "{0} {0}".format(user, action)
+
+  print(log_line_trap("ada", "login"))
+  # "ada ada" -- WRONG, "login" was silently dropped entirely
+
+  # The fix: each argument gets its own distinct index.
+  def log_line(user, action):
+      return "{0} {1}".format(user, action)
+
+  print(log_line("ada", "login"))
+  # "ada login" -- correctly includes both arguments
+starter_code: |
+  def log_line(user, action):
+      return "{0} {0}".format(user, action)
+
+  print(log_line("ada", "login"))
+challenge: |
+  Fix `log_line` so it uses `"{0} {1}".format(user, action)`, with each
+  argument getting its own distinct index, instead of reusing `{0}`
+  twice. It should print `ada login`, not `ada ada`.
+expected_output: |
+  ada login
+hints:
+  - "Change \"{0} {0}\" to \"{0} {1}\"."
+  - "Reusing the same positional index isn't a typo Python can detect -- it's valid syntax that just silently ignores whatever argument was meant to fill the other slot."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 23
+difficulty: gotcha
+contains_patterns:
+  - "\"\\{0\\} \\{1\\}\"\\.format\\(user, action\\)"
+concept_tags: [string_formatting, gotchas]

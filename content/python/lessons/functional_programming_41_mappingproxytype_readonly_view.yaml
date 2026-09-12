@@ -1,0 +1,78 @@
+id: functional_programming_41
+title: "MappingProxyType Gives Out a Genuinely Read-Only View of a Dict"
+language: python
+level: 376
+objective: "Fix code exposing a plain dict as 'the public config', which any caller can silently mutate, when types.MappingProxyType wraps a dict in a genuinely read-only view -- callers can read through it normally, but any attempted write raises TypeError."
+explanation: |
+  Returning a plain dict from a function or module -- "here's the
+  config" -- doesn't actually protect it from mutation at all: whoever
+  receives it has the exact same object the internal code uses, and
+  can silently overwrite entries, corrupting shared configuration for
+  every other piece of code that reads it afterward. `types.
+  MappingProxyType(d)` wraps a dict in a genuinely read-only *view*:
+  every read (`proxy["key"]`, iteration, `.get(...)`) works exactly
+  like the underlying dict, but any attempted write --
+  `proxy["key"] = x` -- raises `TypeError` immediately, since the
+  proxy itself has no mutating methods at all.
+
+  The fix wraps the config dict in `MappingProxyType` before exposing
+  it externally.
+example_code: |
+  # The trap: a plain dict -- any caller can silently mutate the "public" config.
+  CONFIG_TRAP = {"timeout": 30}
+
+  def corrupt_config(config):
+      config["timeout"] = 9999           # silently mutates the SHARED dict
+
+  corrupt_config(CONFIG_TRAP)
+  print(CONFIG_TRAP["timeout"])
+  # 9999 -- WRONG if CONFIG_TRAP was meant to be read-only from the outside
+
+  # The fix: MappingProxyType makes mutation raise, instead of silently succeeding.
+  from types import MappingProxyType
+
+  _config = {"timeout": 30}
+  CONFIG = MappingProxyType(_config)
+
+  def try_corrupt_config(config):
+      try:
+          config["timeout"] = 9999
+          return "mutated"
+      except TypeError:
+          return "rejected"
+
+  print(try_corrupt_config(CONFIG))
+  print(CONFIG["timeout"])
+  # rejected
+  # 30 -- correctly protected; the underlying dict was never touched
+starter_code: |
+  CONFIG = {"timeout": 30}
+
+  def try_corrupt_config(config):
+      try:
+          config["timeout"] = 9999
+          return "mutated"
+      except TypeError:
+          return "rejected"
+
+  print(try_corrupt_config(CONFIG))
+  print(CONFIG["timeout"])
+challenge: |
+  Fix this by wrapping the config in `MappingProxyType` (imported from
+  `types`) -- `CONFIG = MappingProxyType({"timeout": 30})` -- instead
+  of exposing the plain dict directly. It should print `rejected` then
+  `30`, not `mutated` then `9999`.
+expected_output: |
+  rejected
+  30
+hints:
+  - "from types import MappingProxyType, then: CONFIG = MappingProxyType({\"timeout\": 30})."
+  - "A plain dict gives every caller full read AND write access -- MappingProxyType wraps it in a view that only ever allows reads, raising TypeError on any write attempt."
+xp_reward: 10
+achievement: null
+category: functional_programming
+category_level: 41
+difficulty: deep_dive
+contains_patterns:
+  - "MappingProxyType\\(\\{\"timeout\": 30\\}\\)"
+concept_tags: [functional_programming, immutability, mappingproxytype]

@@ -1,0 +1,58 @@
+id: ai_191
+title: "A Sampling Result Needs a Stop Reason for the Caller to Know Why It Ended"
+language: ai
+level: 191
+objective: "Fix a sampling-result builder that omits the stop reason entirely, leaving the caller with no way to tell whether the model finished naturally, hit a length limit, or was stopped for some other reason -- information that meaningfully changes how the result should be interpreted."
+explanation: |
+  MCP's **sampling** feature lets a server ask the *client* to run an
+  LLM completion on its behalf (`sampling/createMessage`) -- reversing
+  the usual direction, since normally the client calls the server, not
+  the other way around. The result of that sampling call needs to
+  report not just the generated text but *why* generation stopped:
+  `"endTurn"` (the model finished naturally), `"maxTokens"` (it hit a
+  length limit mid-thought), or `"stopSequence"` (a specific stop
+  string was hit). A caller receiving text with no stop reason has no
+  way to tell "this is a complete, finished response" from "this is
+  truncated mid-sentence and shouldn't be treated as complete."
+
+  The bug this exercise fixes returns only the generated text, omitting
+  the stop reason entirely. The fix includes it, letting the caller
+  correctly interpret whether the response actually finished.
+example_code: |
+  # The trap: returns ONLY the generated text -- no way to tell if it
+  # finished naturally or was cut off mid-thought.
+  def build_sampling_result_trap(text, stop_reason):
+      return {"role": "assistant", "content": {"type": "text", "text": text}}
+
+  result_trap = build_sampling_result_trap("The answer is prob", "maxTokens")
+  print("stopReason" in result_trap)   # False -- the caller has NO idea this was cut off mid-word!
+
+  # The fix: include the stop reason in the result.
+  def build_sampling_result(text, stop_reason):
+      return {"role": "assistant", "content": {"type": "text", "text": text}, "stopReason": stop_reason}
+
+  result = build_sampling_result("The answer is prob", "maxTokens")
+  print("stopReason" in result)   # True -- correctly signals this response was truncated, not complete
+starter_code: |
+  def build_sampling_result(text, stop_reason):
+      return {"role": "assistant", "content": {"type": "text", "text": text}}
+
+  result = build_sampling_result("The answer is prob", "maxTokens")
+  print("stopReason" in result)
+challenge: |
+  Fix `build_sampling_result` so the returned dict includes a
+  `"stopReason"` field set to `stop_reason`, instead of omitting it
+  entirely. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"stopReason\": stop_reason as an additional key in the returned dict."
+  - "Without this field, the caller has no way to distinguish a complete response from one truncated by a length limit."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 16
+difficulty: warmup
+contains_patterns:
+  - "\"stopReason\": stop_reason"
+concept_tags: [mcp, sampling, stop_reason]

@@ -1,0 +1,66 @@
+id: ai_237
+title: "A Tool Call Must Actually Invoke the Tool the Model Asked For"
+language: ai
+level: 237
+objective: "Fix a tool-calling dispatcher that always invokes the first registered tool regardless of which one was actually requested, when dispatch has to look up the tool by its own name -- not by whatever position it happens to occupy in a list."
+explanation: |
+  When a model decides to call a tool, it names the specific tool it
+  wants by name -- `"get_time"`, not "the second one in your list" --
+  and a dispatcher has to honor that name specifically, looking the
+  tool up by identity rather than by some incidental position. Calling
+  whichever tool happens to be first, regardless of which one was
+  actually requested, means the model's own decision about which tool
+  to use is silently discarded, and the wrong capability runs instead.
+
+  The bug this exercise fixes always calls the first tool in a list,
+  ignoring `tool_name` entirely. The fix looks the tool up in a
+  name-keyed dict.
+example_code: |
+  # The trap: always calls the FIRST registered tool -- ignores which
+  # tool was actually requested entirely.
+  def call_tool_trap(tool_name, tools_list, args):
+      return tools_list[0](**args)
+
+  def get_weather(city): return f"sunny in {city}"
+  def get_time(city): return f"3pm in {city}"
+  tools_list = [get_weather, get_time]
+
+  print(call_tool_trap("get_time", tools_list, {"city": "Austin"}))
+  # "sunny in Austin" -- called the WRONG tool entirely
+
+  # The fix: look the tool up by its own name.
+  def call_tool(tool_name, tools_by_name, args):
+      return tools_by_name[tool_name](**args)
+
+  tools_by_name = {"get_weather": get_weather, "get_time": get_time}
+  print(call_tool("get_time", tools_by_name, {"city": "Austin"}))
+  # "3pm in Austin" -- correctly matched by name
+starter_code: |
+  def get_weather(city):
+      return f"sunny in {city}"
+  def get_time(city):
+      return f"3pm in {city}"
+
+  tools_by_name = {"get_weather": get_weather, "get_time": get_time}
+
+  def call_tool(tool_name, tools_by_name, args):
+      return list(tools_by_name.values())[0](**args)
+
+  print(call_tool("get_time", tools_by_name, {"city": "Austin"}))
+challenge: |
+  Fix `call_tool` so it looks up `tools_by_name[tool_name]` directly,
+  instead of always calling the first value in the dict regardless of
+  `tool_name`. It should print `3pm in Austin`, not `sunny in Austin`.
+expected_output: |
+  3pm in Austin
+hints:
+  - "Replace list(tools_by_name.values())[0](**args) with tools_by_name[tool_name](**args)."
+  - "Dispatch by the tool's own declared name, never by whatever position it happens to occupy in some collection."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 17
+difficulty: warmup
+contains_patterns:
+  - "tools_by_name\\[tool_name\\]"
+concept_tags: [langchain, tool_calling, dispatch]

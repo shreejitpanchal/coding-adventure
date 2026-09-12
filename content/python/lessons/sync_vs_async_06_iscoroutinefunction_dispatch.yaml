@@ -1,0 +1,72 @@
+id: sync_vs_async_06
+title: "Calling a Callback Without Knowing If It's Sync or Async First"
+language: python
+level: 436
+objective: "Fix a generic callback dispatcher that always calls a registered callback directly, which returns an unawaited coroutine object for an async callback instead of its actual result, when inspect.iscoroutinefunction() checks which kind it is BEFORE deciding whether to await it."
+explanation: |
+  A plugin or event-callback system that accepts arbitrary registered
+  functions can't assume every callback is the same kind -- some might
+  be ordinary synchronous functions, others `async def` coroutine
+  functions, and calling both the exact same way breaks one of them:
+  calling a sync function directly works fine, but calling an async
+  one the same way just returns an unawaited coroutine object, not its
+  actual result, exactly like this app's earlier "forgot to await"
+  lesson covers. `inspect.iscoroutinefunction(func)` checks which kind
+  a given callback actually is *before* calling it, so the dispatcher
+  can call it directly for a sync function, or `await` it for an async
+  one.
+
+  The fix checks `iscoroutinefunction` first, branching to the correct
+  calling convention.
+example_code: |
+  # The trap: calls every callback the same way -- breaks for an async one.
+  async def notify_async(msg):
+      return f"async: {msg}"
+
+  def dispatch_trap(callback, msg):
+      return callback(msg)
+
+  result_trap = dispatch_trap(notify_async, "hello")
+  print(type(result_trap).__name__)
+  # "coroutine" -- WRONG, this is an unawaited coroutine object, not the real result
+
+  # The fix: check which kind it is FIRST, then call it correctly.
+  import asyncio, inspect
+
+  async def dispatch(callback, msg):
+      if inspect.iscoroutinefunction(callback):
+          return await callback(msg)
+      return callback(msg)
+
+  print(asyncio.run(dispatch(notify_async, "hello")))
+  # "async: hello" -- correctly awaited, since it was detected as a coroutine function
+starter_code: |
+  import asyncio
+
+  async def notify_async(msg):
+      return f"async: {msg}"
+
+  def dispatch(callback, msg):
+      return callback(msg)
+
+  result = dispatch(notify_async, "hello")
+  print(type(result).__name__)
+challenge: |
+  Fix this by making `dispatch` an `async def` function that checks
+  `inspect.iscoroutinefunction(callback)`, awaiting the callback when
+  it's a coroutine function, calling it directly otherwise. Run it with
+  `asyncio.run(dispatch(notify_async, "hello"))` and print the result.
+  It should print `async: hello`, not `coroutine`.
+expected_output: |
+  async: hello
+hints:
+  - "import inspect, then: async def dispatch(callback, msg): if inspect.iscoroutinefunction(callback): return await callback(msg); return callback(msg)."
+  - "print(asyncio.run(dispatch(notify_async, \"hello\")))."
+xp_reward: 10
+achievement: null
+category: sync_vs_async
+category_level: 6
+difficulty: core
+contains_patterns:
+  - "inspect\\.iscoroutinefunction\\(callback\\)"
+concept_tags: [asyncio, sync_vs_async, inspect]

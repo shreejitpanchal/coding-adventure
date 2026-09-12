@@ -1,0 +1,80 @@
+id: stdlib_deep_dive_32
+title: "re.compile Reuses a Pattern Object Instead of Re-Parsing the Same Regex Every Call"
+language: python
+level: 233
+objective: "Fix code that calls re.match with the same raw pattern string inside a hot loop, when re.compile parses the pattern once up front and reuses the resulting Pattern object -- both are correct, but only one avoids re-parsing the identical pattern on every single iteration."
+explanation: |
+  `re.match(pattern, s)` (and `re.search`/`re.findall`, etc.) with a raw
+  string pattern re-parses that pattern from scratch every single call
+  -- CPython caches a small number of recently-used compiled patterns
+  internally, but that cache is an implementation detail, not something
+  code should rely on, and it's still a lookup-and-maybe-recompile step
+  on every call either way. `re.compile(pattern)` parses the pattern
+  exactly once into a real `Pattern` object, and every subsequent
+  `pattern_obj.match(s)` call reuses that already-compiled object
+  directly -- the correct approach any time the same pattern is applied
+  repeatedly, such as inside a loop over many lines.
+
+  This exercise checks that a `Pattern` object is actually being reused
+  across every call inside the loop, rather than a fresh raw-string
+  `re.match` call being made each iteration.
+example_code: |
+  # The trap: re-supplies the raw pattern string on every single call.
+  import re
+
+  def count_matches_trap(lines):
+      count = 0
+      for line in lines:
+          if re.match(r"^\d+$", line):
+              count += 1
+      return count
+
+  lines = ["123", "abc", "456"]
+  print(count_matches_trap(lines))
+  # 2 -- correct RESULT, but the pattern string is handed to re.match fresh
+  # every single iteration instead of being compiled once up front
+
+  # The fix: compile the pattern once, reuse the Pattern object every call.
+  compiled = re.compile(r"^\d+$")
+
+  def count_matches(lines, pattern):
+      count = 0
+      for line in lines:
+          if pattern.match(line):
+              count += 1
+      return count
+
+  print(count_matches(lines, compiled))
+  # 2 -- same correct result, but the pattern is parsed exactly once
+starter_code: |
+  import re
+
+  def count_matches(lines):
+      count = 0
+      for line in lines:
+          if re.match(r"^\d+$", line):
+              count += 1
+      return count
+
+  lines = ["123", "abc", "456"]
+  print(count_matches(lines))
+challenge: |
+  Fix this so the pattern is compiled once with `re.compile(r"^\d+$")`
+  outside the loop, and `count_matches(lines, pattern)` calls
+  `pattern.match(line)` on the already-compiled object every iteration,
+  instead of calling `re.match` with the raw pattern string each time.
+  It should still print `2`.
+expected_output: |
+  2
+hints:
+  - "compiled = re.compile(r\"^\\d+$\"), then inside the loop: if pattern.match(line): count += 1, with pattern passed in as a parameter."
+  - "The result is identical either way -- the compiled version just avoids re-parsing the same regex string on every iteration."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 32
+difficulty: core
+contains_patterns:
+  - "re\\.compile\\(r\"\\^\\\\d\\+\\$\"\\)"
+  - "pattern\\.match\\(line\\)"
+concept_tags: [regex, re_module, re_compile]

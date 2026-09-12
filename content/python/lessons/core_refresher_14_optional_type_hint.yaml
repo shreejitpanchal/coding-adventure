@@ -1,0 +1,55 @@
+id: core_refresher_14
+title: "Optional[str] Documents That None Is a Genuinely Valid Value"
+language: python
+level: 127
+objective: "Add an Optional[str] type hint to a parameter that legitimately defaults to None, documenting that None is a real, expected value rather than just an unannotated default."
+explanation: |
+  `Optional[X]` is shorthand for `Union[X, None]` -- it documents that
+  a parameter genuinely accepts `None` as one of its valid values, not
+  just "any str, and also happens to default to None if you don't pass
+  anything." Leaving a `None`-defaulting parameter unannotated forces
+  anyone reading the signature to guess whether `None` is a real,
+  intentional case the function actually branches on, or just an
+  implementation detail of the default. `name: Optional[str] = None`
+  makes that explicit and, like all type hints, is real inspectable
+  metadata in the function's `__annotations__`.
+
+  The bug this exercise fixes has no type hint on `name` at all. The
+  fix adds `Optional[str]`, both documenting and recording the intent.
+example_code: |
+  # No hint at all -- a reader has to guess whether None is meaningful.
+  def greet_loose(name=None):
+      return f"hi {name}" if name else "hi stranger"
+
+  print("name" in greet_loose.__annotations__)
+  # False -- no recorded intent about what values name can genuinely take
+
+  # Optional[str] documents that None is a genuinely valid value.
+  from typing import Optional
+
+  def greet(name: Optional[str] = None):
+      return f"hi {name}" if name else "hi stranger"
+
+  print("name" in greet.__annotations__)
+  # True -- correctly recorded, both for readers and for type checkers
+starter_code: |
+  def greet(name=None):
+      return f"hi {name}" if name else "hi stranger"
+
+  print("name" in greet.__annotations__)
+challenge: |
+  Fix `greet` by importing `Optional` from `typing` and annotating
+  `name: Optional[str] = None`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from typing import Optional, then: def greet(name: Optional[str] = None):."
+  - "Optional[str] is shorthand for Union[str, None] -- it documents that None is a real, intentional value this parameter accepts."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 14
+difficulty: core
+contains_patterns:
+  - "name: Optional\\[str\\] = None"
+concept_tags: [type_hints, optional, typing]

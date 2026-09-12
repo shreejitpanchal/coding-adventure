@@ -1,0 +1,58 @@
+id: ai_375
+title: "A Broker Shouldn't Deliver a Published Message Back to Its Own Publisher"
+language: ai
+level: 375
+objective: "Fix a delivery function that sends a message to every subscriber on the topic, including the agent that published it, when an agent shouldn't receive its own broadcast just because it also happens to subscribe to the topic it's publishing on."
+explanation: |
+  An agent can legitimately both publish to and subscribe to the same
+  topic -- listening for other agents' activity on a shared topic while
+  also occasionally posting its own. Delivering every message to every
+  subscriber indiscriminately, with no check against who actually
+  published it, means an agent ends up receiving (and potentially
+  reacting to) its own message, a self-triggering loop hazard similar
+  to this category's earlier Slack-entrypoint lesson, just at the
+  broker-delivery layer instead of the transport layer.
+
+  The bug this exercise fixes delivers to every subscriber on the
+  topic with no exclusion. The fix excludes the publisher itself from
+  the delivery list.
+example_code: |
+  # The trap: delivers to EVERY subscriber on the topic, including the
+  # publisher itself.
+  def deliver_trap(published_topic, publisher_id, subscribers):
+      return [sub_id for sub_topic, sub_id in subscribers if sub_topic == published_topic]
+
+  subscribers = [("orders", "agent-a"), ("orders", "agent-b")]
+  print(deliver_trap("orders", "agent-a", subscribers))
+  # ['agent-a', 'agent-b'] -- agent-a receives its own published message
+
+  # The fix: exclude the publisher itself from the delivery list.
+  def deliver(published_topic, publisher_id, subscribers):
+      return [sub_id for sub_topic, sub_id in subscribers if sub_topic == published_topic and sub_id != publisher_id]
+
+  print(deliver("orders", "agent-a", subscribers))
+  # ['agent-b'] -- correctly excluded the publisher from its own broadcast
+starter_code: |
+  def deliver(published_topic, publisher_id, subscribers):
+      return [sub_id for sub_topic, sub_id in subscribers if sub_topic == published_topic]
+
+  subscribers = [("orders", "agent-a"), ("orders", "agent-b")]
+  print(deliver("orders", "agent-a", subscribers))
+challenge: |
+  Fix `deliver` so its filter also excludes `sub_id == publisher_id`,
+  instead of delivering to every subscriber on the topic
+  unconditionally. It should print `['agent-b']`, not
+  `['agent-a', 'agent-b']`.
+expected_output: |
+  ['agent-b']
+hints:
+  - "Add \"and sub_id != publisher_id\" onto the existing topic-matching condition."
+  - "An agent that both publishes AND subscribes to the same topic shouldn't receive back the exact message it just sent."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 20
+difficulty: gotcha
+contains_patterns:
+  - "sub_id != publisher_id"
+concept_tags: [solace_agent_mesh, event_broker, self_delivery]

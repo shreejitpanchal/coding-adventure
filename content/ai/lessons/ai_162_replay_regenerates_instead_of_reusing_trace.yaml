@@ -1,0 +1,59 @@
+id: ai_162
+title: "Replaying an Agent Run Means Reusing the Recorded Tool Results, Not Calling Tools Again"
+language: ai
+level: 162
+objective: "Fix a replay function that re-calls each tool fresh during a debugging replay, instead of feeding back the exact tool results that were recorded during the original run -- a tool that returns different data on a second real call defeats the entire point of a deterministic replay."
+explanation: |
+  Debugging a past agent run by literally re-executing every tool call
+  again assumes those tools return the exact same thing every time --
+  an assumption that's often false (a search API's results change over
+  time, an inventory count shifts, a clock-dependent tool returns a
+  different value). A genuine **replay** for debugging purposes needs
+  to feed back the *exact* results that were recorded during the
+  original run, not call the tools again and hope they happen to agree
+  -- otherwise a debugging session is looking at a different run
+  entirely, not the one that actually needs investigating.
+
+  The bug this exercise fixes calls each tool fresh during replay,
+  ignoring the recorded results from the original run entirely. The
+  fix replays the exact recorded results instead, guaranteeing the
+  replay reconstructs precisely what happened the first time.
+example_code: |
+  # The trap: calls tools FRESH during replay -- if a tool's real
+  # result has since changed, replay reconstructs a DIFFERENT run entirely.
+  def replay_trap(recorded_trace, live_tools):
+      return [live_tools[step["tool"]]() for step in recorded_trace]
+
+  recorded_trace = [{"tool": "get_price", "recorded_result": "$19.99"}]
+  live_tools = {"get_price": lambda: "$24.99"}   # the REAL price has since changed
+  print(replay_trap(recorded_trace, live_tools))   # ['$24.99'] -- NOT what actually happened in the original run!
+
+  # The fix: replay the EXACT recorded results, never call tools again.
+  def replay(recorded_trace, live_tools):
+      return [step["recorded_result"] for step in recorded_trace]
+
+  print(replay(recorded_trace, live_tools))   # ['$19.99'] -- correctly reconstructs the ORIGINAL run exactly
+starter_code: |
+  def replay(recorded_trace, live_tools):
+      return [live_tools[step["tool"]]() for step in recorded_trace]
+
+  recorded_trace = [{"tool": "get_price", "recorded_result": "$19.99"}]
+  live_tools = {"get_price": lambda: "$24.99"}
+  print(replay(recorded_trace, live_tools))
+challenge: |
+  Fix `replay` so it returns each step's `recorded_result` directly,
+  instead of calling the corresponding live tool again. It should print
+  `['$19.99']`, not `['$24.99']`.
+expected_output: |
+  ['$19.99']
+hints:
+  - "Replace the whole function body with: return [step[\"recorded_result\"] for step in recorded_trace]."
+  - "A true replay never touches `live_tools` at all -- it exists only in the trap version, which is exactly the bug."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 32
+difficulty: gotcha
+contains_patterns:
+  - "step\\[.recorded_result.\\] for step in recorded_trace"
+concept_tags: [agentic_frameworks, deterministic_replay, debugging]

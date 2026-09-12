@@ -1,0 +1,66 @@
+id: data_structures_49
+title: "set.discard() Never Raises -- set.remove() Does If the Item Isn't There"
+language: python
+level: 206
+objective: "Fix code using set.remove() on a value that might not actually be present, when discard() is the version that silently does nothing if the item is missing, instead of raising KeyError."
+explanation: |
+  `set.remove(x)` and `set.discard(x)` do the same thing when `x` is
+  actually in the set -- but they disagree completely on what happens
+  when it isn't: `remove()` raises `KeyError`, while `discard()`
+  silently does nothing at all. For a "remove this tag if it happens
+  to be there" operation, where the item's absence is a perfectly
+  normal, expected case rather than an error, `discard()` is the
+  correct choice -- reaching for `remove()` here means wrapping every
+  call in a `try/except` just to handle a case that was never actually
+  exceptional.
+
+  The bug this exercise fixes uses `remove()`, which crashes on a
+  missing item. The fix uses `discard()`, which doesn't.
+example_code: |
+  # The trap: remove() raises KeyError if the item isn't actually
+  # present -- treating a normal, expected case as an error.
+  def remove_tag_trap(tags, tag):
+      tags.remove(tag)
+      return tags
+
+  try:
+      remove_tag_trap({"a", "b"}, "z")
+      print("ok")
+  except KeyError:
+      print("crashed")
+  # "crashed" -- "z" was never in the set, but remove() treats that as an error
+
+  # The fix: discard() silently does nothing if the item is missing.
+  def remove_tag(tags, tag):
+      tags.discard(tag)
+      return tags
+
+  remove_tag({"a", "b"}, "z")
+  print("ok")
+  # "ok" -- correctly handled a missing item with no crash at all
+starter_code: |
+  def remove_tag(tags, tag):
+      tags.remove(tag)
+      return tags
+
+  try:
+      remove_tag({"a", "b"}, "z")
+      print("ok")
+  except KeyError:
+      print("crashed")
+challenge: |
+  Fix `remove_tag` so it uses `tags.discard(tag)` instead of
+  `tags.remove(tag)`. It should print `ok`, not `crashed`.
+expected_output: |
+  ok
+hints:
+  - "Replace tags.remove(tag) with tags.discard(tag)."
+  - "The item's absence here is a normal, expected case, not an error -- discard() reflects that; remove() treats it as exceptional."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 49
+difficulty: warmup
+contains_patterns:
+  - "tags\\.discard\\(tag\\)"
+concept_tags: [sets, discard_vs_remove]

@@ -1,0 +1,71 @@
+id: ai_144
+title: "Short-Term Conversation Details Shouldn't Automatically Become Long-Term Memory"
+language: ai
+level: 144
+objective: "Fix a memory-persistence function that saves every message from the current conversation into long-term memory unconditionally, when only facts explicitly worth remembering across sessions should actually be persisted -- not every passing detail of one conversation."
+explanation: |
+  **Short-term memory** (the current conversation's own context) and
+  **long-term memory** (facts that should persist and be recalled in
+  future, unrelated sessions) serve genuinely different purposes.
+  Treating every message from the current conversation as worth saving
+  to long-term memory floods it with transient, conversation-specific
+  detail ("what's 2+2" asked as a one-off aside) that has no business
+  surviving past this one session, drowning out the facts that
+  genuinely should persist (a user's stated preference, an important
+  decision that was made).
+
+  The bug this exercise fixes saves every message to long-term memory
+  unconditionally. The fix only persists messages explicitly flagged
+  as worth remembering, leaving ordinary conversational back-and-forth
+  in short-term memory where it belongs, without cluttering long-term
+  storage.
+example_code: |
+  # The trap: saves EVERY message to long-term memory -- floods it
+  # with transient, one-off conversational detail that shouldn't persist.
+  def persist_to_longterm_trap(conversation, longterm_memory):
+      for message in conversation:
+          longterm_memory.append(message["text"])
+      return longterm_memory
+
+  conversation = [
+      {"text": "what's 2+2?", "worth_remembering": False},
+      {"text": "I prefer email over phone calls", "worth_remembering": True},
+  ]
+  print(len(persist_to_longterm_trap(conversation, [])))   # 2 -- the throwaway math question got saved too
+
+  # The fix: only persist messages explicitly flagged as worth remembering.
+  def persist_to_longterm(conversation, longterm_memory):
+      for message in conversation:
+          if message.get("worth_remembering"):
+              longterm_memory.append(message["text"])
+      return longterm_memory
+
+  print(len(persist_to_longterm(conversation, [])))   # 1 -- correctly saves only the genuinely persistent preference
+starter_code: |
+  def persist_to_longterm(conversation, longterm_memory):
+      for message in conversation:
+          longterm_memory.append(message["text"])
+      return longterm_memory
+
+  conversation = [
+      {"text": "what's 2+2?", "worth_remembering": False},
+      {"text": "I prefer email over phone calls", "worth_remembering": True},
+  ]
+  print(len(persist_to_longterm(conversation, [])))
+challenge: |
+  Fix `persist_to_longterm` so it only appends a message's text when
+  `message.get("worth_remembering")` is true, instead of appending
+  every message unconditionally. It should print `1`, not `2`.
+expected_output: |
+  1
+hints:
+  - "Add an `if message.get(\"worth_remembering\"):` check inside the loop, before the append."
+  - "Only the second message (the stated preference) is flagged as worth_remembering -- the throwaway math question should be skipped."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 14
+difficulty: warmup
+contains_patterns:
+  - "if message\\.get\\(.worth_remembering.\\)"
+concept_tags: [agentic_frameworks, memory, long_term_memory]

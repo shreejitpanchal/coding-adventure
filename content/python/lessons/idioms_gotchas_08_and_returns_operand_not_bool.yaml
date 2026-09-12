@@ -1,0 +1,58 @@
+id: idioms_gotchas_08
+title: "'and' Returns an Operand, Not a Boolean"
+language: python
+level: 77
+objective: "Fix a validity check that returns whatever 'and' short-circuits to -- a falsy string, not an actual False -- when a caller comparing the result against a real boolean needs a genuine True/False value."
+explanation: |
+  `a and b` doesn't evaluate to `True` or `False` the way it might in a
+  language with a strict boolean type -- it evaluates to whichever
+  *operand* actually decided the outcome: if `a` is falsy, the whole
+  expression is `a` itself (whatever value that was), and only if `a`
+  is truthy does it become `b`. That's usually invisible, since most
+  falsy values (`False`, `0`) are easy to mistake for `False`
+  itself -- until the falsy operand is something like an empty string,
+  and code downstream does a strict `result == True` or `result is
+  False` check that the raw operand doesn't actually satisfy.
+
+  The bug this exercise fixes returns `name and age > 0` directly,
+  handing back the raw operand on failure instead of an actual boolean.
+  The fix wraps it with `bool(...)`.
+example_code: |
+  # The trap: returns whatever `and` short-circuits to -- a falsy
+  # STRING, not an actual False.
+  def is_valid_trap(name, age):
+      return name and age > 0
+
+  result_trap = is_valid_trap("", 25)
+  print(result_trap == False)
+  # False -- the result is "" (the falsy operand itself), not the boolean False
+
+  # The fix: wrap with bool() to get a genuine True/False.
+  def is_valid(name, age):
+      return bool(name) and age > 0
+
+  result = is_valid("", 25)
+  print(result == False)
+  # True -- correctly a real boolean now
+starter_code: |
+  def is_valid(name, age):
+      return name and age > 0
+
+  result = is_valid("", 25)
+  print(result == False)
+challenge: |
+  Fix `is_valid` so it returns `bool(name) and age > 0`, instead of
+  `name and age > 0` directly. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Wrap name in bool(...) before the and: bool(name) and age > 0."
+  - "\"\" and age > 0 evaluates to \"\" itself (the falsy operand) -- not to the boolean False, even though it's falsy in an if-check."
+xp_reward: 10
+achievement: null
+category: idioms_gotchas
+category_level: 8
+difficulty: gotcha
+contains_patterns:
+  - "bool\\(name\\) and age > 0"
+concept_tags: [idioms, short_circuit_evaluation, booleans]

@@ -1,0 +1,49 @@
+id: ai_214
+title: "Every JSON-RPC Message Needs Its Own 'jsonrpc' Version Field"
+language: ai
+level: 214
+objective: "Fix a response builder that omits the required 'jsonrpc' field, when every JSON-RPC 2.0 message -- request, response, or notification -- must declare which protocol version it's speaking."
+explanation: |
+  JSON-RPC 2.0 requires every message to carry a `"jsonrpc": "2.0"`
+  field, regardless of whether it's a request, a response, or a
+  notification. It's not optional metadata -- it's how a receiver
+  confirms it's looking at a message in the protocol version it
+  actually understands, rather than something else entirely that
+  happens to share the same general shape.
+
+  The bug this exercise fixes builds a response dict with `id` and
+  `result` but no `jsonrpc` field. The fix includes it, matching the
+  spec's required shape.
+example_code: |
+  # The trap: missing the required "jsonrpc" version field entirely.
+  def build_response_trap(id_, result):
+      return {"id": id_, "result": result}
+
+  print("jsonrpc" in build_response_trap(1, "ok"))   # False -- not a spec-compliant JSON-RPC message
+
+  # The fix: include the required version field.
+  def build_response(id_, result):
+      return {"jsonrpc": "2.0", "id": id_, "result": result}
+
+  print("jsonrpc" in build_response(1, "ok"))   # True -- correctly spec-compliant
+starter_code: |
+  def build_response(id_, result):
+      return {"id": id_, "result": result}
+
+  print("jsonrpc" in build_response(1, "ok"))
+challenge: |
+  Fix `build_response` so the returned dict also includes `"jsonrpc":
+  "2.0"`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Add \"jsonrpc\": \"2.0\" as an additional key in the returned dict."
+  - "This field is required on every JSON-RPC message shape -- requests, responses, and notifications alike."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 39
+difficulty: warmup
+contains_patterns:
+  - "\"jsonrpc\": \"2.0\""
+concept_tags: [mcp, json_rpc, protocol_version]

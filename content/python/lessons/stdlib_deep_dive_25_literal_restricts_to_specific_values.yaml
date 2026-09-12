@@ -1,0 +1,56 @@
+id: stdlib_deep_dive_25
+title: "typing.Literal Documents That Only Specific Values Are Actually Valid"
+language: python
+level: 226
+objective: "Add a typing.Literal type hint restricting a parameter to a fixed set of specific string values, instead of leaving it unannotated and accepting anything."
+explanation: |
+  An unannotated parameter documents nothing about which values are
+  actually meaningful -- a `mode` parameter that's only ever supposed
+  to be `"fast"` or `"slow"` looks, from the signature alone,
+  indistinguishable from one that genuinely accepts any string at all.
+  `typing.Literal["fast", "slow"]` documents exactly that restricted
+  set of valid values as real, inspectable annotation metadata, the
+  same "gradual typing, zero runtime enforcement" trade-off every hint
+  in this category makes -- a type checker can flag `set_mode
+  ("medium")` as invalid before the code ever runs, even though
+  nothing stops it from running anyway without one.
+
+  The bug this exercise fixes has no type hint at all. The fix adds
+  `Literal["fast", "slow"]`.
+example_code: |
+  # No hint at all -- nothing documents which values are actually valid.
+  def set_mode_loop(mode):
+      return mode
+
+  print("mode" in set_mode_loop.__annotations__)
+  # False -- no restriction communicated anywhere
+
+  # Literal documents the exact set of genuinely valid values.
+  from typing import Literal
+
+  def set_mode(mode: Literal["fast", "slow"]):
+      return mode
+
+  print("mode" in set_mode.__annotations__)
+  # True -- correctly documents that only "fast" or "slow" are valid
+starter_code: |
+  def set_mode(mode):
+      return mode
+
+  print("mode" in set_mode.__annotations__)
+challenge: |
+  Fix `set_mode` by importing `Literal` from `typing` and annotating
+  `mode: Literal["fast", "slow"]`. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "from typing import Literal, then: def set_mode(mode: Literal[\"fast\", \"slow\"]):."
+  - "Literal documents a genuinely restricted set of valid values -- more specific than just saying \"this is a str.\""
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 25
+difficulty: core
+contains_patterns:
+  - "mode: Literal\\[\"fast\", \"slow\"\\]"
+concept_tags: [typing, literal]

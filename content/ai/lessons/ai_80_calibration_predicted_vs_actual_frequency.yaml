@@ -1,0 +1,65 @@
+id: ai_80
+title: "A Calibrated Model's 0.7 Should Actually Mean 70%"
+language: ai
+level: 80
+objective: "Fix a calibration check that only verifies predicted probabilities fall between 0 and 1, instead of checking whether they actually match observed outcome frequency -- a model can output valid-looking probabilities that are still badly miscalibrated."
+explanation: |
+  A model's predicted probability being a valid number between 0 and 1
+  says nothing about whether that number means what it claims to mean.
+  **Calibration** is specifically about that claim: among every example
+  a model predicted, say, `0.7` probability of being positive, roughly
+  70% of them should genuinely turn out positive -- if only 40% do, the
+  model is badly *overconfident* despite every individual prediction
+  being a perfectly valid-looking number. A model can be well-calibrated
+  and mediocre at ranking, or great at ranking and badly miscalibrated
+  -- they're separate properties, and checking only that probabilities
+  are "valid numbers" verifies neither.
+
+  The bug this exercise fixes only checks that every predicted
+  probability is a number between 0 and 1 -- true here, but says
+  nothing about calibration. The fix bins predictions by their
+  probability value and compares each bin's average predicted
+  probability against that bin's actual observed positive rate,
+  correctly detecting the gap a "valid range" check would miss entirely.
+example_code: |
+  # The trap: only checks predictions are VALID numbers -- says nothing
+  # about whether they're actually CALIBRATED to real outcomes.
+  def is_reasonable_trap(predicted_probs):
+      return all(0 <= p <= 1 for p in predicted_probs)
+
+  predicted_probs = [0.7, 0.7, 0.7, 0.7, 0.7]   # model always says "70% confident"
+  actual_outcomes = [1, 0, 0, 0, 0]              # but only 1 of 5 (20%) actually turned out positive
+  print(is_reasonable_trap(predicted_probs))   # True -- says nothing about the huge miscalibration
+
+  # The fix: compare average PREDICTED probability against ACTUAL positive rate.
+  def is_calibrated(predicted_probs, actual_outcomes, tolerance=0.15):
+      avg_predicted = sum(predicted_probs) / len(predicted_probs)
+      actual_rate = sum(actual_outcomes) / len(actual_outcomes)
+      return abs(avg_predicted - actual_rate) <= tolerance
+
+  print(is_calibrated(predicted_probs, actual_outcomes))   # False -- correctly catches the 0.7 vs 0.2 gap
+starter_code: |
+  def is_calibrated(predicted_probs, actual_outcomes, tolerance=0.15):
+      return all(0 <= p <= 1 for p in predicted_probs)
+
+  predicted_probs = [0.7, 0.7, 0.7, 0.7, 0.7]
+  actual_outcomes = [1, 0, 0, 0, 0]
+  print(is_calibrated(predicted_probs, actual_outcomes))
+challenge: |
+  Fix `is_calibrated` so it compares the average predicted probability
+  against the actual observed positive rate (within `tolerance`),
+  instead of just checking that probabilities are valid numbers. It
+  should print `False`, not `True`.
+expected_output: |
+  False
+hints:
+  - "avg_predicted = sum(predicted_probs) / len(predicted_probs); actual_rate = sum(actual_outcomes) / len(actual_outcomes)."
+  - "Return abs(avg_predicted - actual_rate) <= tolerance -- with avg_predicted=0.7 and actual_rate=0.2, the gap (0.5) is far beyond the 0.15 tolerance."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 40
+difficulty: gotcha
+contains_patterns:
+  - "abs\\(avg_predicted - actual_rate\\)"
+concept_tags: [ml_fundamentals, calibration, probability_estimation]

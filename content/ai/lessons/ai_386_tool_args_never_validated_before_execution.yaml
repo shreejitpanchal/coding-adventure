@@ -1,0 +1,72 @@
+id: ai_386
+title: "Tool Arguments Should Be Validated Before Execution, Not Left to a Confusing TypeError"
+language: ai
+level: 386
+objective: "Fix a tool-calling wrapper that invokes a tool with whatever arguments it received, letting a missing required argument surface as Python's own generic TypeError, instead of checking upfront and raising a specific, clear error naming exactly what's missing."
+explanation: |
+  A tool declares which arguments it actually requires, and the Secure
+  Tool Runtime is exactly the layer that should validate incoming
+  arguments against that requirement before ever invoking the tool
+  itself -- catching a missing argument with a clear, specific message
+  instead of letting Python's own generic `TypeError: missing 1
+  required positional argument` bubble up with no context about which
+  tool or which argument was actually the problem.
+
+  The bug this exercise fixes calls `tool_fn(**args)` directly, with
+  no check. The fix validates `required_args` against `args` first,
+  raising a specific error if anything's missing.
+example_code: |
+  # The trap: calls the tool directly -- a missing argument surfaces
+  # as Python's own generic TypeError, no useful context at all.
+  def call_tool_trap(tool_fn, args, required_args):
+      return tool_fn(**args)
+
+  def send_email(to, subject):
+      return f"sent to {to}"
+
+  # call_tool_trap(send_email, {"to": "ada@example.com"}, ["to", "subject"])
+  # TypeError: send_email() missing 1 required positional argument: 'subject'
+
+  # The fix: validate required arguments FIRST, with a specific,
+  # named error.
+  def call_tool(tool_fn, args, required_args):
+      missing = [a for a in required_args if a not in args]
+      if missing:
+          raise ValueError(f"missing required argument(s): {missing}")
+      return tool_fn(**args)
+
+  try:
+      call_tool(send_email, {"to": "ada@example.com"}, ["to", "subject"])
+  except ValueError as e:
+      print(str(e))
+  # "missing required argument(s): ['subject']" -- immediately clear what's actually missing
+starter_code: |
+  def send_email(to, subject):
+      return f"sent to {to}"
+
+  def call_tool(tool_fn, args, required_args):
+      return tool_fn(**args)
+
+  try:
+      print(call_tool(send_email, {"to": "ada@example.com"}, ["to", "subject"]))
+  except TypeError:
+      print("unhandled")
+challenge: |
+  Fix `call_tool` so it computes `missing = [a for a in required_args
+  if a not in args]` and raises `ValueError(f"missing required
+  argument(s): {missing}")` when anything's missing, instead of
+  calling `tool_fn(**args)` unconditionally. It should print
+  `missing required argument(s): ['subject']`, not `unhandled`.
+expected_output: |
+  missing required argument(s): ['subject']
+hints:
+  - "missing = [a for a in required_args if a not in args], then: if missing: raise ValueError(...) before calling tool_fn."
+  - "This check needs to run BEFORE tool_fn(**args) is ever called, so the caller gets a clear reason instead of Python's own generic TypeError."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 31
+difficulty: core
+contains_patterns:
+  - "missing = \\[a for a in required_args if a not in args\\]"
+concept_tags: [solace_agent_mesh, secure_tool_runtime, argument_validation]

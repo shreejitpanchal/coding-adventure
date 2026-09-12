@@ -1,0 +1,59 @@
+id: ai_274
+title: "The END Sentinel Needs to Be Recognized, Not Looked Up as a Real Node"
+language: ai
+level: 274
+objective: "Fix a step executor that tries to look up a router's 'END' result in the nodes dict, when END is a special sentinel meaning 'the graph is finished,' not the name of an actual node to run."
+explanation: |
+  A router can legitimately return `"END"` to signal that the graph
+  should stop -- but `"END"` was never registered as a real node with
+  actual work to do, so looking it up in the same `nodes` dict every
+  other route name goes through fails immediately. The executor has to
+  special-case this specific value before ever attempting a lookup,
+  recognizing "the graph is done" as a distinct outcome from "run this
+  named node."
+
+  The bug this exercise fixes always tries `nodes[router_result]`,
+  regardless of what the router returned. The fix checks for the `END`
+  sentinel first and handles it directly.
+example_code: |
+  # The trap: always tries to look up the router's result as a real
+  # node -- but "END" was never registered as one.
+  def step_trap(router_result, nodes):
+      return nodes[router_result](None)
+
+  nodes = {"final": lambda s: "done"}
+  # step_trap("END", nodes)  # KeyError: 'END' -- END isn't a real node at all
+
+  # The fix: recognize the END sentinel before ever attempting a lookup.
+  def step(router_result, nodes):
+      if router_result == "END":
+          return "FINISHED"
+      return nodes[router_result](None)
+
+  print(step("END", nodes))   # "FINISHED" -- correctly recognized the sentinel instead of trying to look it up
+starter_code: |
+  def step(router_result, nodes):
+      return nodes[router_result](None)
+
+  nodes = {"final": lambda s: "done"}
+  try:
+      print(step("END", nodes))
+  except KeyError:
+      print("crashed")
+challenge: |
+  Fix `step` so it checks `if router_result == "END": return
+  "FINISHED"` before ever attempting `nodes[router_result]`. It should
+  print `FINISHED`, not `crashed`.
+expected_output: |
+  FINISHED
+hints:
+  - "Add the END check as the very first line of the function, before the nodes[router_result] lookup ever runs."
+  - "\"END\" is meaningful to the executor itself, not to the nodes dict -- it was never meant to be registered as a node in the first place."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 9
+difficulty: warmup
+contains_patterns:
+  - "router_result == \"END\""
+concept_tags: [langgraph, end_sentinel, graph_execution]

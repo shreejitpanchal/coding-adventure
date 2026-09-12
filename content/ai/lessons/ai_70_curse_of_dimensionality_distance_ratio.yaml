@@ -1,0 +1,87 @@
+id: ai_70
+title: "In High Dimensions, 'Nearest' and 'Farthest' Start to Look the Same"
+language: ai
+level: 70
+objective: "Fix a nearest-neighbor sanity check that only measures distance in a couple of dimensions, missing that KNN's usefulness specifically degrades as dimensionality grows -- nearest and farthest points become nearly indistinguishable in high-dimensional space."
+explanation: |
+  The **curse of dimensionality** describes a real, counter-intuitive
+  effect: as the number of features (dimensions) grows, the *ratio*
+  between the distance to the nearest neighbor and the distance to the
+  farthest neighbor creeps toward 1 -- meaning, in high enough
+  dimensions, "nearest" and "farthest" become nearly meaningless
+  distinctions, which is exactly the distinction K-Nearest-Neighbors
+  depends on to work at all. This isn't a bug in any particular
+  implementation -- it's a geometric fact about how volume and distance
+  behave as dimensions accumulate, and it's the reason KNN (and other
+  distance-based methods) tend to need dimensionality reduction (PCA,
+  feature selection) before they work well on high-dimensional data.
+
+  The exercise here checks that ratio directly: computing the
+  nearest/farthest distance ratio for the same random points, first in
+  a low-dimensional space, then in a much higher-dimensional one, and
+  confirming the ratio moves closer to 1 as dimensionality increases --
+  the bug is a check that only compares two dimensionality levels
+  without verifying the *direction* of the effect (ratio increasing
+  toward 1) is actually what happened.
+example_code: |
+  # A fixed, deterministic point set -- points arranged so the ratio
+  # calculation is exact and doesn't depend on any random draw.
+  def distances_from_origin(points):
+      return [sum(c ** 2 for c in p) ** 0.5 for p in points]
+
+  low_dim_points = [(1, 1), (1, 5), (3, 3)]        # 2 dimensions
+  high_dim_points = [(1, 1, 1, 1), (1, 1, 1, 5), (2, 2, 2, 2)]   # 4 dimensions, ratio-preserving analog
+
+  def nearest_farthest_ratio(points):
+      dists = distances_from_origin(points)
+      return min(dists) / max(dists)
+
+  low_ratio = nearest_farthest_ratio(low_dim_points)
+  high_ratio = nearest_farthest_ratio(high_dim_points)
+
+  # The trap: only checks that the ratios differ, not that the higher-
+  # dimensional one moved CLOSER to 1 (the actual curse-of-dimensionality effect).
+  def ratios_changed_trap(low_ratio, high_ratio):
+      return low_ratio != high_ratio
+
+  # The fix: checks the ratio actually moved closer to 1 in higher dimensions.
+  def ratio_moved_toward_one(low_ratio, high_ratio):
+      return abs(high_ratio - 1) < abs(low_ratio - 1)
+
+  print(ratio_moved_toward_one(low_ratio, high_ratio))
+starter_code: |
+  def distances_from_origin(points):
+      return [sum(c ** 2 for c in p) ** 0.5 for p in points]
+
+  low_dim_points = [(1, 1), (1, 5), (3, 3)]
+  high_dim_points = [(1, 1, 1, 1), (1, 1, 1, 5), (2, 2, 2, 2)]
+
+  def nearest_farthest_ratio(points):
+      dists = distances_from_origin(points)
+      return min(dists) / max(dists)
+
+  low_ratio = nearest_farthest_ratio(low_dim_points)
+  high_ratio = nearest_farthest_ratio(high_dim_points)
+
+  def ratios_changed(low_ratio, high_ratio):
+      return low_ratio != high_ratio
+
+  print(ratios_changed(low_ratio, high_ratio))
+challenge: |
+  Replace `ratios_changed` with a check that the higher-dimensional
+  ratio actually moved *closer to 1* than the lower-dimensional one
+  (`abs(high_ratio - 1) < abs(low_ratio - 1)`), instead of just checking
+  that the two ratios differ at all. It should print `True`.
+expected_output: |
+  True
+hints:
+  - "Define ratio_moved_toward_one(low_ratio, high_ratio) returning abs(high_ratio - 1) < abs(low_ratio - 1)."
+  - "Just checking low_ratio != high_ratio only confirms SOMETHING changed -- it doesn't confirm the change was actually in the curse-of-dimensionality direction (toward 1)."
+xp_reward: 15
+achievement: null
+category: ml_fundamentals
+category_level: 30
+difficulty: deep_dive
+contains_patterns:
+  - "abs\\(high_ratio - 1\\) < abs\\(low_ratio - 1\\)"
+concept_tags: [ml_fundamentals, curse_of_dimensionality, knn]

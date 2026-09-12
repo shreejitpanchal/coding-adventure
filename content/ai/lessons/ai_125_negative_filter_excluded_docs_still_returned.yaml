@@ -1,0 +1,74 @@
+id: ai_125
+title: "Explicitly Excluded Documents Must Be Filtered Out, Not Just Down-Weighted"
+language: ai
+level: 125
+objective: "Fix a retrieval function that only lowers the score of explicitly excluded documents instead of removing them entirely, letting a document a user or admin explicitly marked as 'never show this' still appear in results if its underlying relevance score was high enough."
+explanation: |
+  Some documents need to be excluded from retrieval entirely, not just
+  deprioritized -- a deprecated policy document superseded by a newer
+  one, content a compliance team flagged as unsuitable to surface, or
+  simply something a user explicitly said "don't show me this again."
+  A soft penalty (subtracting a bit from its score) still leaves the
+  document eligible to appear if its underlying relevance was high
+  enough to survive the penalty -- which defeats the entire point of an
+  *exclusion* list, which is meant to be an absolute rule, not a
+  preference.
+
+  The bug this exercise fixes only subtracts a penalty from an excluded
+  document's score, still ranking and potentially returning it. The
+  fix removes explicitly excluded documents from the candidate list
+  entirely, before any ranking happens at all, guaranteeing they can
+  never appear in the results regardless of how relevant they'd
+  otherwise seem.
+example_code: |
+  # The trap: only PENALIZES an excluded document's score -- it can
+  # still appear if its underlying relevance was high enough to survive.
+  def retrieve_trap(candidates, excluded_ids, k=2, penalty=0.3):
+      def score(c):
+          return c["relevance"] - (penalty if c["id"] in excluded_ids else 0)
+      ranked = sorted(candidates, key=score, reverse=True)
+      return [c["id"] for c in ranked[:k]]
+
+  candidates = [
+      {"id": "deprecated_policy", "relevance": 0.95},   # explicitly excluded, but VERY relevant otherwise
+      {"id": "current_policy", "relevance": 0.60},
+  ]
+  print(retrieve_trap(candidates, excluded_ids={"deprecated_policy"}, k=1))   # ['deprecated_policy'] -- still won, despite exclusion!
+
+  # The fix: remove excluded documents from candidates ENTIRELY, before any ranking.
+  def retrieve(candidates, excluded_ids, k=2):
+      allowed = [c for c in candidates if c["id"] not in excluded_ids]
+      ranked = sorted(allowed, key=lambda c: c["relevance"], reverse=True)
+      return [c["id"] for c in ranked[:k]]
+
+  print(retrieve(candidates, excluded_ids={"deprecated_policy"}, k=1))   # ['current_policy'] -- correctly excluded entirely
+starter_code: |
+  def retrieve(candidates, excluded_ids, k=2, penalty=0.3):
+      def score(c):
+          return c["relevance"] - (penalty if c["id"] in excluded_ids else 0)
+      ranked = sorted(candidates, key=score, reverse=True)
+      return [c["id"] for c in ranked[:k]]
+
+  candidates = [
+      {"id": "deprecated_policy", "relevance": 0.95},
+      {"id": "current_policy", "relevance": 0.60},
+  ]
+  print(retrieve(candidates, excluded_ids={"deprecated_policy"}, k=1))
+challenge: |
+  Fix `retrieve` so it removes any document in `excluded_ids` from the
+  candidate list entirely before ranking, instead of just subtracting a
+  penalty from its score. It should print `['current_policy']`, not
+  `['deprecated_policy']`.
+expected_output: |
+  ['current_policy']
+hints:
+  - "Build allowed = [c for c in candidates if c[\"id\"] not in excluded_ids] first, filtering the excluded document out completely."
+  - "Rank and slice `allowed`, not the original `candidates` -- an excluded document should never even be a candidate for ranking."
+xp_reward: 10
+achievement: null
+category: rag
+category_level: 40
+difficulty: gotcha
+contains_patterns:
+  - "c\\[.id.\\] not in excluded_ids"
+concept_tags: [rag, filtering, exclusion_list]

@@ -1,0 +1,61 @@
+id: ai_208
+title: "Each In-Flight Request Needs Its Own Slot, Not One Shared Key"
+language: ai
+level: 208
+objective: "Fix an in-flight-request tracker that always writes to the same fixed dict key regardless of the actual request id, so tracking a second concurrent request silently overwrites and loses the first."
+explanation: |
+  A server handling multiple concurrent requests needs to track each
+  one under its own request id -- that's the entire reason ids exist:
+  so several requests can be in flight at once without stepping on each
+  other. A tracker that writes every request to the same fixed key
+  (`"current"`, say) instead of keying by the actual id can only ever
+  remember one request at a time; a second concurrent request doesn't
+  fail loudly, it just quietly clobbers the first one's entry.
+
+  The bug this exercise fixes always assigns to `in_flight["current"]`.
+  The fix keys the dict by the request's own `request_id`, so every
+  concurrent request gets its own independent slot.
+example_code: |
+  # The trap: always writes to the SAME fixed key, losing every other
+  # in-flight request.
+  def track_request_trap(in_flight, request_id, payload):
+      in_flight["current"] = payload
+
+  in_flight_trap = {}
+  track_request_trap(in_flight_trap, "r1", "A")
+  track_request_trap(in_flight_trap, "r2", "B")
+  print(len(in_flight_trap))   # 1 -- request r1 was silently lost
+
+  # The fix: key by the actual request_id.
+  def track_request(in_flight, request_id, payload):
+      in_flight[request_id] = payload
+
+  in_flight = {}
+  track_request(in_flight, "r1", "A")
+  track_request(in_flight, "r2", "B")
+  print(len(in_flight))   # 2 -- both requests correctly tracked independently
+starter_code: |
+  def track_request(in_flight, request_id, payload):
+      in_flight["current"] = payload
+
+  in_flight = {}
+  track_request(in_flight, "r1", "A")
+  track_request(in_flight, "r2", "B")
+  print(len(in_flight))
+challenge: |
+  Fix `track_request` so it assigns to `in_flight[request_id]` instead
+  of the fixed key `in_flight["current"]`. It should print `2`, not
+  `1`.
+expected_output: |
+  2
+hints:
+  - "Replace in_flight[\"current\"] = payload with in_flight[request_id] = payload."
+  - "A shared fixed key can only ever hold one request's data at a time -- concurrent requests need independent keys."
+xp_reward: 10
+achievement: null
+category: mcp
+category_level: 33
+difficulty: warmup
+contains_patterns:
+  - "in_flight\\[request_id\\] = payload"
+concept_tags: [mcp, concurrent_requests, request_tracking]

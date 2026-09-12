@@ -1,0 +1,59 @@
+id: core_refresher_43
+title: "A Closure-Returning Factory Function Can Replace a Single-Purpose Class"
+language: python
+level: 156
+objective: "Replace a class that exists purely to hold one config value and apply it repeatedly with a factory function that returns a closure over that value."
+explanation: |
+  A class whose entire job is storing one configuration value (a
+  multiplication factor) and applying it in a single method is more
+  machinery than the logic actually needs -- a plain function that
+  returns a nested function is enough. The nested function *closes
+  over* the factory's own parameter (`factor`), remembering it for as
+  long as the returned function itself exists, with no `self`, no
+  `__init__`, and no class at all needed to carry that stored value
+  around.
+example_code: |
+  # A class purely to hold one config value and apply it.
+  class MultiplierClass:
+      def __init__(self, factor):
+          self.factor = factor
+      def apply(self, x):
+          return x * self.factor
+
+  m_loop = MultiplierClass(3)
+  print(m_loop.apply(5))                   # 15
+
+  # A factory function returning a closure does the same thing.
+  def make_multiplier(factor):
+      def multiply(x):
+          return x * factor
+      return multiply
+
+  triple = make_multiplier(3)
+  print(triple(5))                         # 15
+starter_code: |
+  class Multiplier:
+      def __init__(self, factor):
+          self.factor = factor
+      def apply(self, x):
+          return x * self.factor
+
+  m = Multiplier(3)
+  print(m.apply(5))
+challenge: |
+  Replace the `Multiplier` class with a `make_multiplier(factor)`
+  function returning a closure, called as `triple = make_multiplier
+  (3)` then `triple(5)`. Keep the same output: 15.
+expected_output: |
+  15
+hints:
+  - "def make_multiplier(factor): def multiply(x): return x * factor; return multiply."
+  - "The inner multiply function \"closes over\" factor, remembering its value for as long as the returned function exists -- no class or self needed."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 43
+difficulty: core
+contains_patterns:
+  - "def make_multiplier\\(factor\\):"
+concept_tags: [closures, factory_functions]

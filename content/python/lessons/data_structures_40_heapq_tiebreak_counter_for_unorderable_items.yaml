@@ -1,0 +1,79 @@
+id: data_structures_40
+title: "A Priority Queue Needs a Tiebreaker When Two Priorities Match and the Items Aren't Comparable"
+language: python
+level: 197
+objective: "Fix a priority queue that pushes (priority, item) tuples directly, when two equal priorities force heapq to compare the items themselves to break the tie -- crashing the moment those items (like dicts) don't support comparison at all."
+explanation: |
+  `heapq` compares tuples element by element, and it only moves on to
+  comparing the *second* element when the first elements tie. Pushing
+  `(priority, item)` tuples works fine as long as every priority is
+  unique -- but the moment two items share the same priority, heapq
+  has to compare the items directly to break the tie, and a plain
+  dict (or most other non-comparable objects) has no `<` operator
+  defined at all, raising `TypeError` immediately. Inserting a unique,
+  ever-increasing counter between the priority and the item
+  (`(priority, count, item)`) guarantees the tie always breaks on the
+  counter, so heapq never needs to compare the actual items at all.
+
+  The bug this exercise fixes pushes bare `(priority, item)` tuples.
+  The fix inserts a unique counter as a tiebreaker.
+example_code: |
+  # The trap: two entries share the SAME priority -- heapq falls back
+  # to comparing the dicts directly to break the tie, which crashes.
+  import heapq
+
+  def build_queue_trap():
+      heap = []
+      heapq.heappush(heap, (1, {"task": "A"}))
+      heapq.heappush(heap, (1, {"task": "B"}))
+      return "ok"
+
+  try:
+      build_queue_trap()
+      print("ok")
+  except TypeError:
+      print("crashed")
+  # "crashed" -- TypeError comparing two dicts directly
+
+  # The fix: a unique counter guarantees the tie always breaks there.
+  import itertools
+
+  def build_queue():
+      heap = []
+      counter = itertools.count()
+      heapq.heappush(heap, (1, next(counter), {"task": "A"}))
+      heapq.heappush(heap, (1, next(counter), {"task": "B"}))
+      return "ok"
+
+  print(build_queue())
+  # "ok" -- the counter breaks the tie before heapq ever compares the dicts
+starter_code: |
+  import heapq
+
+  def build_queue():
+      heap = []
+      heapq.heappush(heap, (1, {"task": "A"}))
+      heapq.heappush(heap, (1, {"task": "B"}))
+      return "ok"
+
+  try:
+      print(build_queue())
+  except TypeError:
+      print("crashed")
+challenge: |
+  Fix `build_queue` so it uses `itertools.count()` to insert a unique,
+  increasing counter between the priority and the item in each pushed
+  tuple. It should print `ok`, not `crashed`.
+expected_output: |
+  ok
+hints:
+  - "import itertools, then counter = itertools.count(), and push (1, next(counter), {\"task\": \"A\"}) instead of (1, {\"task\": \"A\"})."
+  - "The counter values are always unique and always increasing, so heapq's tie-breaking comparison always resolves there -- it never needs to reach the actual item."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 40
+difficulty: gotcha
+contains_patterns:
+  - "counter = itertools\\.count\\(\\)"
+concept_tags: [heapq, priority_queue, tiebreaking]

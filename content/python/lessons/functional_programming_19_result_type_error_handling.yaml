@@ -1,0 +1,77 @@
+id: functional_programming_19
+title: "Returning Errors as Data Instead of Raising Them"
+language: python
+level: 354
+objective: "Fix a divide function that raises on invalid input, crashing whatever code processes a whole batch of results, when a Result-style return value (success flag plus value-or-error) represents failure as ordinary data the caller can check, instead of an exception that has to be caught."
+explanation: |
+  A function that raises on invalid input forces every caller to
+  either wrap it in `try/except` or risk crashing outright the instant
+  one bad input shows up -- particularly awkward when processing a
+  whole batch of inputs, where one failure shouldn't necessarily stop
+  the rest from being processed. The "Result" (or "Either") pattern,
+  common in functional languages, represents success or failure as
+  *data* instead: a small structure carrying whether the operation
+  succeeded, and either its value or an error message, which the
+  caller inspects like any other value -- no `try/except` needed at
+  all, and a failed operation can't crash anything, since it was never
+  actually an exception in the first place.
+
+  The fix returns a `Result` namedtuple instead of raising, letting a
+  batch of calls be processed uniformly without any of them crashing
+  the others.
+example_code: |
+  # The trap: raises on invalid input -- crashes whatever processes a batch.
+  def safe_divide_trap(a, b):
+      return a / b
+
+  try:
+      results_trap = [safe_divide_trap(10, 2), safe_divide_trap(10, 0)]
+      print("ok")
+  except ZeroDivisionError:
+      print("crashed, lost the first successful result too")
+
+  # The fix: Result represents success/failure as DATA, not an exception.
+  from typing import NamedTuple, Optional
+
+  class Result(NamedTuple):
+      ok: bool
+      value: Optional[float] = None
+      error: Optional[str] = None
+
+  def safe_divide(a, b):
+      if b == 0:
+          return Result(False, error="division by zero")
+      return Result(True, value=a / b)
+
+  results = [safe_divide(10, 2), safe_divide(10, 0)]
+  print(results[0].ok, results[0].value, results[1].ok, results[1].error)
+  # True 5.0 False division by zero -- correctly kept BOTH results, neither crashed
+starter_code: |
+  def safe_divide(a, b):
+      return a / b
+
+  try:
+      results = [safe_divide(10, 2), safe_divide(10, 0)]
+      print("ok")
+  except ZeroDivisionError:
+      print("crashed, lost the first successful result too")
+challenge: |
+  Fix this by defining a `Result(NamedTuple)` with `ok`, `value`, and
+  `error` fields, and having `safe_divide` return a `Result` instead of
+  raising. Print `results[0].ok, results[0].value, results[1].ok,
+  results[1].error`. It should print
+  `True 5.0 False division by zero`, not
+  `crashed, lost the first successful result too`.
+expected_output: |
+  True 5.0 False division by zero
+hints:
+  - "from typing import NamedTuple, Optional, then: class Result(NamedTuple): ok: bool; value: Optional[float] = None; error: Optional[str] = None."
+  - "def safe_divide(a, b): if b == 0: return Result(False, error=\"division by zero\"); return Result(True, value=a / b)."
+xp_reward: 15
+achievement: null
+category: functional_programming
+category_level: 19
+difficulty: deep_dive
+contains_patterns:
+  - "class Result\\(NamedTuple\\):"
+concept_tags: [functional_programming, error_handling, result_type]

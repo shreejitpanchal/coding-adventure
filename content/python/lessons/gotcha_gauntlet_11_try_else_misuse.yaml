@@ -1,0 +1,81 @@
+id: gotcha_gauntlet_11
+title: "The Error Message That Blamed the Wrong Argument"
+language: python
+level: 256
+objective: "Fix a function whose single try block wraps two separate risky operations under one except, so a failure in the SECOND operation gets mislabeled as a failure in the first -- try/except/else separates them so each failure is correctly attributed."
+explanation: |
+  A single `try` block wrapping two separate risky calls under one
+  `except` can't tell which of the two actually failed -- whichever
+  exception type is being caught, catching it treats *both* calls as
+  equally suspect, so a failure in the second call gets reported using
+  the message meant for the first. `try/except/else` is built
+  specifically to narrow a `try` block down to exactly the one risky
+  operation it's meant to guard, with the `else` clause holding
+  whatever should run *only* once that operation has genuinely
+  succeeded -- code that itself might still fail, but with its own
+  failure correctly attributed, not silently folded into the first
+  operation's handler.
+
+  The bug this exercise fixes wraps both `int(a)` and `int(b)` in one
+  `try`, so a bad `b` gets reported as a bad `a`. The fix nests a
+  second `try/except` inside the first's `else`, correctly attributing
+  each failure to the value that actually caused it.
+example_code: |
+  # The trap: ONE try wraps BOTH risky calls -- a failure in the second
+  # gets blamed on the first.
+  def parse_two_trap(a, b):
+      try:
+          x = int(a)
+          y = int(b)
+          return x + y
+      except ValueError:
+          return "invalid a"
+
+  print(parse_two_trap("5", "oops"))
+  # "invalid a" -- WRONG, "a" parsed fine; it was "b" that actually failed
+
+  # The fix: try/except/else correctly separates and attributes each failure.
+  def parse_two(a, b):
+      try:
+          x = int(a)
+      except ValueError:
+          return "invalid a"
+      else:
+          try:
+              y = int(b)
+          except ValueError:
+              return "invalid b"
+          else:
+              return x + y
+
+  print(parse_two("5", "oops"))
+  # "invalid b" -- correctly identifies which value actually failed
+starter_code: |
+  def parse_two(a, b):
+      try:
+          x = int(a)
+          y = int(b)
+          return x + y
+      except ValueError:
+          return "invalid a"
+
+  print(parse_two("5", "oops"))
+challenge: |
+  Fix `parse_two` so `int(a)` and `int(b)` are each guarded by their
+  own `try/except`, with the second nested inside the first's `else`
+  clause, so a bad `b` is correctly reported as `"invalid b"` instead
+  of `"invalid a"`.
+expected_output: |
+  invalid b
+hints:
+  - "try: x = int(a) / except ValueError: return \"invalid a\" / else: try: y = int(b) / except ValueError: return \"invalid b\" / else: return x + y."
+  - "else only runs once the try block right above it has genuinely succeeded -- that's what lets the second risky call be attributed correctly instead of sharing the first call's handler."
+xp_reward: 15
+achievement: null
+category: gotcha_gauntlet
+category_level: 11
+difficulty: gotcha
+contains_patterns:
+  - "invalid b"
+  - "else:"
+concept_tags: [exceptions, try_else, gotchas]

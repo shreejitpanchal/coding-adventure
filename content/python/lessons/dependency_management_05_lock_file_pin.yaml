@@ -68,7 +68,7 @@ hints:
   - "Check `if pin not in available_versions` first, raising ValueError if so."
   - "Otherwise, just return pin directly -- the exact version requested."
 xp_reward: 15
-achievement: dependency_management_master
+achievement: null
 category: dependency_management
 category_level: 5
 difficulty: deep_dive

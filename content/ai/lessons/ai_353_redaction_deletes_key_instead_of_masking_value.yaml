@@ -1,0 +1,59 @@
+id: ai_353
+title: "Redacting a Field Should Mask Its Value, Not Delete the Key Entirely"
+language: ai
+level: 353
+objective: "Fix a redaction function that removes the sensitive key entirely, when masking a field should preserve the fact that it was captured at all -- deleting it makes a genuinely sensitive input look like it was never even part of the trace in the first place."
+explanation: |
+  Redacting a sensitive field is supposed to hide its *value* while
+  still recording that the field existed and was present in the input
+  -- deleting the key outright does something subtly worse than
+  exposing it: it makes the trace look like that field was never
+  captured at all, which can mislead someone debugging a chain into
+  thinking a required input was missing when it was actually there,
+  just correctly hidden.
+
+  The bug this exercise fixes filters sensitive keys out of the dict
+  entirely. The fix keeps every key, replacing only the sensitive
+  ones' values with a redaction marker.
+example_code: |
+  # The trap: DELETES the sensitive key entirely -- looks like that
+  # field was never even present in the input at all.
+  def redact_trap(inputs, sensitive_fields):
+      return {k: v for k, v in inputs.items() if k not in sensitive_fields}
+
+  inputs = {"query": "check balance", "account_number": "12345"}
+  redacted_trap = redact_trap(inputs, ["account_number"])
+  print("account_number" in redacted_trap)
+  # False -- looks like the field was never even present in the input at all
+
+  # The fix: keep every key, mask only the sensitive ones' values.
+  def redact(inputs, sensitive_fields):
+      return {k: ("[REDACTED]" if k in sensitive_fields else v) for k, v in inputs.items()}
+
+  redacted = redact(inputs, ["account_number"])
+  print("account_number" in redacted)
+  # True -- correctly preserved the key, with its value masked
+starter_code: |
+  def redact(inputs, sensitive_fields):
+      return {k: v for k, v in inputs.items() if k not in sensitive_fields}
+
+  inputs = {"query": "check balance", "account_number": "12345"}
+  redacted = redact(inputs, ["account_number"])
+  print("account_number" in redacted)
+challenge: |
+  Fix `redact` so it keeps every key, using `"[REDACTED]" if k in
+  sensitive_fields else v` as the value, instead of filtering sensitive
+  keys out entirely. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Change the dict comprehension's condition into a value expression: {k: (\"[REDACTED]\" if k in sensitive_fields else v) for k, v in inputs.items()}."
+  - "Every key from the original input should still be present afterward -- only the sensitive ones' VALUES should change."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 43
+difficulty: gotcha
+contains_patterns:
+  - "\"\\[REDACTED\\]\" if k in sensitive_fields else v"
+concept_tags: [langsmith, redaction, pii]

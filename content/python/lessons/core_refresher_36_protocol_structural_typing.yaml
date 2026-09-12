@@ -1,0 +1,73 @@
+id: core_refresher_36
+title: "typing.Protocol Checks Structural Shape, Not Just Attribute Existence"
+language: python
+level: 149
+objective: "Replace a hasattr() check with a runtime-checkable typing.Protocol, formally declaring the expected shape instead of just probing for one attribute's existence."
+explanation: |
+  `hasattr(obj, "honk")` confirms *an* attribute named `honk` exists,
+  but says nothing about whether it's actually callable the way a real
+  "honk method" should be, or documents anywhere what shape a
+  "Honker" is actually expected to have. `typing.Protocol` lets that
+  shape be declared formally as its own type -- `class Honker
+  (Protocol): def honk(self) -> str: ...` -- and marking it
+  `@runtime_checkable` allows `isinstance(obj, Honker)` to check
+  against that declared shape directly, giving duck typing an actual,
+  reusable, named type to check against instead of an ad-hoc
+  attribute probe.
+
+  The bug this exercise fixes checks with a bare `hasattr()`. The fix
+  defines a `Protocol` and checks with `isinstance()` against it.
+example_code: |
+  # A bare attribute probe -- doesn't document the expected shape
+  # anywhere as an actual, reusable type.
+  class CarLoop:
+      def honk(self):
+          return "beep"
+
+  def is_honker_loop(obj):
+      return hasattr(obj, "honk")
+
+  print(is_honker_loop(CarLoop()))         # True
+
+  # A Protocol declares the expected shape formally, as a real type.
+  from typing import Protocol, runtime_checkable
+
+  @runtime_checkable
+  class Honker(Protocol):
+      def honk(self) -> str: ...
+
+  class Car:
+      def honk(self):
+          return "beep"
+
+  def is_honker(obj):
+      return isinstance(obj, Honker)
+
+  print(is_honker(Car()))                  # True
+starter_code: |
+  class Car:
+      def honk(self):
+          return "beep"
+
+  def is_honker(obj):
+      return hasattr(obj, "honk")
+
+  print(is_honker(Car()))
+challenge: |
+  Fix this by defining a `@runtime_checkable` `Honker(Protocol)` with a
+  `honk(self) -> str` method, and checking with `isinstance(obj,
+  Honker)` instead of `hasattr(obj, "honk")`. Keep the same output:
+  True.
+expected_output: |
+  True
+hints:
+  - "from typing import Protocol, runtime_checkable, then @runtime_checkable above class Honker(Protocol): def honk(self) -> str: ..."
+  - "isinstance(obj, Honker) checks the object's structural shape against the Protocol -- a real, reusable, named type instead of an ad-hoc attribute probe."
+xp_reward: 10
+achievement: null
+category: core_refresher
+category_level: 36
+difficulty: core
+contains_patterns:
+  - "isinstance\\(obj, Honker\\)"
+concept_tags: [protocol, structural_typing]

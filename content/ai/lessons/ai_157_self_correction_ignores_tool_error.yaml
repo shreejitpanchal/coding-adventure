@@ -1,0 +1,63 @@
+id: ai_157
+title: "An Agent Needs to Notice Its Own Tool Call Failed, Not Barrel Ahead"
+language: ai
+level: 157
+objective: "Fix an agent loop that treats a tool's error response exactly like a successful one, moving on to the next step as if nothing went wrong -- instead of recognizing the failure and adjusting course."
+explanation: |
+  A tool call can return an error result without raising an exception
+  at all -- a structured `{"error": "..."}` response is a completely
+  valid return value, not a crash, and code that only checks "did this
+  raise an exception" will happily treat that error response as if it
+  were a normal, successful result. A genuinely adaptive agent needs to
+  actively check whether a tool's result represents success or failure
+  and change its next action accordingly (retry, try a different
+  approach, or surface the problem), rather than blindly continuing as
+  if the failed step had actually succeeded.
+
+  The bug this exercise fixes treats every tool result as usable data,
+  regardless of whether it's actually an error response. The fix checks
+  for an `"error"` key in the result first and branches to a distinct
+  recovery action when one is found, instead of barreling ahead with
+  error content as if it were the real answer.
+example_code: |
+  # The trap: treats a TOOL ERROR exactly like a successful result --
+  # barrels ahead as if nothing went wrong at all.
+  def process_result_trap(tool_result):
+      return f"Next step based on: {tool_result}"
+
+  tool_result = {"error": "API rate limit exceeded"}
+  print(process_result_trap(tool_result))   # "Next step based on: {'error': ...}" -- treating an ERROR as real data!
+
+  # The fix: check for an error result FIRST, branch to a distinct recovery action.
+  def process_result(tool_result):
+      if isinstance(tool_result, dict) and "error" in tool_result:
+          return f"RECOVERING from error: {tool_result['error']}"
+      return f"Next step based on: {tool_result}"
+
+  print(process_result(tool_result))   # "RECOVERING from error: API rate limit exceeded" -- correctly recognized
+starter_code: |
+  def process_result(tool_result):
+      return f"Next step based on: {tool_result}"
+
+  tool_result = {"error": "API rate limit exceeded"}
+  print(process_result(tool_result))
+challenge: |
+  Fix `process_result` so it checks for an `"error"` key in
+  `tool_result` first, returning `f"RECOVERING from error:
+  {tool_result['error']}"` in that case, instead of always treating the
+  result as normal, usable data. It should print
+  `RECOVERING from error: API rate limit exceeded`, not
+  `Next step based on: {'error': 'API rate limit exceeded'}`.
+expected_output: |
+  RECOVERING from error: API rate limit exceeded
+hints:
+  - "Add: if isinstance(tool_result, dict) and \"error\" in tool_result: return f\"RECOVERING from error: {tool_result['error']}\"."
+  - "This check needs to happen BEFORE the normal-processing fallback line, so an error result is caught and handled distinctly."
+xp_reward: 10
+achievement: null
+category: agentic_frameworks
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "RECOVERING from error"
+concept_tags: [agentic_frameworks, self_correction, error_handling]

@@ -1,0 +1,63 @@
+id: data_structures_27
+title: "Deduplicating Should Keep the First Occurrence, Not Drop Every Duplicated Value Entirely"
+language: python
+level: 184
+objective: "Fix a deduplication function that removes every occurrence of anything that appeared more than once, when deduplicating should keep exactly one occurrence of each value -- the first one, in original order -- not discard duplicated values altogether."
+explanation: |
+  Deduplicating a list means collapsing repeated values down to a
+  single occurrence each, in their original order -- it does not mean
+  discarding a value entirely just because it happened to repeat.
+  Filtering to only items whose count is exactly `1` does something
+  very different: it throws away *every* occurrence of anything that
+  ever repeated, which is a much more destructive operation than
+  deduplication was ever supposed to be. `dict.fromkeys(items)`
+  builds a dict whose keys are each distinct value in first-occurrence
+  order (later duplicates just don't change that order), and
+  converting it back to a list gives exactly the intended result.
+
+  The bug this exercise fixes drops every occurrence of anything that
+  repeated. The fix uses `dict.fromkeys()`, keeping the first
+  occurrence of each value.
+example_code: |
+  # The trap: drops EVERY occurrence of anything that appeared more
+  # than once, instead of keeping just one.
+  from collections import Counter
+
+  def dedupe_trap(items):
+      counts = Counter(items)
+      return [item for item in items if counts[item] == 1]
+
+  print(dedupe_trap(["b", "a", "b", "c", "a"]))
+  # ['c'] -- WRONG, "b" and "a" appeared twice so ALL their occurrences were dropped
+
+  # The fix: dict.fromkeys() keeps the first occurrence, in order.
+  def dedupe(items):
+      return list(dict.fromkeys(items))
+
+  print(dedupe(["b", "a", "b", "c", "a"]))
+  # ['b', 'a', 'c'] -- correctly kept the first occurrence of each value
+starter_code: |
+  from collections import Counter
+
+  def dedupe(items):
+      counts = Counter(items)
+      return [item for item in items if counts[item] == 1]
+
+  print(dedupe(["b", "a", "b", "c", "a"]))
+challenge: |
+  Fix `dedupe` so it returns `list(dict.fromkeys(items))`, keeping the
+  first occurrence of each value, instead of dropping every value that
+  repeated. It should print `['b', 'a', 'c']`, not `['c']`.
+expected_output: |
+  ['b', 'a', 'c']
+hints:
+  - "Replace the whole Counter-based filter with: return list(dict.fromkeys(items))."
+  - "dict.fromkeys(items) builds a dict whose keys are each distinct value in first-occurrence order -- a later duplicate doesn't move or remove anything."
+xp_reward: 10
+achievement: null
+category: data_structures
+category_level: 27
+difficulty: gotcha
+contains_patterns:
+  - "list\\(dict\\.fromkeys\\(items\\)\\)"
+concept_tags: [deduplication, dict_fromkeys]

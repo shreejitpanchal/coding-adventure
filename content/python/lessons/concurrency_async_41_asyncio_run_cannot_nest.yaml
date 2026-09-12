@@ -1,0 +1,81 @@
+id: concurrency_async_41
+title: "asyncio.run() Can't Be Called From Inside an Already-Running Event Loop"
+language: python
+level: 331
+objective: "Fix code that calls asyncio.run() from within a coroutine that's already running inside another event loop, which raises RuntimeError, when the fix is simply awaiting the inner coroutine directly instead of starting a brand-new event loop for it."
+explanation: |
+  `asyncio.run(coro)` is meant to be the single top-level entry point
+  into async code -- it creates a *new* event loop, runs `coro` to
+  completion on it, then closes that loop. Calling it again from
+  *inside* a coroutine that's already executing on a running event
+  loop raises `RuntimeError: asyncio.run() cannot be called from a
+  running event loop`, since there's no sensible way to start a
+  second, separate event loop nested inside the one already driving
+  the current coroutine. A coroutine that needs to run another
+  coroutine from inside async code should simply `await` it directly
+  -- there's already a perfectly good event loop running; nothing
+  needs a fresh one.
+
+  The fix replaces the nested `asyncio.run(...)` call with a plain
+  `await`.
+example_code: |
+  # The trap: asyncio.run() called from INSIDE an already-running loop.
+  import asyncio
+
+  async def fetch_trap():
+      await asyncio.sleep(0)
+      return "data"
+
+  async def main_trap():
+      try:
+          result = asyncio.run(fetch_trap())   # nested event loop -- crashes
+          print(result)
+      except RuntimeError:
+          print("crashed")
+
+  asyncio.run(main_trap())
+  # "crashed" -- cannot call asyncio.run() from a running event loop
+
+  # The fix: just await it directly -- a loop is already running.
+  async def fetch():
+      await asyncio.sleep(0)
+      return "data"
+
+  async def main():
+      result = await fetch()               # no new loop needed at all
+      print(result)
+
+  asyncio.run(main())
+  # "data" -- correctly awaited directly on the already-running loop
+starter_code: |
+  import asyncio
+
+  async def fetch():
+      await asyncio.sleep(0)
+      return "data"
+
+  async def main():
+      try:
+          result = asyncio.run(fetch())
+          print(result)
+      except RuntimeError:
+          print("crashed")
+
+  asyncio.run(main())
+challenge: |
+  Fix `main` so it uses `await fetch()` directly, instead of nesting
+  `asyncio.run(fetch())` inside the already-running loop. It should
+  print `data`, not `crashed`.
+expected_output: |
+  data
+hints:
+  - "Replace asyncio.run(fetch()) with await fetch()."
+  - "asyncio.run() creates a brand-new event loop -- it can't be called from code that's already executing on one. Just await the coroutine directly instead."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 41
+difficulty: core
+contains_patterns:
+  - "await fetch\\(\\)"
+concept_tags: [asyncio, event_loop, gotchas]

@@ -1,0 +1,67 @@
+id: packaging_10
+title: "Installing in Dict Order Ignores What Actually Depends on What"
+language: python
+level: 390
+objective: "Fix an install-order function that just returns packages in whatever order they happen to appear in a dict, when a package's dependencies genuinely need to be installed BEFORE it -- a topological sort (DFS-based) produces a correct dependency-respecting order instead."
+explanation: |
+  A dict's natural iteration order (insertion order, in modern Python)
+  has nothing to do with which package depends on which -- returning
+  packages in that order can easily put a package before the very
+  dependencies it needs already installed. A topological sort produces
+  an ordering where every package appears only *after* everything it
+  depends on: a simple depth-first approach visits each package's
+  dependencies recursively first, and only appends the package itself
+  to the result *after* all of its dependencies have already been
+  appended -- naturally producing dependencies-before-dependents order,
+  regardless of what order the packages were originally listed in.
+
+  The fix replaces the raw `dict.keys()` order with a proper
+  DFS-based topological sort.
+example_code: |
+  # The trap: just returns dict key order, ignoring dependencies entirely.
+  def install_order_trap(deps):
+      return list(deps.keys())
+
+  print(install_order_trap({"c": ["a", "b"], "a": [], "b": ["a"]}))
+  # ['c', 'a', 'b'] -- WRONG, "c" would be installed before its dependencies exist
+
+  # The fix: a DFS-based topological sort respects the dependency graph.
+  def install_order(deps):
+      visited = set()
+      order = []
+      def visit(name):
+          if name in visited:
+              return
+          visited.add(name)
+          for dep in deps[name]:
+              visit(dep)
+          order.append(name)
+      for name in deps:
+          visit(name)
+      return order
+
+  print(install_order({"c": ["a", "b"], "a": [], "b": ["a"]}))
+  # ['a', 'b', 'c'] -- correctly installs every dependency before its dependents
+starter_code: |
+  def install_order(deps):
+      return list(deps.keys())
+
+  print(install_order({"c": ["a", "b"], "a": [], "b": ["a"]}))
+challenge: |
+  Fix `install_order` so it performs a DFS-based topological sort --
+  visiting each package's dependencies recursively first, then
+  appending the package itself -- instead of returning raw dict key
+  order. It should print `['a', 'b', 'c']`, not `['c', 'a', 'b']`.
+expected_output: |
+  ['a', 'b', 'c']
+hints:
+  - "visited = set(); order = []; def visit(name): if name in visited: return; visited.add(name); for dep in deps[name]: visit(dep); order.append(name)."
+  - "Call visit(name) for every name in deps, then return order -- each package is only appended AFTER every one of its dependencies already has been."
+xp_reward: 15
+achievement: null
+category: packaging
+category_level: 10
+difficulty: deep_dive
+contains_patterns:
+  - "def visit\\(name\\):"
+concept_tags: [packaging, dependency_graph, topological_sort]

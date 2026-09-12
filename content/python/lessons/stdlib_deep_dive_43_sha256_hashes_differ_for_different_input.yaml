@@ -1,0 +1,66 @@
+id: stdlib_deep_dive_43
+title: "hashlib.sha256 Produces a Genuinely Different Digest for Different Input"
+language: python
+level: 244
+objective: "Fix code that hashes a password with Python's built-in hash() (which is salted per-process for security and is NOT a cryptographic hash at all), when hashlib.sha256 produces a stable, genuine cryptographic digest suitable for comparing hashed values."
+explanation: |
+  Python's built-in `hash()` function is designed for fast dict/set
+  bucketing, not cryptography -- string hashing is deliberately
+  randomized per-process (`PYTHONHASHSEED`) specifically to prevent
+  hash-flooding attacks, meaning `hash("password")` gives a *different*
+  number every time the process restarts. That makes it useless for
+  anything meant to be stable across runs, like a stored password
+  digest. `hashlib.sha256(data).hexdigest()` is a real cryptographic
+  hash function: the same input always produces the exact same digest,
+  in every process, forever, while two different inputs produce
+  different digests (with overwhelming probability).
+
+  The bug this exercise fixes uses `hash()`, whose randomized output
+  can't be compared reliably across separate calls. The fix uses
+  `hashlib.sha256`, which is genuinely stable and comparable.
+example_code: |
+  # The trap: built-in hash() is randomized per-process -- not stable.
+  def digest_trap(data):
+      return hash(data)
+
+  # Two separate imaginary process runs of digest_trap("secret") are NOT
+  # guaranteed to produce the same integer at all, since PYTHONHASHSEED
+  # randomizes string hashing per process by design.
+
+  # The fix: hashlib.sha256 is a genuine, stable cryptographic digest.
+  import hashlib
+
+  def digest(data):
+      return hashlib.sha256(data.encode()).hexdigest()
+
+  a = digest("secret")
+  b = digest("secret")
+  c = digest("different")
+  print(a == b, a == c)
+  # True False -- same input always matches, different input (almost) never does
+starter_code: |
+  import hashlib
+
+  def digest(data):
+      return hash(data)
+
+  a = digest("secret")
+  b = digest("secret")
+  c = digest("different")
+  print(a == b, a == c)
+challenge: |
+  Fix `digest` so it uses `hashlib.sha256(data.encode()).hexdigest()`
+  instead of the built-in `hash()`. It should print `True False`.
+expected_output: |
+  True False
+hints:
+  - "return hashlib.sha256(data.encode()).hexdigest()."
+  - "Built-in hash() is randomized per-process for security reasons and isn't a cryptographic hash at all -- hashlib.sha256 gives a genuinely stable digest."
+xp_reward: 10
+achievement: null
+category: stdlib_deep_dive
+category_level: 43
+difficulty: gotcha
+contains_patterns:
+  - "hashlib\\.sha256\\(data\\.encode\\(\\)\\)\\.hexdigest\\(\\)"
+concept_tags: [hashlib, sha256, hashing]

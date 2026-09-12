@@ -1,0 +1,83 @@
+id: concurrency_async_31
+title: "A Global Doesn't Cross Process Boundaries -- multiprocessing.Value Does"
+language: python
+level: 321
+objective: "Fix code expecting a worker process to mutate the parent's plain global variable, when each process has its own completely separate memory space -- multiprocessing.Value creates a value backed by actual shared memory, genuinely visible to both the parent and its worker processes."
+explanation: |
+  Unlike threads, which share the same memory space as the process
+  that created them, each `multiprocessing.Process` is a genuinely
+  separate OS process with its *own* independent memory -- a plain
+  global variable a worker process mutates is mutating that worker's
+  *own copy* of the module (processes on most platforms start by
+  either forking or re-importing the module fresh), never the
+  parent's. The parent reads back exactly the value it started with,
+  no matter what the worker did to its own copy of that name.
+  `multiprocessing.Value('i', initial)` is different: it allocates the
+  underlying integer in actual OS-level shared memory, so `shared.
+  value` genuinely refers to the *same* storage in both the parent and
+  every worker process that receives it.
+
+  The fix replaces the plain global with a `multiprocessing.Value`,
+  passed explicitly to the worker function.
+example_code: |
+  # The trap: a plain global -- the worker process mutates its OWN copy only.
+  from multiprocessing import Process
+
+  counter_trap = 0
+
+  def increment_trap():
+      global counter_trap
+      counter_trap += 1
+
+  if __name__ == "__main__":
+      p = Process(target=increment_trap)
+      p.start()
+      p.join()
+      print(counter_trap)
+      # 0 -- WRONG if the parent expected to see the worker's increment
+
+  # The fix: multiprocessing.Value is backed by REAL shared memory.
+  from multiprocessing import Process, Value
+
+  def increment(shared):
+      shared.value += 1
+
+  if __name__ == "__main__":
+      counter = Value('i', 0)
+      p = Process(target=increment, args=(counter,))
+      p.start()
+      p.join()
+      print(counter.value)
+      # 1 -- correctly visible, since both processes share the same underlying memory
+starter_code: |
+  from multiprocessing import Process
+
+  counter = 0
+
+  def increment():
+      global counter
+      counter += 1
+
+  if __name__ == "__main__":
+      p = Process(target=increment)
+      p.start()
+      p.join()
+      print(counter)
+challenge: |
+  Fix this using `multiprocessing.Value('i', 0)` passed explicitly to
+  `increment(shared)`, instead of a plain global the worker process
+  can never actually share with the parent. It should print `1`, not
+  `0`.
+expected_output: |
+  1
+hints:
+  - "counter = Value('i', 0); def increment(shared): shared.value += 1; p = Process(target=increment, args=(counter,))."
+  - "Each process has its own completely separate memory -- a plain global mutated in a worker never reaches back into the parent's copy. Value is backed by real shared memory instead."
+xp_reward: 15
+achievement: null
+category: concurrency_async
+category_level: 31
+difficulty: deep_dive
+contains_patterns:
+  - "Value\\('i', 0\\)"
+concept_tags: [multiprocessing, shared_memory, concurrency]

@@ -1,0 +1,67 @@
+id: ai_62
+title: "Imputing Missing Values from Combined Train+Test Data Is Leakage"
+language: ai
+level: 62
+objective: "Fix a missing-value imputer that computes its fill value (the mean) from train and test data combined, letting information from the held-out test set leak into how the training data gets prepared."
+explanation: |
+  This is the same underlying mistake this category's very first lesson
+  covers for normalization ranges, showing up again in a different
+  preparation step: filling a missing value with the column's mean only
+  stays honest if that mean is computed from **training data alone**.
+  Computing it from train and test combined means the fill value used
+  inside the training set was influenced by test-set values the model
+  is never supposed to have seen before evaluation -- a subtle form of
+  data leakage that doesn't crash anything or look obviously wrong, it
+  just quietly makes the evaluation less trustworthy than it appears.
+
+  The bug this exercise fixes pools every non-missing value from both
+  `train` and `test` to compute the fill mean. The fix computes that
+  mean from `train` alone, keeping the test set's values completely
+  uninvolved in preparing the training data, exactly like the
+  train-only fitting principle this category's earlier normalization
+  lesson already established.
+example_code: |
+  # The trap: the fill value is computed from TRAIN AND TEST combined --
+  # test data leaks into how a training row's missing value gets filled.
+  def fill_missing_trap(train, test):
+      pooled = [v for v in train + test if v is not None]
+      mean_val = sum(pooled) / len(pooled)
+      return [v if v is not None else mean_val for v in train]
+
+  train = [10, 20, None, 30]
+  test = [100, 200]
+  print(fill_missing_trap(train, test))   # [10, 20, 72.0, 30] -- test's big values pulled this mean way up
+
+  # The fix: the fill value comes from TRAIN alone.
+  def fill_missing(train, test):
+      train_values = [v for v in train if v is not None]
+      mean_val = sum(train_values) / len(train_values)
+      return [v if v is not None else mean_val for v in train]
+
+  print(fill_missing(train, test))   # [10, 20, 20.0, 30] -- correctly uninfluenced by test data
+starter_code: |
+  def fill_missing(train, test):
+      pooled = [v for v in train + test if v is not None]
+      mean_val = sum(pooled) / len(pooled)
+      return [v if v is not None else mean_val for v in train]
+
+  train = [10, 20, None, 30]
+  test = [100, 200]
+  print(fill_missing(train, test))
+challenge: |
+  Fix `fill_missing` so it computes the fill mean from `train` alone,
+  not from `train` and `test` pooled together. It should print
+  `[10, 20, 20.0, 30]`, not `[10, 20, 72.0, 30]`.
+expected_output: |
+  [10, 20, 20.0, 30]
+hints:
+  - "Compute train_values from train only: [v for v in train if v is not None], never touching test at all."
+  - "The `test` parameter should end up completely unused in the fixed version -- if the function body still references it, that's a sign test data is still leaking in."
+xp_reward: 10
+achievement: null
+category: ml_fundamentals
+category_level: 22
+difficulty: gotcha
+contains_patterns:
+  - "for v in train if v is not None"
+concept_tags: [ml_fundamentals, data_leakage, missing_data_imputation]
