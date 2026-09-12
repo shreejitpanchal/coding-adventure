@@ -1,0 +1,91 @@
+id: ai_38
+title: "Runs Must Log Status From What Actually Happened, Not an Optimistic Default"
+language: ai
+level: 38
+objective: "Fix a hand-rolled run logger whose exception handler updates the recorded output but forgets to also update the status field, so a run that genuinely failed still gets logged as 'success'."
+explanation: |
+  One level below the trace's tree structure (this category's previous
+  lesson) is what a single **run** record actually needs to capture
+  correctly: not just its output, but an accurate status -- did this
+  step succeed or fail? -- since a trace's whole value depends on being
+  able to trust that a run marked "success" genuinely succeeded.
+
+  The bug this exercise fixes is a run logger that optimistically
+  initializes a run's status to `"success"` before the wrapped function
+  has even been called, then wraps the call in a `try/except` block
+  whose `except` branch correctly records the error message as the
+  run's output -- but forgets to also flip the status field away from
+  its optimistic default. The result is a run record that, on genuine
+  failure, contains an error message in its `output` field while its
+  `status` field still, misleadingly, says `"success"` -- exactly the
+  kind of inconsistent record that would let a real failure hide inside
+  a dashboard filtered to "successful runs only," invisible to anyone
+  who trusted the status field instead of reading every output by hand.
+  The fix sets `status = "error"` explicitly inside the `except` block,
+  so the two fields never disagree about whether the run actually
+  succeeded.
+example_code: |
+  # The trap: status starts "success" and is never corrected on failure --
+  # the except block updates output, but not status.
+  def run_and_log_trap(fn, *args):
+      record = {"status": "success", "output": None}   # optimistic default, never revisited
+      try:
+          record["output"] = fn(*args)
+      except Exception as e:
+          record["output"] = str(e)   # bug: forgot to also set status = "error" here!
+      return record
+
+  def flaky_step(x):
+      if x < 0:
+          raise ValueError("negative input not allowed")
+      return x * 2
+
+  record_trap = run_and_log_trap(flaky_step, -5)
+  print(record_trap["status"])   # "success" -- WRONG, this run actually raised an exception!
+
+  # The fix: the except block updates BOTH fields, keeping them consistent.
+  def run_and_log(fn, *args):
+      record = {"status": "success", "output": None}
+      try:
+          record["output"] = fn(*args)
+      except Exception as e:
+          record["output"] = str(e)
+          record["status"] = "error"   # now status accurately reflects what happened
+      return record
+
+  record = run_and_log(flaky_step, -5)
+  print(record["status"])   # "error" -- correctly reflects the actual outcome
+starter_code: |
+  def run_and_log(fn, *args):
+      record = {"status": "success", "output": None}
+      try:
+          record["output"] = fn(*args)
+      except Exception as e:
+          record["output"] = str(e)
+      return record
+
+  def flaky_step(x):
+      if x < 0:
+          raise ValueError("negative input not allowed")
+      return x * 2
+
+  record = run_and_log(flaky_step, -5)
+  print(record["status"])
+challenge: |
+  Fix `run_and_log` so its `except` block also sets
+  `record["status"] = "error"`, instead of leaving the optimistic
+  `"success"` default in place after a genuine failure. It should print
+  `error`, not `success`.
+expected_output: |
+  error
+hints:
+  - "Inside the except block, add a line: record[\"status\"] = \"error\", alongside the existing record[\"output\"] = str(e) line."
+  - "The record's status must be updated in the SAME except block that catches the exception -- not left at its initial optimistic default."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "record\\[.status.\\]\\s*=\\s*.error."
+concept_tags: [langsmith, run_logging, error_handling]

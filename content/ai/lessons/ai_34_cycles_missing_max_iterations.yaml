@@ -1,0 +1,109 @@
+id: ai_34
+title: "Cycles: A Self-Loop Edge Needs a Max-Iteration Guard"
+language: ai
+level: 34
+objective: "Fix a LangGraph-style retry cycle -- a node whose conditional edge can route back to itself -- so it stops after a bounded number of attempts instead of looping forever when the retry condition never resolves."
+explanation: |
+  One level below routing between different nodes (this category's
+  previous lesson) is a graph's ability to route back to a node that
+  already ran -- a **cycle**. The classic use case is "keep retrying
+  until this succeeds": a node calls a flaky tool, checks whether the
+  result was valid, and its conditional edge routes back to *itself*
+  if not, or onward to the next node if the result was finally good.
+  This is a direct structural cousin of the `max_steps` guard this
+  app's `agentic_frameworks` category covers for a plain Python agent
+  loop -- here it's the exact same risk, expressed as a self-loop edge
+  in a graph instead of a `while True:` loop in a function.
+
+  The bug this exercise fixes is a retry cycle with no iteration limit
+  at all: if the tool call keeps failing validation indefinitely (a
+  persistently broken downstream service, a validation rule that can
+  genuinely never be satisfied by that tool's real output), the graph
+  routes back to the same node forever, hanging the entire run with no
+  path to ever reaching the end node. The fix threads a counter through
+  the shared state, incrementing it on every attempt, and the router
+  checks that counter against a maximum before deciding to loop back
+  again -- once the limit is hit, it routes to a dedicated failure node
+  instead of attempting yet again, giving the cycle a guaranteed exit
+  regardless of whether the underlying condition ever actually resolves.
+example_code: |
+  # The trap: the router loops back to the same node with NO bound at
+  # all -- a persistently failing validation hangs the graph forever.
+  def route_retry_trap(state):
+      if state["is_valid"]:
+          return "next_node"
+      return "flaky_tool_node"   # loops back with no limit, ever
+
+  # The fix: thread an attempt counter through state, and cap the retries.
+  MAX_ATTEMPTS = 3
+
+  def flaky_tool_node(state):
+      new_state = dict(state)
+      new_state["attempts"] = state.get("attempts", 0) + 1
+      new_state["is_valid"] = new_state["attempts"] >= 5   # simulates "never actually succeeds in time"
+      return new_state
+
+  def route_retry(state):
+      if state["is_valid"]:
+          return "next_node"
+      if state.get("attempts", 0) >= MAX_ATTEMPTS:
+          return "failure_node"   # guaranteed exit once the cap is hit
+      return "flaky_tool_node"
+
+  nodes = {
+      "flaky_tool_node": flaky_tool_node,
+      "next_node": lambda s: "succeeded",
+      "failure_node": lambda s: "gave up after max attempts",
+  }
+  state = {"attempts": 0, "is_valid": False}
+  current = "flaky_tool_node"
+  while current not in ("next_node", "failure_node"):
+      state = nodes[current](state)
+      current = route_retry(state)
+  print(nodes[current](state))   # gave up after max attempts -- terminated, never hung
+starter_code: |
+  MAX_ATTEMPTS = 3
+
+  def flaky_tool_node(state):
+      new_state = dict(state)
+      new_state["attempts"] = state.get("attempts", 0) + 1
+      new_state["is_valid"] = new_state["attempts"] >= 5
+      return new_state
+
+  def route_retry(state):
+      if state["is_valid"]:
+          return "next_node"
+      return "flaky_tool_node"
+
+  nodes = {
+      "flaky_tool_node": flaky_tool_node,
+      "next_node": lambda s: "succeeded",
+      "failure_node": lambda s: "gave up after max attempts",
+  }
+  state = {"attempts": 0, "is_valid": False}
+  current = "flaky_tool_node"
+  safety_cap = 0
+  while current not in ("next_node", "failure_node") and safety_cap < 1000:
+      state = nodes[current](state)
+      current = route_retry(state)
+      safety_cap += 1
+  print(nodes[current](state) if current in ("next_node", "failure_node") else "HUNG")
+challenge: |
+  Fix `route_retry` so it routes to `"failure_node"` once
+  `state["attempts"]` reaches `MAX_ATTEMPTS`, instead of looping back to
+  `flaky_tool_node` indefinitely. It should print
+  `gave up after max attempts`, not `HUNG`.
+expected_output: |
+  gave up after max attempts
+hints:
+  - "Add a check in route_retry: if state.get(\"attempts\", 0) >= MAX_ATTEMPTS: return \"failure_node\"."
+  - "This check needs to happen BEFORE the fallback \"return 'flaky_tool_node'\" line, so the cap actually gets a chance to trigger."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "failure_node"
+  - "MAX_ATTEMPTS"
+concept_tags: [langgraph, cycles, max_iterations, retry]

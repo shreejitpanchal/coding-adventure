@@ -138,13 +138,32 @@ def test_loads_spring_content():
 
 def test_loads_ai_content():
     engine = ExerciseEngine("ai")
-    assert len(engine) == 20
+    assert len(engine) == 45
     assert engine.has("ai_01")
+    assert engine.has("ai_45")
     categories = engine.categories()
-    assert len(categories) == 4
-    assert categories == ["ml_fundamentals", "rag", "agentic_frameworks", "mcp"]
+    assert len(categories) == 9
+    assert categories == [
+        "ml_fundamentals",
+        "rag",
+        "agentic_frameworks",
+        "mcp",
+        "microsoft_agent_365",
+        "langchain",
+        "langgraph",
+        "langsmith",
+        "solace_agent_mesh",
+    ]
     for category in categories:
         assert len(engine.lessons_in_category(category)) == 5
+
+    no_code_categories = {"microsoft_agent_365"}
+    for ex in engine.all_in_order():
+        if ex.category in no_code_categories:
+            assert ex.requires_code is False
+            assert len(ex.comprehension_check) >= 2
+        else:
+            assert ex.requires_code is True
 
 
 def test_ai_and_architecture_always_fully_unlocked():

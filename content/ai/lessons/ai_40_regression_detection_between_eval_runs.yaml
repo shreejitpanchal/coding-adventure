@@ -1,0 +1,81 @@
+id: ai_40
+title: "Regression Detection: Comparing Two Runs Example-by-Example"
+language: ai
+level: 40
+objective: "Fix a hand-rolled regression detector that only compares two evaluation runs' aggregate scores, missing individual examples that flipped from correct to wrong even when the overall score looks unchanged or improved."
+explanation: |
+  This is the most granular, lowest-level mechanic in this category:
+  comparing two evaluation runs -- a baseline (the previous version of
+  a chain or prompt) against a candidate (a proposed change) -- to
+  decide whether the candidate is actually safe to ship. The naive way
+  to compare two runs is their aggregate scores: baseline scored 8/10,
+  candidate scored 8/10, so nothing changed, ship it. This is exactly
+  the trap this exercise fixes -- an aggregate score can stay flat, or
+  even improve, while individual examples silently flip from correct to
+  wrong, canceled out in the total by other examples flipping from
+  wrong to correct. Two runs with identical totals can disagree on
+  *which specific examples* they got right, and an aggregate-only
+  comparison has no way to see that at all.
+
+  **Regression detection** at the individual-example level fixes this:
+  for every example in the dataset, check whether the baseline got it
+  right and the candidate got it wrong -- a genuine regression on that
+  specific case -- rather than only ever looking at the two totals. A
+  candidate that regresses on three examples while gaining three
+  different ones nets to "no change" in aggregate, but a team shipping
+  it deserves to know exactly which three real cases just started
+  failing, especially if those three happen to be the ones a customer
+  actually complained about last quarter. The fix walks both runs'
+  per-example results side by side and reports the specific list of
+  examples that regressed, instead of stopping at "the totals are the
+  same, so nothing to worry about."
+example_code: |
+  # The trap: only compares AGGREGATE scores -- individual flips that
+  # cancel out are completely invisible.
+  def detect_regression_trap(baseline_results, candidate_results):
+      baseline_score = sum(baseline_results)
+      candidate_score = sum(candidate_results)
+      return "REGRESSION" if candidate_score < baseline_score else "OK"
+
+  baseline = [True, True, False]     # examples 1,2 correct; example 3 wrong
+  candidate = [True, False, True]    # example 2 REGRESSED, example 3 FIXED -- same total!
+  print(detect_regression_trap(baseline, candidate))   # "OK" -- hides a real regression on example 2
+
+  # The fix: compare EVERY example individually, not just the totals.
+  def detect_regression(baseline_results, candidate_results):
+      regressed = [
+          i for i, (b, c) in enumerate(zip(baseline_results, candidate_results))
+          if b and not c   # baseline got it right, candidate got it wrong -- a genuine regression
+      ]
+      return regressed
+
+  regressed_examples = detect_regression(baseline, candidate)
+  print(regressed_examples)   # [1] -- correctly flags example index 1 (the second example)
+starter_code: |
+  def detect_regression(baseline_results, candidate_results):
+      baseline_score = sum(baseline_results)
+      candidate_score = sum(candidate_results)
+      return "REGRESSION" if candidate_score < baseline_score else "OK"
+
+  baseline = [True, True, False]
+  candidate = [True, False, True]
+  print(detect_regression(baseline, candidate))
+challenge: |
+  Fix `detect_regression` so it compares `baseline_results` and
+  `candidate_results` example-by-example, returning the list of indices
+  where the baseline was correct but the candidate was not, instead of
+  only comparing the two aggregate totals. It should print `[1]`, not
+  `OK`.
+expected_output: |
+  [1]
+hints:
+  - "Use a list comprehension with enumerate(zip(baseline_results, candidate_results)) to walk both lists together, keeping each index."
+  - "A regression is: baseline[i] is True AND candidate[i] is False -- collect those indices `i` into a list and return it."
+xp_reward: 15
+achievement: langsmith_master
+category: langsmith
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "zip\\(baseline_results,\\s*candidate_results\\)"
+concept_tags: [langsmith, regression_detection, dataset_evaluation]

@@ -1,0 +1,106 @@
+id: ai_45
+title: "Secure Tool Runtime: One Misbehaving Tool Can't Crash the Rest"
+language: ai
+level: 45
+objective: "Fix a hand-rolled tool-call batch runner that lets one tool's exception abort every remaining tool call, instead of isolating that failure the way Solace Agent Mesh's Secure Tool Runtime isolates a real sandboxed tool crash."
+explanation: |
+  This is the most granular, lowest-level mechanic in this category:
+  what happens when a tool call, deep inside the reasoning loop this
+  category's previous lesson covered, actually fails. Solace Agent Mesh
+  runs tools inside a dedicated **Secure Tool Runtime** specifically to
+  contain this risk -- it "executes remote tools as sandboxed
+  subprocesses, preventing misbehaving tools from accessing agent
+  memory or sessions." A tool is, by nature, the least trustworthy
+  piece of an agent's execution: it might call a flaky external API,
+  contain a bug, or simply time out, and none of that should be able to
+  reach in and corrupt the agent's own session state or take down
+  everything else the agent was in the middle of doing.
+
+  The bug this exercise fixes is a batch tool-call runner with no
+  isolation at all: it calls each tool function directly, with no
+  `try/except` around the call. The moment any one tool raises an
+  exception, that exception propagates straight up out of the loop --
+  aborting every *remaining* tool call in the batch, even ones that
+  have nothing to do with the failure and would have succeeded fine on
+  their own. A single flaky external API call ends up taking down an
+  entire batch of otherwise-independent work, exactly the blast-radius
+  problem sandboxing exists to prevent. The fix wraps each individual
+  tool call in its own `try/except`, converting a raised exception into
+  a structured error result for *that one tool* and continuing on to
+  the next -- isolating each tool's failure to itself, the same
+  isolation principle the real Secure Tool Runtime provides via actual
+  subprocess sandboxing.
+example_code: |
+  # The trap: no isolation at all -- one tool raising an exception
+  # aborts every REMAINING tool call in the batch, unrelated or not.
+  def run_tool_calls_trap(tool_calls, session):
+      results = []
+      for name, fn in tool_calls:
+          result = fn()   # bug: nothing catches a raised exception here
+          results.append(result)
+          session["history"].append(result)
+      return results
+
+  def good_tool():
+      return "ok"
+
+  def flaky_tool():
+      raise RuntimeError("external API timed out")
+
+  tool_calls = [("first", good_tool), ("flaky", flaky_tool), ("third", good_tool)]
+  session = {"history": []}
+  # run_tool_calls_trap(tool_calls, session)  # RAISES -- "third" never even runs
+
+  # The fix: isolate EACH tool call in its own try/except, so one
+  # failure can't take down the rest of the batch.
+  def run_tool_calls(tool_calls, session):
+      results = []
+      for name, fn in tool_calls:
+          try:
+              result = fn()
+          except Exception as e:
+              result = {"error": str(e)}   # isolated to just this tool
+          results.append(result)
+          session["history"].append(result)
+      return results
+
+  results = run_tool_calls(tool_calls, session)
+  print(results)   # ['ok', {'error': 'external API timed out'}, 'ok'] -- the OTHER tools still ran
+starter_code: |
+  def run_tool_calls(tool_calls, session):
+      results = []
+      for name, fn in tool_calls:
+          result = fn()
+          results.append(result)
+          session["history"].append(result)
+      return results
+
+  def good_tool():
+      return "ok"
+
+  def flaky_tool():
+      raise RuntimeError("external API timed out")
+
+  tool_calls = [("first", good_tool), ("flaky", flaky_tool), ("third", good_tool)]
+  session = {"history": []}
+  results = run_tool_calls(tool_calls, session)
+  print(results)
+challenge: |
+  Fix `run_tool_calls` so each individual tool call is wrapped in its
+  own `try/except`, converting a raised exception into
+  `{"error": str(e)}` for just that tool and continuing to the next,
+  instead of letting one failure abort the whole batch. It should print
+  `['ok', {'error': 'external API timed out'}, 'ok']`.
+expected_output: |
+  ['ok', {'error': 'external API timed out'}, 'ok']
+hints:
+  - "Wrap result = fn() in a try/except Exception as e: block, setting result = {\"error\": str(e)} in the except branch."
+  - "The try/except must be INSIDE the for loop, around just the single fn() call -- not around the whole loop -- so each tool's failure is isolated to itself."
+xp_reward: 15
+achievement: solace_agent_mesh_master
+category: solace_agent_mesh
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "except Exception as e"
+concept_tags: [solace_agent_mesh, secure_tool_runtime, fault_isolation, sandboxing]

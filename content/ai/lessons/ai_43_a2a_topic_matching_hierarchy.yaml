@@ -1,0 +1,84 @@
+id: ai_43
+title: "A2A Delegation Needs Hierarchical Topic Matching, Not Exact Match"
+language: ai
+level: 43
+objective: "Fix a hand-rolled pub/sub dispatcher that only delivers a message to subscribers with an exact topic match, missing subscribers to a broader parent topic that should still receive it."
+explanation: |
+  One level below choosing *which* agent to delegate to (this
+  category's previous lesson) is the actual mechanism that delivers a
+  delegated task to that agent: Solace Agent Mesh states plainly that
+  "every cross-process message in Agent Mesh travels on the event
+  broker" -- agents don't call each other directly at all. A delegating
+  agent publishes its request as an **Agent-to-Agent (A2A)** message on
+  a specific topic; the receiving agent subscribes and responds. Real
+  event brokers organize topics hierarchically (`orders/electronics/
+  laptops`, `orders/electronics/phones`, both living under
+  `orders/electronics`), and a subscription to a broader parent segment
+  is meant to receive messages published to *any* more specific topic
+  underneath it, not just an exact string match.
+
+  The bug this exercise fixes is a dispatcher that compares a
+  subscriber's topic against a published message's topic with plain
+  string equality -- so a subscriber to `"orders/electronics"` never
+  receives a message published to the more specific
+  `"orders/electronics/laptops"`, even though hierarchically it should,
+  since nothing about equality comparison understands topic nesting at
+  all. The fix checks whether the published topic *starts with* the
+  subscriber's topic (at a segment boundary), correctly matching a
+  parent subscription against any more specific child topic underneath
+  it, the same hierarchical relationship real topic-based pub/sub
+  systems are built around.
+example_code: |
+  # The trap: exact string equality -- a parent-topic subscriber never
+  # receives messages published to a more specific CHILD topic.
+  def deliver_trap(published_topic, message, subscribers):
+      delivered = []
+      for sub_topic, handler in subscribers:
+          if sub_topic == published_topic:   # bug: exact match only
+              delivered.append(sub_topic)
+      return delivered
+
+  subscribers = [("orders/electronics", "electronics_handler")]
+  result_trap = deliver_trap("orders/electronics/laptops", "new laptop order", subscribers)
+  print(result_trap)   # [] -- the electronics_handler subscriber never gets it!
+
+  # The fix: a subscriber to a PARENT topic segment should receive
+  # anything published to a more specific topic underneath it.
+  def deliver(published_topic, message, subscribers):
+      delivered = []
+      for sub_topic, handler in subscribers:
+          if published_topic == sub_topic or published_topic.startswith(sub_topic + "/"):
+              delivered.append(sub_topic)
+      return delivered
+
+  result = deliver("orders/electronics/laptops", "new laptop order", subscribers)
+  print(result)   # ["orders/electronics"] -- correctly delivered to the parent-topic subscriber
+starter_code: |
+  def deliver(published_topic, message, subscribers):
+      delivered = []
+      for sub_topic, handler in subscribers:
+          if sub_topic == published_topic:
+              delivered.append(sub_topic)
+      return delivered
+
+  subscribers = [("orders/electronics", "electronics_handler")]
+  result = deliver("orders/electronics/laptops", "new laptop order", subscribers)
+  print(result)
+challenge: |
+  Fix `deliver` so a subscriber to `"orders/electronics"` also receives
+  a message published to the more specific `"orders/electronics/
+  laptops"`, not just an exact topic match. It should print
+  `['orders/electronics']`, not `[]`.
+expected_output: |
+  ['orders/electronics']
+hints:
+  - "Change the condition to: if published_topic == sub_topic or published_topic.startswith(sub_topic + \"/\"): ..."
+  - "The \"/\" in startswith(sub_topic + \"/\") matters -- it ensures matching happens at a real segment boundary, not on a topic that merely shares a text prefix."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "startswith\\(sub_topic"
+concept_tags: [solace_agent_mesh, a2a_protocol, event_broker, topic_hierarchy]

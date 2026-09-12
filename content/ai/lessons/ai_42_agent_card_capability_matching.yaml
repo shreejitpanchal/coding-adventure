@@ -1,0 +1,82 @@
+id: ai_42
+title: "Agent Cards: Matching a Task to a Capability, Not Just Any Agent"
+language: ai
+level: 42
+objective: "Fix a hand-rolled agent-discovery lookup that delegates to the first registered agent regardless of whether it actually advertises the required capability."
+explanation: |
+  One level below entrypoint translation (this category's previous
+  lesson) is how the mesh decides *which* agent should actually handle
+  a translated task. In Solace Agent Mesh, every agent -- once deployed
+  -- "publishes its agent card so peers can discover it and delegate to
+  it." An **agent card** is that agent's advertised capability list --
+  what it's actually able to do -- and delegation is supposed to be
+  driven by matching a task's required capability against the mesh's
+  collection of agent cards, not by picking whichever agent happens to
+  be registered first or most recently.
+
+  The bug this exercise fixes is a lookup function that finds *an*
+  agent in the registry and returns it immediately, without checking
+  whether that agent's card actually lists the capability the task
+  needs. A task requiring `"chart_rendering"` can get routed to an
+  agent whose card only advertises `"database_query"`, since nothing in
+  the naive lookup ever compared the two -- the task gets delegated
+  successfully in the sense that *some* agent received it, but that
+  agent has no way to actually do the work, and the failure only
+  surfaces once it's already deep inside that wrong agent's own
+  reasoning loop. The fix filters candidates by their agent card's
+  advertised capabilities *before* selecting one, so delegation only
+  ever considers agents that can genuinely do the job.
+example_code: |
+  # The trap: returns the FIRST registered agent, never checking whether
+  # its agent card actually advertises the capability the task needs.
+  def find_agent_for_task_trap(task, agent_registry):
+      return agent_registry[0]   # bug: ignores task["capability"] entirely
+
+  agent_registry = [
+      {"name": "db-agent", "agent_card": {"capabilities": ["database_query"]}},
+      {"name": "chart-agent", "agent_card": {"capabilities": ["chart_rendering"]}},
+  ]
+  task = {"capability": "chart_rendering"}
+  chosen_trap = find_agent_for_task_trap(task, agent_registry)
+  print(chosen_trap["name"])   # "db-agent" -- WRONG, it can't render charts at all
+
+  # The fix: filter by the agent card's actual advertised capabilities.
+  def find_agent_for_task(task, agent_registry):
+      required = task["capability"]
+      for agent in agent_registry:
+          if required in agent["agent_card"]["capabilities"]:
+              return agent
+      raise ValueError(f"no agent advertises capability: {required}")
+
+  chosen = find_agent_for_task(task, agent_registry)
+  print(chosen["name"])   # "chart-agent" -- correctly matched by capability
+starter_code: |
+  def find_agent_for_task(task, agent_registry):
+      return agent_registry[0]
+
+  agent_registry = [
+      {"name": "db-agent", "agent_card": {"capabilities": ["database_query"]}},
+      {"name": "chart-agent", "agent_card": {"capabilities": ["chart_rendering"]}},
+  ]
+  task = {"capability": "chart_rendering"}
+  chosen = find_agent_for_task(task, agent_registry)
+  print(chosen["name"])
+challenge: |
+  Fix `find_agent_for_task` so it only selects an agent whose
+  `agent_card["capabilities"]` list actually contains the task's
+  required capability, instead of always returning the first registered
+  agent. It should print `chart-agent`, not `db-agent`.
+expected_output: |
+  chart-agent
+hints:
+  - "Loop over agent_registry, and for each agent check: if task[\"capability\"] in agent[\"agent_card\"][\"capabilities\"]: return agent."
+  - "Only return an agent once you've confirmed its agent card actually lists the required capability -- don't just return agent_registry[0]."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "agent_card"
+  - "capabilities"
+concept_tags: [solace_agent_mesh, agent_card, capability_discovery]

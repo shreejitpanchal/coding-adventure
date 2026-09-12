@@ -1,0 +1,86 @@
+id: ai_29
+title: "Conversation Memory Accidentally Shared Across Separate Chats"
+language: ai
+level: 29
+objective: "Fix a hand-rolled ConversationBufferMemory whose mutable default argument causes every new conversation to silently share and pollute the same message history."
+explanation: |
+  One level below parsing a single response (this category's previous
+  lesson) is what happens across *multiple* turns: a
+  `ConversationBufferMemory`-style object accumulates the running list
+  of messages in a conversation so a chain can include prior turns as
+  context on each new call. This exercise's bug is a specific, classic
+  Python trap resurfacing in a LangChain-shaped costume: giving
+  `__init__`'s `messages` parameter a mutable default value,
+  `def __init__(self, messages=[])`. Python evaluates default argument
+  values exactly *once*, when the function is defined -- not fresh on
+  every call -- so every `ConversationMemory()` instance created
+  without explicitly passing `messages` ends up sharing the *exact same
+  list object* in memory. A message appended to one conversation's
+  memory becomes silently visible inside every other conversation's
+  memory too, since there's really only one underlying list being
+  shared behind the scenes.
+
+  In a real chat application, this manifests as an alarming and
+  confusing bug: User B's chatbot session suddenly includes context
+  from User A's unrelated conversation, because both sessions'
+  `ConversationMemory()` objects were quietly backed by the identical
+  list. The fix is the standard one for this exact trap: default the
+  parameter to `None`, and inside `__init__`, create a genuinely new,
+  empty list *per instance* when nothing was explicitly passed --
+  `self.messages = messages if messages is not None else []` -- so
+  every conversation starts with, and keeps, its own independent
+  history.
+example_code: |
+  # The trap: a mutable default argument is created ONCE, at function-
+  # definition time -- every instance without an explicit list shares it.
+  class ConversationMemoryTrap:
+      def __init__(self, messages=[]):   # created ONCE, shared by every instance
+          self.messages = messages
+      def add(self, role, content):
+          self.messages.append({"role": role, "content": content})
+
+  chat_a = ConversationMemoryTrap()
+  chat_b = ConversationMemoryTrap()
+  chat_a.add("user", "What's my order status?")
+  print(len(chat_b.messages))   # 1 -- chat_b silently "saw" chat_a's message!
+
+  # The fix: default to None, create a genuinely NEW list per instance.
+  class ConversationMemory:
+      def __init__(self, messages=None):
+          self.messages = messages if messages is not None else []
+      def add(self, role, content):
+          self.messages.append({"role": role, "content": content})
+
+  chat_a2 = ConversationMemory()
+  chat_b2 = ConversationMemory()
+  chat_a2.add("user", "What's my order status?")
+  print(len(chat_b2.messages))   # 0 -- correctly independent
+starter_code: |
+  class ConversationMemory:
+      def __init__(self, messages=[]):
+          self.messages = messages
+      def add(self, role, content):
+          self.messages.append({"role": role, "content": content})
+
+  chat_a = ConversationMemory()
+  chat_b = ConversationMemory()
+  chat_a.add("user", "What's my order status?")
+  print(len(chat_b.messages))
+challenge: |
+  Fix `ConversationMemory` so each instance gets its own independent
+  message list, instead of every instance silently sharing one mutable
+  default list. After creating two separate instances and adding one
+  message to the first, `len(chat_b.messages)` should print `0`, not `1`.
+expected_output: |
+  0
+hints:
+  - "Change the default to messages=None."
+  - "Inside __init__: self.messages = messages if messages is not None else [] -- this creates a genuinely NEW list per instance instead of reusing one shared default."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "messages=None"
+concept_tags: [langchain, conversation_memory, mutable_default_argument]

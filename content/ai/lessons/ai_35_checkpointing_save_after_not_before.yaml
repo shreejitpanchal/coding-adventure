@@ -1,0 +1,94 @@
+id: ai_35
+title: "Checkpointing: Snapshotting State After a Node Runs, Not Before"
+language: ai
+level: 35
+objective: "Fix a hand-rolled checkpointing mechanism that snapshots a node's checkpoint state before it runs instead of after, so a resume would restart from stale, pre-node state that's missing that node's own update."
+explanation: |
+  This is the most granular, lowest-level mechanic in this category:
+  how a graph run survives a crash partway through. **Checkpointing**
+  persists a snapshot of the current state to durable storage as
+  progress is made, so a crashed or interrupted run can *resume* from
+  the last checkpoint instead of restarting the entire graph from node
+  one -- essential once a graph has nodes with real side effects (an
+  API call that charges money, a database write) that shouldn't simply
+  be re-triggered every time something downstream fails.
+
+  The bug this exercise fixes is subtle: the checkpoint for a node is
+  captured *before* that node runs, recording the state as it looked
+  going *into* the node rather than what it looked like coming *out* of
+  it. `checkpoints["charge_card"]` ends up holding the pre-charge state
+  (no `"charged"` flag at all) instead of the post-charge state
+  (`"charged": True`) -- so anything that later resumes execution "from
+  the charge_card checkpoint," believing that step is done, is actually
+  resuming with state that doesn't yet reflect the charge having
+  happened, and could easily re-trigger it. This is the same underlying
+  idempotency concern this app's Architecture track covers for
+  distributed systems generally, showing up here specifically as a
+  checkpoint-timing bug: a checkpoint is only useful if it captures the
+  state *after* the work it's meant to represent as "done." The fix is
+  simply to move the snapshot to after the node call completes.
+example_code: |
+  # The trap: the checkpoint snapshots state BEFORE the node runs,
+  # missing that node's own update entirely.
+  def run_with_checkpoint_trap(nodes, edges, start, end, checkpoints):
+      current = start
+      state = {}
+      while current != end:
+          checkpoints[current] = dict(state)   # bug: snapshot taken BEFORE this node's work
+          state = nodes[current](state)
+          current = edges[current]
+      return state
+
+  nodes = {"charge_card": lambda s: {**s, "charged": True}, "ship_order": lambda s: {**s, "shipped": True}}
+  edges = {"charge_card": "ship_order", "ship_order": "END"}
+  checkpoints = {}
+  run_with_checkpoint_trap(nodes, edges, "charge_card", "END", checkpoints)
+  print(checkpoints["charge_card"].get("charged", False))   # False -- checkpoint is missing the charge!
+
+  # The fix: snapshot state AFTER the node completes, so the checkpoint
+  # actually reflects that node's own finished work.
+  def run_with_checkpoint(nodes, edges, start, end, checkpoints):
+      current = start
+      state = {}
+      while current != end:
+          state = nodes[current](state)             # node runs and completes FIRST
+          checkpoints[current] = dict(state)          # THEN snapshot -- reflects its own update
+          current = edges[current]
+      return state
+
+  checkpoints2 = {}
+  run_with_checkpoint(nodes, edges, "charge_card", "END", checkpoints2)
+  print(checkpoints2["charge_card"].get("charged", False))   # True -- correctly reflects the charge happened
+starter_code: |
+  def run_with_checkpoint(nodes, edges, start, end, checkpoints):
+      current = start
+      state = {}
+      while current != end:
+          checkpoints[current] = dict(state)
+          state = nodes[current](state)
+          current = edges[current]
+      return state
+
+  nodes = {"charge_card": lambda s: {**s, "charged": True}, "ship_order": lambda s: {**s, "shipped": True}}
+  edges = {"charge_card": "ship_order", "ship_order": "END"}
+  checkpoints = {}
+  run_with_checkpoint(nodes, edges, "charge_card", "END", checkpoints)
+  print(checkpoints["charge_card"].get("charged", False))
+challenge: |
+  Fix `run_with_checkpoint` so each node's checkpoint snapshot is taken
+  *after* that node finishes running, not before -- so
+  `checkpoints["charge_card"]` correctly reflects the charge having
+  happened. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "Move the checkpoints[current] = dict(state) line to AFTER state = nodes[current](state), not before it."
+  - "The order inside the loop should be: run the node (updating state), THEN snapshot that updated state into checkpoints, THEN follow the edge."
+xp_reward: 15
+achievement: langgraph_master
+category: langgraph
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "checkpoints\\[current\\]"
+concept_tags: [langgraph, checkpointing, idempotency, fault_tolerance]

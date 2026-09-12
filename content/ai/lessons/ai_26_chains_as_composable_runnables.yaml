@@ -1,0 +1,87 @@
+id: ai_26
+title: "Chains as Composable Runnables"
+language: ai
+level: 26
+objective: "Understand LangChain's core abstraction -- a chain as a pipeline of composable steps connected with the `|` operator -- by fixing a hand-rolled Runnable whose composition silently drops the first step's output."
+explanation: |
+  LangChain's single most foundational idea, at the highest level, is
+  that an LLM application is rarely one function call -- it's a
+  *pipeline*: format a prompt, call a model, parse the result, maybe
+  feed that into another step. Rather than writing that as deeply
+  nested function calls, LangChain wraps each step in a `Runnable` and
+  lets you compose them with the `|` operator, the same way a Unix
+  shell pipes one command's output into the next: `prompt | model |
+  parser` reads left to right as "do this, then this, then this,"
+  with each step's output automatically becoming the next step's input.
+
+  The mechanism behind `|` is Python's operator overloading:
+  `Runnable.__or__(self, other)` returns a new `Runnable` whose
+  `.invoke(x)` calls `self.invoke(x)` first, then feeds *that result*
+  into `other.invoke(...)`. The bug this exercise fixes is a composed
+  Runnable that calls both steps but never actually threads the first
+  step's output into the second step -- each step runs on the
+  *original* input independently, silently producing a result that
+  looks plausible (no crash, output is produced) but is quietly wrong
+  the moment the second step was ever supposed to build on the first
+  step's transformation rather than see the same raw input twice. This
+  is the exact bug that makes "the pipe looked like it worked" a
+  dangerous state to stop testing at -- the output existing doesn't
+  mean the composition is real.
+example_code: |
+  # The trap: __or__ runs both steps on the ORIGINAL input independently --
+  # the second step never sees the first step's output at all.
+  class RunnableTrap:
+      def __init__(self, fn):
+          self.fn = fn
+      def invoke(self, x):
+          return self.fn(x)
+      def __or__(self, other):
+          combined = RunnableTrap(lambda x: other.invoke(x))  # bug: ignores self.invoke(x)!
+          return combined
+
+  double = RunnableTrap(lambda x: x * 2)
+  add_ten = RunnableTrap(lambda x: x + 10)
+  pipeline = double | add_ten
+  print(pipeline.invoke(5))   # 15 -- add_ten ran on the ORIGINAL 5, never saw double's result
+
+  # The fix: thread self.invoke(x)'s result INTO other.invoke(...).
+  class Runnable:
+      def __init__(self, fn):
+          self.fn = fn
+      def invoke(self, x):
+          return self.fn(x)
+      def __or__(self, other):
+          return Runnable(lambda x: other.invoke(self.invoke(x)))
+
+  pipeline_fixed = Runnable(lambda x: x * 2) | Runnable(lambda x: x + 10)
+  print(pipeline_fixed.invoke(5))   # 20 -- double(5)=10, then add_ten(10)=20
+starter_code: |
+  class Runnable:
+      def __init__(self, fn):
+          self.fn = fn
+      def invoke(self, x):
+          return self.fn(x)
+      def __or__(self, other):
+          combined = Runnable(lambda x: other.invoke(x))
+          return combined
+
+  pipeline = Runnable(lambda x: x * 2) | Runnable(lambda x: x + 10)
+  print(pipeline.invoke(5))
+challenge: |
+  Fix `__or__` so the composed Runnable threads `self.invoke(x)`'s
+  result into `other.invoke(...)`, instead of calling `other` on the
+  original input independently. `pipeline.invoke(5)` should print `20`
+  (double to 10, then add 10), not `15`.
+expected_output: |
+  20
+hints:
+  - "Inside __or__, the lambda should be: lambda x: other.invoke(self.invoke(x))"
+  - "self.invoke(x) must run FIRST, and its return value is what gets passed into other.invoke(...) -- not the original x."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 1
+difficulty: gotcha
+contains_patterns:
+  - "other\\.invoke\\(self\\.invoke\\("
+concept_tags: [langchain, runnable, chain_composition, lcel]

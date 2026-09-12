@@ -1,0 +1,86 @@
+id: ai_32
+title: "Shared State: Merging Into It, Not Replacing It"
+language: ai
+level: 32
+objective: "Fix a LangGraph-style node that returns a brand-new state dict instead of merging its own update into the state passed in, silently discarding every earlier node's writes."
+explanation: |
+  One level below the basic node-and-edge walk (this category's
+  previous lesson) is what actually flows between nodes: a single
+  shared **state** dict that every node reads from and writes into,
+  carrying the accumulated result of the whole graph run so far --
+  node one might add a `"summary"` key, node two might add a
+  `"sentiment"` key, and by the time execution reaches the end node,
+  the state should contain everything every node along the way
+  contributed.
+
+  The bug this exercise fixes is a node function that builds and
+  returns a *brand-new* dict containing only its own key, instead of
+  starting from the state it was actually given and adding to it. When
+  the executor takes that return value as the new state for the next
+  node, everything the previous nodes had already written into the
+  state is gone -- not because anything crashed, but because the
+  "new state" for the next step was never actually built on top of the
+  old one. The fix is for every node to start from a copy of the state
+  it receives and merge its own contribution into that copy, rather
+  than fabricating a fresh dict that happens to look valid in isolation
+  but has silently thrown away everything upstream nodes contributed.
+example_code: |
+  # The trap: each node returns a FRESH dict with only its own key --
+  # every earlier node's contribution to state is silently lost.
+  def summarize_node_trap(state):
+      return {"summary": f"summary of: {state['text']}"}   # bug: state['text'] itself is now GONE
+
+  def sentiment_node_trap(state):
+      return {"sentiment": "positive"}   # bug: state['summary'] from the PREVIOUS node is now GONE
+
+  state = {"text": "great product"}
+  state = summarize_node_trap(state)
+  state = sentiment_node_trap(state)
+  print(sorted(state.keys()))   # ['sentiment'] -- "summary" and "text" both silently vanished
+
+  # The fix: start from a copy of the received state, merge the node's
+  # own contribution IN, rather than replacing the whole state object.
+  def summarize_node(state):
+      new_state = dict(state)              # copy what already exists
+      new_state["summary"] = f"summary of: {state['text']}"
+      return new_state
+
+  def sentiment_node(state):
+      new_state = dict(state)
+      new_state["sentiment"] = "positive"
+      return new_state
+
+  state2 = {"text": "great product"}
+  state2 = summarize_node(state2)
+  state2 = sentiment_node(state2)
+  print(sorted(state2.keys()))   # ['sentiment', 'summary', 'text'] -- everything preserved
+starter_code: |
+  def summarize_node(state):
+      return {"summary": f"summary of: {state['text']}"}
+
+  def sentiment_node(state):
+      return {"sentiment": "positive"}
+
+  state = {"text": "great product"}
+  state = summarize_node(state)
+  state = sentiment_node(state)
+  print(sorted(state.keys()))
+challenge: |
+  Fix both node functions so each one starts from a copy of the state
+  it receives and merges its own key into that copy, instead of
+  returning a brand-new dict that discards everything else already in
+  state. The final printed keys should be
+  `['sentiment', 'summary', 'text']`.
+expected_output: |
+  ['sentiment', 'summary', 'text']
+hints:
+  - "Inside each node, start with new_state = dict(state) to copy the existing state before adding to it."
+  - "Add the node's own key onto new_state, then return new_state -- not a freshly constructed dict with only the new key."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "dict\\(state\\)"
+concept_tags: [langgraph, shared_state, state_merging]

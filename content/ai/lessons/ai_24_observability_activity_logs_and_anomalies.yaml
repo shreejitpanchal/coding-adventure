@@ -1,0 +1,86 @@
+id: ai_24
+title: "Observability: Activity Logs and Anomaly Detection"
+language: ai
+level: 24
+objective: "Go one level deeper into the Observability pillar: understand what a useful agent activity log actually records, and why detecting a deviation from an agent's normal behavior pattern matters as much as logging individual actions."
+explanation: |
+  This category's second lesson named Observability as "a log of what
+  each agent did" at a high level. The next level of detail is what
+  that log actually needs to capture to be useful for a security
+  investigation, and what gets built on top of raw logs once enough of
+  them accumulate.
+
+  A useful per-action log entry records more than just "agent X ran" --
+  it needs the agent's identity (per the previous lesson's first-class
+  identity concept), which specific tool or system it called, what
+  data it read or wrote, and a timestamp, at minimum. This is what
+  turns "something happened" into "agent X read customer records Y and
+  Z from the CRM at 3:47 AM on a Sunday" -- specific enough that a human
+  investigating an incident can actually reconstruct what occurred,
+  rather than a generic "agent activity detected" entry that answers
+  none of the follow-up questions an investigation actually needs
+  answered.
+
+  Once enough of these detailed logs accumulate for a given agent, a
+  **baseline** of normal behavior emerges -- which systems it typically
+  calls, roughly how often, during which hours, touching which category
+  of data. **Anomaly detection** compares new activity against that
+  baseline and flags meaningful deviations: an agent that normally only
+  reads sales data suddenly querying HR records, or an agent that
+  typically runs during business hours suddenly active at 3 AM. This
+  matters because a compromised or misconfigured agent doesn't
+  necessarily do something an access-control check would outright
+  block -- it might use permissions it's genuinely entitled to, just in
+  a way that's wildly inconsistent with its established normal pattern
+  -- and only a baseline comparison, not a static permissions check
+  alone, can catch that kind of deviation.
+example_code: |
+  # Illustrative shape of what a detailed log entry needs to capture --
+  # not literal Agent 365 log schema.
+  log_entry = {
+      "agent_id": "finance-recon-agent",     # WHO (first-class identity, previous lesson)
+      "action": "read",                       # WHAT kind of action
+      "target": "general_ledger.transactions_q3",  # WHAT specifically was touched
+      "timestamp": "2026-09-12T03:47:00Z",    # WHEN
+  }
+
+  # A baseline built from many such log entries over time:
+  agent_baseline = {
+      "finance-recon-agent": {
+          "typical_targets": {"general_ledger", "bank_feed"},
+          "typical_hours": range(8, 19),        # business hours only, historically
+      }
+  }
+
+  def is_anomalous(entry, baseline):
+      profile = baseline.get(entry["agent_id"])
+      if profile is None:
+          return False
+      hour = int(entry["timestamp"][11:13])
+      # flag EITHER an unusual target OR an unusual hour -- a permissions
+      # check alone wouldn't catch this if the agent is technically entitled
+      return entry["target"] not in profile["typical_targets"] or hour not in profile["typical_hours"]
+category: microsoft_agent_365
+category_level: 4
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [microsoft_agent_365, observability, anomaly_detection, agent_governance]
+comprehension_check:
+  - question: "What does a useful per-action agent log entry need to capture, beyond just 'agent X ran'?"
+    options:
+      - "The agent's identity, which specific tool/system it called, what data it read or wrote, and a timestamp -- enough detail to reconstruct exactly what happened during an investigation"
+      - "Nothing else is needed -- knowing an agent ran at all is sufficient for any investigation"
+      - "Only the agent's name, with no other details"
+      - "Only the timestamp, since the identity is assumed to always be the same"
+    correct: 0
+    explanation: "A generic 'agent activity detected' entry answers none of the follow-up questions a real investigation needs -- specificity is what makes the log actually useful."
+  - question: "Why is anomaly detection against a behavioral baseline needed in addition to access-control checks?"
+    options:
+      - "A compromised or misconfigured agent might use permissions it's genuinely entitled to, just in a way wildly inconsistent with its established normal pattern -- something a static permissions check wouldn't catch"
+      - "Anomaly detection replaces the need for any access control entirely"
+      - "Baselines are only useful for agents that have zero permissions"
+      - "There is no meaningful difference between access control and anomaly detection"
+    correct: 0
+    explanation: "An agent using its own legitimate access in an unusual way (wrong data category, unusual hour) wouldn't be blocked by a permissions check, but would stand out against its own historical baseline."

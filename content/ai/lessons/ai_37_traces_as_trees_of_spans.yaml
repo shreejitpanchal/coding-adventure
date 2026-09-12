@@ -1,0 +1,95 @@
+id: ai_37
+title: "Traces as Trees of Spans, Not a Flat List"
+language: ai
+level: 37
+objective: "Fix a hand-rolled span tracker that always attaches a new span to the trace's root instead of to whichever span is actually currently running, flattening what should be a nested call hierarchy."
+explanation: |
+  One level below timing a single call (this category's previous
+  lesson) is what a *real* trace of a multi-step chain looks like: not
+  a flat list of individual timings, but a **tree of spans**, where a
+  top-level chain's span has child spans for each step it calls, and
+  one of those steps might itself call a tool whose invocation becomes
+  a grandchild span. This nesting is exactly what lets someone reading
+  a trace answer "which specific sub-step, inside which specific
+  parent step, took unexpectedly long or failed" -- a flat list of
+  timings with no parent/child structure can't represent "this failure
+  happened inside step 2's own internal tool call" at all.
+
+  The bug this exercise fixes is a span tracker that always attaches a
+  newly started span as a child of the trace's root span, regardless of
+  what's actually currently executing -- so a tool call made from
+  *inside* step 2 gets recorded as a direct child of the root, a
+  sibling of step 2 itself, rather than nested inside it. The resulting
+  trace looks plausible (every span is present, nothing crashed) but
+  completely misrepresents the real call hierarchy, making it
+  impossible to tell from the trace alone that the tool call actually
+  happened as part of step 2's own work. The fix tracks whichever span
+  is currently "active" (the most recently started span that hasn't
+  ended yet) and attaches each new span as a child of *that* one,
+  correctly nesting the tree as calls go deeper.
+example_code: |
+  # The trap: every new span attaches to the ROOT, regardless of which
+  # span is actually currently running -- flattening the real hierarchy.
+  class TracerTrap:
+      def __init__(self):
+          self.root = {"name": "root", "children": []}
+      def start_span(self, name):
+          span = {"name": name, "children": []}
+          self.root["children"].append(span)   # bug: ALWAYS attaches to root
+          return span
+
+  tracer_trap = TracerTrap()
+  step2 = tracer_trap.start_span("step2")
+  tool_call = tracer_trap.start_span("tool_call")   # actually happens INSIDE step2
+  print(len(step2["children"]))   # 0 -- tool_call is wrongly a SIBLING of step2, not nested in it
+
+  # The fix: track the currently active span, attach new spans to IT.
+  class Tracer:
+      def __init__(self):
+          self.root = {"name": "root", "children": []}
+          self.active_stack = [self.root]   # the currently active span is always the top of this stack
+
+      def start_span(self, name):
+          span = {"name": name, "children": []}
+          self.active_stack[-1]["children"].append(span)   # attach to whatever's ACTIVE now
+          self.active_stack.append(span)
+          return span
+
+      def end_span(self):
+          self.active_stack.pop()
+
+  tracer = Tracer()
+  step2_2 = tracer.start_span("step2")
+  tool_call_2 = tracer.start_span("tool_call")   # correctly nests under step2, since step2 is active
+  print(len(step2_2["children"]))   # 1 -- tool_call is correctly nested INSIDE step2
+starter_code: |
+  class Tracer:
+      def __init__(self):
+          self.root = {"name": "root", "children": []}
+      def start_span(self, name):
+          span = {"name": name, "children": []}
+          self.root["children"].append(span)
+          return span
+
+  tracer = Tracer()
+  step2 = tracer.start_span("step2")
+  tool_call = tracer.start_span("tool_call")
+  print(len(step2["children"]))
+challenge: |
+  Fix `Tracer` so a new span attaches as a child of whichever span is
+  currently active (tracked via a stack), instead of always attaching
+  to the root. After starting `"step2"` and then `"tool_call"`,
+  `len(step2["children"])` should print `1`, not `0`.
+expected_output: |
+  1
+hints:
+  - "Track an active_stack list, initialized to [self.root]. The 'currently active' span is always active_stack[-1]."
+  - "In start_span: attach the new span to self.active_stack[-1][\"children\"] (not self.root[\"children\"]), then push the new span onto active_stack."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "active_stack"
+concept_tags: [langsmith, tracing, span_tree]

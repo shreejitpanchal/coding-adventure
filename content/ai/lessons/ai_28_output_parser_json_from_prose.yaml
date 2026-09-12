@@ -1,0 +1,75 @@
+id: ai_28
+title: "Output Parsers: Extracting JSON from Surrounding Prose"
+language: ai
+level: 28
+objective: "Fix a hand-rolled JSON output parser that crashes whenever the model wraps its JSON answer in explanatory prose, by locating the JSON substring before parsing it."
+explanation: |
+  One level below prompt templates (this category's previous lesson) is
+  what happens to what comes *back* from a model: an **output parser**
+  takes the model's raw text response and turns it into a structured
+  value the rest of the chain can use. A very common real-world case is
+  asking a model to "respond with JSON" and getting back not pure JSON,
+  but JSON wrapped in a sentence or a markdown code fence -- `Here's the
+  result: {"name": "Ada", "score": 92}` or a response fenced in
+  ` ```json ... ``` ` -- because models frequently add a little
+  surrounding narration even when explicitly asked not to.
+
+  The naive parser calls `json.loads(raw_text)` directly, which throws
+  `json.JSONDecodeError` the instant there's a single character of
+  prose before or after the JSON object -- correct behavior for
+  `json.loads` (it's not JSON's job to guess where an embedded object
+  starts), but the wrong behavior for a parser whose entire job is to
+  handle exactly this realistic shape of model output. The fix locates
+  the actual JSON object within the raw text first -- finding the first
+  `{` and the matching last `}` -- and parses only that substring,
+  succeeding on the realistic "JSON plus a little narration" case
+  instead of demanding pure, unadorned JSON that models don't reliably
+  produce even when asked to.
+example_code: |
+  # The trap: json.loads() crashes on any surrounding prose at all.
+  import json
+
+  def parse_json_output_trap(raw_text):
+      return json.loads(raw_text)   # json.JSONDecodeError on ANY extra text
+
+  raw = 'Here is the result: {"name": "Ada", "score": 92}'
+  # parse_json_output_trap(raw)  # json.decoder.JSONDecodeError: Extra data
+
+  # The fix: locate the JSON substring (first '{' to last '}') before parsing.
+  def parse_json_output(raw_text):
+      start = raw_text.find("{")
+      end = raw_text.rfind("}")
+      if start == -1 or end == -1 or end < start:
+          raise ValueError(f"no JSON object found in model output: {raw_text!r}")
+      return json.loads(raw_text[start:end + 1])
+
+  result = parse_json_output(raw)
+  print(result["name"], result["score"])   # Ada 92
+starter_code: |
+  import json
+
+  def parse_json_output(raw_text):
+      return json.loads(raw_text)
+
+  raw = 'Here is the result: {"name": "Ada", "score": 92}'
+  result = parse_json_output(raw)
+  print(result["name"], result["score"])
+challenge: |
+  Fix `parse_json_output` so it locates the JSON object embedded in
+  `raw_text` (from the first `{` to the last `}`) and parses only that
+  substring, instead of crashing on the surrounding prose. It should
+  print `Ada 92`.
+expected_output: |
+  Ada 92
+hints:
+  - "start = raw_text.find('{'); end = raw_text.rfind('}')"
+  - "json.loads(raw_text[start:end + 1]) parses only the JSON substring, ignoring text before/after it."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "\\.find\\(.\\{.\\)"
+  - "\\.rfind\\(.\\}.\\)"
+concept_tags: [langchain, output_parser, json_parsing]

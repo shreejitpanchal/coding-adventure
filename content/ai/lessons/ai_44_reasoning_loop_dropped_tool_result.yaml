@@ -1,0 +1,97 @@
+id: ai_44
+title: "The Reasoning Loop Must Feed Tool Results Back In, Or It Repeats Itself"
+language: ai
+level: 44
+objective: "Fix a hand-rolled agent reasoning loop that executes a requested tool call but never appends the tool's result back into the conversation, so the model keeps requesting the exact same tool call forever."
+explanation: |
+  One level below A2A message delivery between agents (this category's
+  previous lesson) is what happens *inside* a single agent once it
+  actually receives a task: Solace Agent Mesh describes a consistent
+  operating cycle -- the agent "passes the task, instructions, and
+  available tools to the language model. The model either returns a
+  final answer or requests tool calls. The agent executes tool calls
+  and feeds results back to the model. The loop repeats until the model
+  produces a final answer." That third step -- feeding results back in --
+  is exactly what this exercise's bug omits.
+
+  The bug is a loop that correctly detects when the model wants to call
+  a tool and correctly executes that tool, but never appends the tool's
+  result back into the running conversation before asking the model
+  again. From the model's perspective, every subsequent turn looks
+  *identical* to the turn before it -- it never sees the result it
+  asked for, so (in this exercise's simulated model) it has no way to
+  know the tool already ran and simply requests the exact same tool
+  call again, forever. This is a different, more specific failure mode
+  than a missing `max_steps` guard alone (covered elsewhere in this
+  app's `agentic_frameworks` category): even *with* an iteration cap,
+  a loop that never threads results back in wastes every single
+  iteration re-requesting the same already-answered tool call instead
+  of making genuine progress toward a final answer. The fix appends the
+  tool's result to the conversation immediately after executing it, so
+  the next turn gives the model what it actually needs to move forward.
+example_code: |
+  # The trap: the tool executes, but its result never gets appended back
+  # into the conversation -- the model's next turn looks IDENTICAL.
+  def simulated_model(conversation):
+      if any(m.get("role") == "tool_result" for m in conversation):
+          return {"final_answer": "the total is 42"}
+      return {"tool_call": "compute_total"}
+
+  def run_loop_trap(conversation, max_steps=5):
+      for _ in range(max_steps):
+          response = simulated_model(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          result = 42   # pretend this tool genuinely ran and computed 42
+          # bug: result is computed, but never appended to `conversation`!
+      return "gave up after max_steps"
+
+  print(run_loop_trap([{"role": "user", "content": "what's the total?"}]))
+  # "gave up after max_steps" -- the model NEVER saw the tool's result
+
+  # The fix: append the tool's result to the conversation right after
+  # executing it, so the next turn actually reflects real progress.
+  def run_loop(conversation, max_steps=5):
+      for _ in range(max_steps):
+          response = simulated_model(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          result = 42
+          conversation.append({"role": "tool_result", "content": result})
+      return "gave up after max_steps"
+
+  print(run_loop([{"role": "user", "content": "what's the total?"}]))
+  # "the total is 42" -- the model sees the result on its NEXT turn and finishes
+starter_code: |
+  def simulated_model(conversation):
+      if any(m.get("role") == "tool_result" for m in conversation):
+          return {"final_answer": "the total is 42"}
+      return {"tool_call": "compute_total"}
+
+  def run_loop(conversation, max_steps=5):
+      for _ in range(max_steps):
+          response = simulated_model(conversation)
+          if "final_answer" in response:
+              return response["final_answer"]
+          result = 42
+      return "gave up after max_steps"
+
+  print(run_loop([{"role": "user", "content": "what's the total?"}]))
+challenge: |
+  Fix `run_loop` so it appends `{"role": "tool_result", "content":
+  result}` to `conversation` right after computing the tool result,
+  instead of discarding it. It should print `the total is 42`, not
+  `gave up after max_steps`.
+expected_output: |
+  the total is 42
+hints:
+  - "Right after result = 42, add: conversation.append({\"role\": \"tool_result\", \"content\": result})."
+  - "The simulated_model function only returns a final_answer once it sees a message with role == \"tool_result\" in the conversation -- without appending one, that condition can never become true."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "conversation\\.append"
+concept_tags: [solace_agent_mesh, agent_reasoning_loop, tool_dispatch]

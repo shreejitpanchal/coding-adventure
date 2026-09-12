@@ -1,0 +1,84 @@
+id: ai_31
+title: "Graphs Instead of Chains: Nodes and Edges"
+language: ai
+level: 31
+objective: "Understand LangGraph's core departure from a linear LangChain pipeline -- modeling an agent as a graph of named nodes connected by edges -- by fixing a minimal graph executor that stops after the very first node instead of following the edges through to the end."
+explanation: |
+  This category's sibling LangChain category modeled everything as a
+  strictly linear pipe: step one, then step two, then step three, with
+  no branching and no revisiting an earlier step. Many real agents need
+  something less linear -- "keep retrying this step until it succeeds,"
+  "go down a different path depending on what happened," "loop here a
+  bounded number of times" -- and forcing those shapes into a single
+  straight pipe gets awkward fast. LangGraph's foundational idea, at
+  the highest level, is to stop pretending an agent's control flow is a
+  straight line at all: model it explicitly as a **graph**, where each
+  **node** is a unit of work (a function) and each **edge** says which
+  node runs next, given where execution currently is.
+
+  The simplest possible graph executor just needs to: start at a
+  designated start node, run it, look up which node its outgoing edge
+  points to, run that one, and keep following edges until it reaches a
+  designated end node. The bug this exercise fixes is an executor that
+  runs the start node correctly but then stops immediately instead of
+  looking up and following that node's outgoing edge to keep the walk
+  going -- producing only the very first node's result and silently
+  discarding the fact that a whole graph of further steps was supposed
+  to run after it. The fix is a loop: after running the current node,
+  look up the edge mapping to find the next node, and keep executing
+  and following edges until the designated end node is reached.
+example_code: |
+  # The trap: runs the start node, then stops -- never follows the edge
+  # to keep walking the rest of the graph.
+  def run_graph_trap(nodes, edges, start, end):
+      current = start
+      result = nodes[current](None)
+      return result   # bug: stops here, never follows edges[current] onward
+
+  nodes = {
+      "greet": lambda state: "hello",
+      "shout": lambda state: state.upper(),
+  }
+  edges = {"greet": "shout", "shout": "END"}
+  print(run_graph_trap(nodes, edges, "greet", "END"))   # "hello" -- "shout" never ran
+
+  # The fix: after each node runs, follow its edge to the next node,
+  # looping until the designated end node is reached.
+  def run_graph(nodes, edges, start, end):
+      current = start
+      state = None
+      while current != end:
+          state = nodes[current](state)
+          current = edges[current]
+      return state
+
+  print(run_graph(nodes, edges, "greet", "END"))   # "HELLO" -- both nodes ran, in order
+starter_code: |
+  def run_graph(nodes, edges, start, end):
+      current = start
+      result = nodes[current](None)
+      return result
+
+  nodes = {
+      "greet": lambda state: "hello",
+      "shout": lambda state: state.upper(),
+  }
+  edges = {"greet": "shout", "shout": "END"}
+  print(run_graph(nodes, edges, "greet", "END"))
+challenge: |
+  Fix `run_graph` so it follows each node's outgoing edge and keeps
+  running nodes in sequence until it reaches `end`, instead of stopping
+  after the very first node. It should print `HELLO`, not `hello`.
+expected_output: |
+  HELLO
+hints:
+  - "Use a while loop: while current != end: run the current node, then set current = edges[current]."
+  - "Thread the running result through as the next node's input (state), and update `current` to edges[current] on every iteration."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 1
+difficulty: warmup
+contains_patterns:
+  - "while current"
+concept_tags: [langgraph, graph_execution, nodes_and_edges]

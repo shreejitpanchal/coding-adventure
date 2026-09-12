@@ -1,0 +1,102 @@
+id: ai_30
+title: "RunnableParallel: Merging Branch Outputs Without a Key Collision"
+language: ai
+level: 30
+objective: "Fix a hand-rolled RunnableParallel whose merged output silently overwrites one branch's result with another's, because both branches wrote to the same dict key."
+explanation: |
+  This is the most granular, mechanical detail in this category: how a
+  chain runs several independent sub-chains against the same input and
+  merges their separate results into one combined output --
+  `RunnableParallel({"summary": summarize_chain, "sentiment":
+  sentiment_chain})` runs both branches on the same input and returns
+  `{"summary": ..., "sentiment": ...}`, a dict keyed by whatever names
+  were assigned to each branch.
+
+  The bug this exercise fixes is a merge implementation that loops over
+  each branch's result and updates a single shared output dict with
+  `.update()` using a *fixed*, hardcoded key instead of that branch's
+  own assigned name -- every branch's individual dict ends up written
+  under the exact same key, so each subsequent branch's result silently
+  overwrites the previous one's, and the final merged output only ever
+  contains whichever branch happened to run last. Nothing crashes;
+  the merged dict looks entirely valid, it just quietly contains only
+  one branch's worth of real data. This is the same category of bug as
+  the CQRS read-model lesson elsewhere in this app's Architecture
+  track, where two branches writing to the same key silently clobber
+  each other -- here it's two chain branches instead of two saga steps,
+  but the underlying mistake and the fix (use each branch's own
+  distinct key) are identical.
+example_code: |
+  # The trap: every branch's result gets merged under the SAME hardcoded
+  # key, so each later branch silently overwrites the earlier one's result.
+  class RunnableParallelTrap:
+      def __init__(self, branches: dict):
+          self.branches = branches
+      def invoke(self, x):
+          result = {}
+          for name, branch in self.branches.items():
+              result.update({"output": branch.invoke(x)})   # bug: same key every time!
+          return result
+
+  branches = {
+      "summary": Runnable(lambda x: f"summary of: {x}"),
+      "sentiment": Runnable(lambda x: "positive"),
+  }
+  parallel_trap = RunnableParallelTrap(branches)
+  print(parallel_trap.invoke("great product"))
+  # {'output': 'positive'} -- the summary branch's result is GONE
+
+  # The fix: merge each branch's result under ITS OWN assigned name.
+  class RunnableParallel:
+      def __init__(self, branches: dict):
+          self.branches = branches
+      def invoke(self, x):
+          result = {}
+          for name, branch in self.branches.items():
+              result[name] = branch.invoke(x)   # each branch keeps its own key
+          return result
+
+  parallel = RunnableParallel(branches)
+  print(parallel.invoke("great product"))
+  # {'summary': 'summary of: great product', 'sentiment': 'positive'} -- both preserved
+starter_code: |
+  class Runnable:
+      def __init__(self, fn):
+          self.fn = fn
+      def invoke(self, x):
+          return self.fn(x)
+
+  class RunnableParallel:
+      def __init__(self, branches: dict):
+          self.branches = branches
+      def invoke(self, x):
+          result = {}
+          for name, branch in self.branches.items():
+              result.update({"output": branch.invoke(x)})
+          return result
+
+  branches = {
+      "summary": Runnable(lambda x: f"summary of: {x}"),
+      "sentiment": Runnable(lambda x: "positive"),
+  }
+  parallel = RunnableParallel(branches)
+  print(sorted(parallel.invoke("great product").items()))
+challenge: |
+  Fix `RunnableParallel.invoke` so each branch's result is merged under
+  its own assigned name (the dict key from `self.branches`), instead of
+  every branch overwriting a single shared `"output"` key. The printed,
+  sorted items should be
+  `[('sentiment', 'positive'), ('summary', 'summary of: great product')]`.
+expected_output: |
+  [('sentiment', 'positive'), ('summary', 'summary of: great product')]
+hints:
+  - "Replace result.update({\"output\": branch.invoke(x)}) with result[name] = branch.invoke(x)."
+  - "`name` (the dict key from self.branches.items()) is each branch's own distinct name -- use it instead of a fixed literal key."
+xp_reward: 15
+achievement: langchain_master
+category: langchain
+category_level: 5
+difficulty: deep_dive
+contains_patterns:
+  - "result\\[name\\]"
+concept_tags: [langchain, runnable_parallel, chain_composition]

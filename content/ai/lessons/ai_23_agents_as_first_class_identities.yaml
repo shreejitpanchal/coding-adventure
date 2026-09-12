@@ -1,0 +1,81 @@
+id: ai_23
+title: "Treating Agents as First-Class Identities"
+language: ai
+level: 23
+objective: "Go one level deeper into the Registry/Access pillars: understand why an agent needs its own identity in a directory like Entra ID, rather than borrowing a human user's or a generic service account's credentials."
+explanation: |
+  This category's second lesson named Registry and Access as two of the
+  Control Tower's four pillars without explaining the specific
+  mechanism underneath them. That mechanism is: an agent gets
+  registered as its own identity object in Entra ID (Microsoft's
+  identity directory, the same one that already holds human user
+  accounts and service principals) -- not as a shared login, not
+  borrowing the credentials of whichever human happened to configure
+  it. This single design choice is what makes the other pillars
+  possible at all.
+
+  Consider the alternative: an agent that runs using the credentials of
+  the employee who set it up. Every action that agent takes shows up in
+  logs as that employee's action, indistinguishable from something the
+  employee did by hand. If the employee leaves the company, the agent
+  either breaks (their account got disabled) or -- worse -- keeps
+  running on a lingering, unmonitored credential nobody remembers to
+  revoke. Scoping permissions specifically to "what this agent needs"
+  is also impossible, since the agent inherits whatever the human's
+  account happens to have access to, which is almost always far broader
+  than the agent's actual job requires.
+
+  Giving the agent its own first-class identity solves all of this at
+  once: permissions get scoped to exactly what *that agent* needs
+  (least privilege, not "whatever the human's account already had"),
+  every logged action is unambiguously attributable to the agent
+  itself, and the agent's access can be reviewed, restricted, or
+  revoked entirely independently of any human's employment status. This
+  is the same underlying idea behind giving a service (rather than a
+  person) its own service account -- Agent 365 applies it specifically
+  to AI agents, at the scale of "potentially thousands of them across
+  an org," which is exactly why it needs to be a first-class, directory-
+  backed concept rather than a per-team convention everyone has to
+  remember to follow correctly on their own.
+example_code: |
+  # WITHOUT a first-class agent identity: the agent runs AS a human,
+  # inheriting whatever that human's account can already access.
+  def run_agent_as_human_credential(human_user_token):
+      # every action logged here is indistinguishable from the human
+      # acting directly -- and access is whatever the human's account has,
+      # not scoped to what the agent specifically needs
+      return call_finance_system(auth=human_user_token)
+
+  # WITH a first-class agent identity: scoped, independently reviewable,
+  # and unambiguously attributable in every log entry.
+  agent_identity = {
+      "id": "finance-recon-agent",              # its own directory entry, not a human's
+      "type": "agent",                           # distinct identity type from "user"
+      "scoped_permissions": ["read:general_ledger"],  # least privilege for THIS agent's job
+  }
+  def run_agent_with_own_identity(agent_identity):
+      return call_finance_system(auth=agent_identity["id"])  # logs attribute this to the agent, not a person
+category: microsoft_agent_365
+category_level: 3
+difficulty: core
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [microsoft_agent_365, agent_identity, least_privilege, entra_id]
+comprehension_check:
+  - question: "What problem occurs when an agent runs using a human employee's own credentials instead of its own identity?"
+    options:
+      - "Every action is indistinguishable from the human acting directly, permissions can't be scoped to just what the agent needs, and the agent's access is tied to that employee's continued employment"
+      - "There is no problem -- this is the recommended approach"
+      - "The agent automatically gets fewer permissions this way"
+      - "This only matters for agents that never access any data"
+    correct: 0
+    explanation: "The agent inherits whatever broad access the human's account already has, and if the employee leaves, the agent either breaks or keeps running on an unmonitored lingering credential."
+  - question: "What does giving an agent its own first-class identity in a directory like Entra ID make possible?"
+    options:
+      - "Permissions scoped specifically to what that agent needs, unambiguous attribution in logs, and access that can be reviewed or revoked independently of any human's employment status"
+      - "It makes the agent invisible to all logging"
+      - "It requires removing all permission scoping entirely"
+      - "It has no effect on how the agent's actions appear in logs"
+    correct: 0
+    explanation: "This is the same underlying idea as giving a service its own service account, applied specifically to AI agents at organizational scale."

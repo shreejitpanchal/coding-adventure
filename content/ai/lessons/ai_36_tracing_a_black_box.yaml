@@ -1,0 +1,94 @@
+id: ai_36
+title: "Why Trace an LLM App: Debugging a Black Box"
+language: ai
+level: 36
+objective: "Understand LangSmith's foundational purpose -- tracing every step of a multi-step chain so a failure can be pinpointed -- by fixing a minimal hand-rolled tracer whose timer records zero duration for every step."
+explanation: |
+  At the highest level, LangSmith exists to solve a problem this app's
+  LangChain and LangGraph categories both created without naming
+  directly: once an app is a *pipeline* of several steps (a prompt
+  template, a model call, an output parser, a tool call), and something
+  goes wrong, "it produced the wrong answer" tells you almost nothing
+  about *which* step actually misbehaved. Was the prompt malformed? Did
+  the model return something unexpected? Did the parser mis-extract it?
+  Without a record of what happened at each individual step, debugging
+  a multi-step chain means guessing and re-running things with print
+  statements sprinkled in -- exactly the "black box" problem LangSmith's
+  tracing is built to eliminate.
+
+  The most foundational unit of tracing is simple: wrap a function call,
+  record when it started, when it finished, and how long it took. This
+  exercise's bug is a tracer that records both a start time and an end
+  time but reads the clock incorrectly, capturing the *same* timestamp
+  twice instead of a genuine before/after pair -- so every recorded
+  duration comes out as exactly zero regardless of how long the wrapped
+  function actually took, silently destroying the one piece of
+  information ("how long did this step take") that a duration-based
+  trace exists to capture in the first place. The fix reads the clock
+  once immediately before calling the wrapped function and again
+  immediately after it returns, so the recorded duration reflects the
+  function's real elapsed time.
+example_code: |
+  # The trap: both "start" and "end" read the clock at the SAME point,
+  # right after the call -- every recorded duration comes out as zero.
+  import time
+
+  def traced_call_trap(fn, *args):
+      end = time.perf_counter()
+      result = fn(*args)
+      start = time.perf_counter()   # bug: this ALSO reads "now", right after start's read
+      return result, end - start    # this is negative/near-zero, not a real duration
+
+  def slow_step(n):
+      total = 0
+      for i in range(n):
+          total += i
+      return total
+
+  _, duration_trap = traced_call_trap(slow_step, 100000)
+  print(duration_trap < 0 or duration_trap == 0)   # True -- the duration is meaningless
+
+  # The fix: read the clock BEFORE calling the function, and AGAIN after
+  # it returns -- a genuine before/after pair.
+  def traced_call(fn, *args):
+      start = time.perf_counter()
+      result = fn(*args)
+      end = time.perf_counter()
+      return result, end - start
+
+  _, duration = traced_call(slow_step, 100000)
+  print(duration > 0)   # True -- a real, positive elapsed time
+starter_code: |
+  import time
+
+  def traced_call(fn, *args):
+      end = time.perf_counter()
+      result = fn(*args)
+      start = time.perf_counter()
+      return result, end - start
+
+  def slow_step(n):
+      total = 0
+      for i in range(n):
+          total += i
+      return total
+
+  _, duration = traced_call(slow_step, 200000)
+  print(duration > 0)
+challenge: |
+  Fix `traced_call` so it reads the clock immediately *before* calling
+  `fn` and again immediately *after* it returns, producing a genuine
+  positive elapsed duration. It should print `True`, not `False`.
+expected_output: |
+  True
+hints:
+  - "start = time.perf_counter() must happen BEFORE result = fn(*args), not after it."
+  - "end = time.perf_counter() must happen AFTER fn(*args) returns -- swap the order of the two time.perf_counter() calls relative to the function call."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 1
+difficulty: warmup
+contains_patterns:
+  - "start = time\\.perf_counter\\(\\)"
+concept_tags: [langsmith, tracing, observability]

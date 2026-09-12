@@ -1,0 +1,92 @@
+id: ai_25
+title: "Lifecycle in Practice: Registering, Scoping, and Decommissioning One Agent"
+language: ai
+level: 25
+objective: "Trace one concrete agent through the entire Control Tower lifecycle end-to-end -- the most granular, ground-level view of how the four pillars from this category actually operate together on a single real agent."
+explanation: |
+  Every lesson so far in this category built up one pillar or one
+  concept at a time: the sprawl problem, the four pillars as a
+  framework, first-class identity, and observability's baseline-
+  comparison mechanic. This lesson is the most concrete, lowest-level
+  view in the category -- walking one specific agent through its entire
+  lifecycle from creation to eventual shutdown, showing exactly where
+  each pillar's concept actually applies in sequence, rather than as
+  separate abstractions.
+
+  **Registration**: Sales Ops builds `sales-research-agent` to
+  summarize competitor news for account reps. Before it's allowed to
+  run against real company systems, it's registered in the Control
+  Tower with its own first-class identity (Registry pillar), an owner
+  (the Sales Ops lead), and a stated purpose. **Scoping**: the team
+  requests read access to the CRM's account list and public web search
+  -- nothing else -- and that request goes through an access-review step
+  before being granted (Access pillar); the agent never gets standing
+  access to, say, the finance system, because nothing about its stated
+  purpose needs it. **Operating**: every CRM query and web search the
+  agent performs gets logged with enough detail to reconstruct later
+  (Observability pillar), and its behavior settles into a baseline --
+  a predictable volume of queries during business hours, touching only
+  the account list.
+
+  **Review**: six months in, a scheduled lifecycle review (Lifecycle
+  pillar) checks whether the agent is still needed, whether its owner
+  still works at the company, and whether its actual observed behavior
+  (from the accumulated logs) still matches its originally scoped
+  purpose -- catching, for example, permission creep if someone
+  quietly expanded its access along the way without a fresh review.
+  **Decommissioning**: a year later, Sales Ops retires the project the
+  agent supported. Because it was a registered, first-class identity
+  rather than a credential borrowed from a person, decommissioning it
+  is a single, clean action -- revoke its identity, and every one of its
+  scoped permissions is revoked with it, with no risk of a forgotten,
+  orphaned credential lingering the way an unmanaged personal-account
+  workaround would. This full arc -- register, scope, operate under
+  observation, periodically review, cleanly decommission -- is what "an
+  agent is governed" concretely means, end to end.
+example_code: |
+  # The full lifecycle of ONE agent, tying every pillar from this
+  # category together -- illustrative shape, not literal Agent 365 API.
+  agent = {
+      "id": "sales-research-agent",
+      "owner": "sales-ops-lead@example.com",
+      "purpose": "summarize competitor news for account reps",
+      "status": "registered",                          # Registration (Registry)
+  }
+  agent["permissions"] = ["read:crm_accounts", "read:public_web"]  # Scoping (Access)
+
+  activity_log = []                                      # Operating (Observability)
+  def record_agent_action(agent_id, action, target):
+      activity_log.append({"agent_id": agent_id, "action": action, "target": target})
+
+  def lifecycle_review(agent, activity_log):              # Review (Lifecycle)
+      actual_targets = {e["target"] for e in activity_log if e["agent_id"] == agent["id"]}
+      unexpected = actual_targets - set(agent["permissions"])
+      return "FLAG: permission creep detected" if unexpected else "OK: matches scoped purpose"
+
+  def decommission(agent):                                 # Decommissioning (Lifecycle)
+      agent["status"] = "revoked"
+      agent["permissions"] = []   # ONE action revokes everything -- no orphaned credentials
+category: microsoft_agent_365
+category_level: 5
+difficulty: deep_dive
+xp_reward: 15
+achievement: microsoft_agent_365_master
+requires_code: false
+concept_tags: [microsoft_agent_365, agent_lifecycle, agent_governance, ai_agent_control_tower]
+comprehension_check:
+  - question: "What does a scheduled lifecycle review check for, according to this lesson's example?"
+    options:
+      - "Whether the agent is still needed, whether its owner still works there, and whether its actual observed behavior still matches its originally scoped purpose -- catching permission creep"
+      - "Only whether the agent's code still compiles"
+      - "It checks nothing -- lifecycle reviews are purely a formality with no real function"
+      - "Only the agent's uptime percentage"
+    correct: 0
+    explanation: "The review compares accumulated observed behavior against the agent's originally scoped purpose, which is exactly how quietly expanded, unreviewed permission creep gets caught."
+  - question: "Why is decommissioning a first-class-identity agent a single, clean action, unlike revoking a borrowed human credential?"
+    options:
+      - "Revoking the agent's own identity revokes every one of its scoped permissions at once, with no risk of an orphaned credential lingering the way an unmanaged personal-account workaround would"
+      - "Decommissioning a first-class agent identity is actually more complicated than revoking a human credential"
+      - "First-class agent identities can never be decommissioned once created"
+      - "There is no difference between the two approaches"
+    correct: 0
+    explanation: "Because the agent never borrowed a human's credential in the first place, there's nothing left dangling once its own identity is revoked -- exactly the payoff of the first-class-identity design from earlier in this category."

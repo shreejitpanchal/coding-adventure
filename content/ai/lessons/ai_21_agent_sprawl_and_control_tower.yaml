@@ -1,0 +1,76 @@
+id: ai_21
+title: "The Problem Agent 365 Solves: Agent Sprawl"
+language: ai
+level: 21
+objective: "Understand the organizational problem Microsoft Agent 365's AI Agent Control Tower addresses: as AI agents multiply across an organization, nobody has a single place to see which agents exist, what they can access, or whether they're behaving safely."
+explanation: |
+  Once an organization moves past "a few people experimenting with an
+  LLM" into dozens of teams each building or buying their own agents --
+  a support-ticket triage agent here, a sales-research agent there, a
+  finance-reconciliation agent somewhere else, built on different
+  platforms (Copilot Studio, LangChain, a vendor's SaaS agent, a
+  homegrown script) -- a specific organizational problem appears that
+  didn't exist when there was just one team's one chatbot: nobody in IT
+  or security has a single, reliable answer to "how many agents do we
+  actually have running right now, what data can each of them touch,
+  and who's responsible for it." This is **agent sprawl**, and it's a
+  close cousin of the "shadow IT" problem that unmanaged SaaS signups
+  created a decade earlier -- except an agent doesn't just store data,
+  it can *act* on a user's behalf, making the blast radius of an
+  unmanaged, over-permissioned, or compromised agent meaningfully
+  larger than an unmanaged spreadsheet ever was.
+
+  Microsoft's **Agent 365** is positioned as a control plane for exactly
+  this problem: rather than every team's agent platform inventing its
+  own security/identity/audit story from scratch, Agent 365 gives every
+  agent -- regardless of which platform built it -- a first-class
+  identity, a place to be discovered, and a place its activity gets
+  logged, the same way Intune became the place every managed *device*
+  in an org gets discovered and governed, regardless of who bought it.
+  The **AI Agent Control Tower** is the actual dashboard/control-plane
+  surface of this: a single pane of glass an IT/security team uses to
+  see every registered agent across the organization, not per-platform
+  silos each showing only their own slice.
+
+  The core insight worth taking away before going any deeper into how
+  the Control Tower actually works: this is fundamentally a *visibility
+  and governance* problem, not a technical capability problem -- the
+  individual agents already work fine at building time; what's missing
+  without something like this is any organization-wide answer to "what
+  exists, who owns it, and is it behaving."
+example_code: |
+  # Not literal code Agent 365 runs -- a plain illustration of the
+  # inventory gap this problem describes, before any control tower exists.
+  agents_built_by_teams = {
+      "support-triage-bot": {"platform": "Copilot Studio", "owner": "Support Team"},
+      "sales-research-agent": {"platform": "LangChain + internal script", "owner": "Sales Ops"},
+      "finance-recon-agent": {"platform": "Vendor SaaS", "owner": "Finance (unclear who exactly)"},
+      # ... dozens more, discovered ad-hoc, never centrally registered
+  }
+  # Before a control tower: IT/security has NO single query that answers
+  # "list every agent, what data it can touch, and who owns it" -- each
+  # platform only knows about its own agents, not the other platforms'.
+category: microsoft_agent_365
+category_level: 1
+difficulty: warmup
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [microsoft_agent_365, agent_governance, ai_agent_control_tower, agent_sprawl]
+comprehension_check:
+  - question: "What is 'agent sprawl,' as this lesson defines it?"
+    options:
+      - "The situation where AI agents multiply across many teams and platforms with nobody having a single, reliable inventory of which agents exist, what they can access, or who owns them"
+      - "A technical bug that makes an individual agent run slowly"
+      - "A feature that lets one agent call unlimited other agents"
+      - "A synonym for a single team having too many chatbots"
+    correct: 0
+    explanation: "It's a visibility and governance problem, not a technical capability problem -- individual agents work fine at build time; what's missing is an organization-wide answer to what exists and who owns it."
+  - question: "Why does agent sprawl carry more risk than earlier 'shadow IT' problems like unmanaged SaaS signups?"
+    options:
+      - "An agent doesn't just store data -- it can act on a user's behalf, making the blast radius of an unmanaged or compromised agent larger"
+      - "Agents are always more expensive than SaaS subscriptions"
+      - "There is no meaningful difference in risk between the two"
+      - "SaaS tools can never be misused, unlike agents"
+    correct: 0
+    explanation: "The ability to take action, not just hold data, is what raises the stakes of an over-permissioned or compromised agent compared to an unmanaged spreadsheet or SaaS tool."

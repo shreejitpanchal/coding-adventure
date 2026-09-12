@@ -1,0 +1,86 @@
+id: ai_41
+title: "Entrypoints Must Translate Every Transport Into One Common Shape"
+language: ai
+level: 41
+objective: "Fix a hand-rolled entrypoint dispatcher that forgets to translate one transport's payload shape, letting a raw, transport-specific field leak downstream instead of a normalized task."
+explanation: |
+  At the highest level, Solace Agent Mesh's **Entrypoints** are how
+  every external system reaches the agent mesh at all -- "every request
+  into Agent Mesh comes in through an entrypoint," and each one exists
+  specifically to translate its own transport's native shape (Slack's
+  Events API payload, a webhook's raw HTTP body, an email's IMAP
+  message) into one common internal task format before anything
+  downstream ever sees it. This matters because every agent, every
+  piece of routing logic, and every tool in the mesh is written once,
+  against that single common shape -- none of them should need to know
+  or care whether a given task originally arrived from Slack, email, or
+  a webhook.
+
+  The bug this exercise fixes is a dispatcher that correctly translates
+  some transports but is missing the translation branch for one of
+  them, so a payload from that transport gets passed straight through
+  in its raw, transport-specific shape instead of being normalized
+  first. Everything downstream that expects the common `{"text": ...,
+  "source": ...}` shape either crashes with a `KeyError` on the missing
+  field, or silently reads the wrong thing if a field happens to share
+  a name by coincidence. The fix adds the missing translation branch,
+  so every entrypoint -- regardless of transport -- always produces the
+  exact same normalized shape before handing a task off to the rest of
+  the mesh.
+example_code: |
+  # The trap: the webhook transport has NO translation branch at all --
+  # its raw, transport-specific payload leaks straight through untouched.
+  def translate_to_task_trap(transport, raw_payload):
+      if transport == "slack":
+          return {"text": raw_payload["event"]["text"], "source": "slack"}
+      elif transport == "email":
+          return {"text": raw_payload["body"], "source": "email"}
+      # no branch for "webhook" -- falls through, returning the RAW payload
+      return raw_payload
+
+  webhook_payload = {"message": "run the nightly report"}
+  task_trap = translate_to_task_trap("webhook", webhook_payload)
+  print("text" in task_trap)   # False -- downstream code expecting task["text"] will KeyError
+
+  # The fix: every transport gets its own explicit translation branch,
+  # so the output shape is ALWAYS the same common {"text", "source"} dict.
+  def translate_to_task(transport, raw_payload):
+      if transport == "slack":
+          return {"text": raw_payload["event"]["text"], "source": "slack"}
+      elif transport == "email":
+          return {"text": raw_payload["body"], "source": "email"}
+      elif transport == "webhook":
+          return {"text": raw_payload["message"], "source": "webhook"}
+      raise ValueError(f"unknown transport: {transport}")
+
+  task = translate_to_task("webhook", webhook_payload)
+  print(task["text"])   # "run the nightly report" -- correctly normalized
+starter_code: |
+  def translate_to_task(transport, raw_payload):
+      if transport == "slack":
+          return {"text": raw_payload["event"]["text"], "source": "slack"}
+      elif transport == "email":
+          return {"text": raw_payload["body"], "source": "email"}
+      return raw_payload
+
+  webhook_payload = {"message": "run the nightly report"}
+  task = translate_to_task("webhook", webhook_payload)
+  print(task["text"])
+challenge: |
+  Fix `translate_to_task` so it has an explicit `"webhook"` branch that
+  maps `raw_payload["message"]` into the common `{"text": ..., "source":
+  "webhook"}` shape, instead of returning the raw payload untouched. It
+  should print `run the nightly report`, not raise a `KeyError`.
+expected_output: |
+  run the nightly report
+hints:
+  - "Add an elif transport == \"webhook\": branch that returns {\"text\": raw_payload[\"message\"], \"source\": \"webhook\"}."
+  - "Every transport branch must produce the SAME output shape -- a dict with a \"text\" key -- regardless of what the raw payload originally looked like."
+xp_reward: 10
+achievement: null
+category: solace_agent_mesh
+category_level: 1
+difficulty: warmup
+contains_patterns:
+  - "webhook"
+concept_tags: [solace_agent_mesh, entrypoint, protocol_translation]

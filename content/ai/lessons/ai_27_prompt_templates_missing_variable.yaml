@@ -1,0 +1,90 @@
+id: ai_27
+title: "Prompt Templates: Failing Loudly on a Missing Variable"
+language: ai
+level: 27
+objective: "Fix a hand-rolled PromptTemplate that silently leaves a placeholder unfilled when a required variable is missing, instead of raising a clear error naming exactly what's missing."
+explanation: |
+  One level down from chain composition (this category's previous
+  lesson) is what actually flows through the pipe: a `PromptTemplate`
+  is the first step in most real chains, filling a template string's
+  placeholders (`{customer_name}`, `{issue_summary}`) from a dict of
+  variables the caller provides. The naive way to fill a template is
+  Python's own `str.format(**variables)` -- but that raises a raw
+  `KeyError` for a missing variable, with no context about which
+  template or which specific variable was expected, which is exactly
+  the kind of unhelpful, hard-to-trace error this app has flagged
+  elsewhere for other silent/unclear failure modes.
+
+  A subtly worse version of this bug is even more dangerous: using
+  `.format_map()` with a dict-like object that silently substitutes a
+  placeholder-shaped default instead of raising anything at all --
+  producing a prompt sent to the model with a literal `{issue_summary}`
+  still embedded in the text, which the model then has to somehow make
+  sense of, with nothing in the code path ever having flagged that
+  anything was wrong. The fix here is to validate that every
+  placeholder the template actually declares has a matching key in the
+  provided variables *before* attempting to fill it, raising a specific
+  `ValueError` naming exactly which variable is missing -- catching the
+  problem at the one point where enough context exists to say precisely
+  what went wrong, rather than letting an incomplete prompt reach the
+  model silently.
+example_code: |
+  # The trap: a missing variable either raises an unhelpful bare KeyError,
+  # or worse, silently leaves the placeholder unfilled in the final prompt.
+  class PromptTemplateTrap:
+      def __init__(self, template):
+          self.template = template
+      def format(self, **variables):
+          return self.template.format(**variables)   # raw KeyError, no context
+
+  t = PromptTemplateTrap("Hello {customer_name}, regarding: {issue_summary}")
+  # t.format(customer_name="Ada")  # KeyError: 'issue_summary' -- no mention of the template itself
+
+  # The fix: check every declared placeholder is present, and name
+  # exactly which one is missing, BEFORE attempting to fill anything.
+  import re
+
+  class PromptTemplate:
+      def __init__(self, template):
+          self.template = template
+          self.required_vars = set(re.findall(r"\{(\w+)\}", template))
+
+      def format(self, **variables):
+          missing = self.required_vars - variables.keys()
+          if missing:
+              raise ValueError(f"PromptTemplate missing required variable(s): {sorted(missing)}")
+          return self.template.format(**variables)
+
+  t2 = PromptTemplate("Hello {customer_name}, regarding: {issue_summary}")
+  try:
+      t2.format(customer_name="Ada")
+  except ValueError as e:
+      print(e)   # PromptTemplate missing required variable(s): ['issue_summary']
+starter_code: |
+  class PromptTemplate:
+      def __init__(self, template):
+          self.template = template
+      def format(self, **variables):
+          return self.template.format(**variables)
+
+  t = PromptTemplate("Hello {customer_name}, regarding: {issue_summary}")
+  print(t.format(customer_name="Ada"))
+challenge: |
+  Fix `PromptTemplate` so calling `.format()` with a missing required
+  variable raises a `ValueError` naming exactly which variable(s) are
+  missing, instead of a bare `KeyError`. Catch it and print the message:
+  `PromptTemplate missing required variable(s): ['issue_summary']`
+expected_output: |
+  PromptTemplate missing required variable(s): ['issue_summary']
+hints:
+  - "Use re.findall(r'\\{(\\w+)\\}', template) to extract every placeholder name the template declares."
+  - "Compare that set against variables.keys() with set subtraction to find what's missing, then raise ValueError(f\"PromptTemplate missing required variable(s): {sorted(missing)}\")."
+xp_reward: 10
+achievement: null
+category: langchain
+category_level: 2
+difficulty: gotcha
+contains_patterns:
+  - "raise ValueError"
+  - "re\\.findall"
+concept_tags: [langchain, prompt_template, error_handling]

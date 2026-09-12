@@ -1,0 +1,88 @@
+id: ai_33
+title: "Conditional Edges Need a Fallback Route"
+language: ai
+level: 33
+objective: "Fix a LangGraph-style conditional router that crashes with a KeyError the moment state holds a value it didn't explicitly anticipate, by adding an explicit fallback edge."
+explanation: |
+  One level below merging into shared state (this category's previous
+  lesson) is how a graph decides *which* node runs next when there's
+  more than one possibility: a **conditional edge** is a router
+  function that looks at the current state and returns the name of the
+  next node to run, instead of every node having exactly one fixed
+  successor. A content-moderation graph might route to `"approve_node"`
+  when a classifier's state says `"safe"`, or to `"review_node"` when it
+  says `"flagged"` -- the router is what makes that decision on every
+  run rather than it being fixed at graph-definition time.
+
+  The bug this exercise fixes is a router that only knows how to handle
+  the specific values it was written with in mind -- checking `if
+  state["classification"] == "safe": return "approve_node"` and `elif
+  ... == "flagged": return "review_node"` -- with no final `else`. The
+  moment a classifier produces any *other* value (a new category added
+  later, a typo, an unexpected edge case), the router falls through
+  every branch and implicitly returns `None`, which the graph executor
+  then tries to look up as a node name and crashes with a confusing
+  `KeyError: None` that gives no hint the actual problem was an
+  unhandled classification value three steps upstream. The fix adds an
+  explicit `else` branch routing to a dedicated fallback node (e.g.
+  `"manual_review_node"`) for anything the router doesn't specifically
+  recognize -- turning an unrecoverable crash deep in the executor into
+  a handled, intentional path for the unexpected case.
+example_code: |
+  # The trap: no else branch -- an unrecognized classification value
+  # falls through to an implicit None, crashing deep inside the executor.
+  def route_trap(state):
+      if state["classification"] == "safe":
+          return "approve_node"
+      elif state["classification"] == "flagged":
+          return "review_node"
+      # no else -- falls through to None for anything else
+
+  nodes = {"approve_node": lambda s: "approved", "review_node": lambda s: "under review"}
+  next_node = route_trap({"classification": "unknown_category"})
+  # nodes[next_node](...)  # KeyError: None -- gives no hint the REAL issue was upstream
+
+  # The fix: an explicit fallback route for anything not specifically recognized.
+  def route(state):
+      if state["classification"] == "safe":
+          return "approve_node"
+      elif state["classification"] == "flagged":
+          return "review_node"
+      else:
+          return "manual_review_node"   # explicit, intentional path for the unexpected case
+
+  nodes["manual_review_node"] = lambda s: "sent to manual review"
+  next_node = route({"classification": "unknown_category"})
+  print(nodes[next_node]({}))   # sent to manual review
+starter_code: |
+  def route(state):
+      if state["classification"] == "safe":
+          return "approve_node"
+      elif state["classification"] == "flagged":
+          return "review_node"
+
+  nodes = {
+      "approve_node": lambda s: "approved",
+      "review_node": lambda s: "under review",
+  }
+  next_node = route({"classification": "unknown_category"})
+  print(nodes[next_node]({}))
+challenge: |
+  Fix `route` so an unrecognized classification value routes to a new
+  `"manual_review_node"` (add it to `nodes`, returning `"sent to manual
+  review"`) instead of falling through to `None` and crashing. It should
+  print `sent to manual review`.
+expected_output: |
+  sent to manual review
+hints:
+  - "Add an else branch to route() that returns \"manual_review_node\" for anything not explicitly 'safe' or 'flagged'."
+  - "Add \"manual_review_node\": lambda s: \"sent to manual review\" to the nodes dict."
+xp_reward: 10
+achievement: null
+category: langgraph
+category_level: 3
+difficulty: gotcha
+contains_patterns:
+  - "else"
+  - "manual_review_node"
+concept_tags: [langgraph, conditional_edges, error_handling]

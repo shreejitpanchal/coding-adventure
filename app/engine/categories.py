@@ -50,6 +50,11 @@ CATEGORY_META: dict[str, CategoryMeta] = {
     "api_gateway": CategoryMeta("API Gateway", "\U0001F6AA", "#F97316"),
     "circuit_breaker": CategoryMeta("Circuit Breaker", "\U0001F50C", "#EF4444"),
     "idempotency": CategoryMeta("Idempotency", "\U0001F501", "#38BDF8"),
+    "microsoft_agent_365": CategoryMeta("Microsoft Agent 365", "\U0001F5FC️", "#00A4EF"),
+    "langchain": CategoryMeta("LangChain", "\U0001F517", "#1C3C3C"),
+    "langgraph": CategoryMeta("LangGraph", "\U0001F578️", "#3B82F6"),
+    "langsmith": CategoryMeta("LangSmith", "\U0001F9EA", "#F59E0B"),
+    "solace_agent_mesh": CategoryMeta("Solace Agent Mesh", "\U0001F578️", "#00C895"),
 }
 
 DEFAULT_META = CategoryMeta("More Practice", "⭐", "#8A93C7")

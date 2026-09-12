@@ -218,3 +218,278 @@ questions:
     correct: 0
     explanation: "Matching by the response's own id field (results[resp['id']] = resp['result']) is robust to out-of-order arrival, unlike matching by position/arrival order."
     concept_tags: [mcp, json_rpc, request_response_correlation]
+
+  - id: q21
+    question: "What is 'agent sprawl,' the problem Microsoft Agent 365's Control Tower is designed to address?"
+    options:
+      - "AI agents multiplying across many teams and platforms with no single, reliable inventory of which agents exist, what they can access, or who owns them"
+      - "A single agent running too many tasks at once"
+      - "A technical limitation on how many tools one agent can call"
+      - "A synonym for a chatbot having a large vocabulary"
+    correct: 0
+    explanation: "It's a visibility and governance problem, not a technical capability problem -- individual agents work fine at build time; what's missing is organization-wide visibility."
+    concept_tags: [microsoft_agent_365, agent_governance, agent_sprawl]
+
+  - id: q22
+    question: "What are the Control Tower's four governance pillars?"
+    options:
+      - "Registry, Access, Observability, and Lifecycle"
+      - "Speed, Cost, Accuracy, and Scale"
+      - "Frontend, Backend, Database, and API"
+      - "Training, Testing, Deployment, and Retirement -- for models, not agents"
+    correct: 0
+    explanation: "Registry provides identity, Access scopes permissions to that identity, Observability logs what actually happened, and Lifecycle governs the agent over time."
+    concept_tags: [microsoft_agent_365, ai_agent_control_tower, agent_governance]
+
+  - id: q23
+    question: "Why does an agent need its own first-class identity in Entra ID, rather than running on a human employee's credentials?"
+    options:
+      - "So permissions can be scoped to exactly what the agent needs, every action is unambiguously attributable to it, and its access can be reviewed or revoked independently of any human's employment status"
+      - "First-class identities make an agent run measurably faster"
+      - "It has no real benefit over borrowing a human's credentials"
+      - "Only human users are allowed to have identities in Entra ID"
+    correct: 0
+    explanation: "An agent running on a borrowed human credential inherits that human's broad access and becomes indistinguishable from that human's own actions in logs."
+    concept_tags: [microsoft_agent_365, agent_identity, least_privilege]
+
+  - id: q24
+    question: "Why does anomaly detection compare an agent's activity against its own behavioral baseline, rather than relying on access-control checks alone?"
+    options:
+      - "A compromised or misconfigured agent might use permissions it's genuinely entitled to, just in a way wildly inconsistent with its established normal pattern -- something a static permissions check wouldn't catch"
+      - "Baselines replace the need for any access control entirely"
+      - "Anomaly detection only works for agents with zero permissions"
+      - "There is no meaningful difference between the two approaches"
+    correct: 0
+    explanation: "An agent acting within its legitimate permissions but far outside its normal pattern (unusual data, unusual hours) wouldn't be blocked by access control alone."
+    concept_tags: [microsoft_agent_365, observability, anomaly_detection]
+
+  - id: q25
+    question: "Why is decommissioning a first-class-identity agent a single, clean action?"
+    options:
+      - "Revoking the agent's own identity revokes every one of its scoped permissions at once, with no orphaned credential left lingering"
+      - "Decommissioning always requires manually finding every system the agent ever touched"
+      - "First-class-identity agents can never actually be decommissioned"
+      - "It requires deleting the agent's entire activity log first"
+    correct: 0
+    explanation: "Because the agent never borrowed a human credential, there's nothing left dangling once its own identity is revoked."
+    concept_tags: [microsoft_agent_365, agent_lifecycle, agent_governance]
+
+  - id: q26
+    question: "What does LangChain's `|` operator do when composing two Runnables, e.g. `prompt | model`?"
+    options:
+      - "It threads the first Runnable's output into the second Runnable's input, via an overloaded __or__ method"
+      - "It runs both Runnables independently on the same original input"
+      - "It only works for exactly two Runnables and no more"
+      - "It has no functional effect -- it's purely cosmetic syntax"
+    correct: 0
+    explanation: "__or__(self, other) returns a new Runnable whose invoke() calls self.invoke(x) first, then feeds that result into other.invoke(...)."
+    concept_tags: [langchain, runnable, chain_composition]
+
+  - id: q27
+    question: "Why should a PromptTemplate raise a specific error naming the missing variable, rather than letting str.format() raise a bare KeyError?"
+    options:
+      - "A bare KeyError gives no context about which template or which variable was expected, while a specific error can name exactly what's missing"
+      - "str.format() never raises any error for a missing key"
+      - "KeyError and a custom ValueError behave identically in every way"
+      - "PromptTemplate should never validate its inputs at all"
+    correct: 0
+    explanation: "Checking the template's declared placeholders against the provided variables before formatting catches the problem with enough context to say precisely what went wrong."
+    concept_tags: [langchain, prompt_template, error_handling]
+
+  - id: q28
+    question: "Why does a naive json.loads(raw_text) call often fail on real model output, even when asked to 'respond with JSON'?"
+    options:
+      - "Models frequently wrap the JSON in a little surrounding narration or a markdown code fence, and json.loads() has no tolerance for any extra characters before or after the object"
+      - "json.loads() cannot parse any text produced by a language model"
+      - "This never actually happens in practice"
+      - "JSON itself doesn't support nested objects"
+    correct: 0
+    explanation: "Locating the JSON substring (first '{' to last '}') before parsing handles the realistic 'JSON plus a little narration' shape that json.loads() alone rejects."
+    concept_tags: [langchain, output_parser, json_parsing]
+
+  - id: q29
+    question: "Why does `def __init__(self, messages=[])` cause every ConversationMemory instance to silently share the same message list?"
+    options:
+      - "Python evaluates a default argument value exactly once, at function-definition time -- not fresh on every call -- so every instance without an explicit list reuses that same shared list object"
+      - "Lists in Python can never be used as instance attributes"
+      - "This is intentional, correct behavior with no downside"
+      - "Only global variables can be accidentally shared this way, not default arguments"
+    correct: 0
+    explanation: "Defaulting to None and creating a genuinely new list inside __init__ when nothing was passed gives every instance its own independent history."
+    concept_tags: [langchain, conversation_memory, mutable_default_argument]
+
+  - id: q30
+    question: "What goes wrong if RunnableParallel merges every branch's result under the same hardcoded dict key instead of each branch's own assigned name?"
+    options:
+      - "Each later branch's result silently overwrites the earlier one's, so the final merged output only ever contains whichever branch happened to run last"
+      - "The chain crashes immediately with a KeyError"
+      - "Nothing goes wrong -- this is the correct way to merge branch outputs"
+      - "It causes the branches to run in an infinite loop"
+    correct: 0
+    explanation: "Merging under each branch's own distinct key (result[name] = branch.invoke(x)) preserves every branch's contribution instead of letting them clobber each other."
+    concept_tags: [langchain, runnable_parallel, chain_composition]
+
+  - id: q31
+    question: "What is LangGraph's foundational departure from a linear LangChain pipeline?"
+    options:
+      - "Modeling an agent's control flow explicitly as a graph of nodes and edges, instead of a single straight pipe of sequential steps"
+      - "LangGraph removes the concept of a node or step entirely"
+      - "LangGraph only supports exactly one node per graph"
+      - "There is no meaningful difference between LangGraph and LangChain"
+    correct: 0
+    explanation: "A graph lets execution branch, loop, or retry in ways that are awkward to express as one strictly linear pipe of steps."
+    concept_tags: [langgraph, graph_execution, nodes_and_edges]
+
+  - id: q32
+    question: "Why must a LangGraph node build its return value by starting from a copy of the state it received, rather than returning a brand-new dict with only its own key?"
+    options:
+      - "A fresh dict containing only the node's own key silently discards every earlier node's contribution to the shared state, even though nothing crashes"
+      - "Returning a fresh dict always raises an exception"
+      - "State in LangGraph is immutable and cannot be modified at all"
+      - "Only the very first node in a graph is allowed to write to state"
+    correct: 0
+    explanation: "Starting from dict(state) and merging the node's own update into that copy preserves every earlier node's writes instead of replacing the whole state object."
+    concept_tags: [langgraph, shared_state, state_merging]
+
+  - id: q33
+    question: "Why does a conditional-edge router need an explicit fallback (else) branch?"
+    options:
+      - "Without one, an unrecognized state value falls through to an implicit None, which the graph executor then tries to use as a node name and crashes with a confusing KeyError"
+      - "Routers are not allowed to have more than two branches"
+      - "A fallback branch is only needed for graphs with exactly one node"
+      - "This has no effect on how the graph executes"
+    correct: 0
+    explanation: "An explicit else routing to a dedicated fallback node turns an unrecoverable crash deep in the executor into a handled, intentional path for the unexpected case."
+    concept_tags: [langgraph, conditional_edges, error_handling]
+
+  - id: q34
+    question: "Why does a retry cycle (a self-loop edge) need a max-iteration guard, the same way a plain agent loop does?"
+    options:
+      - "Without a bound, a persistently failing condition routes back to the same node forever, hanging the entire graph run with no path to the end node"
+      - "LangGraph automatically limits every cycle to exactly one iteration"
+      - "Cycles are not actually possible in LangGraph"
+      - "A max-iteration guard is only needed for graphs with no conditional edges"
+    correct: 0
+    explanation: "Threading an attempt counter through state and checking it against a maximum before looping back again gives the cycle a guaranteed exit."
+    concept_tags: [langgraph, cycles, max_iterations]
+
+  - id: q35
+    question: "Why must a checkpoint snapshot be taken AFTER a node finishes running, not before?"
+    options:
+      - "A checkpoint taken before the node runs would miss that node's own update entirely, so resuming from it would restart with stale state that doesn't yet reflect the node's work"
+      - "Checkpoint timing has no effect on what gets resumed"
+      - "Checkpoints should always be taken twice, once before and once after"
+      - "Nodes are not allowed to modify state at all in LangGraph"
+    correct: 0
+    explanation: "A checkpoint is only useful if it captures the state after the work it's meant to represent as done -- otherwise resuming re-attempts work that may have already taken effect."
+    concept_tags: [langgraph, checkpointing, idempotency]
+
+  - id: q36
+    question: "Why does tracing exist at all for a multi-step LLM chain?"
+    options:
+      - "Without a record of what happened at each individual step, 'it produced the wrong answer' gives no way to pinpoint which specific step actually misbehaved"
+      - "Tracing exists purely to make an application run faster"
+      - "Tracing is only useful for chains with exactly one step"
+      - "A chain's overall output already tells you everything about each individual step"
+    correct: 0
+    explanation: "Tracing eliminates the 'black box' problem of guessing which step failed by recording start/end/duration and output for every individual step."
+    concept_tags: [langsmith, tracing, observability]
+
+  - id: q37
+    question: "Why does a real LangSmith-style trace need to be a tree of nested spans, not a flat list of timings?"
+    options:
+      - "A tree lets you answer 'which specific sub-step, inside which specific parent step, took long or failed' -- something a flat list with no parent/child structure can't represent"
+      - "A flat list and a tree contain exactly the same information"
+      - "Trees are only needed for chains with no tool calls"
+      - "Spans can only ever have one child, never zero or many"
+    correct: 0
+    explanation: "Attaching each new span to whichever span is currently active (via a stack) correctly nests the tree as calls go deeper, unlike always attaching to the root."
+    concept_tags: [langsmith, tracing, span_tree]
+
+  - id: q38
+    question: "What goes wrong if a run logger's exception handler updates the output field but forgets to also update the status field?"
+    options:
+      - "A run that genuinely failed still gets logged with its optimistic default status of 'success,' hiding the real failure from anyone trusting that field or a dashboard filtered to successful runs"
+      - "The program crashes immediately when this happens"
+      - "The output field becomes impossible to read afterward"
+      - "This has no observable effect on the logged run record"
+    correct: 0
+    explanation: "The except block must set both the output AND the status, so the two fields never disagree about whether the run actually succeeded."
+    concept_tags: [langsmith, run_logging, error_handling]
+
+  - id: q39
+    question: "Why does an exact-match evaluator need to normalize both sides before comparing, instead of using bare == ?"
+    options:
+      - "A case difference or a trailing newline would otherwise mark a semantically correct answer as wrong, polluting the evaluation with false negatives unrelated to the model's actual reasoning"
+      - "Normalization always changes the actual meaning of the compared strings"
+      - "Bare == already ignores case and whitespace automatically in Python"
+      - "Exact-match evaluators should never be used for classification labels"
+    correct: 0
+    explanation: "Stripping whitespace and lowercasing both actual and expected before comparing reflects the answer's real content instead of incidental formatting differences."
+    concept_tags: [langsmith, evaluators, exact_match]
+
+  - id: q40
+    question: "Why can two evaluation runs have identical aggregate scores while still disagreeing on which specific examples they got right?"
+    options:
+      - "Individual examples can flip from correct to wrong and from wrong to correct at the same time, canceling out in the total -- an aggregate-only comparison has no way to see that"
+      - "This situation is mathematically impossible"
+      - "Aggregate scores always reveal every individual example's result"
+      - "Only the very first example in a dataset can ever regress"
+    correct: 0
+    explanation: "Comparing baseline and candidate results example-by-example (flagging where baseline was correct but candidate was not) surfaces regressions an aggregate-only comparison would hide."
+    concept_tags: [langsmith, regression_detection, dataset_evaluation]
+
+  - id: q41
+    question: "Why must every Solace Agent Mesh entrypoint (Slack, email, webhook, ...) translate its own transport's payload into the same common internal shape?"
+    options:
+      - "Every agent, routing rule, and tool downstream is written once against a single common shape -- none of them should need to know or care which transport a task originally arrived from"
+      - "Only one entrypoint type is allowed to be active at a time"
+      - "Translation is optional and only affects logging"
+      - "Different transports are expected to produce completely different, incompatible task shapes on purpose"
+    correct: 0
+    explanation: "A missing translation branch lets a transport-specific raw payload leak downstream, breaking anything that expects the normalized shape."
+    concept_tags: [solace_agent_mesh, entrypoint, protocol_translation]
+
+  - id: q42
+    question: "What is an 'agent card' in Solace Agent Mesh, and why does delegation need to check it?"
+    options:
+      - "An agent's advertised capability list, published so peers can discover it -- delegation must match a task's required capability against agent cards, not just pick any registered agent"
+      - "A card is a UI element with no functional effect on delegation"
+      - "Every agent has an identical agent card, so checking it is unnecessary"
+      - "Agent cards are only used for billing purposes"
+    correct: 0
+    explanation: "Picking the first registered agent without checking its agent card can route a task to an agent that has no way to actually perform the work."
+    concept_tags: [solace_agent_mesh, agent_card, capability_discovery]
+
+  - id: q43
+    question: "Why does A2A topic-based delivery need hierarchical matching instead of exact string equality?"
+    options:
+      - "A subscriber to a broader parent topic (e.g. \"orders/electronics\") should still receive messages published to a more specific child topic underneath it (e.g. \"orders/electronics/laptops\")"
+      - "Exact string equality is always sufficient for any topic-based system"
+      - "Topics in Solace Agent Mesh are never organized hierarchically"
+      - "Hierarchical matching is only relevant for entrypoints, not agent-to-agent delegation"
+    correct: 0
+    explanation: "Checking whether the published topic starts with the subscriber's topic (at a segment boundary) correctly matches a parent subscription against any more specific topic beneath it."
+    concept_tags: [solace_agent_mesh, a2a_protocol, topic_hierarchy]
+
+  - id: q44
+    question: "Why must an agent's reasoning loop append a tool's result back into the conversation before asking the model again?"
+    options:
+      - "Otherwise every subsequent turn looks identical to the model, which has no way to know the tool already ran and will keep requesting the exact same tool call indefinitely"
+      - "Appending tool results is purely for logging and has no effect on the model's next decision"
+      - "A max_steps guard alone is always sufficient, regardless of whether results are threaded back in"
+      - "Tool results should never be shown to the model under any circumstances"
+    correct: 0
+    explanation: "Without feeding the result back in, even a bounded loop wastes every iteration re-requesting an already-answered tool call instead of making real progress."
+    concept_tags: [solace_agent_mesh, agent_reasoning_loop, tool_dispatch]
+
+  - id: q45
+    question: "Why does Solace Agent Mesh run tools inside a dedicated, isolated Secure Tool Runtime?"
+    options:
+      - "So one misbehaving tool (a bug, a flaky external API) can't access agent memory/sessions or take down the rest of an otherwise-independent batch of tool calls"
+      - "Isolation exists purely to make tool calls run faster"
+      - "Tools never fail, so isolation is a purely theoretical concern"
+      - "The Secure Tool Runtime replaces the need for any tool to ever handle its own errors"
+    correct: 0
+    explanation: "Wrapping each individual tool call in its own try/except, converting a raised exception into a structured error result, isolates that one tool's failure instead of letting it abort the whole batch."
+    concept_tags: [solace_agent_mesh, secure_tool_runtime, fault_isolation]

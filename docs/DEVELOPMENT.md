@@ -16,11 +16,20 @@ a local Maven + JDK toolchain via a scaffolded Maven project run through
 engines" below for how that differs from the other four. Node.js has its
 own 6 topic categories (the same set as C++), executed directly against
 a local `node` toolchain with no separate compile step. AI is a full
-top-level track (not a Python category) with 4 topic categories —
-`ml_fundamentals`, `rag`, `agentic_frameworks`, `mcp`, 5 exercises each —
-executing on the exact same Python engine instance as the Python track,
-since its content is plain, dependency-free Python under the hood.
-Architecture is the one conceptual, no-code track: 10 topic
+top-level track (not a Python category) with 9 topic categories —
+`ml_fundamentals`, `rag`, `agentic_frameworks`, `mcp`, `microsoft_agent_365`,
+`langchain`, `langgraph`, `langsmith`, `solace_agent_mesh`, 5 exercises
+each, 45 total — executing on the exact same Python engine instance as
+the Python track, since its content is plain, dependency-free Python
+under the hood (including the LangChain/LangGraph/LangSmith/Solace
+Agent Mesh categories, which hand-roll each framework's core mechanic
+rather than importing the real library). `microsoft_agent_365` is the
+one no-code category in this
+track (`requires_code: false`, a comprehension check instead of running
+code), since Microsoft's Agent 365 product is enterprise governance
+tooling with no hand-codeable mechanic — the same shape as every
+Architecture exercise below. Architecture is the one entirely
+conceptual, no-code track: 10 topic
 categories — `event_driven_architecture`, `microservices`, `cqrs`,
 `saga_pattern`, `strangler_fig`, `domain_driven_design`,
 `hexagonal_architecture`, `api_gateway`, `circuit_breaker`,
@@ -153,7 +162,7 @@ content/
     lessons/   # own 12 category keys -- C++'s 6 plus 6 more, see below
     quiz/
   ai/
-    lessons/   # own 4 category keys, plain dependency-free Python content
+    lessons/   # own 9 category keys, plain dependency-free Python content
     quiz/
   architecture/
     lessons/   # own 10 category keys, every exercise requires_code: false
@@ -230,35 +239,87 @@ Python's content, but both subjects are language-agnostic enough (ML/
 RAG/agentic-framework/MCP mechanics; system-design patterns) that a
 dedicated top-level track was the better fit.
 
-`ai` (4 categories — `ml_fundamentals`, `rag`, `agentic_frameworks`,
-`mcp`, 5 exercises each, 20 exercises total) is plain, hand-rolled,
-dependency-free Python under the hood (no numpy, no network access, no
-LLM API calls), since this app's "real execution, exact deterministic
-output" model has no way to verify a live model call or network
-response, and the app is explicitly 100% offline. `ml_fundamentals`
-covers a train/test split that owns its own seeded `random.Random`
-instead of depending on global state, data leakage from fitting a
-scaler on combined train+test data, thresholding probabilities before
-computing accuracy, gradient descent's sign convention, and evaluating
-on held-out data instead of training data; `rag` covers cosine
-similarity vs. raw dot product, top-k retrieval's sort direction, chunk
-overlap so a boundary-straddling phrase survives intact, a delimited
-prompt template instead of plain concatenation, and respecting a
-context-window character budget; `agentic_frameworks` covers a tool
-dispatcher that fails loudly instead of silently returning `None`, a
-`max_steps` guard against an unbounded loop, validating a tool call's
-required arguments before invoking it, preserving the system message
-when trimming conversation history, and checking the correct
-stop-condition key; `mcp` covers JSON-RPC's required `"jsonrpc": "2.0"`
-field, `result`/`error` mutual exclusivity, detecting a duplicate tool
+`ai` (9 categories — `ml_fundamentals`, `rag`, `agentic_frameworks`,
+`mcp`, `microsoft_agent_365`, `langchain`, `langgraph`, `langsmith`,
+`solace_agent_mesh`, 5 exercises each, 45 exercises total) is plain,
+hand-rolled, dependency-free Python under the hood (no numpy, no
+network access, no LLM API calls, and — for the four framework
+categories — no actual `langchain`/`langgraph`/`langsmith`/Solace
+Agent Mesh package installed either), since
+this app's "real execution, exact deterministic output" model has no
+way to verify a live model call or network response, and the app is
+explicitly 100% offline. `ml_fundamentals` covers a train/test split
+that owns its own seeded `random.Random` instead of depending on global
+state, data leakage from fitting a scaler on combined train+test data,
+thresholding probabilities before computing accuracy, gradient
+descent's sign convention, and evaluating on held-out data instead of
+training data; `rag` covers cosine similarity vs. raw dot product,
+top-k retrieval's sort direction, chunk overlap so a
+boundary-straddling phrase survives intact, a delimited prompt template
+instead of plain concatenation, and respecting a context-window
+character budget; `agentic_frameworks` covers a tool dispatcher that
+fails loudly instead of silently returning `None`, a `max_steps` guard
+against an unbounded loop, validating a tool call's required arguments
+before invoking it, preserving the system message when trimming
+conversation history, and checking the correct stop-condition key;
+`mcp` covers JSON-RPC's required `"jsonrpc": "2.0"` field,
+`result`/`error` mutual exclusivity, detecting a duplicate tool
 registration, checking a server's advertised capabilities before
 calling a method, and correlating responses to requests by `id` rather
-than arrival order. `app/execution/registry.py` maps `"ai"` to the
-*exact same* `PythonEngine`/`PythonInProcessEngine` instance registered
-for `"python"` (`_ENGINES["ai"] = _ENGINES["python"]`) rather than a
+than arrival order.
+
+`langchain`, `langgraph`, `langsmith`, and `solace_agent_mesh` each
+hand-roll that framework's own core mechanic in pure Python, high-level
+to low-level across their 5 exercises the same way `architecture`'s
+categories run low-to-high (see below) — just labeled from the
+opposite end, since these start from "the framework's foundational
+idea" and end at "its most granular implementation detail." `langchain`
+covers a minimal `Runnable`/`__or__` chain-composition pipe, a
+`PromptTemplate` that fails loudly on a missing variable, extracting a
+JSON object embedded in surrounding prose, the mutable-default-argument
+trap resurfacing in a `ConversationMemory` class, and `RunnableParallel`
+branch merging without a key collision. `langgraph` covers a minimal
+node/edge graph executor, merging into shared state instead of
+replacing it, a conditional edge's fallback route, a retry cycle's
+max-iteration guard, and checkpoint timing (snapshot after a node
+completes, not before). `langsmith` covers a tracer's before/after
+timing pair, nesting spans into a real tree via an active-span stack,
+keeping a run's status field consistent with what actually happened in
+its exception handler, normalizing both sides of an exact-match
+evaluator, and per-example regression detection between two evaluation
+runs (not just comparing aggregate scores). `solace_agent_mesh` (based
+on https://docs.solace.com/Agent-Mesh/agent-mesh.htm) covers an
+entrypoint dispatcher that must translate every transport into one
+common task shape, agent-card capability matching for delegation
+(rather than picking any registered agent), hierarchical topic-based
+A2A message delivery (a parent-topic subscriber must still receive a
+more specific child topic's messages, not just an exact match), an
+agent reasoning loop that has to thread a tool's result back into the
+conversation or it re-requests the same tool call forever, and
+isolating one misbehaving tool call (via `try`/`except` per call) so it
+can't abort an entire batch — a hand-rolled stand-in for Solace's real
+Secure Tool Runtime's subprocess-level sandboxing.
+
+`microsoft_agent_365` is the one **`requires_code=False`** category in
+this track — Microsoft's Agent 365 and its AI Agent Control Tower are
+enterprise governance tooling (agent identity/registry, access control,
+observability, lifecycle management) with no mechanic to hand-code, so
+it's conceptual, comprehension-check content instead, the same shape as
+every `architecture` exercise (see "Comprehension-check exercises"
+below). Its 5 exercises run broadest-to-most-concrete: the agent-sprawl
+problem, the four governance pillars as a framework, first-class agent
+identity, observability/anomaly detection, and a full lifecycle
+walkthrough of one concrete agent.
+
+`app/execution/registry.py` maps `"ai"` to the *exact same*
+`PythonEngine`/`PythonInProcessEngine` instance registered for
+`"python"` (`_ENGINES["ai"] = _ENGINES["python"]`) rather than a
 separate implementation, since there's nothing language-specific to
 execute differently; `app/execution/errors.py`'s `translate_error()`
-treats `"ai"` identically to `"python"` for the same reason.
+treats `"ai"` identically to `"python"` for the same reason. This one
+registry entry serves the track's other 8 categories fine even though
+`microsoft_agent_365` never calls it — `requires_code` is checked
+per-exercise, not per-track (see "Comprehension-check exercises").
 
 `architecture` (10 categories — `event_driven_architecture`,
 `microservices`, `cqrs`, `saga_pattern`, `strangler_fig`,
@@ -278,24 +339,29 @@ specific underlying problem is actually present.
 ### Comprehension-check exercises (`requires_code=False`)
 
 `Exercise.requires_code: bool = True` and `Exercise.comprehension_check:
-list` (in `app/engine/exercise.py`) exist specifically for the
-`architecture` track, where the user reads an explanation/example but
-never edits or runs code. `lesson_screen.py`'s `_ExerciseController`
-branches on `exercise.requires_code` in `__init__`: when `True` (every
-track except `architecture`), it builds the code editor + Run button +
-Output card and calls `get_engine(exercise.language)`; when `False`,
-`self.engine` is set to `None`, `get_engine()`/`check_toolchain()` are
-never called at all, and `build_view()` renders a "Comprehension Check"
-card instead — an inline multiple-choice quiz (`comprehension_check`,
-same shape as a `QuizQuestion`: `question`/`options`/`correct`/
-`explanation`) reusing the same correct/incorrect-highlighting UX as
-`quiz_screen.py`. Answering every question correctly in one pass calls
-the same `_on_success()` every code exercise uses (same XP/achievement/
-category-unlock flow); any wrong answer requires retrying the whole
-check from the start via a "Try Again" button. This is why
-`architecture` needs no entry at all in `app/execution/registry.py`'s
-`_ENGINES` dict — nothing in the app ever attempts to execute its
-content.
+list` (in `app/engine/exercise.py`) exist for any exercise where the
+user reads an explanation/example but never edits or runs code —
+every exercise in the `architecture` track, plus the `ai` track's
+`microsoft_agent_365` category. `lesson_screen.py`'s
+`_ExerciseController` branches on `exercise.requires_code` per exercise
+in `__init__` (not per track): when `True`, it builds the code editor +
+Run button + Output card and calls `get_engine(exercise.language)`;
+when `False`, `self.engine` is set to `None`, `get_engine()`/
+`check_toolchain()` are never called at all, and `build_view()` renders
+a "Comprehension Check" card instead — an inline multiple-choice quiz
+(`comprehension_check`, same shape as a `QuizQuestion`:
+`question`/`options`/`correct`/`explanation`) reusing the same
+correct/incorrect-highlighting UX as `quiz_screen.py`. Answering every
+question correctly in one pass calls the same `_on_success()` every
+code exercise uses (same XP/achievement/category-unlock flow); any
+wrong answer requires retrying the whole check from the start via a
+"Try Again" button. This is why `architecture` needs no entry at all in
+`app/execution/registry.py`'s `_ENGINES` dict — nothing in the app ever
+attempts to execute its content. `ai`'s `microsoft_agent_365` category
+doesn't need its own registry entry either, but for a different
+reason: it simply never reaches the `get_engine()` call at all, even
+though `"ai"` already has a (shared, reused) entry the track's other 7
+categories depend on.
 
 Each language's content for a shared category is written idiomatically
 for that language, not translated line-for-line — e.g. `sync_vs_async`

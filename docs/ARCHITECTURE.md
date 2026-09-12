@@ -286,7 +286,7 @@ flowchart TB
     code["Submitted code (str)"]
     lang{"exercise.requires_code?"}
     code --> lang
-    lang -->|false: architecture| comprehension["No execution at all --\ninline comprehension_check quiz\ngates completion instead"]
+    lang -->|false: every architecture exercise,\nplus ai's microsoft_agent_365| comprehension["No execution at all --\ninline comprehension_check quiz\ngates completion instead"]
     lang -->|true| langsel{"exercise.language"}
 
     langsel -->|python OR ai| pycheck["compile() syntax pre-check\n(ai maps to the SAME PythonEngine\ninstance -- _ENGINES['ai'] = _ENGINES['python'])"]

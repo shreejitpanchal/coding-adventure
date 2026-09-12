@@ -90,17 +90,30 @@ through in a few focused minutes, not tutorials to sit through.
     logging, `process.env`'s string-only typing, graceful `SIGTERM`
     shutdown, and more), run directly with `node` (no separate compile
     step, unlike Java/C++).
-  - **AI** — 20 exercises across 4 categories (ML Fundamentals,
+  - **AI** — 45 exercises across 9 categories (ML Fundamentals,
     Retrieval-Augmented Generation, Agentic Frameworks, Model Context
-    Protocol) — hand-rolled, dependency-free Python covering reproducible
-    train/test splits, data leakage, gradient descent's sign convention,
-    cosine similarity vs. raw dot product, chunk overlap, prompt
-    templating, tool-dispatch loops with max-iteration guards,
-    conversation-memory windows, JSON-RPC's message shape, and
-    request/response correlation — kept fully offline and deterministic
-    like every other exercise in the app, with no network calls, API
-    keys, or ML libraries required. Executes on the exact same Python
-    interpreter as the Python track.
+    Protocol, Microsoft Agent 365, LangChain, LangGraph, LangSmith,
+    Solace Agent Mesh) — hand-rolled, dependency-free Python covering
+    reproducible train/test splits, data leakage, gradient descent's
+    sign convention, cosine similarity vs. raw dot product, chunk
+    overlap, prompt templating, tool-dispatch loops with max-iteration
+    guards, conversation-memory windows, JSON-RPC's message shape,
+    request/response correlation, Runnable composition and
+    RunnableParallel merges, prompt templates and JSON output parsing, a
+    graph executor with conditional edges and cycles, checkpointing,
+    span-tree tracing, run status logging, regression detection between
+    evaluation runs, entrypoint payload translation, agent-card
+    capability matching, hierarchical topic-based message delivery, an
+    agent reasoning loop that threads tool results back in, and
+    isolating one misbehaving tool from crashing an entire batch — kept
+    fully offline and deterministic like every other exercise in the
+    app, with no network calls, API keys, or ML/framework libraries
+    required. Executes on the exact same Python interpreter as the
+    Python track. Microsoft Agent 365's category is the one exception
+    with no code to run at all -- it covers Microsoft's AI Agent Control
+    Tower (agent identity, access, observability, lifecycle governance)
+    as an inline comprehension check instead, the same shape as the
+    Architecture track below.
   - **Architecture** — 50 exercises across 10 categories (Event-Driven
     Architecture, Microservices, CQRS, Saga Pattern, Strangler Fig,
     Domain-Driven Design, Hexagonal Architecture, API Gateway, Circuit
@@ -113,7 +126,7 @@ through in a few focused minutes, not tutorials to sit through.
     multiple-choice comprehension check, and every category and level is
     unlocked from the start.
 - **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
-  questions, 44 Spring questions, 63 Node.js questions, 20 AI questions,
+  questions, 44 Spring questions, 63 Node.js questions, 45 AI questions,
   and 20 Architecture questions, reshuffled every session.
 - **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
   achievements. Every language track keeps its own independent progress.

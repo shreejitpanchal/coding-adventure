@@ -1,0 +1,77 @@
+id: ai_39
+title: "Exact-Match Evaluators Need to Normalize Before Comparing"
+language: ai
+level: 39
+objective: "Fix a hand-rolled exact-match evaluator that marks a semantically correct answer as wrong because of a trailing-whitespace difference, by normalizing both sides before comparing."
+explanation: |
+  One level below a single run's status (this category's previous
+  lesson) is scoring many runs against a **dataset** of known-correct
+  examples -- an evaluator that compares each run's actual output
+  against that example's expected output and produces a score. The
+  simplest possible evaluator is exact string equality, and it's used
+  constantly for cases where the correct answer really is one specific
+  string (a classification label, a short factual answer) rather than
+  open-ended prose needing a more sophisticated judge.
+
+  The bug this exercise fixes is an exact-match evaluator that compares
+  the model's raw output against the expected string with a bare `==`,
+  with no normalization at all. A model that answers `"Positive"` when
+  the dataset's expected label is `"positive"` (a case difference), or
+  `"positive\n"` with a trailing newline the model tends to add, gets
+  scored as flatly *wrong* even though the actual content is completely
+  correct -- polluting the evaluation with false negatives that have
+  nothing to do with the model's real reasoning ability and everything
+  to do with an overly literal string comparison. The fix normalizes
+  both the actual and expected strings the same way before comparing --
+  stripping surrounding whitespace and lowercasing both sides -- so the
+  comparison reflects the answer's actual content rather than
+  incidental formatting differences that were never the point of the
+  evaluation in the first place.
+example_code: |
+  # The trap: bare equality -- any formatting difference counts as WRONG,
+  # even when the actual content is completely correct.
+  def exact_match_trap(actual, expected):
+      return actual == expected
+
+  dataset = [
+      {"actual": "Positive", "expected": "positive"},       # case difference
+      {"actual": "positive\n", "expected": "positive"},      # trailing newline
+      {"actual": "negative", "expected": "negative"},        # genuinely matches
+  ]
+  score_trap = sum(exact_match_trap(d["actual"], d["expected"]) for d in dataset)
+  print(score_trap)   # 1 out of 3 -- the first two are falsely marked wrong
+
+  # The fix: normalize both sides (strip whitespace, lowercase) before comparing.
+  def exact_match(actual, expected):
+      return actual.strip().lower() == expected.strip().lower()
+
+  score = sum(exact_match(d["actual"], d["expected"]) for d in dataset)
+  print(score)   # 3 out of 3 -- correctly credits all three as matching
+starter_code: |
+  def exact_match(actual, expected):
+      return actual == expected
+
+  dataset = [
+      {"actual": "Positive", "expected": "positive"},
+      {"actual": "positive\n", "expected": "positive"},
+      {"actual": "negative", "expected": "negative"},
+  ]
+  score = sum(exact_match(d["actual"], d["expected"]) for d in dataset)
+  print(score)
+challenge: |
+  Fix `exact_match` so it normalizes both `actual` and `expected` (strip
+  whitespace, lowercase) before comparing, instead of using bare `==`.
+  The total score across the dataset should print `3`, not `1`.
+expected_output: |
+  3
+hints:
+  - "Change the comparison to: actual.strip().lower() == expected.strip().lower()."
+  - "Both sides need the SAME normalization applied -- stripping only one side, or only lowercasing one side, would still leave some cases mismatched."
+xp_reward: 10
+achievement: null
+category: langsmith
+category_level: 4
+difficulty: gotcha
+contains_patterns:
+  - "\\.strip\\(\\)\\.lower\\(\\)"
+concept_tags: [langsmith, evaluators, exact_match, dataset_evaluation]

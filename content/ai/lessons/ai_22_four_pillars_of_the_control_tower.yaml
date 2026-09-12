@@ -1,0 +1,78 @@
+id: ai_22
+title: "The Control Tower's Four Pillars: Registry, Access, Observability, Lifecycle"
+language: ai
+level: 22
+objective: "Learn the four functional pillars the AI Agent Control Tower organizes its governance around, as the next level of detail below 'a single pane of glass for agents.'"
+explanation: |
+  This category's opening lesson framed the Control Tower at the
+  broadest level: one place to see every agent instead of scattered
+  per-platform silos. That single sentence hides four genuinely
+  distinct functions, each solving a different half of the governance
+  problem, and understanding them as separate pillars is the next step
+  down from the one-sentence pitch.
+
+  **Registry** is the inventory function: every agent, regardless of
+  which platform built it, gets registered with a first-class identity
+  -- a name, an owner, a platform, and metadata about what it's for --
+  the same way Entra ID (Microsoft's identity platform) already does
+  for human user accounts and service principals. Without a registry,
+  none of the other three pillars have anything to attach to; an
+  ungoverned agent that was never registered is invisible to every
+  other pillar by definition. **Access** is the permissions function:
+  once an agent has an identity, that identity can be granted specific,
+  scoped permissions -- which systems it can call, which data it can
+  read, which actions require a human approval step -- instead of an
+  agent inheriting broad, unscoped access by default. **Observability**
+  is the activity function: a log of what each registered agent
+  actually did -- which tools it called, what data it touched, when --
+  so a security team can investigate an incident after the fact instead
+  of having no record at all. **Lifecycle** is the time-bound function:
+  agents get provisioned, they should get reviewed periodically (is
+  this agent still needed? does its owner still work here?), and
+  eventually decommissioned -- an agent that was spun up for a
+  three-month project and never turned off is exactly the kind of
+  forgotten, unreviewed access that governance is meant to catch.
+
+  These four pillars build on each other in a specific order:
+  Registry has to exist before Access can be scoped to anything, Access
+  has to exist before Observability's logs mean anything specific about
+  what was *allowed* versus *attempted*, and Lifecycle depends on all
+  three being current to make a sound decommission decision.
+example_code: |
+  # Illustrative shape of what a Control Tower's registry entry
+  # conceptually holds -- not literal Agent 365 API/schema.
+  agent_registry_entry = {
+      "identity": "finance-recon-agent",                 # Registry
+      "owner": "finance-ops@example.com",
+      "platform": "Vendor SaaS",
+      "permissions": ["read:general_ledger", "read:bank_feed"],  # Access
+      "requires_human_approval_for": ["post_journal_entry"],      # Access
+      "activity_log_endpoint": "/agents/finance-recon-agent/logs", # Observability
+      "provisioned_date": "2026-01-15",                    # Lifecycle
+      "last_reviewed_date": "2026-06-01",                  # Lifecycle
+      "review_due_date": "2026-12-01",
+  }
+category: microsoft_agent_365
+category_level: 2
+difficulty: warmup
+xp_reward: 10
+achievement: null
+requires_code: false
+concept_tags: [microsoft_agent_365, ai_agent_control_tower, agent_governance, agent_identity]
+comprehension_check:
+  - question: "Why must the Registry pillar exist before the Access pillar can meaningfully function?"
+    options:
+      - "Access permissions have to be scoped to a specific agent identity -- an agent that was never registered has no identity for permissions to attach to, making it invisible to governance entirely"
+      - "Registry and Access are actually the same pillar with two names"
+      - "Access must exist first, and Registry is built on top of it"
+      - "There is no dependency between these two pillars"
+    correct: 0
+    explanation: "The four pillars build on each other in order -- Registry provides the identity everything else attaches to."
+  - question: "What does the Observability pillar provide that the Access pillar alone does not?"
+    options:
+      - "A log of what an agent actually did -- which tools it called, what data it touched, and when -- letting a security team investigate after the fact"
+      - "It removes the need to ever grant an agent any permissions"
+      - "It is identical in function to the Registry pillar"
+      - "It only tracks which agents exist, not what they did"
+    correct: 0
+    explanation: "Access defines what's allowed; Observability records what actually happened, which is what makes post-incident investigation possible."
