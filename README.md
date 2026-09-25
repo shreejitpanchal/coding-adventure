@@ -220,8 +220,10 @@ CODING_ADVENTURE_WEB_PORT=9000 ./run_app_web_ui.sh
 ```
 
 **Android (Python execution only):** `./build_apk.sh` builds a real APK
-via `flet build apk` (needs a Flutter + Android SDK/NDK install first —
-see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only)).
+via `flet build apk`. Nothing to install first: on the first run flet
+downloads the Flutter SDK and a JDK into your home directory (several
+minutes, ~1 GB); later builds reuse them — see
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#android-build-python-only).
 Java, C++, Spring, and Node.js need a real local compiler/runtime a phone
 can't provide, so on Android their Run button is disabled — but every
 other part of the app, including those four tracks' content, still

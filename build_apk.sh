@@ -50,20 +50,23 @@ if [ -z "$FLETEXE" ]; then
     exit 1
 fi
 
-# `flutter` isn't a pip dependency -- flet build shells out to a real
-# Flutter SDK install, which isn't guaranteed to be on PATH. Look there
-# first, then fall back to $FLUTTER_HOME, then this machine's known
-# install location as a last resort.
+# `flutter` isn't a pip dependency. Prefer an SDK already on PATH, then
+# $FLUTTER_HOME, then the copy flet itself manages. If none exists, do NOT
+# stop: `flet build` downloads the Flutter SDK it needs (the version
+# pinned by the installed flet, into ~/flutter/<version>) and a JDK (into
+# ~/java) on first use. That first run needs network access and several
+# minutes; every later build reuses the same install.
+FLET_FLUTTER_VERSION="$("$PYEXE" -c "import flet.version as v; print(v.flutter_version)" 2>/dev/null || true)"
 if ! command -v flutter >/dev/null 2>&1; then
     if [ -n "$FLUTTER_HOME" ] && [ -x "$FLUTTER_HOME/bin/flutter" ]; then
         export PATH="$FLUTTER_HOME/bin:$PATH"
-    elif [ -x "$HOME/flutter/3.44.8/bin/flutter" ]; then
-        export PATH="$HOME/flutter/3.44.8/bin:$PATH"
+    elif [ -n "$FLET_FLUTTER_VERSION" ] && [ -x "$HOME/flutter/$FLET_FLUTTER_VERSION/bin/flutter" ]; then
+        export PATH="$HOME/flutter/$FLET_FLUTTER_VERSION/bin:$PATH"
     else
-        echo "Flutter SDK not found on PATH."
-        echo "Install it (https://docs.flutter.dev/get-started/install), then either"
-        echo "put its bin/ on PATH or set FLUTTER_HOME to the SDK root and re-run."
-        exit 1
+        echo "No Flutter SDK on PATH or in FLUTTER_HOME -- flet build will download"
+        echo "Flutter ${FLET_FLUTTER_VERSION:-(pinned version)} into $HOME/flutter and a JDK into $HOME/java."
+        echo "First run: several minutes and ~1 GB of downloads. Later builds reuse them."
+        echo
     fi
 fi
 

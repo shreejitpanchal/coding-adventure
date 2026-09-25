@@ -1100,10 +1100,14 @@ numbers visible from before the import.
 
 ### Android build (Python-only)
 
-`build_apk.sh` builds a real Android APK via `flet build apk` (a real
-Flutter SDK + Android SDK/NDK under the hood — see
-https://flet.dev/docs/publish/android for first-time toolchain setup;
-the script assumes that's already installed). Support is deliberately
+`build_apk.sh` builds a real Android APK via `flet build apk`. A Flutter
+SDK and JDK are **not** prerequisites: when neither is on PATH (or in
+`FLUTTER_HOME`), `flet build` downloads the Flutter version pinned by the
+installed flet (`flet.version.flutter_version`, 3.44.8 today) into
+`~/flutter/<version>` and a JDK into `~/java` on the first run -- several
+minutes and roughly a gigabyte, reused by every later build. The Android
+SDK/NDK is fetched by the Flutter toolchain the same way; see
+https://flet.dev/docs/publish/android for the details. Support is deliberately
 **Python-only**: `PythonEngine`, `JavaEngine`, `CppEngine`, and
 `SpringEngine` all spawn real subprocess binaries (`python -I`;
 `javac`/`java`; `g++`; `mvn`) on desktop/web, but a non-rooted Android
