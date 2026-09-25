@@ -1,10 +1,8 @@
-from datetime import datetime, timedelta, timezone
-
 import pytest
 
 from app.engine.lesson_engine import ExerciseEngine
 from app.progress.store import ProgressStore
-from app.ui.app_state import resolve_daily_refresher
+from app.ui.app_state import AppState, resolve_daily_refresher
 
 
 @pytest.fixture
@@ -54,19 +52,23 @@ def test_daily_refresher_honors_a_custom_count(engine, progress):
     assert len(custom_size) == 8
 
 
-def test_daily_refresher_mixes_in_a_review_due_item(engine, progress):
+def test_daily_refresher_mixes_in_a_due_review(engine, progress):
     review_candidate = engine.all_in_order()[0].id
     progress.complete_lesson("python", review_candidate, xp_reward=10)
-    old_timestamp = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
-    with progress._conn:
-        progress._conn.execute(
-            "UPDATE lesson_completions SET completed_at = ? WHERE language = ? AND lesson_id = ?",
-            (old_timestamp, "python", review_candidate),
-        )
+    progress.schedule_review("python", review_candidate, passed=True, today="2026-02-01")  # due 2026-02-04
 
     daily = resolve_daily_refresher(engine, progress, "python", "2026-03-01")
     assert review_candidate in {ex.id for ex in daily}
     assert len(daily) == 5  # still the default total size, not +1 extra
+
+
+def test_daily_refresher_ignores_reviews_not_yet_due(engine, progress):
+    candidate = engine.all_in_order()[0].id
+    progress.complete_lesson("python", candidate, xp_reward=10)
+    progress.schedule_review("python", candidate, passed=True, today="2026-03-01")  # due 2026-03-04
+
+    daily = resolve_daily_refresher(engine, progress, "python", "2026-03-02")
+    assert candidate not in {ex.id for ex in daily}
 
 
 def test_daily_refresher_review_slot_unused_when_nothing_is_due(engine, progress):
@@ -74,3 +76,21 @@ def test_daily_refresher_review_slot_unused_when_nothing_is_due(engine, progress
     # be reserved, so the full count comes from fresh picks alone.
     daily = resolve_daily_refresher(engine, progress, "python", "2026-03-01")
     assert len(daily) == 5
+
+
+def test_app_state_caches_one_execution_engine_per_language(tmp_path, monkeypatch):
+    from app.ui import app_state as app_state_module
+    from app.config.settings import Settings
+
+    monkeypatch.setattr(app_state_module, "load_settings", lambda: Settings(setup_complete=True))
+    monkeypatch.setattr(app_state_module, "get_db_path", lambda: tmp_path / "p.sqlite3")
+    monkeypatch.setattr(app_state_module, "save_settings", lambda _s: None)
+
+    state = AppState()
+    try:
+        assert state.execution_engine("python") is state.execution_engine("python")
+        assert state.execution_engine("java") is not state.execution_engine("python")
+        with pytest.raises(ValueError, match="architecture"):
+            state.execution_engine("architecture")
+    finally:
+        state.close()

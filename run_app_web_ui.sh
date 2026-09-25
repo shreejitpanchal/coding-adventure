@@ -44,7 +44,7 @@ if [ -z "$PYEXE" ]; then
     PYEXE="$(venv_python)"
 
     "$PYEXE" -m pip install --upgrade pip
-    "$PYEXE" -m pip install -r requirements.txt
+    "$PYEXE" -m pip install -r requirements.txt -r requirements-web.txt
 
     echo
     echo "Setup complete!"
@@ -55,7 +55,7 @@ else
     # pip install is a fast no-op when everything's already satisfied, so
     # it's cheap to just re-sync on every launch rather than silently
     # running with a stale, incomplete venv.
-    "$PYEXE" -m pip install -r requirements.txt --quiet || \
+    "$PYEXE" -m pip install -r requirements.txt -r requirements-web.txt --quiet || \
         echo "Warning: could not verify required packages are up to date (check your internet connection). Continuing anyway."
 fi
 

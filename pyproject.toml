@@ -1,7 +1,27 @@
 [project]
 name = "coding-adventure"
 version = "0.1.0"
-description = "An offline, multi-language coding refresher for professionals -- Python, Java, C++, and Spring."
+description = "An offline, multi-track coding refresher for professionals -- Python, Java, C++, Spring, Node.js, AI, and Architecture."
+requires-python = ">=3.11"
+# Runtime dependencies. requirements.txt is the pinned install list the
+# run_app_* launchers use; keep the two in step (loose spec here, exact pin there).
+dependencies = [
+    "flet==0.86.5",
+    "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+# Developer gates -- see scripts/dev.sh|dev.ps1 and .github/workflows/ci.yml.
+dev = [
+    "pytest>=9,<10",
+    "coverage>=7.6,<8",
+    "ruff>=0.16,<1",
+]
+# Only main_web.py (the HTTPS browser preview) needs these.
+web = [
+    "uvicorn>=0.30",
+    "cryptography>=42",
+]
 
 [tool.flet]
 product = "Coding Adventure"
@@ -20,10 +40,60 @@ copyright = "Copyright (C) 2026 Shreejit Panchal"
 exclude = [
     ".venv",
     ".git",
+    ".github",
     ".claude",
     ".pytest_cache",
+    ".ruff_cache",
     "__pycache__",
     "data",
+    "docs",
     "graphify-out",
+    "scripts/logs",
     "tests",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# UI screens need a live Flet session; their logic is pushed down into
+# app.engine / app.ui.components where it is tested directly.
+omit = [
+    "app/ui/app_window.py",
+    "app/ui/language_select.py",
+    "app/ui/lesson_screen.py",
+    "app/ui/quiz_screen.py",
+    "app/ui/track_hub.py",
+    "app/ui/category_*.py",
+    "app/ui/daily_refresher.py",
+    "app/ui/progress_screen.py",
+    "app/ui/search_screen.py",
+    "app/ui/settings_screen.py",
+    "app/ui/setup_wizard.py",
+    "app/ui/code_editor.py",
+    "app/config/ssl_cert.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+# Errors and obvious mistakes only (undefined names, unused imports,
+# mutable default args, ...) -- no import re-ordering, no line-length or
+# whitespace churn on a codebase with its own intentional alignment.
+select = ["E", "F", "B006", "B008"]
+ignore = [
+    "E501",  # long friendly-message tables and UI literals read better on one line
+    "E731",  # lambdas assigned to names are used deliberately for `fs`
+]
+
+[tool.ruff.lint.per-file-ignores]
+"main_web.py" = ["E402"]  # the uvicorn import guard has to run before the app imports

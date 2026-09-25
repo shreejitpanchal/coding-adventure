@@ -5,3 +5,11 @@ __pycache__/
 data/
 build/
 *.egg-info/
+
+# developer tooling output
+scripts/logs/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.ruff_cache/

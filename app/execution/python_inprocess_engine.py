@@ -88,7 +88,7 @@ class PythonInProcessEngine(ExecutionEngine):
         with _run_lock:
             watchdog = Watchdog(timeout)
             if handle is not None:
-                handle._attach_watchdog(watchdog)
+                handle.attach_watchdog(watchdog)
 
             out = io.StringIO()
             exec_globals: dict = {

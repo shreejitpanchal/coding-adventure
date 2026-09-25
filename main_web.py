@@ -42,13 +42,24 @@ import threading
 import webbrowser
 
 import flet as ft
-import uvicorn
 
+try:
+    import uvicorn
+except ImportError as exc:  # pragma: no cover - environment guard
+    raise SystemExit(
+        "The browser preview needs the optional web dependencies. Install them with:\n"
+        "    .venv\\Scripts\\python.exe -m pip install -r requirements-web.txt\n"
+        f"(missing: {exc.name})"
+    ) from exc
+
+from app.config.logging_setup import configure_logging
+from app.config.settings import get_data_dir
 from app.config.ssl_cert import ensure_self_signed_certificate
 from app.ui.app_window import main
 
 PORT = int(os.environ.get("CODING_ADVENTURE_WEB_PORT", "8550"))
 
+configure_logging(get_data_dir())
 app = ft.run(main, export_asgi_app=True)
 
 

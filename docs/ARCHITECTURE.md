@@ -108,7 +108,7 @@ classDiagram
         +list~str~ concept_tags
         +str spring_test_code
         +bool requires_code
-        +list comprehension_check
+        +list~QuizQuestion~ comprehension_check
     }
 
     class ExerciseEngine {
@@ -213,8 +213,8 @@ classDiagram
         +get_best_quiz_score(language) tuple
         +add_xp(language, amount) PlayerLevel
         +get_player_level(language) PlayerLevel
-        +record_play_today(language)
-        +get_streak_days(language) int
+        +record_play_today(language, today?) -- local calendar day
+        +get_streak_days(language, today?) int -- 0 once lapsed
         +log_event(language, lesson_id, event_type, detail)
         +get_recent_failure_count(language, lesson_id) int
         +get_weekly_summary(language) WeeklySummary
@@ -289,7 +289,7 @@ flowchart TB
     lang -->|false: every architecture exercise,\nplus ai's microsoft_agent_365| comprehension["No execution at all --\ninline comprehension_check quiz\ngates completion instead"]
     lang -->|true| langsel{"exercise.language"}
 
-    langsel -->|python OR ai| pycheck["compile() syntax pre-check\n(ai maps to the SAME PythonEngine\ninstance -- _ENGINES['ai'] = _ENGINES['python'])"]
+    langsel -->|python OR ai| pycheck["compile() syntax pre-check\n(ai uses the same PythonEngine class --\nENGINE_FACTORIES['ai'] is python's factory;\nAppState caches one instance per track)"]
     pycheck -->|SyntaxError| pyerr["ExecutionResult(success=False,\nstderr=formatted syntax error)"]
     pycheck -->|ok| pyrun["python -I &lt;file&gt;\nsubprocess, 8s timeout, stdin piped"]
 
@@ -516,6 +516,29 @@ missing new fields (or a newer file with fields this version doesn't
 know about) never crashes — a new field just takes its dataclass
 default.
 
+### Weekly goal, streak freezes, solve times
+
+`profile.freeze_tokens` (added by an in-place `ALTER TABLE` migration
+on open) holds up to three streak freezes, earned every seventh streak
+day and spent automatically to bridge exactly one missed day.
+`solve_times` keeps one row per passed run so a personal best is
+`MIN(seconds)`, never an overwritten field. The weekly goal itself is a
+user setting (`Settings.weekly_goal`), not stored per track; progress
+against it is derived from `lesson_completions` bucketed into local days.
+
+### Spaced repetition
+
+`review_schedule (language, lesson_id, interval_days, ease, due_date,
+last_reviewed, review_streak)` holds one row per passed exercise per
+track. `due_date` is a local calendar date (see "Two clocks" below), so
+"due today" means the user's today. The schedule is a simplified SM-2:
+3 days, 7 days, then `interval * ease` (ease 1.3..3.0, interval capped
+at 120 days); a failed review resets to tomorrow. Rows are written only
+from the lesson screen's success and first-failure paths, read by the
+hub tile, the `/review` queue, the Progress screen and the Daily
+Refresher's review slot. Pre-existing completions are backfilled on
+open with a 14-day first review so an upgrade never empties the queue.
+
 ## 7. Cross-cutting design decisions
 
 - **Content is data, not code.** Every exercise and quiz question is a
@@ -552,10 +575,43 @@ default.
   because it has to defend against accidental-or-adversarial child
   input. This app has no such threat model — a professional runs their
   own practice code on their own machine — so the execution layer's only
-  job is making sure a runaway loop can't hang the UI (a timeout) and
-  that a subprocess doesn't leak the host filesystem path into error
-  output (both engines write to a temp dir and invoke the toolchain with
-  a bare filename, `cwd` set to that temp dir).
+  job is making sure a runaway loop can't hang the UI (a timeout), a
+  runaway allocation can't eat the machine (`-Xmx256m` for the JVM,
+  `--max-old-space-size=256` for Node), and that a subprocess doesn't
+  leak the host filesystem path into error output (every engine writes
+  to a temp dir and invokes the toolchain with a bare filename, `cwd`
+  set to that temp dir). The Popen/stdin/timeout/cancel mechanics live
+  once in `app/execution/base.run_subprocess()`; each engine only adds
+  its compile step and its output shaping.
+- **No module-level instances.** `AppState` owns every per-track engine
+  (`exercise_engine()`, `quiz_engine()`, `execution_engine()`), built on
+  first use. `app/execution/registry.py` exposes factories, not objects,
+  so nothing is constructed for tracks the user never opens and tests
+  never share state through an import.
+- **Decisions are pure functions; screens paint.** "Did this run pass?"
+  is `app/engine/run_evaluation.evaluate_run()`, a `RunOutcome` with no
+  Flet in it; the lesson screen only renders it. The multiple-choice
+  state machine is `app/ui/components.MultipleChoiceCard`, shared by the
+  Quiz Bank and a lesson's comprehension check and driven in tests with
+  a stub page. Themed buttons, cards, banners, tiles and rings come from
+  `components.py`, and every animation from `motion.py` (staggered
+  reveal, hover lift, pop-in, pulse, count-up, confetti), so a colour or
+  motion change is one edit and no screen hand-rolls either.
+- **Two clocks, kept apart.** Timestamps (activity log, completions,
+  badges) are UTC ISO strings and sort lexicographically. Calendar-day
+  concepts — "played today", "today's Daily Refresher", the activity
+  heatmap's columns — use the user's *local* date via
+  `app/config/clock.py`, so a streak doesn't flip at 08:00 for someone
+  east of Greenwich. A streak is recorded only when something is
+  completed (an exercise or a quiz), never by opening a screen, and
+  `get_streak_days()` reports 0 once the last play is older than
+  yesterday rather than echoing a stale count.
+- **Fail where the author is.** Content problems surface at load time
+  with the file path in the message (`app/engine/content_loader.
+  ContentError`), not at click time as an `IndexError`. A corrupt
+  `settings.json` is moved aside and logged, never silently replaced.
+  An unknown route logs an error and shows one. Everything that Flet
+  would otherwise swallow goes to `data/logs/app.log`.
 - **Derived state over stored state.** Category unlock status and daily
   refresher composition are computed live from `completed_lesson_ids` on
   every read, never cached in their own schema — this is what makes

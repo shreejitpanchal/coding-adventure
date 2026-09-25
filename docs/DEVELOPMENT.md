@@ -117,14 +117,126 @@ print this explicitly after a successful install.
 
 ## Running the tests
 
+The mirrored task runners are the canonical way to run every gate --
+they write a fresh plain-text log per task under `scripts/logs/` and
+match `.github/workflows/ci.yml` command-for-command:
+
+```powershell
+# Windows
+.\scripts\dev.ps1 all          # lint + test + coverage
+.\scripts\dev.ps1 test         # just pytest
+.\scripts\dev.ps1 content      # only the content-lint tests (fast, after editing YAML)
+
+# git-bash / macOS / Linux
+scripts/dev.sh all
+```
+
+Install the developer tools once with
+`python -m pip install -r requirements-dev.txt` (pytest, coverage,
+ruff). The raw commands, if you need them directly:
+
 ```powershell
 .venv\Scripts\python.exe -m pytest tests\ -v
+.venv\Scripts\python.exe -m ruff check app tests main.py main_web.py
 ```
 
 Java-, C++-, Spring-, and Node.js-execution tests are skipped
 automatically (`pytest.mark.skipif`) on a machine missing the relevant
 toolchain (JDK / `g++` / Maven+JDK / `node`) on PATH, rather than
-failing.
+failing. The Spring tests additionally skip until the local Maven
+repository holds the scaffold's dependencies, because `SpringEngine`
+runs Maven offline (`-o`). Warm it once, with network access:
+
+```powershell
+mvn -f content\spring\scaffold\pom.xml dependency:go-offline
+```
+
+Timeouts kill the **whole process tree** (`taskkill /T` on Windows, the
+process group elsewhere -- see `base._kill_and_release()`): the Windows
+`java.exe` launcher re-executes itself as a grandchild that inherits the
+pipes, so a plain `Popen.kill()` left the pipes open and the documented
+`kill(); communicate()` pattern hung forever. CI runs on Ubuntu and Windows with a JDK and Node installed, so
+those engine tests execute for real there; Spring skips (no warmed
+`~/.m2`).
+
+### Content lint
+
+`tests/test_content_lint.py` is parametrized over every track in
+`LANGUAGE_ORDER` and asserts the invariants the app relies on rather
+than exact counts (so adding content never means editing a test): every
+file loads into `Exercise`, ids and global `level`s are unique, each
+category's `category_level`s run 1..N with no gaps, a code exercise has
+an `expected_output` or `expected_output_pattern`, every
+`contains_patterns` entry compiles as a regex, every category has a
+`CATEGORY_META` entry, conceptual exercises carry at least two
+four-option questions, and the quiz bank loads with unique ids.
+
+Model-level validation happens at load time too: `Exercise.__post_init__`
+parses `comprehension_check` mappings into `QuizQuestion`s (an out-of-
+range `correct`, fewer than two options, or an unknown key raises with
+the question id), rejects an unknown `difficulty`, and rejects
+`requires_code: false` with no questions. `app/engine/content_loader.py`
+wraps every loader error in a `ContentError` that names the file.
+
+### UI kit and motion (`app/ui/components.py`, `app/ui/motion.py`)
+
+Every screen is composed from the same small kit rather than raw Flet
+literals, so a colour or shape decision is made once:
+
+- `theme.py` -- presets carry `accent`, a `gradient` pair, `surface` and
+  `shadow` on top of the base palette. Default is `aurora`; the classic
+  IDE themes remain. `LanguageInfo.color` gives each track its signature
+  hue (cards, hub banner, rings).
+- `components.py` -- `button`/`icon_button` (rounded, optional icon,
+  `ghost` variant), `card` (accent stripe + title icon + optional hover
+  lift), `hero_banner`, `nav_tile`, `stat_pill`, `chip`, `level_badge`,
+  `icon_circle`/`emoji_circle`, `progress_ring`, `xp_bar`, `header_row`
+  (icon back button + title + subtitle), `empty_state`, and
+  `MultipleChoiceCard` (lettered option rows, cross-fading questions via
+  `AnimatedSwitcher`, slim progress bar).
+- `motion.py` -- `Stagger` (wrap controls while building, `play()` fades
+  and slides them in one after another; falls back to "visible now"
+  when there is no event loop), `hover_lift` (scale + glow on
+  `on_hover`), `prepare_pop`/`pop_in` (spring from 85%), `Pulser`
+  (heartbeat while code runs), `count_up` (animated numbers), and
+  `confetti_layer`/`confetti` (a particle burst over a view's own
+  `ft.Stack`).
+
+The pattern for any animation is the same two halves: set the start
+state while building, flip to the end state from a `page.run_task`
+coroutine after a tiny sleep so the first frame has landed. Views that
+animate on entry (`track_hub`, `progress_screen`) therefore end with a
+scheduled task, and every helper swallows the "control no longer
+mounted" error that a fast navigation away can cause.
+
+**Flutter layout rules that blank a whole subtree silently** (the
+client raises, Flet shows nothing, and only `page.on_error` -- wired in
+`app_window.py` to `data/logs/app.log` -- says why):
+
+- never use `CrossAxisAlignment.STRETCH` on a Row/ResponsiveRow that
+  sits in a scrolling Column (its height is unbounded, so "stretch"
+  means "to infinity"); the card accent stripe is an outer coloured
+  container with left padding for exactly this reason;
+- never put `expand=True` children in a Column whose own height is
+  unbounded (a card body in a grid), nor inside a `wrap=True` Row;
+- Stack children fill the Stack with `left/top/right/bottom=0`, not
+  `expand=True`;
+- a one-sided `Border` cannot be combined with `border_radius`.
+
+Where the fun lives: the language picker and hub open with gradient
+banners and staggered cards; category and level lists have progress
+rings, level badges and hover lift; a passed exercise fires confetti, a
+spring-in reward card and an XP count-up; a perfect quiz also fires
+confetti. Tests: `tests/test_components.py`, `tests/test_motion.py`.
+
+### Logging
+
+Both entry points call `app/config/logging_setup.configure_logging()`,
+which attaches a rotating file handler writing to
+`data/logs/app.log` (1 MB x 3). Flet swallows exceptions inside event
+handlers, so this file is the first place to look when a screen
+misbehaves. Modules use `logging.getLogger(__name__)`; the log never
+contains submitted code or secrets.
 
 ## Project layout
 
@@ -354,15 +466,19 @@ problem, the four governance pillars as a framework, first-class agent
 identity, observability/anomaly detection, and a full lifecycle
 walkthrough of one concrete agent.
 
-`app/execution/registry.py` maps `"ai"` to the *exact same*
-`PythonEngine`/`PythonInProcessEngine` instance registered for
-`"python"` (`_ENGINES["ai"] = _ENGINES["python"]`) rather than a
-separate implementation, since there's nothing language-specific to
-execute differently; `app/execution/errors.py`'s `translate_error()`
-treats `"ai"` identically to `"python"` for the same reason. This one
-registry entry serves the track's other 8 categories fine even though
-`microsoft_agent_365` never calls it — `requires_code` is checked
-per-exercise, not per-track (see "Comprehension-check exercises").
+`app/execution/registry.py` maps `"ai"` to the same engine *class* as
+`"python"` (`ENGINE_FACTORIES["ai"]` is the same factory as
+`ENGINE_FACTORIES["python"]`) rather than a separate implementation,
+since there's nothing language-specific to execute differently;
+`app/execution/errors.py`'s `translate_error()` treats `"ai"`
+identically to `"python"` for the same reason. The registry holds no
+instances -- `create_engine(language)` builds one and
+`AppState.execution_engine(language)` caches it per session, the same
+way `AppState` already owns the per-language `ExerciseEngine`/
+`QuizEngine`. This one factory serves the track's other 8 categories
+fine even though `microsoft_agent_365` never asks for it —
+`requires_code` is checked per-exercise, not per-track (see
+"Comprehension-check exercises").
 
 `architecture` (10 categories — `event_driven_architecture`,
 `microservices`, `cqrs`, `saga_pattern`, `strangler_fig`,
@@ -382,29 +498,46 @@ specific underlying problem is actually present.
 ### Comprehension-check exercises (`requires_code=False`)
 
 `Exercise.requires_code: bool = True` and `Exercise.comprehension_check:
-list` (in `app/engine/exercise.py`) exist for any exercise where the
-user reads an explanation/example but never edits or runs code —
-every exercise in the `architecture` track, plus the `ai` track's
-`microsoft_agent_365` category. `lesson_screen.py`'s
+list[QuizQuestion]` (in `app/engine/exercise.py`) exist for any exercise
+where the user reads an explanation/example but never edits or runs
+code — every exercise in the `architecture` track, plus the `ai`
+track's `microsoft_agent_365` category. The YAML supplies plain
+mappings (`question`/`options`/`correct`/`explanation`); `Exercise.
+__post_init__` parses them into the same `QuizQuestion` dataclass the
+Quiz Bank uses (ids derived as `<exercise_id>_check_<n>`), so a
+malformed question fails when the file loads, with the exercise id in
+the error, not when a button is clicked. `lesson_screen.py`'s
 `_ExerciseController` branches on `exercise.requires_code` per exercise
 in `__init__` (not per track): when `True`, it builds the code editor +
-Run button + Output card and calls `get_engine(exercise.language)`;
-when `False`, `self.engine` is set to `None`, `get_engine()`/
-`check_toolchain()` are never called at all, and `build_view()` renders
-a "Comprehension Check" card instead — an inline multiple-choice quiz
-(`comprehension_check`, same shape as a `QuizQuestion`:
-`question`/`options`/`correct`/`explanation`) reusing the same
-correct/incorrect-highlighting UX as `quiz_screen.py`. Answering every
-question correctly in one pass calls the same `_on_success()` every
-code exercise uses (same XP/achievement/category-unlock flow); any
-wrong answer requires retrying the whole check from the start via a
-"Try Again" button. This is why `architecture` needs no entry at all in
-`app/execution/registry.py`'s `_ENGINES` dict — nothing in the app ever
-attempts to execute its content. `ai`'s `microsoft_agent_365` category
-doesn't need its own registry entry either, but for a different
-reason: it simply never reaches the `get_engine()` call at all, even
-though `"ai"` already has a (shared, reused) entry the track's other 7
+Run button + Output card and calls `state.execution_engine(exercise.
+language)`; when `False`, `self.engine` is set to `None`, no engine or
+`check_toolchain()` lookup happens at all, and `build_view()` renders a
+"Comprehension Check" card instead — the shared `app/ui/components.
+MultipleChoiceCard` widget, the same one `quiz_screen.py` renders, with
+each question's options shuffled via `quiz_engine.shuffle_options()`.
+Answering every question correctly in one pass calls the same
+`_on_success()` every code exercise uses (same XP/achievement/category-
+unlock flow); any wrong answer requires retrying the whole check from
+the start via a "Try Again" button. This is why `architecture` needs no
+entry at all in `app/execution/registry.py`'s `ENGINE_FACTORIES` —
+nothing in the app ever attempts to execute its content. `ai`'s
+`microsoft_agent_365` category doesn't need its own registry entry
+either, but for a different reason: it simply never asks for an engine,
+even though `"ai"` already has a (shared) factory the track's other 8
 categories depend on.
+
+### Run evaluation (`app/engine/run_evaluation.py`)
+
+"Did the user pass?" is a pure function, `evaluate_run(result,
+exercise, code, input_value) -> RunOutcome`, with no Flet in it. It
+folds `ExecutionResult` flags, `translate_error()`/
+`extract_error_line_number()`, `validate_output()`,
+`validate_contains()` and `diff_output()` into one `Verdict`
+(`BLOCKED`, `TIMED_OUT`, `ERROR`, `WRONG_OUTPUT`, `MISSING_PATTERNS`,
+`PASSED`) plus the message, expandable raw detail, and the
+`activity_log` event type to record (only the three genuine failure
+verdicts map to one). `lesson_screen.py`'s `_render_outcome()` just
+paints it. `tests/test_run_evaluation.py` covers every verdict.
 
 Each language's content for a shared category is written idiomatically
 for that language, not translated line-for-line — e.g. `sync_vs_async`
@@ -522,21 +655,121 @@ nothing's been picked yet for that calendar day. `count` is read from
 affects the *next* freshly-generated set, since an already-persisted
 day's picks are returned unchanged regardless of the current setting.
 
-**Spaced review.** `resolve_daily_refresher()` also reserves up to
-`_REVIEW_SLOT_COUNT` (1) of the set's slots for a spaced-review pick —
-an exercise the user already completed, resurfaced as a reminder —
-before filling the rest with fresh, never-completed picks from the
-engine. `ProgressStore.get_lessons_due_for_review(language,
-min_age_days)` returns completed lesson ids at least `min_age_days`
-(`_REVIEW_MIN_AGE_DAYS`, 14) old, oldest first, straight off
-`lesson_completions.completed_at`. The reservation only actually
-happens when something genuinely qualifies — `review_slots = min
+**Spaced review slot.** `resolve_daily_refresher()` also reserves up to
+`_REVIEW_SLOT_COUNT` (1) of the set's slots for the most overdue item
+from the spaced-repetition queue (below) before filling the rest with
+fresh, never-completed picks from the engine. The reservation only
+happens when something is actually due — `review_slots = min
 (_REVIEW_SLOT_COUNT, count)`, but `fresh_count = count - len
-(review_exercises)`, so a freshly-started track (nothing old enough to
-review yet) fills every slot with fresh picks, unaffected. A review
-pick is, by definition, already in `completed_ids`, so it shows as
-already done the moment it appears in that day's set — the value here
-is the reminder/re-exposure, not a fresh completion gate.
+(review_exercises)`, so a freshly-started track fills every slot with
+fresh picks, unaffected. A review pick is, by definition, already in
+`completed_ids`, so it shows as done the moment it appears in that
+day's set — the value is the re-exposure, and passing it again pushes
+its next review further out.
+
+### Keyboard shortcuts (`app/ui/shortcuts.py`)
+
+`Shortcuts().bind(spec, handler).install(page)` sets
+`page.on_keyboard_event` to a dispatcher keyed by a normalised spec
+(`key_spec()`: lower-case key, modifiers first -- "ctrl+enter", "3",
+"escape"; handlers may be sync or async). `app_window.route_change()`
+clears the page handler before building every view and, if the view
+installed none, binds a default **Escape = back**. Bindings today:
+
+- Lesson: Ctrl+Enter run, Ctrl+H hint, Ctrl+R reset, Ctrl+B bookmark,
+  Ctrl+N next exercise (after a pass), Esc back. Ctrl-combos only, since
+  plain keys would fire while typing in the editor.
+- Quiz: 1-8 pick an option (`MultipleChoiceCard.select_option()`),
+  Enter / Space / Right advance (`advance()`), Esc back.
+- Hub: 1-7 open the tiles in display order, Esc to the track picker.
+- Everywhere else: Esc back.
+
+Each of those screens prints its bindings in a muted help line built by
+`Shortcuts.describe()`. Tests: `tests/test_shortcuts.py`.
+
+### Recurring errors (`app/engine/error_insights.py`)
+
+`ProgressStore.get_recent_errors(language, days)` returns the
+`(lesson_id, stderr_tail)` of every `attempt_error` row in the window;
+`summarize_errors(rows, engine, language)` buckets them by the same
+friendly one-liner `translate_error()` shows in the lesson, counts each
+bucket, and collects the affected exercises' concept tags. The Progress
+screen's "Recurring errors, last 30 days" card lists the top five with
+a count badge and a Practice button (an unlocked, unfinished exercise
+sharing the bucket's top tags; else the most recently affected
+exercise). Pure function, tested in `tests/test_error_insights.py`.
+
+### Weekly goal and streak freezes
+
+`Settings.weekly_goal` (default 10, chosen on the Settings screen) is
+the number of exercises per local Monday-to-Sunday week. `ProgressStore.
+count_completions_this_week(language)` buckets `lesson_completions`
+into local days in Python (timestamps are UTC) and counts the current
+week; the hub banner shows `done/goal` as a pill and the Progress
+screen's "This week" card shows it as a ring.
+
+Streak freezes live in `profile.freeze_tokens` (added by
+`_COLUMN_MIGRATIONS` via `ALTER TABLE` when missing). `record_play_today()`
+earns one token each time the streak reaches a multiple of
+`STREAK_FREEZE_EVERY` (7), holding at most `STREAK_FREEZE_MAX` (3), and
+spends one automatically when the gap since the last play is exactly
+two days -- the streak continues as if the missed day had been played.
+`get_streak_days()` applies the same rule for display, so a streak the
+user can still rescue is never shown as 0. Both events are written to
+`activity_log` (`streak_freeze_earned` / `streak_freeze_used`). A gap of
+three or more days breaks the streak and keeps the tokens.
+
+### Personal-best timer
+
+`lesson_screen.py` notes `time.monotonic()` when an exercise opens and,
+on a pass, stores the elapsed whole seconds via `ProgressStore.
+record_solve_time()` (`solve_times` table, one row per solve; returns
+True for a new best). The header shows a "Best 1m 35s" chip when a time
+exists, the reward card shows this solve's time against the best, and
+list screens (`build_exercise_list_view`) show the best per row using
+one `get_best_solve_times(language)` query rather than one per row.
+`components.format_duration()` renders seconds as `7s` / `1m 35s` /
+`1h 2m`.
+
+### Spaced repetition (`review_schedule`, `/review`)
+
+Every passed exercise enters a per-track review schedule -- a
+simplified SM-2 kept in `ProgressStore`'s `review_schedule` table
+(`interval_days`, `ease`, `due_date` as a *local* ISO date,
+`review_streak`). `schedule_review(language, lesson_id, passed)`:
+
+- pass -> streak+1; interval is `REVIEW_FIRST_INTERVAL` (3 days) on the
+  first pass, `REVIEW_SECOND_INTERVAL` (7) on the second, then
+  `round(previous * ease)` capped at `REVIEW_MAX_INTERVAL` (120); ease
+  creeps up by `REVIEW_EASE_STEP` to at most `REVIEW_MAX_EASE`;
+- fail -> streak 0, due tomorrow, ease drops by `REVIEW_EASE_STEP` to
+  at least `REVIEW_MIN_EASE`.
+
+`lesson_screen.py` calls it with `passed=True` from `_on_success()`
+(the reward card then shows "Next review in N days") and with
+`passed=False` from `_render_outcome()` on the first genuine failure
+of a visit **only if the exercise had already been completed before**
+(`_was_completed`) -- a first attempt at new material never counts as a
+failed review. The header shows a "Review due" / "Review in Nd" chip
+when a schedule row exists.
+
+Reads: `get_due_reviews(language, today, limit)` (most overdue first),
+`count_due_reviews()`, `count_upcoming_reviews(days)`,
+`get_review_state()`. `AppState.due_review_exercises()` maps the due
+ids to `Exercise`s. Surfaces: the hub's **Review Queue** tile (count
+due / this week), the `/review` screen (`app/ui/review_screen.py`,
+built on `build_exercise_list_view` with a summary card; "Next
+exercise" after a pass there advances to the next due item), the
+Progress screen's "Review schedule" card and banner pill, and the Daily
+Refresher's review slot.
+
+Databases created before this table existed are backfilled once on
+open (`_BACKFILL_REVIEWS`, `INSERT OR IGNORE`): every existing
+completion gets its first review 14 days after `completed_at`, the old
+age-based rule, so nothing silently disappears from review. The table
+is exported/imported and cleared by `reset_progress()` like every other.
+Tests: `tests/test_progress_store.py` (spaced repetition section),
+`tests/test_app_state.py`.
 
 ### Category browser and unlocking
 
@@ -616,7 +849,9 @@ never need to know which kind a given badge is.
 `evaluate_lesson_completion_achievements(progress, engine, language,
 category)`, called from `lesson_screen.py`'s `_on_success()` right
 after `record_play_today()` (streak-based badges need `streak_days` to
-already reflect today), checks for: `first_completion` (this
+already reflect today; `record_play_today()` is only ever called from
+the two completion paths -- finishing an exercise or a quiz -- never
+from merely opening a screen), checks for: `first_completion` (this
 language's very first lesson ever completed), `category_complete_
 <category>` (every level in `category` now complete), and `streak_<N>`
 for `N` in `STREAK_MILESTONES` (`[3, 7, 14, 30, 100]`).

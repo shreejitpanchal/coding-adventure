@@ -1,0 +1,65 @@
+# Mirrors scripts/dev.sh / dev.ps1: same commands, same flags. When a gate
+# changes here, change it there in the same commit.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: lint + test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      NO_COLOR: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      # The runner images ship a JDK, g++ and Node, so the Java/C++/Node
+      # engine tests run for real here; Spring (Maven + warmed ~/.m2) skips.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint
+        run: python -m ruff check app tests main.py main_web.py
+
+      - name: Test with coverage
+        run: |
+          python -m coverage run -m pytest tests -q -p no:cacheprovider
+          python -m coverage report
+          python -m coverage xml -o coverage.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: coverage.xml
+          if-no-files-found: ignore

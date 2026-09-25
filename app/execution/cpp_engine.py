@@ -9,7 +9,14 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from app.execution.base import DEFAULT_TIMEOUT_SECONDS, ExecutionEngine, ExecutionResult, RunHandle
+from app.execution.base import (
+    DEFAULT_TIMEOUT_SECONDS,
+    ExecutionEngine,
+    ExecutionResult,
+    RunHandle,
+    blocked_result,
+    run_subprocess,
+)
 from app.execution.toolchain_check import check_toolchain
 
 if TYPE_CHECKING:
@@ -63,10 +70,7 @@ class CppEngine(ExecutionEngine):
     ) -> ExecutionResult:
         status = check_toolchain("cpp")
         if not status.available:
-            return ExecutionResult(
-                success=False, blocked=True,
-                blocked_message=f"C++ toolchain not found (missing: {', '.join(status.missing)}). {status.install_hint}",
-            )
+            return blocked_result("C++", status)
 
         with tempfile.TemporaryDirectory(prefix="codingadventure_cpp_") as tmp_dir:
             source_file = Path(tmp_dir) / "main.cpp"
@@ -79,35 +83,16 @@ class CppEngine(ExecutionEngine):
                 )
             except subprocess.TimeoutExpired:
                 return ExecutionResult(success=False, timed_out=True)
-
             if compile_result.returncode != 0:
                 return ExecutionResult(success=False, stderr=compile_result.stderr)
 
-            process = subprocess.Popen(
-                [str(Path(tmp_dir) / _EXE_NAME)],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=tmp_dir,
-            )
-            if handle is not None:
-                handle._attach(process)
+            outcome = run_subprocess([str(Path(tmp_dir) / _EXE_NAME)], tmp_dir, stdin_text, timeout, handle)
 
-            try:
-                stdout, stderr = process.communicate(input=stdin_text or "", timeout=timeout)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.communicate()
-                return ExecutionResult(success=False, timed_out=True)
-
-        if handle is not None and handle.cancelled:
+        if outcome.timed_out:
             return ExecutionResult(success=False, timed_out=True)
 
-        success = process.returncode == 0
+        success = outcome.returncode == 0
+        stderr = outcome.stderr
         if not success and not stderr.strip():
-            crash_note = _describe_crash(process.returncode)
-            if crash_note:
-                stderr = crash_note
-
-        return ExecutionResult(success=success, stdout=stdout, stderr=stderr)
+            stderr = _describe_crash(outcome.returncode) or stderr
+        return ExecutionResult(success=success, stdout=outcome.stdout, stderr=stderr)

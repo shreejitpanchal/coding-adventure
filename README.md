@@ -25,8 +25,25 @@ through in a few focused minutes, not tutorials to sit through.
 - **Daily Refresher** — a short round-robin across every topic (five
   exercises by default, adjustable in Settings), so a quick daily session
   naturally touches everything instead of grinding one category at a
-  time. Occasionally mixes in a spaced-review reminder -- an exercise
-  finished two-plus weeks ago, resurfaced so it doesn't fade.
+  time. One slot goes to the most overdue item from the Review Queue
+  when something is due.
+- **Weekly goal and streak freezes** — set how many exercises you want
+  per week; the hub shows your count. Every 7-day streak earns a freeze
+  (hold up to three) that is spent automatically to cover one missed
+  day, so a single busy day doesn't erase months of habit.
+- **Personal bests** — every pass is timed from opening the exercise;
+  the reward card shows your time against your best, and lists show a
+  "Best 1m 35s" chip per exercise.
+- **Keyboard-first** — Ctrl+Enter runs, Ctrl+H hints, 1-4 answer quiz
+  questions, digits open hub tiles, Esc goes back everywhere. Each
+  screen shows its own shortcuts in a small help line.
+- **Recurring errors** — the Progress screen groups your failed runs of
+  the last 30 days by cause ("Null reference", "Index out of range")
+  and offers a practice exercise for each.
+- **Review Queue** — spaced repetition. Every exercise you pass comes
+  back on a growing schedule (3 days, then a week, then longer each time
+  you still get it right; a miss brings it back tomorrow). The hub tile
+  shows what's due now and what's coming this week.
 - **Search** — find any exercise by title, objective, or concept
   ("closures", "race conditions"), filterable by difficulty, once a
   track has hundreds of exercises spread across many categories.
@@ -225,15 +242,26 @@ always fully unlocked regardless of platform.
 # Run the app (native desktop window)
 .venv\Scripts\python.exe main.py
 
-# Run the app (browser preview, default port 8550)
+# Run the app (browser preview, default port 8550; needs requirements-web.txt)
 .venv\Scripts\python.exe main_web.py
 
-# Full test suite
-.venv\Scripts\python.exe -m pytest tests\ -v
+# Developer gates (lint + tests + coverage), logs under scripts\logs\
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # once
+.\scripts\dev.ps1 all          # or: scripts/dev.sh all
+.\scripts\dev.ps1 test         # just the test suite
+.\scripts\dev.ps1 content      # only the content-lint tests, after editing YAML
 ```
 
+CI (`.github/workflows/ci.yml`) runs the same commands on Ubuntu and
+Windows for every push and pull request. Dependencies are split into
+`requirements.txt` (runtime, pinned), `requirements-dev.txt` (pytest,
+coverage, ruff) and `requirements-web.txt` (uvicorn + cryptography for
+the browser preview only). The app writes a rotating log to
+`data/logs/app.log`.
+
 - `app/engine/` — content model (`Exercise`, `QuizQuestion`), YAML
-  loaders, category/unlock logic.
+  loaders, category/unlock logic, and `run_evaluation.py` (the pure
+  pass/fail decision the lesson screen renders).
 - `app/execution/` — one `ExecutionEngine` per language, all five
   implemented (`python_engine.py`, `java_engine.py`, `cpp_engine.py`,
   `spring_engine.py`, `node_engine.py`), plus `python_inprocess_engine.py`
@@ -244,7 +272,12 @@ always fully unlocked regardless of platform.
 - `app/progress/` — SQLite-backed XP/streaks/badges/activity log, keyed
   per language track, plus JSON export/import for backing up or
   restoring progress across every track at once.
-- `app/ui/` — Flet screens.
+- `app/ui/` — Flet screens, plus `components.py` (themed buttons, cards,
+  hero banners, tiles, rings, chips, the shared multiple-choice widget)
+  and `motion.py` (staggered reveals, hover lift, pop-in, pulse,
+  count-up, confetti).
+- `app/config/` — settings, data-directory resolution, `paths.py`
+  (repo layout), `clock.py` (local calendar days), `logging_setup.py`.
 - `content/<language>/lessons/*.yaml` — one exercise per file; adding or
   changing one never requires touching app code. All seven tracks
   (including `ai` and `architecture`) follow this same layout.

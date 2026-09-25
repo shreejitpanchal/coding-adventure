@@ -15,6 +15,9 @@ a pop the framework was allowed to perform itself -- never true here).
 """
 from __future__ import annotations
 
+import logging
+from typing import Callable
+
 import flet as ft
 
 from app.ui.app_state import AppState
@@ -25,10 +28,58 @@ from app.ui.language_select import build_language_select_view
 from app.ui.lesson_screen import build_lesson_view
 from app.ui.progress_screen import build_progress_view
 from app.ui.quiz_screen import build_quiz_view
+from app.ui.review_screen import build_review_view
 from app.ui.search_screen import build_search_view
 from app.ui.settings_screen import build_settings_view
 from app.ui.setup_wizard import build_setup_wizard_view
+from app.ui.shortcuts import Shortcuts
 from app.ui.track_hub import build_track_hub_view
+
+logger = logging.getLogger(__name__)
+
+ViewBuilder = Callable[[ft.Page, AppState], ft.View]
+ParamViewBuilder = Callable[[ft.Page, AppState, str], ft.View]
+
+# Exact-match routes. Adding a screen is one line here plus its module.
+_ROUTES: dict[str, ViewBuilder] = {
+    "/languages": build_language_select_view,
+    "/hub": build_track_hub_view,
+    "/daily": build_daily_refresher_view,
+    "/review": build_review_view,
+    "/categories": build_category_map_view,
+    "/quiz": build_quiz_view,
+    "/search": build_search_view,
+    "/progress": build_progress_view,
+    "/settings": build_settings_view,
+    "/setup": build_setup_wizard_view,
+}
+
+# Prefix routes whose remainder is a single parameter.
+_PARAM_ROUTES: dict[str, ParamViewBuilder] = {
+    "/categories/": build_category_levels_view,
+    "/lesson/": build_lesson_view,
+}
+
+
+def build_view_for_route(page: ft.Page, state: AppState, route: str) -> ft.View:
+    """Resolve a route to a freshly built view. An unknown route is a
+    programming error (every page.go() target is one of ours), so it is
+    logged and shown as such instead of silently landing on the picker."""
+    exact = _ROUTES.get(route)
+    if exact is not None:
+        return exact(page, state)
+    for prefix, builder in _PARAM_ROUTES.items():
+        if route.startswith(prefix):
+            return builder(page, state, route.removeprefix(prefix))
+    logger.error("Unknown route %r requested; known: %s + %s", route, sorted(_ROUTES), sorted(_PARAM_ROUTES))
+    theme = state.theme
+    return ft.View(
+        route=route, bgcolor=theme.bg, padding=24,
+        controls=[
+            ft.Text(f"Unknown screen: {route}", size=18, color=theme.danger),
+            ft.Button("Back to tracks", on_click=lambda _e: page.go("/languages")),
+        ],
+    )
 
 
 def main(page: ft.Page) -> None:
@@ -45,6 +96,7 @@ def main(page: ft.Page) -> None:
     page.padding = 0
 
     state = AppState()
+    logger.info("Session started (language=%s, theme=%s)", state.language, state.settings.theme)
 
     history: list[str] = []
     navigating_back = {"value": False}
@@ -64,35 +116,19 @@ def main(page: ft.Page) -> None:
             if not previous_route.startswith("/lesson/"):
                 state.lesson_return_route = previous_route
 
-        page.views.clear()
+        # Page-level handlers belong to the view that installed them. The
+        # lesson screen binds Ctrl+Enter here; if the user leaves it by any
+        # path other than its own Back button (system back, a "Related
+        # practice" link, a bookmark on the hub) that handler would otherwise
+        # keep pointing at a controller whose controls are no longer mounted.
+        page.on_keyboard_event = None
 
-        if route == "/languages":
-            page.views.append(build_language_select_view(page, state))
-        elif route == "/hub":
-            state.progress.record_play_today(state.language)
-            page.views.append(build_track_hub_view(page, state))
-        elif route == "/daily":
-            page.views.append(build_daily_refresher_view(page, state))
-        elif route.startswith("/categories/"):
-            category = route.removeprefix("/categories/")
-            page.views.append(build_category_levels_view(page, state, category))
-        elif route == "/categories":
-            page.views.append(build_category_map_view(page, state))
-        elif route == "/quiz":
-            page.views.append(build_quiz_view(page, state))
-        elif route == "/search":
-            page.views.append(build_search_view(page, state))
-        elif route == "/progress":
-            page.views.append(build_progress_view(page, state))
-        elif route == "/settings":
-            page.views.append(build_settings_view(page, state))
-        elif route.startswith("/lesson/"):
-            exercise_id = route.removeprefix("/lesson/")
-            page.views.append(build_lesson_view(page, state, exercise_id))
-        elif route == "/setup":
-            page.views.append(build_setup_wizard_view(page, state))
-        else:
-            page.views.append(build_language_select_view(page, state))
+        page.views.clear()
+        page.views.append(build_view_for_route(page, state, route))
+
+        # Screens that didn't install their own shortcuts still get Escape = back.
+        if page.on_keyboard_event is None:
+            Shortcuts().bind("escape", go_back).install(page)
 
         # Since page.views is deliberately kept at length 1 (see module
         # docstring), Flutter's Navigator has nothing else to pop -- with
@@ -129,7 +165,21 @@ def main(page: ft.Page) -> None:
     def view_pop(_e: ft.ViewPopEvent) -> None:
         go_back()
 
+    def on_session_end(_e: ft.ControlEvent) -> None:
+        # Fires when the client disconnects (window closed, browser tab
+        # gone). Releases the SQLite connection so the last write is
+        # flushed and the file isn't held open past the process's intent.
+        logger.info("Session ended")
+        state.close()
+
+    def on_client_error(e: ft.ControlEvent) -> None:
+        # Flutter-side exceptions (a layout constraint violation, a bad
+        # property combination) otherwise show up only as a blank area.
+        logger.error("Client-side error on %s: %s", page.route, e.data)
+
     page.on_route_change = route_change
     page.on_view_pop = view_pop
+    page.on_disconnect = on_session_end
+    page.on_error = on_client_error
 
     page.go("/setup" if not state.settings.setup_complete else "/languages")

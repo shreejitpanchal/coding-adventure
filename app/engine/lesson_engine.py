@@ -6,13 +6,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-import yaml
-
+from app.config.paths import CONTENT_ROOT
 from app.config.platform_paths import resolve_platform_data_dir
+from app.engine.content_loader import ContentError, build_model, load_yaml_file
 from app.engine.exercise import Exercise
 from app.execution.android_platform import is_android
-
-CONTENT_ROOT = Path(__file__).resolve().parent.parent.parent / "content"
 
 # User-added exercises live outside the git checkout entirely, so they
 # survive a `git pull` (which would otherwise never touch them, but also
@@ -48,6 +46,8 @@ class ExerciseEngine:
         )
         self._exercises: dict[str, Exercise] = {}
         self._order: list[str] = []
+        self._categories: list[str] = []
+        self._by_category: dict[str, list[Exercise]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -61,22 +61,36 @@ class ExerciseEngine:
             if not directory.is_dir():
                 continue
             for path in sorted(directory.glob("*.yaml")):
-                data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                data = load_yaml_file(path)
                 if not data:
                     continue
+                if not isinstance(data, dict):
+                    raise ContentError(path, f"expected a mapping at the top level, got {type(data).__name__}")
                 data.setdefault("language", self.language)
-                exercise = Exercise(**data)
+                exercise: Exercise = build_model(Exercise, data, path)
                 if exercise.id in seen_paths:
-                    raise ValueError(
-                        f"Duplicate exercise id {exercise.id!r}: already loaded from "
-                        f"{seen_paths[exercise.id]}, also found in {path}. Exercise ids "
-                        f"must be unique across both built-in and custom content."
+                    raise ContentError(
+                        path,
+                        f"duplicate exercise id {exercise.id!r}: already loaded from "
+                        f"{seen_paths[exercise.id]}. Exercise ids must be unique across "
+                        f"both built-in and custom content.",
                     )
                 seen_paths[exercise.id] = path
                 exercises.append(exercise)
         exercises.sort(key=lambda ex: ex.level)
         self._exercises = {ex.id: ex for ex in exercises}
         self._order = [ex.id for ex in exercises]
+
+        # Category index, built once: every unlock check / daily-refresher
+        # pass / recommendation walks "all exercises in category X", and a
+        # linear scan of 400+ exercises inside those loops was quadratic.
+        by_category: dict[str, list[Exercise]] = {}
+        for ex in exercises:
+            by_category.setdefault(ex.category, []).append(ex)
+        for items in by_category.values():
+            items.sort(key=lambda ex: ex.category_level)
+        self._by_category = by_category
+        self._categories = list(by_category)  # first-seen order == level order
 
     def __len__(self) -> int:
         return len(self._order)
@@ -91,17 +105,10 @@ class ExerciseEngine:
         return [self._exercises[eid] for eid in self._order]
 
     def categories(self) -> list[str]:
-        seen: list[str] = []
-        for ex in self.all_in_order():
-            if ex.category not in seen:
-                seen.append(ex.category)
-        return seen
+        return list(self._categories)
 
     def lessons_in_category(self, category: str) -> list[Exercise]:
-        return sorted(
-            (ex for ex in self._exercises.values() if ex.category == category),
-            key=lambda ex: ex.category_level,
-        )
+        return list(self._by_category.get(category, []))
 
     def is_unlocked(self, exercise: Exercise, completed_ids: set[str]) -> bool:
         if self.language in ALWAYS_UNLOCKED_LANGUAGES:
@@ -110,22 +117,18 @@ class ExerciseEngine:
             return True
         if exercise.category_level <= 1:
             return True
-        earlier = [
-            ex for ex in self.lessons_in_category(exercise.category)
-            if ex.category_level < exercise.category_level
-        ]
-        return all(ex.id in completed_ids for ex in earlier)
+        for earlier in self._by_category.get(exercise.category, []):
+            if earlier.category_level >= exercise.category_level:
+                break
+            if earlier.id not in completed_ids:
+                return False
+        return True
 
     def next_unlocked_in_category(self, category: str, completed_ids: set[str]) -> Optional[Exercise]:
         for ex in self.lessons_in_category(category):
             if ex.id not in completed_ids and self.is_unlocked(ex, completed_ids):
                 return ex
         return None
-
-    def category_completion(self) -> dict[str, tuple[int, int]]:
-        """category -> (done, total), done computed by the caller passing
-        completed_ids in via category_completion_for()."""
-        return {cat: (0, len(self.lessons_in_category(cat))) for cat in self.categories()}
 
     def category_completion_for(self, completed_ids: set[str]) -> dict[str, tuple[int, int]]:
         result: dict[str, tuple[int, int]] = {}
@@ -142,8 +145,9 @@ class ExerciseEngine:
         grinding one category at a time."""
         completed = set(completed_ids)
         picks: list[Exercise] = []
+        picked_ids: set[str] = set()
         categories = self.categories()
-        if not categories:
+        if not categories or count <= 0:
             return picks
         cursor: dict[str, int] = {cat: 0 for cat in categories}
         guard = 0
@@ -153,16 +157,17 @@ class ExerciseEngine:
             for cat in categories:
                 if len(picks) >= count:
                     break
-                items = self.lessons_in_category(cat)
+                items = self._by_category[cat]
                 idx = cursor[cat]
                 while idx < len(items):
                     ex = items[idx]
                     idx += 1
-                    if ex.id in completed or ex in picks:
+                    if ex.id in completed or ex.id in picked_ids:
                         continue
-                    if not self.is_unlocked(ex, completed | {p.id for p in picks}):
+                    if not self.is_unlocked(ex, completed | picked_ids):
                         continue
                     picks.append(ex)
+                    picked_ids.add(ex.id)
                     progressed = True
                     break
                 cursor[cat] = idx

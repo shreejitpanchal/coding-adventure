@@ -19,6 +19,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from app.config.paths import REPO_ROOT
+
 DATA_DIRNAME = "data"
 
 
@@ -30,8 +32,7 @@ def resolve_platform_data_dir() -> Path:
     if android_dir:
         data_dir = Path(android_dir)
     else:
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        data_dir = repo_root / DATA_DIRNAME
+        data_dir = REPO_ROOT / DATA_DIRNAME
 
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir

@@ -2,25 +2,61 @@
 exercise -- or, for a purely conceptual exercise (Exercise.requires_code
 is False, e.g. the `architecture` track), Explain -> Example ->
 Comprehension Check instead, with no code editor, Run button, or
-execution engine involved at all."""
+execution engine involved at all.
+
+Every section is an accent-striped card with its own icon; the Run
+button pulses while code executes; a pass fires a confetti burst, a
+spring-in reward card and an XP count-up. The pass/fail decision itself
+lives in app.engine.run_evaluation; this module only renders it."""
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Optional
 
 import flet as ft
 
+from app.config.clock import today_iso
 from app.engine.categories import get_category_meta
 from app.engine.exercise import Exercise
-from app.engine.validator import diff_output, validate_contains, validate_output
-from app.execution.base import ExecutionResult, RunHandle
-from app.execution.errors import extract_error_line_number, translate_error
-from app.execution.registry import get_engine
+from app.engine.quiz import QuizQuestion
+from app.engine.quiz_engine import shuffle_options
+from app.engine.run_evaluation import RunOutcome, Verdict, evaluate_run
+from app.execution.base import DEFAULT_TIMEOUT_SECONDS, RunHandle
 from app.execution.toolchain_check import check_toolchain
 from app.progress.achievements import evaluate_lesson_completion_achievements
 from app.ui.app_state import AppState
-from app.ui.code_editor import make_code_editor, make_read_only_code_block
-from app.ui.theme import scaled
+from app.ui.code_editor import frame_editor, make_code_editor, make_read_only_code_block
+from app.ui.components import (
+    WHITE,
+    MultipleChoiceCard,
+    button,
+    card,
+    chip,
+    difficulty_color,
+    difficulty_label,
+    format_duration,
+    header_row,
+    icon_button,
+    icon_circle,
+    spacer,
+    tint,
+)
+from app.ui.motion import Pulser, Stagger, confetti, confetti_layer, count_up, pop_in, prepare_pop
+from app.ui.shortcuts import Shortcuts
+from app.ui.theme import CODE_FONT_FAMILY, scaled
+
+logger = logging.getLogger(__name__)
+
+_VERDICT_STYLE: dict[Verdict, tuple[ft.IconData, str]] = {
+    Verdict.BLOCKED: (ft.Icons.ERROR_OUTLINE_ROUNDED, "danger"),
+    Verdict.TIMED_OUT: (ft.Icons.TIMER_ROUNDED, "danger"),
+    Verdict.ERROR: (ft.Icons.BUG_REPORT_ROUNDED, "danger"),
+    Verdict.WRONG_OUTPUT: (ft.Icons.SPORTS_SCORE_ROUNDED, "warning"),
+    Verdict.MISSING_PATTERNS: (ft.Icons.LIGHTBULB_ROUNDED, "warning"),
+    Verdict.PASSED: (ft.Icons.CHECK_CIRCLE_ROUNDED, "success"),
+}
 
 
 def build_lesson_view(page: ft.Page, state: AppState, exercise_id: str) -> ft.View:
@@ -28,119 +64,154 @@ def build_lesson_view(page: ft.Page, state: AppState, exercise_id: str) -> ft.Vi
     exercise = state.exercise_engine().get(exercise_id)
 
     if exercise is None:
+        logger.warning("Lesson route for unknown exercise id %r in track %s", exercise_id, state.language)
         return ft.View(
             route=f"/lesson/{exercise_id}",
             bgcolor=theme.bg,
-            controls=[ft.Text(f"Couldn't find exercise '{exercise_id}'.", color=theme.danger)],
+            padding=24,
+            controls=[
+                ft.Text(f"Couldn't find exercise '{exercise_id}'.", color=theme.danger),
+                button("Back", lambda _e: page.go(state.lesson_return_route), theme, icon=ft.Icons.ARROW_BACK_ROUNDED),
+            ],
         )
 
     return _ExerciseController(page, state, exercise).build_view()
 
 
 class _ExerciseController:
+    _PRACTICE_THRESHOLD = 3
+
     def __init__(self, page: ft.Page, state: AppState, exercise: Exercise) -> None:
         self.page = page
         self.state = state
         self.exercise = exercise
         self.theme = state.theme
         self.scale = state.font_scale
-        self.engine = get_engine(exercise.language) if exercise.requires_code else None
+        self.meta = get_category_meta(exercise.category)
+        self.accent = self.meta.color
+        self.engine = state.execution_engine(exercise.language) if exercise.requires_code else None
 
         self._running = False
         self._run_handle: Optional[RunHandle] = None
         self._hint_index = 0
         self._passed = False
         self._next_exercise_id: Optional[str] = None
-        self._current_input_value: Optional[str] = None
         self.input_field: Optional[ft.TextField] = None
-        self._check_index = 0
-        self._check_wrong_count = 0
+        self._pulser: Optional[Pulser] = None
+        # A failed attempt only counts against the review schedule when
+        # this exercise had already been passed before (i.e. it's a review).
+        self._was_completed = state.progress.is_lesson_completed(state.language, exercise.id)
+        self._review_state = state.progress.get_review_state(state.language, exercise.id)
+        self._review_failed = False
+        # Personal-best timer: from opening the exercise to the passing run.
+        self._opened_at = time.monotonic()
+        self._best_seconds = state.progress.get_best_solve_time(state.language, exercise.id)
 
         state.progress.set_current_exercise(state.language, exercise.id)
 
     def _fs(self, base: int) -> int:
         return scaled(base, self.scale)
 
+    def _card(self, title: Optional[str], children, **kwargs) -> ft.Container:
+        kwargs.setdefault("accent", self.accent)
+        return card(self.theme, self._fs, title, children, **kwargs)
+
+    # -- view -------------------------------------------------------------
     def build_view(self) -> ft.View:
         theme = self.theme
         exercise = self.exercise
-        meta = get_category_meta(exercise.category)
+        stagger = Stagger(self.page, step=0.05)
 
         is_bookmarked = self.state.progress.is_bookmarked(self.state.language, exercise.id)
-        self.bookmark_button = ft.Button(
-            "★ Bookmarked" if is_bookmarked else "☆ Bookmark",
-            on_click=self._on_toggle_bookmark, height=44,
-            style=ft.ButtonStyle(bgcolor=theme.warning if is_bookmarked else theme.text_muted, color="#FFFFFF"),
+        self.bookmark_button = icon_button(
+            ft.Icons.BOOKMARK_BORDER_ROUNDED, self._on_toggle_bookmark, theme,
+            selected=is_bookmarked, selected_icon=ft.Icons.BOOKMARK_ROUNDED,
+            color=theme.warning, tooltip="Bookmark this exercise",
         )
-
-        header = ft.Row(
-            [
-                ft.Button(
-                    "← Back", on_click=self._on_menu, height=44,
-                    style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
-                ),
-                ft.Text(exercise.title, size=self._fs(22), weight=ft.FontWeight.BOLD, color=theme.primary, expand=True),
-                self.bookmark_button,
-                ft.Container(
-                    content=ft.Text(exercise.difficulty.replace("_", " ").title(), size=self._fs(12), color="#FFFFFF"),
-                    bgcolor=meta.color, border_radius=8, padding=ft.padding.Padding.symmetric(horizontal=10, vertical=4),
-                ),
-            ],
-            spacing=12,
+        trailing: list[ft.Control] = [
+            chip(difficulty_label(exercise.difficulty), difficulty_color(theme, exercise.difficulty), self._fs),
+            chip(f"{exercise.xp_reward} XP", theme.warning, self._fs, icon=ft.Icons.BOLT),
+        ]
+        if self._best_seconds is not None:
+            trailing.insert(0, chip(f"Best {format_duration(self._best_seconds)}", theme.success, self._fs,
+                                    icon=ft.Icons.TIMER_ROUNDED))
+        if self._review_state is not None:
+            days = self._review_state.days_until_due(today_iso())
+            if days <= 0:
+                trailing.insert(0, chip("Review due", theme.accent, self._fs, icon=ft.Icons.REPLAY_ROUNDED, filled=True))
+            else:
+                trailing.insert(0, chip(f"Review in {days}d", theme.accent, self._fs, icon=ft.Icons.REPLAY_ROUNDED))
+        trailing.append(self.bookmark_button)
+        header = header_row(
+            theme, self._fs, exercise.title, self._on_menu,
+            subtitle=f"{self.meta.icon} {self.meta.title} · level {exercise.category_level}",
+            trailing=trailing, title_size=22,
         )
 
         explanation_card = self._card("Objective", [
             ft.Text(exercise.objective.strip(), size=self._fs(15), weight=ft.FontWeight.BOLD, color=theme.text),
             ft.Text(exercise.explanation.strip(), size=self._fs(14), color=theme.text_muted),
-        ])
+        ], icon=ft.Icons.FLAG_ROUNDED)
 
-        controls = [header, explanation_card]
+        sections: list[ft.Control] = [explanation_card]
 
         if exercise.example_code.strip():
             example_children: list[ft.Control] = [
-                make_read_only_code_block(exercise.example_code.strip(), scale=self.scale, theme=theme),
+                make_read_only_code_block(exercise.example_code.strip(), scale=self.scale, theme=theme, filename="example"),
             ]
             if exercise.requires_code:
-                example_children.append(ft.Button(
-                    "Copy example into editor", on_click=self._on_copy_example, height=40,
-                    style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
-                ))
-            controls.append(self._card("Example", example_children))
+                example_children.append(ft.Row([
+                    button("Copy example into editor", self._on_copy_example, theme, "ghost",
+                           icon=ft.Icons.CONTENT_COPY_ROUNDED, height=38),
+                ]))
+            sections.append(self._card("Example", example_children, icon=ft.Icons.MENU_BOOK_ROUNDED))
 
         self._build_reward_card()
 
         if exercise.requires_code:
             if exercise.challenge.strip():
-                controls.append(self._card("Your Task", [
+                sections.append(self._card("Your Task", [
                     ft.Text(exercise.challenge.strip(), size=self._fs(14), color=theme.text),
-                ]))
-            controls.append(self._build_code_card())
-            controls.append(self._build_output_card())
+                ], icon=ft.Icons.ROCKET_LAUNCH, accent=theme.primary))
+            sections.append(self._build_code_card())
+            sections.append(self._build_output_card())
         else:
             if exercise.challenge.strip():
-                controls.append(self._card("Think About It", [
+                sections.append(self._card("Think About It", [
                     ft.Text(exercise.challenge.strip(), size=self._fs(14), color=theme.text),
-                ]))
-            controls.append(self._build_comprehension_card())
+                ], icon=ft.Icons.PSYCHOLOGY, accent=theme.primary))
+            sections.append(self._build_comprehension_card())
 
-        controls.append(self._build_notes_card())
+        sections.append(self._build_notes_card())
+
+        controls: list[ft.Control] = [header, spacer(8)]
+        controls.extend(stagger.wrap(section) for section in sections)
         controls.append(self.reward_card)
+        stagger.play()
 
-        self._content_column = ft.Column(controls, scroll=ft.ScrollMode.AUTO, spacing=10, expand=True)
-        content = ft.Container(content=self._content_column, padding=24, expand=True)
+        self._content_column = ft.Column(controls, scroll=ft.ScrollMode.AUTO, spacing=14, expand=True)
+        # Inside a Stack, children fill the area via edge positioning (not `expand`).
+        content = ft.Container(content=self._content_column, padding=ft.Padding.only(left=28, right=28, top=22, bottom=40),
+                               left=0, top=0, right=0, bottom=0)
+        self.confetti = confetti_layer()
 
-        self.page.on_keyboard_event = self._on_keyboard
-        return ft.View(route=f"/lesson/{exercise.id}", bgcolor=theme.bg, padding=0, controls=[content])
-
-    def _card(self, title: str, children: list[ft.Control]) -> ft.Control:
-        return ft.Container(
-            content=ft.Column(
-                [ft.Text(title, size=self._fs(17), weight=ft.FontWeight.BOLD, color=self.theme.text), *children],
-                spacing=10,
-            ),
-            bgcolor=self.theme.card, border_radius=16, padding=20,
+        # Installed here, removed by app_window.route_change() on every
+        # navigation (not only via our own Back button). Ctrl-combos only:
+        # plain letters would fire while typing in the editor.
+        shortcuts = Shortcuts().bind("escape", lambda: self._on_menu(None))
+        shortcuts.bind("ctrl+b", lambda: self._on_toggle_bookmark(None))
+        shortcuts.bind("ctrl+n", lambda: self._on_next(None))
+        if exercise.requires_code:
+            shortcuts.bind("ctrl+enter", self._run_from_keyboard)
+            shortcuts.bind("ctrl+h", lambda: self._on_hint(None))
+            shortcuts.bind("ctrl+r", lambda: self._on_reset(None))
+        shortcuts.install(self.page)
+        return ft.View(
+            route=f"/lesson/{exercise.id}", bgcolor=theme.bg, padding=0,
+            controls=[ft.Stack([content, self.confetti], expand=True)],
         )
 
+    # -- cards ------------------------------------------------------------
     def _build_code_card(self) -> ft.Control:
         theme = self.theme
         exercise = self.exercise
@@ -149,20 +220,19 @@ class _ExerciseController:
         # fixed 260px -- a short snippet no longer sits in a mostly-empty
         # box, and a long one gets room before scrolling kicks in.
         starter_lines = exercise.starter_code.strip().count("\n") + 1
-        editor_height = max(180, min(520, 32 * starter_lines + 60))
-        self.editor = make_code_editor(
-            exercise.starter_code.strip(), height=editor_height, scale=self.scale, theme=theme,
-        )
-        children: list[ft.Control] = [self.editor]
+        editor_height = max(180, min(520, 30 * starter_lines + 50))
+        self.editor = make_code_editor(exercise.starter_code.strip(), height=editor_height, scale=self.scale, theme=theme)
+        children: list[ft.Control] = [frame_editor(self.editor, theme, filename=f"solution.{_extension(exercise.language)}")]
 
         if exercise.input_prompt:
-            self.input_field = ft.TextField(hint_text="Type input...", width=260)
-            children.append(
-                ft.Column(
-                    [ft.Text(exercise.input_prompt, size=self._fs(14), color=theme.text), self.input_field],
-                    spacing=6,
-                )
+            self.input_field = ft.TextField(
+                hint_text="Type input...", width=280, border_radius=12, prefix_icon=ft.Icons.KEYBOARD_RETURN_ROUNDED,
+                bgcolor=theme.surface, border_color=tint(theme.text, 0.12), focused_border_color=self.accent,
             )
+            children.append(ft.Column(
+                [ft.Text(exercise.input_prompt, size=self._fs(14), color=theme.text), self.input_field],
+                spacing=6,
+            ))
 
         # Browsing an exercise (reading the explanation/example, looking at
         # the challenge, editing code) never needs the language's real
@@ -172,298 +242,230 @@ class _ExerciseController:
         # instead of only failing after the click via ExecutionResult.blocked.
         toolchain_ready = check_toolchain(exercise.language).available
 
-        self.run_button = ft.Button(
-            "▶ Run" if toolchain_ready else "▶ Run (unavailable here)",
-            on_click=self._on_run, height=48, disabled=not toolchain_ready,
+        self.run_button = button(
+            "Run" if toolchain_ready else "Run (unavailable here)", self._on_run, theme, "success",
+            icon=ft.Icons.PLAY_ARROW_ROUNDED, height=48, disabled=not toolchain_ready,
             tooltip=(
                 "Ctrl+Enter also runs your code"
                 if toolchain_ready else "This language's compiler/runtime isn't available on this device."
             ),
-            style=ft.ButtonStyle(bgcolor=theme.success, color="#FFFFFF"),
         )
-        reset_button = ft.Button(
-            "↺ Reset", on_click=self._on_reset, height=44,
-            style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
+        self.run_wrap = ft.Container(content=self.run_button)
+        self._pulser = Pulser(self.page, self.run_wrap)
+        reset_button = button("Reset", self._on_reset, theme, "ghost", icon=ft.Icons.REFRESH_ROUNDED)
+        self.hint_button = button("Hint", self._on_hint, theme, "warning", icon=ft.Icons.LIGHTBULB_ROUNDED,
+                                  disabled=not exercise.hints)
+        keys_help = Shortcuts().describe(
+            ("ctrl+enter", "run"), ("ctrl+h", "hint"), ("ctrl+r", "reset"), ("ctrl+b", "bookmark"), ("escape", "back"),
         )
-        self.hint_button = ft.Button(
-            "💡 Hint", on_click=self._on_hint, disabled=not exercise.hints, height=44,
-            style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
-        )
-        children.append(ft.Row([self.run_button, reset_button, self.hint_button], spacing=10, wrap=True))
+        children.append(ft.Row(
+            [self.run_wrap, reset_button, self.hint_button],
+            spacing=10, wrap=True, vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ))
+        children.append(ft.Text(keys_help, size=self._fs(11), color=theme.text_muted))
 
         if not toolchain_ready:
-            children.append(ft.Text(
-                "Running is unavailable here -- this language's compiler/runtime isn't installed "
-                "(or isn't supported on this device). You can still read through and edit the exercise.",
-                size=self._fs(12), color=theme.warning,
+            children.append(ft.Container(
+                content=ft.Row([
+                    ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color=theme.warning, size=self._fs(18)),
+                    ft.Text(
+                        "Running is unavailable here -- this language's compiler/runtime isn't installed "
+                        "(or isn't supported on this device). You can still read through and edit the exercise.",
+                        size=self._fs(12), color=theme.warning, expand=True,
+                    ),
+                ], spacing=8),
+                bgcolor=tint(theme.warning, 0.10), border_radius=10, padding=10,
             ))
 
         self.hint_text = ft.Text("", size=self._fs(13), color=theme.warning)
-        children.append(self.hint_text)
+        self.hint_box = ft.Container(
+            content=ft.Row([ft.Icon(ft.Icons.LIGHTBULB_ROUNDED, color=theme.warning, size=self._fs(18)), self.hint_text],
+                           spacing=8, vertical_alignment=ft.CrossAxisAlignment.START),
+            bgcolor=tint(theme.warning, 0.10), border_radius=10, padding=10, visible=False,
+            animate_opacity=ft.Animation(250, ft.AnimationCurve.EASE_OUT),
+        )
+        children.append(self.hint_box)
 
-        return self._card("Your Code", children)
+        return self._card("Your Code", children, icon=ft.Icons.CODE_ROUNDED, accent=theme.success)
 
     def _build_comprehension_card(self) -> ft.Control:
         """A short inline multiple-choice check that gates completion for a
-        requires_code=False exercise -- same shape as a QuizQuestion, but
-        embedded in the lesson flow instead of a standalone quiz session.
-        Answering every question correctly in one pass calls _on_success();
-        any wrong answer requires retrying the whole check from the start."""
-        theme = self.theme
-
-        self.check_progress_text = ft.Text("", size=self._fs(13), color=theme.text_muted)
-        self.check_question_text = ft.Text("", size=self._fs(15), weight=ft.FontWeight.BOLD, color=theme.text)
-        self.check_option_labels: list[ft.Text] = []
-        self.check_option_buttons = [self._make_check_option_button(i) for i in range(4)]
-        self.check_feedback_text = ft.Text("", size=self._fs(13))
-        self.check_next_label = ft.Text("Next →", size=self._fs(14), color="#FFFFFF")
-        self.check_next_button = ft.Button(
-            content=self.check_next_label, on_click=self._on_check_next, visible=False, height=44,
-            style=ft.ButtonStyle(bgcolor=theme.primary),
+        requires_code=False exercise. Answering every question correctly in
+        one pass calls _on_success(); any wrong answer requires retrying the
+        whole check from the start."""
+        self.check = MultipleChoiceCard(
+            self.page, self.theme, self._fs, "Comprehension Check",
+            on_complete=self._on_check_complete, final_label="Finish", accent=self.accent,
         )
-        self.check_retry_button = ft.Button(
-            "↺ Try Again", on_click=self._on_check_retry, visible=False, height=44,
-            style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
+        self._start_check()
+        return self.check.control
+
+    def _start_check(self) -> None:
+        questions: list[QuizQuestion] = [shuffle_options(q) for q in self.exercise.comprehension_check]
+        self.check.start(questions)
+
+    def _on_check_complete(self, score: int, total: int) -> None:
+        if score == total:
+            self._on_success()
+            return
+        retry = button("Try Again", lambda _e: (self._start_check(), self.page.update()), self.theme, "warning",
+                       icon=ft.Icons.REPLAY_ROUNDED)
+        self.check.show_summary(
+            f"You missed {total - score} of {total}. Review the explanations, then try again.",
+            self.theme.warning, actions=[retry],
         )
-
-        self._render_check_question()
-
-        return self._card("Comprehension Check", [
-            self.check_progress_text,
-            self.check_question_text,
-            ft.Column(self.check_option_buttons, spacing=8),
-            self.check_feedback_text,
-            ft.Row([self.check_next_button, self.check_retry_button], spacing=10, wrap=True),
-        ])
-
-    def _make_check_option_button(self, index: int) -> ft.Button:
-        label = ft.Text("", size=self._fs(14))
-        self.check_option_labels.append(label)
-        return ft.Button(
-            content=label, on_click=lambda _e, i=index: self._on_check_select(i), height=48, width=560,
-            style=ft.ButtonStyle(bgcolor=self.theme.bg),
-        )
-
-    def _render_check_question(self) -> None:
-        theme = self.theme
-        questions = self.exercise.comprehension_check
-        q = questions[self._check_index]
-        self.check_progress_text.value = f"Question {self._check_index + 1} of {len(questions)}"
-        self.check_question_text.value = q["question"]
-        for i, button in enumerate(self.check_option_buttons):
-            button.visible = True
-            self.check_option_labels[i].value = q["options"][i]
-            self.check_option_labels[i].color = theme.text
-            button.disabled = False
-            button.style = ft.ButtonStyle(bgcolor=theme.bg)
-        self.check_feedback_text.value = ""
-        self.check_next_button.visible = False
-        self.check_retry_button.visible = False
-
-    def _on_check_select(self, index: int) -> None:
-        theme = self.theme
-        q = self.exercise.comprehension_check[self._check_index]
-        correct_index = q["correct"]
-        is_correct = index == correct_index
-        if not is_correct:
-            self._check_wrong_count += 1
-
-        for i, button in enumerate(self.check_option_buttons):
-            button.disabled = True
-            if i == correct_index:
-                button.style = ft.ButtonStyle(bgcolor=theme.success)
-                self.check_option_labels[i].color = "#FFFFFF"
-            elif i == index:
-                button.style = ft.ButtonStyle(bgcolor=theme.danger)
-                self.check_option_labels[i].color = "#FFFFFF"
-
-        self.check_feedback_text.value = ("Correct. " if is_correct else "Not quite. ") + q.get("explanation", "")
-        self.check_feedback_text.color = theme.success if is_correct else theme.danger
-        is_last = self._check_index + 1 >= len(self.exercise.comprehension_check)
-        self.check_next_label.value = "Finish" if is_last else "Next →"
-        self.check_next_button.visible = True
-        self.page.update()
-
-    def _on_check_next(self, e) -> None:
-        self._check_index += 1
-        if self._check_index >= len(self.exercise.comprehension_check):
-            if self._check_wrong_count == 0:
-                self._on_success()
-            else:
-                self.check_progress_text.value = f"You missed {self._check_wrong_count} question(s) this time."
-                self.check_question_text.value = ""
-                for button in self.check_option_buttons:
-                    button.visible = False
-                self.check_feedback_text.value = "Review the explanations above, then try again."
-                self.check_feedback_text.color = self.theme.warning
-                self.check_next_button.visible = False
-                self.check_retry_button.visible = True
-                self.page.update()
-        else:
-            self._render_check_question()
-            self.page.update()
-
-    def _on_check_retry(self, e) -> None:
-        self._check_index = 0
-        self._check_wrong_count = 0
-        self._render_check_question()
-        self.page.update()
 
     def _build_output_card(self) -> ft.Control:
         theme = self.theme
-        self.output_text = ft.Text("Press Run to see what happens.", size=self._fs(14), color=theme.text_muted)
-        self.details_button = ft.TextButton(
-            "Show raw output", on_click=self._toggle_details, visible=False,
-            style=ft.ButtonStyle(color=theme.text_muted),
+        self.output_icon = ft.Icon(ft.Icons.TERMINAL, color=theme.text_muted, size=self._fs(22))
+        self.output_text = ft.Text("Press Run to see what happens.", size=self._fs(14), color=theme.text_muted,
+                                   font_family=CODE_FONT_FAMILY, selectable=True, expand=True)
+        self.output_box = ft.Container(
+            content=ft.Row([self.output_icon, self.output_text], spacing=12, vertical_alignment=ft.CrossAxisAlignment.START),
+            bgcolor=theme.surface, border_radius=12, padding=14,
+            border=ft.Border.all(1, tint(theme.text, 0.08)),
+            animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
         )
-        self.details_text = ft.Text("", size=self._fs(12), font_family="Consolas", color=theme.text, selectable=True)
+        self.details_button = button("Show raw output", self._toggle_details, theme, "ghost", visible=False, height=36,
+                                     icon=ft.Icons.TERMINAL)
+        self.details_text = ft.Text("", size=self._fs(12), font_family=CODE_FONT_FAMILY, color=theme.text, selectable=True)
         self.details_container = ft.Container(
-            content=self.details_text, bgcolor=theme.card, border_radius=8, padding=12, visible=False,
+            content=self.details_text, bgcolor=theme.surface, border_radius=10, padding=12, visible=False,
         )
         self.practice_row = ft.Row([], spacing=8, wrap=True)
         self.practice_container = ft.Container(
             content=ft.Column(
                 [
-                    ft.Text("Related practice:", size=self._fs(13), weight=ft.FontWeight.BOLD, color=theme.text),
+                    ft.Row([ft.Icon(ft.Icons.SCHOOL_ROUNDED, color=theme.warning, size=self._fs(18)),
+                            ft.Text("Stuck? Related practice:", size=self._fs(13), weight=ft.FontWeight.BOLD, color=theme.text)],
+                           spacing=8),
                     self.practice_row,
                 ],
                 spacing=8,
             ),
-            bgcolor=theme.card, border=ft.border.Border.all(1, theme.warning), border_radius=8, padding=12,
-            visible=False,
+            bgcolor=tint(theme.warning, 0.08), border=ft.Border.all(1, tint(theme.warning, 0.4)), border_radius=10,
+            padding=12, visible=False,
         )
-        return self._card("Output", [self.output_text, self.details_button, self.details_container, self.practice_container])
+        return self._card("Output", [self.output_box, self.details_button, self.details_container, self.practice_container],
+                          icon=ft.Icons.TERMINAL, accent=theme.text_muted)
 
     def _build_notes_card(self) -> ft.Control:
         theme = self.theme
         existing_note = self.state.progress.get_note(self.state.language, self.exercise.id)
         self.notes_field = ft.TextField(
-            value=existing_note, multiline=True, min_lines=3, max_lines=8, height=160,
+            value=existing_note, multiline=True, min_lines=3, max_lines=8, height=150, border_radius=12,
             hint_text="Jot down anything worth remembering about this exercise...",
+            bgcolor=theme.surface, border_color=tint(theme.text, 0.12), focused_border_color=self.accent,
         )
-        self.notes_status_text = ft.Text("", size=self._fs(12), color=theme.text_muted)
-        save_button = ft.Button(
-            "Save note", on_click=self._on_save_note, height=40,
-            style=ft.ButtonStyle(bgcolor=theme.primary, color="#FFFFFF"),
-        )
+        self.notes_status_text = ft.Text("", size=self._fs(12), color=theme.success)
+        save_button = button("Save note", self._on_save_note, theme, "primary", icon=ft.Icons.SAVE_ROUNDED, height=40)
         return self._card("Your Notes", [
             self.notes_field, ft.Row([save_button, self.notes_status_text], spacing=10),
-        ])
+        ], icon=ft.Icons.EDIT_NOTE_ROUNDED, accent=theme.accent)
 
     def _build_reward_card(self) -> None:
         theme = self.theme
-        self.reward_text = ft.Text("", size=self._fs(18), weight=ft.FontWeight.BOLD, color=theme.success)
-        self.achievement_text = ft.Text("", size=self._fs(14), color=theme.text)
-        self.next_button = ft.Button(
-            "Next exercise →", on_click=self._on_next, height=48, visible=False,
-            style=ft.ButtonStyle(bgcolor=theme.success, color="#FFFFFF"),
-        )
-        hub_button = ft.Button(
-            "Back", on_click=self._on_menu, height=48,
-            style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
-        )
+        self.reward_xp_text = ft.Text("+0 XP", size=self._fs(26), weight=ft.FontWeight.BOLD, color=WHITE)
+        self.reward_title = ft.Text("Nice work!", size=self._fs(20), weight=ft.FontWeight.BOLD, color=WHITE)
+        self.reward_review_text = ft.Text("", size=self._fs(12), color=tint(WHITE, 0.9))
+        self.achievement_row = ft.Row([], spacing=8, wrap=True)
+        self.next_button = button("Next exercise", self._on_next, theme, "success", icon=ft.Icons.ARROW_FORWARD_ROUNDED,
+                                  height=46, visible=False, bgcolor=tint(WHITE, 0.22))
+        back_button = button("Back", self._on_menu, theme, "ghost", icon=ft.Icons.ARROW_BACK_ROUNDED, height=46)
         self.reward_card = ft.Container(
-            content=ft.Column(
+            content=ft.Row(
                 [
-                    self.reward_text, self.achievement_text,
-                    ft.Row([self.next_button, hub_button], spacing=10, wrap=True),
+                    icon_circle(ft.Icons.EMOJI_EVENTS, WHITE, size=64, icon_size=self._fs(34)),
+                    ft.Column(
+                        [
+                            self.reward_title,
+                            self.reward_xp_text,
+                            self.reward_review_text,
+                            self.achievement_row,
+                            ft.Row([self.next_button, back_button], spacing=10, wrap=True),
+                        ],
+                        spacing=8, expand=True,
+                    ),
                 ],
-                spacing=8,
+                spacing=18, vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            bgcolor=theme.card, border=ft.border.Border.all(2, theme.success), border_radius=16, padding=20,
-            visible=False,
+            gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
+                                       colors=[theme.success, theme.gradient[1]]),
+            border_radius=22, padding=22, visible=False,
         )
+        prepare_pop(self.reward_card)
 
     # -- run flow -----------------------------------------------------
-    async def _on_keyboard(self, e: ft.KeyboardEvent) -> None:
-        if not self.exercise.requires_code:
-            return
-        if e.ctrl and e.key == "Enter" and not self.run_button.disabled and not self._running:
-            await self._on_run(e)
+    async def _run_from_keyboard(self) -> None:
+        if not self.run_button.disabled and not self._running:
+            await self._on_run(None)
 
     async def _on_run(self, e) -> None:
-        if self._running:
+        if self._running or self.engine is None:
             return
         self._running = True
         self.run_button.disabled = True
+        self.run_button.content = "Running…"
+        self.run_button.icon = ft.Icons.HOURGLASS_TOP_ROUNDED
         self._hide_details()
-        self.output_text.value = "Running..."
-        self.output_text.color = self.theme.text_muted
+        self._set_output(ft.Icons.HOURGLASS_TOP_ROUNDED, "Running your code…", self.theme.text_muted)
         self.page.update()
+        if self._pulser:
+            self._pulser.start()
 
         code = self.editor.value or ""
         handle = RunHandle()
         self._run_handle = handle
 
         input_value = self.input_field.value if self.input_field is not None else None
-        self._current_input_value = input_value
         stdin_text = f"{input_value}\n" if input_value is not None else None
 
-        result = await asyncio.to_thread(self.engine.run, code, 8.0, handle, stdin_text, self.exercise)
-        self._on_run_complete(result)
+        try:
+            result = await asyncio.to_thread(
+                self.engine.run, code, DEFAULT_TIMEOUT_SECONDS, handle, stdin_text, self.exercise,
+            )
+        except Exception:
+            logger.exception("Engine %s raised while running exercise %s", self.exercise.language, self.exercise.id)
+            self._finish_running()
+            self._set_output(ft.Icons.ERROR_OUTLINE_ROUNDED,
+                             "The runner hit an internal error. Details were written to the app log.", self.theme.danger)
+            self.page.update()
+            return
 
-    def _on_run_complete(self, result: ExecutionResult) -> None:
+        outcome = evaluate_run(result, self.exercise, code, input_value)
+        self._render_outcome(outcome)
+
+    def _finish_running(self) -> None:
         self._running = False
+        if self._pulser:
+            self._pulser.stop()
         self.run_button.disabled = False
+        self.run_button.content = "Run"
+        self.run_button.icon = ft.Icons.PLAY_ARROW_ROUNDED
 
-        if result.blocked:
-            self._show_output(result.blocked_message or "This toolchain isn't available.", self.theme.danger)
-            self.page.update()
-            return
+    def _render_outcome(self, outcome: RunOutcome) -> None:
+        self._finish_running()
+        theme = self.theme
+        icon, tone = _VERDICT_STYLE[outcome.verdict]
+        color = {"success": theme.success, "warning": theme.warning, "danger": theme.danger}[tone]
+        self._set_output(icon, outcome.message, color, raw=outcome.raw, details_label=outcome.details_label)
 
-        if result.timed_out:
-            self._show_output("Timed out -- check for a loop that never terminates.", self.theme.danger)
-            self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_timeout")
-            self._maybe_show_practice()
-            self.page.update()
-            return
-
-        if not result.success:
-            friendly, hint = translate_error(result.stderr, self.exercise.language)
-            line = extract_error_line_number(result.stderr, self.exercise.language)
-            if line:
-                friendly = f"{friendly} (line {line})"
-            self._show_output(f"{friendly}\n{hint}", self.theme.danger, raw=result.stderr)
-            self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_error", result.stderr[-200:])
-            self._maybe_show_practice()
-            self.page.update()
-            return
-
-        output_ok = validate_output(
-            result.stdout, self.exercise.expected_output,
-            input_value=self._current_input_value,
-            expected_output_pattern=self.exercise.expected_output_pattern,
-        )
-        contains_ok = (
-            validate_contains(self.editor.value or "", self.exercise.contains_patterns)
-            if self.exercise.contains_patterns else True
-        )
-
-        if output_ok and contains_ok:
-            self._show_output(result.stdout or "(no output)", self.theme.success)
+        if outcome.passed:
             self._on_success()
-        elif output_ok and not contains_ok:
-            self._show_output(
-                f"{result.stdout or '(no output)'}\n\nOutput matches, but try using what this exercise is "
-                "actually teaching -- not just a direct answer.",
-                self.theme.warning,
-            )
-        else:
-            diff_text = None
-            if not self.exercise.expected_output_pattern:
-                expected_display = self.exercise.expected_output
-                if self._current_input_value is not None and "{input}" in expected_display:
-                    expected_display = expected_display.replace("{input}", self._current_input_value)
-                diff_text = diff_output(expected_display, result.stdout)
-            self._show_output(
-                f"{result.stdout or '(no output)'}\n\nNot quite the expected output yet.",
-                self.theme.warning,
-                raw=diff_text,
-                details_label="Show expected vs. actual",
-            )
-            self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_wrong_output", result.stdout[-200:])
+        elif outcome.event_type:
+            self.state.progress.log_event(self.state.language, self.exercise.id, outcome.event_type, outcome.event_detail)
+            self._record_review_failure()
             self._maybe_show_practice()
         self.page.update()
+
+    def _record_review_failure(self) -> None:
+        """A wrong attempt at an exercise that was already passed once is a
+        failed review: bring it back tomorrow. Only the first failure per
+        visit is counted, so retrying in the same sitting isn't punished."""
+        if not self._was_completed or self._review_failed:
+            return
+        self._review_failed = True
+        self.state.progress.schedule_review(self.state.language, self.exercise.id, passed=False)
 
     def _on_reset(self, e) -> None:
         self.editor.value = self.exercise.starter_code.strip()
@@ -471,9 +473,9 @@ class _ExerciseController:
             self.input_field.value = ""
         self._hide_details()
         self.practice_container.visible = False
-        self.output_text.value = "Press Run to see what happens."
-        self.output_text.color = self.theme.text_muted
+        self._set_output(ft.Icons.TERMINAL, "Press Run to see what happens.", self.theme.text_muted)
         self.reward_card.visible = False
+        prepare_pop(self.reward_card)
         self._passed = False
         self.page.update()
 
@@ -485,10 +487,7 @@ class _ExerciseController:
         progress = self.state.progress
         now_bookmarked = not progress.is_bookmarked(self.state.language, self.exercise.id)
         progress.set_bookmarked(self.state.language, self.exercise.id, now_bookmarked)
-        self.bookmark_button.content = "★ Bookmarked" if now_bookmarked else "☆ Bookmark"
-        self.bookmark_button.style = ft.ButtonStyle(
-            bgcolor=self.theme.warning if now_bookmarked else self.theme.text_muted, color="#FFFFFF",
-        )
+        self.bookmark_button.selected = now_bookmarked
         self.page.update()
 
     def _on_save_note(self, e) -> None:
@@ -500,17 +499,21 @@ class _ExerciseController:
         if not self.exercise.hints:
             return
         hint = self.exercise.hints[self._hint_index % len(self.exercise.hints)]
-        self.hint_text.value = f"Hint: {hint}"
+        self.hint_text.value = f"Hint {self._hint_index % len(self.exercise.hints) + 1} of {len(self.exercise.hints)}: {hint}"
+        self.hint_box.visible = True
         self.state.progress.log_event(self.state.language, self.exercise.id, "hint_used", hint)
         self._hint_index += 1
         self.page.update()
 
     # -- output helpers -------------------------------------------------
-    def _show_output(
-        self, text: str, color: str, raw: Optional[str] = None, details_label: str = "Show raw output",
-    ) -> None:
+    def _set_output(self, icon: ft.IconData, text: str, color: str, raw: Optional[str] = None,
+                    details_label: str = "Show raw output") -> None:
+        self.output_icon.icon = icon
+        self.output_icon.color = color
         self.output_text.value = text
         self.output_text.color = color
+        self.output_box.border = ft.Border.all(1, tint(color, 0.45))
+        self.output_box.bgcolor = tint(color, 0.06) if color != self.theme.text_muted else self.theme.surface
         if raw:
             self.details_button.content = details_label
             self.details_button.visible = True
@@ -526,8 +529,6 @@ class _ExerciseController:
         self.details_button.visible = False
         self.details_container.visible = False
 
-    _PRACTICE_THRESHOLD = 3
-
     def _maybe_show_practice(self) -> None:
         failures = self.state.progress.get_recent_failure_count(self.state.language, self.exercise.id)
         if failures < self._PRACTICE_THRESHOLD:
@@ -537,11 +538,8 @@ class _ExerciseController:
         if not suggestions:
             return
         self.practice_row.controls = [
-            ft.Button(
-                ex.title, height=36,
-                on_click=lambda _e, eid=ex.id: self.page.go(f"/lesson/{eid}"),
-                style=ft.ButtonStyle(bgcolor=self.theme.warning, color="#FFFFFF"),
-            )
+            button(ex.title, lambda _e, eid=ex.id: self.page.go(f"/lesson/{eid}"), self.theme, "warning", height=36,
+                   icon=ft.Icons.SCHOOL_ROUNDED)
             for ex in suggestions
         ]
         self.practice_container.visible = True
@@ -565,12 +563,34 @@ class _ExerciseController:
         earned_badges.extend(evaluate_lesson_completion_achievements(
             progress, self.state.exercise_engine(), self.state.language, self.exercise.category,
         ))
+        logger.info("Completed %s/%s (+%d XP, badges=%s)", self.state.language, self.exercise.id,
+                    self.exercise.xp_reward, earned_badges)
 
-        self.reward_text.value = f"Nice work! +{self.exercise.xp_reward} XP"
-        self.achievement_text.value = (
-            "Achievement unlocked: " + ", ".join(b.replace("_", " ").title() for b in earned_badges)
-            if earned_badges else ""
+        review = progress.schedule_review(self.state.language, self.exercise.id, passed=True)
+        elapsed = int(time.monotonic() - self._opened_at)
+        is_best = progress.record_solve_time(self.state.language, self.exercise.id, elapsed)
+        if self._best_seconds is None:
+            time_note = f"Solved in {format_duration(elapsed)}"
+        elif is_best:
+            time_note = f"Solved in {format_duration(elapsed)} -- new personal best (was {format_duration(self._best_seconds)})"
+        else:
+            time_note = f"Solved in {format_duration(elapsed)} · best {format_duration(self._best_seconds)}"
+        self.reward_review_text.value = (
+            f"{time_note}\nNext review in {review.interval_days} day{'s' if review.interval_days != 1 else ''} "
+            f"({review.due_date}) · review streak {review.review_streak}"
         )
+        if earned_badges:
+            self.reward_title.value = "Achievement unlocked!"
+        elif is_best and self._best_seconds is not None:
+            self.reward_title.value = "New personal best!"
+        else:
+            self.reward_title.value = "Still got it!" if self._was_completed else "Nice work!"
+        self._best_seconds = elapsed if self._best_seconds is None else min(self._best_seconds, elapsed)
+        self.reward_xp_text.value = "+0 XP"
+        self.achievement_row.controls = [
+            chip(b.replace("_", " ").title(), WHITE, self._fs, icon=ft.Icons.MILITARY_TECH_ROUNDED)
+            for b in earned_badges
+        ]
 
         completed_ids = set(progress.get_completed_lesson_ids(self.state.language))
         if self.state.lesson_return_route == "/daily":
@@ -581,6 +601,10 @@ class _ExerciseController:
                 (ex for ex in self.state.daily_refresher_exercises() if ex.id not in completed_ids),
                 None,
             )
+        elif self.state.lesson_return_route == "/review":
+            # Inside the Review Queue, "next" is the next due review (this
+            # one was just rescheduled, so it no longer appears in the list).
+            next_exercise = next((ex for ex in self.state.due_review_exercises() if ex.id != self.exercise.id), None)
         else:
             next_exercise = self.state.exercise_engine().next_unlocked_in_category(
                 self.exercise.category, completed_ids,
@@ -590,7 +614,10 @@ class _ExerciseController:
 
         self.reward_card.visible = True
         self.page.update()
-        self.page.run_task(self._content_column.scroll_to, offset=-1, duration=400)
+        pop_in(self.page, self.reward_card)
+        confetti(self.page, self.confetti, self.theme)
+        self.page.run_task(count_up, self.reward_xp_text, self.exercise.xp_reward, fmt="+{n} XP", duration=0.9)
+        self.page.run_task(self._content_column.scroll_to, offset=-1, duration=500)
 
     def _on_next(self, e) -> None:
         if self._next_exercise_id:
@@ -599,5 +626,10 @@ class _ExerciseController:
     def _on_menu(self, e) -> None:
         if self._run_handle is not None:
             self._run_handle.cancel()
-        self.page.on_keyboard_event = None
+        if self._pulser:
+            self._pulser.stop()
         self.page.go(self.state.lesson_return_route)
+
+
+def _extension(language: str) -> str:
+    return {"python": "py", "ai": "py", "java": "java", "spring": "java", "cpp": "cpp", "node": "js"}.get(language, "txt")

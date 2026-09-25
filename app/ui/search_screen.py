@@ -9,10 +9,25 @@ from typing import Optional
 import flet as ft
 
 from app.engine.categories import get_category_meta
+from app.engine.exercise import DIFFICULTIES
 from app.ui.app_state import AppState
+from app.ui.components import (
+    RADIUS_SM,
+    button,
+    button_style,
+    chip,
+    difficulty_color,
+    difficulty_label,
+    empty_state,
+    emoji_circle,
+    header_row,
+    route_handler,
+    spacer,
+    tint,
+    view_padding,
+)
+from app.ui.motion import hover_lift
 from app.ui.theme import scaled
-
-_DIFFICULTIES = ["warmup", "core", "gotcha", "deep_dive"]
 
 
 def build_search_view(page: ft.Page, state: AppState) -> ft.View:
@@ -35,28 +50,20 @@ class _SearchController:
 
     def build_view(self) -> ft.View:
         theme = self.theme
-        header = ft.Row(
-            [
-                ft.Button(
-                    "← Hub", on_click=lambda _e: self.page.go("/hub"), height=44,
-                    style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
-                ),
-                ft.Text(
-                    "Search Exercises", size=self._fs(24), weight=ft.FontWeight.BOLD,
-                    color=theme.primary, expand=True,
-                ),
-            ],
-            spacing=12,
-        )
+        header = header_row(theme, self._fs, "Search Exercises", route_handler(self.page, "/hub"), back_label="← Hub",
+                            icon=ft.Icons.SEARCH_ROUNDED, subtitle=f"{len(self.engine)} exercises in this track")
 
         self.search_field = ft.TextField(
             hint_text='Search by title, objective, or concept (e.g. "closures")...',
-            on_change=self._on_query_change, autofocus=True,
+            on_change=self._on_query_change, autofocus=True, prefix_icon=ft.Icons.SEARCH_ROUNDED,
+            border_radius=14, bgcolor=theme.card, border_color=tint(theme.text, 0.12),
+            focused_border_color=theme.primary, text_size=self._fs(15),
         )
 
         filter_buttons = [self._make_difficulty_button(None, "All")]
-        filter_buttons.extend(self._make_difficulty_button(d, d.replace("_", " ").title()) for d in _DIFFICULTIES)
+        filter_buttons.extend(self._make_difficulty_button(d, difficulty_label(d)) for d in DIFFICULTIES)
 
+        self.count_text = ft.Text("", size=self._fs(12), color=theme.text_muted)
         self.results_column = ft.Column([], spacing=8)
         self._render_results()
 
@@ -64,12 +71,13 @@ class _SearchController:
             route="/search",
             bgcolor=theme.bg,
             scroll=ft.ScrollMode.AUTO,
-            padding=ft.padding.Padding.only(left=24, top=24, right=24, bottom=40),
+            padding=view_padding(),
             controls=[
-                header,
+                header, spacer(8),
                 self.search_field,
-                ft.Row(filter_buttons, spacing=8, wrap=True),
-                ft.Container(height=8),
+                ft.Row([*filter_buttons, self.count_text], spacing=8, wrap=True,
+                       vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                spacer(8),
                 self.results_column,
             ],
         )
@@ -81,18 +89,16 @@ class _SearchController:
             self.difficulty_filter = difficulty
             for d, b in self.difficulty_buttons.items():
                 b.disabled = d == difficulty
-                b.style = ft.ButtonStyle(
-                    bgcolor=theme.primary if d == difficulty else theme.text_muted, color="#FFFFFF",
-                )
+                b.style = button_style(theme, "primary" if d == difficulty else "ghost")
             self._render_results()
             self.page.update()
 
-        button = ft.Button(
-            label, on_click=on_click, height=36, disabled=difficulty is None,
-            style=ft.ButtonStyle(bgcolor=theme.primary if difficulty is None else theme.text_muted, color="#FFFFFF"),
+        control = button(
+            label, on_click, theme, "primary" if difficulty is None else "ghost",
+            height=36, disabled=difficulty is None,
         )
-        self.difficulty_buttons[difficulty] = button
-        return button
+        self.difficulty_buttons[difficulty] = control
+        return control
 
     def _on_query_change(self, e: ft.ControlEvent) -> None:
         self._render_results()
@@ -102,12 +108,14 @@ class _SearchController:
         theme = self.theme
         query = self.search_field.value or ""
         results = self.engine.search(query, difficulty=self.difficulty_filter)
+        self.count_text.value = f"{len(results)} result{'s' if len(results) != 1 else ''}" if (query or self.difficulty_filter) else ""
 
         if not results:
-            self.results_column.controls = [ft.Text(
-                "No matching exercises." if query or self.difficulty_filter
-                else "Type to search, or pick a difficulty above.",
-                size=self._fs(13), color=theme.text_muted,
+            self.results_column.controls = [empty_state(
+                theme, self._fs, ft.Icons.SEARCH_ROUNDED,
+                "No matching exercises" if query or self.difficulty_filter else "Type to search",
+                "Try a different word, or pick a difficulty above." if query or self.difficulty_filter
+                else "Titles, objectives and concept tags are all searched.",
             )]
             return
 
@@ -116,27 +124,35 @@ class _SearchController:
             meta = get_category_meta(ex.category)
             unlocked = self.engine.is_unlocked(ex, self.completed_ids)
             done = ex.id in self.completed_ids
-            status = "✓ Done" if done else ("🔒 Locked" if not unlocked else "")
-            rows.append(ft.Container(
+            if done:
+                status: ft.Control = chip("Done", theme.success, self._fs, icon=ft.Icons.CHECK_CIRCLE_ROUNDED)
+            elif not unlocked:
+                status = chip("Locked", theme.text_muted, self._fs, icon=ft.Icons.LOCK_ROUNDED)
+            else:
+                status = ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, color=theme.text_muted, size=self._fs(22))
+            row = ft.Container(
                 content=ft.Row(
                     [
-                        ft.Text(meta.icon, size=self._fs(18)),
+                        emoji_circle(meta.icon, meta.color, self._fs, size=42, text_size=18),
                         ft.Column(
                             [
-                                ft.Text(ex.title, size=self._fs(14), weight=ft.FontWeight.BOLD, color=theme.text),
-                                ft.Text(
-                                    f"{meta.title} · {ex.difficulty.replace('_', ' ').title()}",
-                                    size=self._fs(11), color=theme.text_muted,
-                                ),
+                                ft.Text(ex.title, size=self._fs(14), weight=ft.FontWeight.BOLD,
+                                        color=theme.text if unlocked else theme.text_muted),
+                                ft.Row([
+                                    chip(meta.title, meta.color, self._fs),
+                                    chip(difficulty_label(ex.difficulty), difficulty_color(theme, ex.difficulty), self._fs),
+                                ], spacing=6, wrap=True),
                             ],
-                            spacing=2, expand=True,
+                            spacing=4, expand=True,
                         ),
-                        ft.Text(status, size=self._fs(12), color=theme.success if done else theme.warning),
+                        status,
                     ],
-                    spacing=10,
+                    spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                bgcolor=theme.card, border_radius=10, padding=14,
+                bgcolor=theme.card, border_radius=RADIUS_SM + 2, padding=ft.Padding.symmetric(horizontal=14, vertical=12),
+                border=ft.Border.all(1, tint(meta.color, 0.25)),
                 on_click=(lambda _e, eid=ex.id: self.page.go(f"/lesson/{eid}")) if unlocked else None,
                 ink=unlocked, opacity=1.0 if unlocked else 0.6,
-            ))
+            )
+            rows.append(hover_lift(row, theme, scale=1.01, glow_color=meta.color) if unlocked else row)
         self.results_column.controls = rows

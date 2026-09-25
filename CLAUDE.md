@@ -1,118 +1,114 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository. This file holds
+the conventions that apply to every task. The mechanics of each subsystem
+live in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and the design in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); read the relevant section
+there before extending a subsystem, and update it in the same change.
 
 ## What this is
 
-"Coding Adventure" — an offline, GUI-based coding refresher app for **professionals**, not beginners. Covers seven tracks — Python, Java, C++, Spring, Node.js, AI, and Architecture — one at a time, chosen from a language picker shown on every launch (not auto-skipped). Built as a sibling to `../python-adventure-kids` (a kids' Python-learning app), reusing its architecture patterns (YAML-as-content, subprocess execution engine, SQLite progress store, Flet route-dispatcher UI) but retargeted for a professional audience and multi-language from day one. Single UI stack: **Flet only** (the old app's CustomTkinter/Flet dual-stack was a migration artifact, not something worth repeating here).
+"Coding Adventure" is an offline, Flet-only desktop app: a coding
+refresher for **professionals**, not beginners. Seven tracks (Python,
+Java, C++, Spring, Node.js, AI, Architecture), picked from a language
+picker shown on **every** launch by design. Exercises run the user's own
+code with the real local toolchain; the framing is crash-containment,
+never a safety sandbox.
 
 ## Commands
 
-Run all from the repo root, using the project venv at `.venv\Scripts\python.exe` (created by `run_app_window_mode.bat`/`.sh` on first launch).
+Run from the repo root with the project venv (`.venv\Scripts\python.exe`,
+created by `run_app_window_mode.bat`/`.sh` on first launch).
 
 ```powershell
-# Run the app (native desktop window)
-.venv\Scripts\python.exe main.py
+.venv\Scripts\python.exe main.py            # desktop window
+.venv\Scripts\python.exe main_web.py        # browser preview (needs requirements-web.txt)
 
-# Run the app (browser preview -- one-off UI review only, see main_web.py's docstring)
-.venv\Scripts\python.exe main_web.py
-
-# Full test suite
-.venv\Scripts\python.exe -m pytest tests\ -v
-
-# A single test file / test
-.venv\Scripts\python.exe -m pytest tests\test_lesson_engine.py -v
+.\scripts\dev.ps1 all                       # lint + test + coverage  (bash: scripts/dev.sh all)
+.\scripts\dev.ps1 test                      # pytest only
+.\scripts\dev.ps1 content                   # content-lint tests only
 .venv\Scripts\python.exe -m pytest tests\test_lesson_engine.py::test_name -v
 ```
 
-There is no linter or formatter configured in this repo (no ruff/flake8/black/mypy config) — don't invent commands for one.
+Linting is `ruff check` with the rule set in `pyproject.toml`; there is
+no formatter. Developer tools come from `requirements-dev.txt`. Do not
+run the gates yourself -- ask the user to run `.\scripts\dev.ps1 all`
+and read `scripts\logs\*.log`.
 
-## Architecture
+## Architecture in one screen
 
-### Content is data, not code
+- **Content is data.** One YAML file per exercise under
+  `content/<language>/lessons/`; quiz banks in `content/<language>/quiz/`.
+  Adding or changing an exercise never touches app code. User-added
+  content overlays from `data/custom/<language>/lessons/`. All content is
+  validated at load time (`app/engine/content_loader.py`,
+  `Exercise.__post_init__`) and by `tests/test_content_lint.py`.
+- **Engines.** `app/engine/` loads content and holds every decision that
+  is not rendering: unlock rules, daily refresher, search,
+  `run_evaluation.evaluate_run()` (pass/fail as a pure function).
+- **Execution.** `app/execution/` has one `ExecutionEngine` per language
+  on top of `base.run_subprocess()`. `registry.py` exposes factories;
+  `AppState.execution_engine()` owns the instances. `ai` reuses Python's
+  engine class; `architecture` has none (every exercise is
+  `requires_code: false` and completes via a comprehension check).
+- **Progress.** `app/progress/store.py` is SQLite, every table keyed by
+  `language`. Timestamps are UTC; calendar days ("played today", daily
+  picks, heatmap) are the user's local date via `app/config/clock.py`.
+  Streaks are recorded only on completion, never on opening a screen;
+  a freeze token (earned every 7 days, max 3) bridges one missed day.
+  Schema additions to existing tables go through `_COLUMN_MIGRATIONS`.
+  Passed exercises enter a spaced-repetition schedule
+  (`review_schedule`, `schedule_review()`); a failed attempt counts
+  against it only if the exercise was already completed before.
+- **UI.** `app/ui/app_window.py` is a route table that rebuilds exactly
+  one view per navigation and clears page-level handlers first.
+  `AppState` is threaded explicitly into every view builder -- no module
+  globals. Shared widgets (buttons, cards, hero banners, nav tiles,
+  chips, rings, `MultipleChoiceCard`) live in `app/ui/components.py`;
+  animation helpers (`Stagger`, `hover_lift`, `pop_in`, `Pulser`,
+  `count_up`, `confetti`) in `app/ui/motion.py`. Use them instead of
+  inline `ft.ButtonStyle(...)` or hand-rolled animations. Colours come
+  only from the `ThemePreset` (plus `LanguageInfo.color` /
+  `CATEGORY_META.color`).
+- **Config.** `app/config/paths.py` is the single definition of the repo
+  layout; `logging_setup.py` writes `data/logs/app.log`; `settings.py`
+  quarantines a corrupt settings file instead of silently resetting.
 
-Exercises live as YAML files under `content/<language>/lessons/` (one file per exercise), loaded by `ExerciseEngine._load()` (`app/engine/lesson_engine.py`) into `Exercise` dataclass instances (`app/engine/exercise.py`). **Adding or changing an exercise never requires touching app code** — add a YAML file. One `ExerciseEngine` instance exists per language track (`AppState.exercise_engine()` builds and caches them lazily — see `app/ui/app_state.py`). Key `Exercise` fields beyond the obvious: `language` (which track it belongs to), `category`/`category_level` (topic-browser placement, 1-based position within category), `difficulty` (warmup/core/gotcha/deep_dive, purely descriptive), `expected_output` / `expected_output_pattern` (exact-match vs. regex, for exercises with non-deterministic output), `input_prompt` (stdin-fed answer box), `contains_patterns` (structural check via regex against raw source — a language-agnostic replacement for the kids app's Python-AST-only `ast_contains`, since this app needs the same field to work for Java/C++/Spring/Node content too), `spring_test_code` (Spring-only: the fixed JUnit test class source that gates completion, since a Spring exercise isn't a single self-contained code string the way the others are — see the Execution section), `requires_code` / `comprehension_check` (used by every exercise in the `architecture` track, plus the `ai` track's `microsoft_agent_365` category: `requires_code=False` skips the code editor/Run button entirely in favor of an inline multiple-choice comprehension check that gates completion instead — see the Execution section for what that changes about `lesson_screen.py`).
+## Conventions for changes
 
-Quiz questions work the same way: `content/<language>/quiz/quiz_questions.yaml`, loaded by `QuizEngine` (`app/engine/quiz_engine.py`) into `QuizQuestion` instances (`app/engine/quiz.py`).
+- **Adding a screen**: one module in `app/ui/` plus one line in
+  `app_window.py`'s route table. Build it from `components.py`.
+- **Adding a language**: follow the `add-language-content` skill; it is
+  content + one engine + one `ENGINE_FACTORIES` entry + a
+  `toolchain_check` entry + `CATEGORY_META` entries.
+- **Adding content**: run `.\scripts\dev.ps1 content`. Category levels
+  must run 1..N without gaps; code exercises need `expected_output` or
+  `expected_output_pattern`; conceptual ones need at least two
+  four-option questions.
+- **Errors**: say what failed, which file/value, and what to do. Content
+  errors must carry the file path (`ContentError`). Never let a
+  structural problem surface as an `IndexError` at click time.
+- **Tests**: mirror the source layout; cover what you touch, including
+  the error path. Do not assert exact content counts -- assert
+  invariants (see `test_content_lint.py`).
+- **Docs**: behaviour changes update `docs/DEVELOPMENT.md` (mechanics)
+  and, if a design rule changed, `docs/ARCHITECTURE.md` §7. Keep this
+  file to conventions and pointers.
+- **Dependencies**: runtime pins in `requirements.txt`, dev pins in
+  `requirements-dev.txt`, web-preview pins in `requirements-web.txt`,
+  loose specs in `pyproject.toml`. A bump is its own change.
+- **Knowledge graph**: `graphify-out/` exists. Query it before grepping
+  for cross-file questions; after code changes ask the user to run
+  `python -m graphify update .` (never rebuild to answer a question).
 
-### One flat topic browser, no guided "main path" chaining
+## Product decisions that look like bugs but are not
 
-Unlike the kids app's "Today's Mission" (a strict `next_lesson_id`-chained sequence), this app has no single guided curriculum order. Two ways to reach an exercise:
-
-1. **Daily Refresher** — `ExerciseEngine.daily_refresher(completed_ids, count)` computes a cross-topic set live on every call, round-robining the next unlocked/incomplete exercise from each category so a short daily session naturally touches every topic instead of grinding one at a time. `count` defaults to 5 but is user-configurable (`Settings.daily_refresher_size`, set from the Settings screen); `app/ui/app_state.py`'s `resolve_daily_refresher()` wraps the engine call and persists that day's picks (`ProgressStore.save_daily_refresher_picks`/`get_daily_refresher_picks`), so the set is a stable, finishable checklist for the rest of the calendar day rather than reshuffling on every visit — a changed size takes effect the next time a fresh set is generated (tomorrow, or today if nothing's been picked yet). `resolve_daily_refresher()` also reserves up to one slot (`_REVIEW_SLOT_COUNT`) for a spaced-review item — an exercise completed at least 14 days ago (`ProgressStore.get_lessons_due_for_review()`), oldest first — only when something genuinely qualifies, so a freshly-started track fills every slot with fresh picks instead.
-2. **Practice by Topic / Gotcha Gauntlet** — every exercise has a `category` + 1-based `category_level`; `ExerciseEngine.categories()`/`lessons_in_category()` group and order them, `is_unlocked()` derives lock state purely from `completed_lesson_ids` (a level unlocks once every earlier `category_level` in the same category is complete — no separate unlock-tracking schema). Category display metadata (title/icon/color) is in `app/engine/categories.py`'s `CATEGORY_META`; a category with no entry falls back to `DEFAULT_META`, but the category itself still works since the real set of categories is derived entirely from what's present in lesson YAML. The "Gotcha Gauntlet" flagship debug-puzzle track is just a category (`gotcha_gauntlet`) that gets its own top-level card in the track hub instead of being buried in the plain category browser.
-
-### Seven tracks, not five
-
-`ai` and `architecture` joined the original five (Python/Java/C++/Spring/Node.js) as full top-level tracks in `app/engine/languages.py`'s `LANGUAGE_ORDER` — both are language-agnostic enough (ML/RAG/agentic-framework/MCP mechanics; system-design patterns) that nesting them as a category inside an existing track was the wrong fit, so each gets its own card on the language picker, its own independent XP/streak/progress, and (for `ai`) its own execution wiring rather than living inside Python's content directory.
-
-- **`ai`** (`content/ai/lessons/`, 9 categories, 50 exercises each except `microsoft_agent_365` at 5, 405 total) is plain, dependency-free Python under the hood — no numpy, no network access, no LLM calls, keeping it as offline and deterministic as every other track. `ml_fundamentals`/`rag`/`agentic_frameworks`/`mcp` (the original four) are code exercises hand-rolling the underlying mechanics; `langchain`/`langgraph`/`langsmith`/`solace_agent_mesh` are also code exercises, hand-rolling *that framework's* core mechanic in pure Python (a minimal `Runnable`/`|` composition, a graph executor with nodes/edges/cycles, a span tree/tracer, hierarchical topic-based pub/sub delivery) rather than importing the real library, keeping the same offline/deterministic guarantee — each category runs high-level (the framework's foundational idea) to low-level (its most granular mechanic) across its levels, with a `<category>_master` achievement on each category's final (`category_level=50`) exercise. `microsoft_agent_365` is the one **`requires_code=False`** category in this track (see below), deliberately kept at 5 exercises rather than expanded like the rest — Microsoft Agent 365's AI Agent Control Tower is an enterprise governance product with no hand-codeable mechanic, so it's conceptual/comprehension-check content instead, the same shape as the `architecture` track. `app/execution/registry.py` maps `"ai"` to the *exact same* `PythonEngine`/`PythonInProcessEngine` instance registered for `"python"` (`_ENGINES["ai"] = _ENGINES["python"]`), rather than a separate implementation — there's nothing language-specific to execute differently. `app/execution/errors.py`'s `translate_error()` treats `"ai"` identically to `"python"` for the same reason (the stderr it sees is genuine CPython traceback text either way); `extract_error_line_number()` already fell through to the Python pattern for any unrecognized language, so it needed no change.
-- **`architecture`** (`content/architecture/lessons/`, 10 categories — `event_driven_architecture`, `microservices`, `cqrs`, `saga_pattern`, `strangler_fig`, `domain_driven_design`, `hexagonal_architecture`, `api_gateway`, `circuit_breaker`, `idempotency`, 5 exercises each, low-to-high-level within a topic — e.g. Circuit Breaker runs from the core open/closed/half-open state machine through fallback strategies, bulkheads, threshold tuning, and finally "when it's overkill") is the one track with **`requires_code=False` on every exercise** — see the Execution section below for what that changes about `lesson_screen.py`, and why this track needs no entry in `app/execution/registry.py`'s `_ENGINES` at all (nothing ever calls `get_engine("architecture")`, since the code-editor/Run-button code path — the only caller — is skipped entirely for these exercises). `check_toolchain("architecture")` still resolves to `available=True` (an explicit entry in `toolchain_check.py`, though the dict's own missing-key fallback would already return the same result), so the language picker shows it the same as any fully-available track. Every topic's last (`category_level=5`) exercise closes on a deliberate "when this pattern is overkill" lesson — a recurring theme across this track's content: each pattern earns its cost only once its specific underlying problem is actually present, and reaching for it reflexively is itself the mistake being taught.
-- **`ai` and `architecture` are always fully unlocked** — `app/engine/lesson_engine.py`'s `ALWAYS_UNLOCKED_LANGUAGES = {"architecture", "ai"}` constant is checked unconditionally (any platform, not just Android) as the first branch inside `is_unlocked()`, before the pre-existing `MOBILE_ALWAYS_UNLOCKED_LANGUAGES` Android-specific check. This is a deliberate product decision (not a mobile-only compromise like the Android bypass): every exercise in both tracks is browsable and completable in any order from the start, since neither track's content has a genuine prerequisite-chain reason to gate progression.
-
-### Execution: real local toolchains, not a safety sandbox
-
-`app/execution/` — one `ExecutionEngine` subclass per language (`app/execution/base.py` defines the ABC and the shared `ExecutionResult`/`RunHandle` contract). Framing is deliberately **crash-containment, not child safety**: exercises run the user's own code, on their own machine, on purpose — there's no adversarial threat model to defend against the way the kids app's AST-based builtins/import allowlist had to. A timeout and subprocess isolation exist so a runaway loop can't hang the UI, not to sandbox against malice. `ExecutionEngine.run()` also takes an optional `exercise: Optional[Exercise] = None` keyword param — unused by the single-file engines (Python/Java/C++/Node), but required by `SpringEngine` to look up the exercise's fixed test source, since a Spring exercise isn't a single self-contained code string the way the others are. `lesson_screen.py` passes `self.exercise` on every call regardless of language, except for `requires_code=False` exercises (the `architecture` track, plus `ai`'s `microsoft_agent_365` category — see below), which never reach the run/execution code path at all.
-
-`lesson_screen.py`'s `_ExerciseController` branches on `exercise.requires_code` before doing anything execution-related: when `True` (every exercise except `architecture`'s and `ai`'s `microsoft_agent_365` category), it builds the usual code editor + Run button + Output card and calls `get_engine(exercise.language)` in `__init__`. When `False`, `self.engine` is set to `None`, `get_engine()`/`check_toolchain()` are never called for that exercise at all, and the lesson instead renders a "Comprehension Check" card — a small inline multiple-choice quiz (`exercise.comprehension_check`, same shape as a `QuizQuestion`) reusing the same correct/incorrect-highlighting UX as `quiz_screen.py`. Answering every question correctly in one pass calls the same `_on_success()` every code exercise uses (same XP/achievement/category-unlock flow); any wrong answer requires retrying the whole check from the start via a "Try Again" button. This is why `architecture` needs no entry at all in `app/execution/registry.py`'s `_ENGINES` dict — nothing in the app ever attempts to execute its content (`microsoft_agent_365` still uses `"ai"`'s existing engine entry, since `requires_code` is checked per-exercise, not per-track — the other 8 categories in the `ai` track still need it).
-
-- **`python_engine.py`** — a fast local `compile()` syntax pre-check, then `python -I <file>` in an isolated subprocess with a timeout (default 8s) and stdin piped through (always fed, even `""`, so a stray `input()` fails fast with `EOFError` instead of hanging). Cancelable mid-run via `RunHandle`.
-- **`java_engine.py`** — detects the submitted code's class name (`public class X`, falling back to the first `class X` found, defaulting to `Solution`), writes it to `<ClassName>.java`, compiles with `javac` (a compile error returns the same `ExecutionResult` shape as a runtime failure — `success=False`, raw compiler output in `stderr`), then runs `java -cp <dir> <ClassName>` under the same timeout/`RunHandle`/stdin contract as the Python engine. Both `javac` and `java` run with `cwd` set to the temp dir and given only the bare filename/class name, so no host path ever leaks into a compiler error or stack trace.
-- **`cpp_engine.py`** — compiles submitted code to a temp `main.cpp` with `g++ -O2 -std=c++17`, then runs the resulting binary under the same timeout/`RunHandle`/stdin contract as the other engines. A crashed C++ binary (segfault, div-by-zero, stack overflow, abort) usually prints nothing useful to stderr on its own — `_describe_crash(returncode)` translates the common Windows NTSTATUS codes (`0xC0000005` access violation, `0xC0000094` divide-by-zero, `0xC00000FD` stack overflow, `0xC0000409` abort/uncaught-exception, ...) and POSIX signal numbers (`SIGSEGV`/`SIGFPE`/`SIGABRT`/`SIGILL`) into a synthetic stderr line, but only when stderr is otherwise empty (an uncaught `std::exception`'s own `what()` output is left alone).
-- **`node_engine.py`** — no separate compile step (unlike Java/C++) — submitted code is written to a temp `exercise.js` and run directly with `node <file>` under the same timeout/`RunHandle`/stdin contract as the other single-file engines; a syntax error just surfaces as Node's own stderr output when the file is run, same as Python's interpreter. Stdin is always fed (even `""`), though idiomatic Node code reads it asynchronously via `readline` rather than a blocking call the way Python's `input()`/Java's `Scanner` do.
-- **`spring_engine.py`** — the one engine that isn't a single-file compile-and-run. Copies the shared scaffold at `content/spring/scaffold/pom.xml` into a temp Maven project, writes the submitted code under `src/main/java/com/codingadventure/exercise/<DetectedClassName>.java` and the exercise's fixed `spring_test_code` under `src/test/.../<DetectedTestClassName>.java` (class names auto-detected the same way `java_engine.py` does), then runs `mvn.cmd -q -o test` (Windows needs the `.cmd` extension explicitly — `subprocess.Popen` can't launch a bare `.cmd`/batch file the way a shell can) via `Popen` so `RunHandle` cancellation still works. Uses plain Spring Framework (`spring-context`/`spring-test`/`spring-aop`+`aspectjweaver`/`resilience4j-all`), not Spring Boot — no embedded server or autoconfiguration to keep `mvn test` fast (~4s) and fully offline once the scaffold's dependencies are warmed into `~/.m2` once. Maven's own logger writes everything, including `[ERROR]` diagnostics, to **stdout** (never stderr) — `SpringEngine` routes that into `ExecutionResult.stderr` on failure to match the other engines' contract, and returns a synthetic `stdout="BUILD SUCCESS"` on success (every Spring exercise's `expected_output_pattern` is just `"BUILD SUCCESS"`, since the real surefire summary line has non-deterministic content like elapsed time that can't reliably `re.fullmatch`). `_sanitize_path()` strips the temp dir's absolute path out of compiler errors (Maven reports them in both backslash and a `/C:/...` forward-slash form), matching the "no host path leaks" rule the other engines follow structurally.
-- **`app/execution/toolchain_check.py`** — `shutil.which()`-based detection of whether a language's real toolchain (javac/java, g++, mvn, node) is on PATH. `language_select.py` calls this per track to show "Toolchain needed" (with an install hint) instead of "Available" when a track has content but the local machine lacks the compiler/runtime — `JavaEngine.run()`/`CppEngine.run()`/`SpringEngine.run()`/`NodeEngine.run()` also check it themselves and return a `blocked` `ExecutionResult` rather than crashing if the compiler/runtime go missing mid-session. Python needs nothing (bundled with the app's own venv). Note: a toolchain installed mid-session (e.g. via winget) won't be visible to `shutil.which()` until whatever launched the app (VS Code, a terminal) is restarted — Windows doesn't push registry `PATH` changes into already-running processes. `get_install_guide(language)` returns OS-specific (`platform.system()`-keyed) step-by-step install instructions, separate from the short `install_hint` reused inside `blocked_message` — `language_select.py` shows these steps in a dialog when a "Toolchain needed" card is clicked, with a "Continue anyway" button into the hub for anyone who'd rather install manually later.
-- **`scripts/ensure_toolchains.bat`/`.sh`** — called from all four `run_app_*.bat`/`.sh` launchers, right after the venv bootstrap, on every launch. Checks `javac`/`g++` on PATH and, only for whichever is missing, asks a plain `[y/N]` question before installing anything (never installs without that explicit "y"): `winget` on Windows, Homebrew/`xcode-select --install` on macOS, `apt`/`dnf`/`pacman` (whichever exists) on Linux — the `.sh` variant also handles Git-Bash-on-Windows (`uname -s` matching `MINGW*`/`MSYS*`/`CYGWIN*`) via `winget.exe`, mirroring the `.bat` logic including the MSYS2+mingw-w64-gcc path for C++ and the PATH edit via PowerShell's `[Environment]::SetEnvironmentVariable` (not `setx`, which truncates around 1024 chars). A no-op once both tools are already on PATH.
-- **Android build, Python-only** — `python_inprocess_engine.py` (ported from the sibling kids' app's `app/sandbox/inprocess_runner.py`) replaces `python_engine.py` specifically on Android, since a non-rooted app there can't spawn a sibling OS process the way `subprocess.Popen` does on desktop/web. It runs submitted code with `exec()` in the same process, using an AST transform (`app/execution/watchdog.py`, also ported) that injects a `__codingadventure_tick__()` call into every `for`/`while` loop body — a cooperative watchdog standing in for the `process.kill()` an OS-level timeout would normally provide, since there's no separate process to kill. Deliberately drops the sibling app's AST-based builtins/import allowlist (a kid-safety sandbox this app never needed — see this section's opening paragraph); only the loop-cancellation mechanism was ported, since that solves a structural "no OS process" problem unrelated to trust model. `app/execution/registry.py` selects it automatically via `android_platform.is_android()` (`hasattr(sys, "getandroidapilevel")` — an Android-only CPython attribute; `platform.system()` alone can't tell Android and Linux apart, since both report `"Linux"`). Java/C++/Spring/Node have no mobile variant at all — `check_toolchain()` correctly reports their compiler/runtime as missing on Android. Rather than block those tracks outright, `language_select.py` still lets the user into the hub with the same "Available" badge as any other track (its subtitle explains that running code needs a desktop computer) instead of the normal "Toolchain needed" install-guide dialog, whose winget/brew/apt steps would be nonsensical on a phone — browsing an exercise's explanation/example/challenge and editing code never needs a real toolchain, only actually running code does. `lesson_screen.py` checks `check_toolchain(exercise.language)` itself and disables the Run button specifically (with an explanatory note) when it's unavailable, rather than only failing after a click via `ExecutionResult.blocked` — the same disabling applies equally to a desktop machine that's simply missing a toolchain, not just Android. Because Run is permanently unavailable for these four tracks on Android, `ExerciseEngine.is_unlocked()` (`app/engine/lesson_engine.py`) unconditionally unlocks every category/level for `language in {"java", "cpp", "spring", "node"}` when `is_android()` is true, since normal completion-gated progression would otherwise be permanently stuck at level 1 everywhere (Python is excluded — it genuinely runs, and can genuinely be completed, on Android). `build_apk.sh` (repo root) builds the actual APK via `flet build apk` — needs a real Flutter + Android SDK/NDK install first, which the script assumes is already set up rather than installing itself.
-- **`app/execution/errors.py`** — `translate_error(stderr, language)` maps raw interpreter/compiler output to a concise explanation, keyed off the last Python exception name (`PYTHON_FRIENDLY`) or, for Java, a compile-error-vs-runtime-exception split (`_JAVA_COMPILE_ERROR_RE` vs `_JAVA_EXCEPTION_RE` + `JAVA_FRIENDLY`), or, for C++, `_translate_cpp_error()` (compile error → uncaught `std::exception` with its `what()` text → the specific "thread destroyed while still joinable" `std::terminate` message → the synthetic crash-note line from `cpp_engine.py` → a generic fallback, checked in that order via `CPP_FRIENDLY` keyed by standard exception type), or, for Spring, `_translate_spring_error()` (compile error → JUnit `AssertionFailedError` with its expected/actual detail extracted → a known Spring DI exception type via `SPRING_FRIENDLY` — `NoSuchBeanDefinitionException`, `BeanCreationException`, etc. — → a generic fallback), or, for Node, `_translate_node_error()` (matches `^(\w+)(?:\s*\[\w+\])?: (.+)$` against Node's own uncaught-exception printer output — the optional bracketed group handles `node:assert`'s `AssertionError [ERR_ASSERTION]: ...` shape — then looks the exception type up in `NODE_FRIENDLY`). `extract_error_line_number(stderr, language)` similarly branches on the Python `File "<exercise>", line N` frame, Java's `.java:N` pattern, C++'s `main.cpp:N:` pattern, Spring's `.java:N` pattern (same regex as Java, but taking the **first** match rather than the last — JUnit's reflection-based test invocation appends `java.base` frames like `ArrayList.java:1596` *after* the actual test file's frame, so "last match" picks a JDK-internal line instead of the real one), or Node's `^<exercise>:(\d+)$` header line (the file:line Node prints once, above the source excerpt, before falling back to the first `<exercise>:N:M` stack-frame match if that header isn't present — e.g. when the throw originates inside a Node built-in module like `node:assert`).
-
-### Output validation
-
-`app/engine/validator.py`: `validate_output()` compares sandboxed stdout against `Exercise.expected_output` (supports a `{input}` placeholder templated from what the user typed) or, for exercises with genuinely non-deterministic output, `expected_output_pattern` (a regex). `validate_contains()` is a language-agnostic replacement for the kids app's Python-AST-only structural check — plain regex search against the raw submitted source, checking `Exercise.contains_patterns` (e.g. requiring a specific stdlib call the exercise is actually teaching, not just a correct-by-coincidence answer).
-
-### Data storage
-
-Fully offline, no network/cloud/accounts. `settings.json` + `progress.sqlite3` live in a project-local `data/` folder (`app/config/platform_paths.py`), not an OS per-user directory — this app is run from a git checkout, not installed as a packaged product, so keeping progress alongside the code is more useful than platform convention. That reasoning doesn't hold on Android (no "repo checkout" a packaged APK runs from, and the bundle itself may not be reliably writable) — `resolve_platform_data_dir()` checks `FLET_APP_STORAGE_DATA` first (a real per-app writable directory Flet's runtime sets on every packaged target, Android included) before falling back to `<repo_root>/data`, same convention the sibling kids' app already uses for its own Android build. `app/config/settings.py`'s `get_data_dir()` migrates forward, once, from the old `%APPDATA%\CodingAdventure` location if anything is still there (never overwriting an existing file at the new location), so past progress isn't lost by the move. **Progress is tracked per language track** — every table in `app/progress/store.py`'s schema (`profile`, `lesson_completions`, `badges`, `activity_log`, `quiz_attempts`, `player_xp`, `daily_refresher_picks`, `quiz_answers`, `exercise_notes`, `bookmarks`) is keyed by a `language` column, so switching tracks never mixes XP/streaks/completions between them. `ProgressStore` methods all take `language` as their first argument accordingly (e.g. `complete_lesson(language, lesson_id, xp_reward)`, `get_player_level(language)`). `quiz_answers` records one row per question answered (independent of `quiz_attempts`' per-session score/total), feeding `get_concept_accuracy()` for the Progress screen's "Weakest concepts" panel. `app/progress/achievements.py`'s `evaluate_lesson_completion_achievements()`/`evaluate_quiz_achievements()` award cross-cutting meta-badges (`first_completion`, `category_complete_<category>`, `streak_<N>` for `N` in `[3, 7, 14, 30, 100]`, `perfect_quiz`) through the same idempotent `award_badge()` exercise-declared achievements use, called from `lesson_screen.py`'s and `quiz_screen.py`'s success paths respectively.
-
-**Export/import progress** (Settings screen) — `ProgressStore.export_progress()` reads every row of every table in `_EXPORT_TABLES` (via `sqlite3.Row` + dynamic column names, so the export/import code never hardcodes the schema twice) into a single `{"version": PROGRESS_EXPORT_VERSION, "exported_at": ..., "tables": {...}}` dict, covering every language's data at once. `import_progress()` validates the version, then replaces every table's contents (`DELETE` all + re-`INSERT` all rows) inside one atomic transaction — an import is all-or-nothing, never a partial merge. `settings_screen.py`'s `_build_backup_card()` wires this to the UI: on desktop, "Export" goes straight to `ft.FilePicker().save_file(...)`; on mobile (`page.platform.is_mobile()`), a choice dialog offers "Save to Device" (same `save_file`) or "Share…" (`ft.Share().share_files(...)`, which hands the JSON to the OS's native share sheet — Gmail included, if installed — rather than the app targeting Gmail specifically, since Flet has no API to name a target app). Import always shows a blocking confirmation dialog first ("this will permanently overwrite your current progress") before calling `import_progress()`, and on success navigates to `/languages` to force every view to rebuild against the newly-imported data rather than leaving stale in-memory state visible.
-
-### UI shell
-
-`app/ui/app_window.py` is the route dispatcher: `page.views.clear()` + `page.views.append(...)` on every route change, rebuilding exactly one view fresh each time (avoids ever showing stale XP/progress numbers from a view built earlier). A Python-side `history: list[str]` stands in for back-navigation since `page.views` is deliberately kept at length 1. `AppState` (`app/ui/app_state.py`) is built once in `main()` and threaded through every view-builder function as an explicit parameter — settings, progress store, and per-language exercise/quiz engines (lazily built and cached per language key). Routing always starts at `/setup` (first run only) then `/languages` — the language picker is shown on **every** launch, not auto-skipped based on the last-selected track (explicit product requirement, not an oversight). `language_select.py` also renders a cross-track overview strip above the per-language cards — total XP and best streak summed/maxed across every available track, plus a "Continue: `<exercise>` (`<language>`)" link for the last-used track, backed by `ProgressStore.get_current_exercise()`/`set_current_exercise()` (the latter is now called from `lesson_screen.py` on every lesson view, whereas previously nothing in the app called it at all). The window opens **maximized** (`page.window.maximized = True`) so screen layout scales to whatever the user's actual desktop resolution/aspect ratio is, rather than a fixed pixel size that forces scrolling on smaller windows — `min_width`/`min_height` (1024×700) still bound how small it can be resized down to. This only affects the native desktop window; `page.window.*` properties are silently no-ops when the same `main()` is run via `main_web.py`'s browser view.
-
-### Directory layout
-
-```
-app/
-  ui/          # Flet screens: app_window (router), app_state, language_select, track_hub,
-               # category_map/category_levels, daily_refresher, lesson_screen, quiz_screen,
-               # search_screen, progress_screen, settings_screen, setup_wizard, theme, code_editor
-  engine/      # Exercise/QuizQuestion dataclasses, YAML loaders, category logic, validator
-  execution/   # ExecutionEngine ABC + per-language engines (python/java/cpp/spring/node,
-               # "ai" reuses the python engine instance, "architecture" has none) + registry,
-               # python_inprocess_engine.py + watchdog.py + android_platform.py (Android-only Python path)
-  progress/    # SQLite-backed XP/streaks/badges/activity log/quiz answers/notes/bookmarks,
-               # per-language, export/import; achievements.py evaluates cross-cutting
-               # meta-achievements (streaks, category completion, perfect quiz)
-  config/      # settings persistence + platform-appropriate data directory resolution,
-               # ssl_cert.py (self-signed cert for the browser preview)
-content/
-  <language>/lessons/       # one YAML file per built-in exercise
-  <language>/quiz/          # quiz_questions.yaml
-  spring/scaffold/pom.xml   # shared Maven project template SpringEngine copies per run
-  # all seven track content directories have real content (ai and architecture included)
-data/
-  custom/<language>/lessons/*.yaml  # user-added exercises, loaded AFTER built-in content
-                                     # (see ExerciseEngine._load()) -- gitignored, survives
-                                     # `git pull`; duplicate ids across the two fail loudly
-tests/         # pytest suite, one file per module roughly mirroring app/
-main.py        # Flet entry point, native desktop window (`ft.run(main)`)
-main_web.py    # Browser-preview entry point, served over HTTPS via uvicorn +
-               # a self-signed cert; port via CODING_ADVENTURE_WEB_PORT
-scripts/
-  ensure_toolchains.bat/.sh  # shared toolchain auto-install helper, called
-                             # from all 4 run_app_*.bat/.sh below
-run_app_window_mode.bat/.sh # first-run venv bootstrap + launch (desktop window)
-run_app_web_ui.bat/.sh      # first-run venv bootstrap + launch (browser preview)
-build_apk.sh                # builds an Android APK via `flet build apk` (Python track only)
-```
+- The language picker is shown on every launch; `last_selected_language`
+  only pre-highlights a card.
+- `ai` and `architecture` are fully unlocked from the start
+  (`ALWAYS_UNLOCKED_LANGUAGES`). Java/C++/Spring/Node are fully unlocked
+  on Android only, because they can never run there.
+- Progress lives in a project-local `data/` folder on desktop (the app
+  runs from a checkout), and in `FLET_APP_STORAGE_DATA` on Android.
+- Spring exercises validate against the synthetic stdout
+  `"BUILD SUCCESS"`; Maven's real summary is non-deterministic.

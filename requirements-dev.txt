@@ -1,0 +1,5 @@
+# Developer gates only (scripts/dev.sh|dev.ps1, .github/workflows/ci.yml).
+# Install on top of requirements.txt:  python -m pip install -r requirements-dev.txt
+pytest==9.1.1
+coverage==7.16.1
+ruff==0.16.9

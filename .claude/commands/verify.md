@@ -8,7 +8,8 @@ Run these checks, in order, and report the results:
    ```
    .venv\Scripts\python.exe -m pytest tests\ -v
    ```
-   This repo has no linter/formatter configured — don't invent one. If
+   Linting is `ruff check` via `scripts/dev.ps1 lint` (rule set in
+   pyproject.toml) — run it too. There is no formatter configured. If
    anything fails, investigate and fix the root cause rather than skipping
    or loosening the failing test. Execution-engine tests for a language
    whose local toolchain (`javac`/`java`, `g++`) isn't on PATH are skipped

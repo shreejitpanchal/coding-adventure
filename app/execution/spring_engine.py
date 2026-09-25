@@ -16,13 +16,20 @@ summary validate_output()/expected_output_pattern checks against)."""
 from __future__ import annotations
 
 import platform
-import re
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from app.execution.base import DEFAULT_TIMEOUT_SECONDS, ExecutionEngine, ExecutionResult, RunHandle
+from app.config.paths import SPRING_SCAFFOLD_DIR
+from app.execution.base import (
+    DEFAULT_TIMEOUT_SECONDS,
+    ExecutionEngine,
+    ExecutionResult,
+    RunHandle,
+    blocked_result,
+    run_subprocess,
+)
+from app.execution.java_source import detect_class_name
 from app.execution.toolchain_check import check_toolchain
 
 if TYPE_CHECKING:
@@ -34,22 +41,10 @@ if TYPE_CHECKING:
 # from the passed run timeout.
 MVN_TIMEOUT_SECONDS = 45.0
 
-_SCAFFOLD_DIR = Path(__file__).resolve().parent.parent.parent / "content" / "spring" / "scaffold"
 _PACKAGE_PATH = Path("com") / "codingadventure" / "exercise"
+# Windows needs the .cmd extension explicitly -- Popen can't launch a bare
+# batch file the way a shell can.
 _MVN_CMD = "mvn.cmd" if platform.system() == "Windows" else "mvn"
-
-_PUBLIC_CLASS_RE = re.compile(r"\bpublic\s+(?:final\s+|abstract\s+)?class\s+(\w+)")
-_ANY_CLASS_RE = re.compile(r"\bclass\s+(\w+)")
-
-
-def _detect_class_name(code: str, default: str) -> str:
-    match = _PUBLIC_CLASS_RE.search(code)
-    if match:
-        return match.group(1)
-    match = _ANY_CLASS_RE.search(code)
-    if match:
-        return match.group(1)
-    return default
 
 
 class SpringEngine(ExecutionEngine):
@@ -65,58 +60,42 @@ class SpringEngine(ExecutionEngine):
     ) -> ExecutionResult:
         status = check_toolchain("spring")
         if not status.available:
-            return ExecutionResult(
-                success=False, blocked=True,
-                blocked_message=f"Spring toolchain not found (missing: {', '.join(status.missing)}). {status.install_hint}",
-            )
+            return blocked_result("Spring", status)
 
         if exercise is None or not exercise.spring_test_code.strip():
             return ExecutionResult(success=False, stderr="This exercise is missing its Spring test definition.")
 
         with tempfile.TemporaryDirectory(prefix="codingadventure_spring_") as tmp_dir:
             tmp_path = Path(tmp_dir)
-            (tmp_path / "pom.xml").write_text((_SCAFFOLD_DIR / "pom.xml").read_text(encoding="utf-8"), encoding="utf-8")
+            (tmp_path / "pom.xml").write_text(
+                (SPRING_SCAFFOLD_DIR / "pom.xml").read_text(encoding="utf-8"), encoding="utf-8",
+            )
 
             main_dir = tmp_path / "src" / "main" / "java" / _PACKAGE_PATH
             test_dir = tmp_path / "src" / "test" / "java" / _PACKAGE_PATH
             main_dir.mkdir(parents=True)
             test_dir.mkdir(parents=True)
 
-            main_class = _detect_class_name(code, "Solution")
-            test_class = _detect_class_name(exercise.spring_test_code, "SolutionTest")
+            main_class = detect_class_name(code, "Solution")
+            test_class = detect_class_name(exercise.spring_test_code, "SolutionTest")
             (main_dir / f"{main_class}.java").write_text(code, encoding="utf-8")
             (test_dir / f"{test_class}.java").write_text(exercise.spring_test_code, encoding="utf-8")
 
-            process = subprocess.Popen(
+            outcome = run_subprocess(
                 [_MVN_CMD, "-q", "-o", "-Dstyle.color=never", "test"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=tmp_dir,
+                tmp_dir, stdin_text=None, timeout=MVN_TIMEOUT_SECONDS, handle=handle, feed_stdin=False,
             )
-            if handle is not None:
-                handle._attach(process)
 
-            try:
-                mvn_stdout, _mvn_stderr = process.communicate(timeout=MVN_TIMEOUT_SECONDS)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.communicate()
+            if outcome.timed_out:
                 return ExecutionResult(success=False, timed_out=True)
-
-            if handle is not None and handle.cancelled:
-                return ExecutionResult(success=False, timed_out=True)
-
-            success = process.returncode == 0
-            if success:
+            if outcome.returncode == 0:
                 # Every Spring exercise's expected_output_pattern is just
                 # "BUILD SUCCESS" -- a single deterministic value keeps
                 # validate_output()'s re.fullmatch() simple, since the real
                 # surefire summary (elapsed time, per-exercise class name)
                 # varies run to run and exercise to exercise.
                 return ExecutionResult(success=True, stdout="BUILD SUCCESS")
-
-            output = _sanitize_path(mvn_stdout, tmp_dir)
+            output = _sanitize_path(outcome.stdout, tmp_dir)
             return ExecutionResult(success=False, stderr=output or "BUILD FAILURE")
 
 

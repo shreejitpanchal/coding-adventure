@@ -1,0 +1,3 @@
+# Only the HTTPS browser preview (main_web.py / run_app_web_ui.*) needs these.
+uvicorn==0.52.4
+cryptography==50.0.0

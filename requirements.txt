@@ -1,4 +1,4 @@
+# Runtime dependencies, pinned exactly (installed by run_app_*.bat/.sh).
+# Loose version specs live in pyproject.toml [project.dependencies].
 flet==0.86.5
-pyyaml>=6.0
-pytest>=8.0.0
-cryptography>=42.0
+PyYAML==6.0.3

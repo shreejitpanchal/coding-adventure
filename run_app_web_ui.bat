@@ -31,7 +31,7 @@ if not exist ".venv\Scripts\python.exe" (
     )
 
     ".venv\Scripts\python.exe" -m pip install --upgrade pip >nul
-    ".venv\Scripts\python.exe" -m pip install -r requirements.txt
+    ".venv\Scripts\python.exe" -m pip install -r requirements.txt -r requirements-web.txt
     if errorlevel 1 (
         echo.
         echo Something went wrong installing the required packages.
@@ -49,7 +49,7 @@ if not exist ".venv\Scripts\python.exe" (
     REM -- pip install is a fast no-op when everything's already satisfied,
     REM so it's cheap to just re-sync on every launch rather than silently
     REM running with a stale, incomplete venv.
-    ".venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet
+    ".venv\Scripts\python.exe" -m pip install -r requirements.txt -r requirements-web.txt --quiet
     if errorlevel 1 (
         echo.
         echo Warning: could not verify required packages are up to date

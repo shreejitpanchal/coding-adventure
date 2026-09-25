@@ -3,12 +3,17 @@ XP/streak/level per language track, since a "professional" here is
 plausibly juggling more than one track at once."""
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+
+from app.config.clock import days_between, today_iso
+
+logger = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS profile (
@@ -84,7 +89,58 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     bookmarked_at TEXT NOT NULL,
     PRIMARY KEY (language, lesson_id)
 );
+
+CREATE TABLE IF NOT EXISTS solve_times (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    language TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    seconds INTEGER NOT NULL,
+    recorded_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS review_schedule (
+    language TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    interval_days INTEGER NOT NULL,
+    ease REAL NOT NULL,
+    due_date TEXT NOT NULL,
+    last_reviewed TEXT NOT NULL,
+    review_streak INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (language, lesson_id)
+);
 """
+
+# Completions recorded before the review_schedule table existed get a
+# first review 14 days after completion (the old "spaced review" rule).
+# INSERT OR IGNORE keeps this idempotent, so it can run on every start.
+_BACKFILL_REVIEWS = """
+INSERT OR IGNORE INTO review_schedule
+    (language, lesson_id, interval_days, ease, due_date, last_reviewed, review_streak)
+SELECT language, lesson_id, 14, 2.5, date(substr(completed_at, 1, 10), '+14 days'), completed_at, 1
+FROM lesson_completions
+"""
+
+# Columns added to existing tables after the first release. Applied with
+# ALTER TABLE only when PRAGMA table_info says they're missing, so an old
+# progress.sqlite3 upgrades in place.
+_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("profile", "freeze_tokens", "INTEGER NOT NULL DEFAULT 0"),
+]
+
+# Streak freezes: one token is earned each time the streak reaches a
+# multiple of STREAK_FREEZE_EVERY days (held up to STREAK_FREEZE_MAX); a
+# token is spent automatically to bridge exactly one missed day.
+STREAK_FREEZE_EVERY = 7
+STREAK_FREEZE_MAX = 3
+
+# Spaced-repetition tuning (a simplified SM-2). Intervals are in days.
+REVIEW_FIRST_INTERVAL = 3
+REVIEW_SECOND_INTERVAL = 7
+REVIEW_MAX_INTERVAL = 120
+REVIEW_DEFAULT_EASE = 2.5
+REVIEW_MIN_EASE = 1.3
+REVIEW_MAX_EASE = 3.0
+REVIEW_EASE_STEP = 0.15
 
 # Bumped only if a future schema change makes an old export incompatible
 # with import_progress()'s column-list assumptions.
@@ -93,7 +149,7 @@ PROGRESS_EXPORT_VERSION = 1
 _EXPORT_TABLES = [
     "profile", "lesson_completions", "badges", "activity_log",
     "quiz_attempts", "player_xp", "daily_refresher_picks",
-    "quiz_answers", "exercise_notes", "bookmarks",
+    "quiz_answers", "exercise_notes", "bookmarks", "review_schedule", "solve_times",
 ]
 
 # XP cost to clear level N is N * 100 (level 1->2 costs 100, 2->3 costs 200, ...).
@@ -134,6 +190,23 @@ class WeeklySummary:
     active_days: int
 
 
+@dataclass(frozen=True)
+class ReviewState:
+    """One exercise's place in the spaced-repetition schedule."""
+    lesson_id: str
+    interval_days: int
+    ease: float
+    due_date: str
+    """Local ISO date the next review is due."""
+    last_reviewed: str
+    review_streak: int
+    """Consecutive successful reviews; reset to 0 by a failed one."""
+
+    def days_until_due(self, today: str) -> int:
+        """Negative when overdue."""
+        return days_between(today, self.due_date)
+
+
 class ProgressStore:
     """Owns the SQLite connection for progress data across every language track."""
 
@@ -146,6 +219,11 @@ class ProgressStore:
     def _init_schema(self) -> None:
         with self._conn:
             self._conn.executescript(SCHEMA)
+            for table, column, decl in _COLUMN_MIGRATIONS:
+                if column not in self._table_columns(table):
+                    self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+                    logger.info("Migrated %s: added column %s", table, column)
+            self._conn.execute(_BACKFILL_REVIEWS)
 
     def close(self) -> None:
         self._conn.close()
@@ -173,32 +251,109 @@ class ProgressStore:
             row = cur.fetchone()
             return row[0] if row else None
 
-    def record_play_today(self, language: str) -> None:
+    def record_play_today(self, language: str, today: Optional[str] = None) -> None:
+        """Mark the user's LOCAL calendar day as played and advance the
+        streak. Call this only when something was actually accomplished
+        (an exercise completed, a quiz finished) -- opening a screen is not
+        playing. `today` is injectable for tests; production callers leave
+        it to app.config.clock.
+
+        Streak freezes: a gap of exactly one missed day is bridged
+        automatically when the user holds a freeze token (spending it);
+        reaching a multiple of STREAK_FREEZE_EVERY earns one, up to
+        STREAK_FREEZE_MAX."""
         self._ensure_profile(language)
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = today or today_iso()
         with closing(self._conn.cursor()) as cur:
-            cur.execute("SELECT last_played_date, streak_days FROM profile WHERE language = ?", (language,))
-            last_played, streak = cur.fetchone()
+            cur.execute("SELECT last_played_date, streak_days, freeze_tokens FROM profile WHERE language = ?", (language,))
+            last_played, streak, tokens = cur.fetchone()
         if last_played == today:
             return
-        if last_played is not None:
-            gap_days = (
-                datetime.fromisoformat(today) - datetime.fromisoformat(last_played)
-            ).days
-            streak = streak + 1 if gap_days == 1 else 1
+        gap = days_between(last_played, today) if last_played is not None else None
+        if gap == 1:
+            streak += 1
+        elif gap == 2 and tokens > 0:
+            tokens -= 1
+            streak += 1
+            self.log_event(language, None, "streak_freeze_used", f"streak={streak}")
         else:
             streak = 1
+        if streak > 0 and streak % STREAK_FREEZE_EVERY == 0 and tokens < STREAK_FREEZE_MAX:
+            tokens += 1
+            self.log_event(language, None, "streak_freeze_earned", f"streak={streak}")
         with self._conn:
             self._conn.execute(
-                "UPDATE profile SET last_played_date = ?, streak_days = ? WHERE language = ?",
-                (today, streak, language),
+                "UPDATE profile SET last_played_date = ?, streak_days = ?, freeze_tokens = ? WHERE language = ?",
+                (today, streak, tokens, language),
             )
 
-    def get_streak_days(self, language: str) -> int:
+    def get_streak_days(self, language: str, today: Optional[str] = None) -> int:
+        """The streak as it stands *now*: the stored count while the last
+        play was today or yesterday (or the day before, if a freeze token
+        would bridge it), otherwise 0. The stored value is only ever
+        rewritten on the next play, so without this check a screen would
+        keep showing a 7-day streak a fortnight after it lapsed."""
+        today = today or today_iso()
         with closing(self._conn.cursor()) as cur:
-            cur.execute("SELECT streak_days FROM profile WHERE language = ?", (language,))
+            cur.execute("SELECT streak_days, last_played_date, freeze_tokens FROM profile WHERE language = ?", (language,))
+            row = cur.fetchone()
+        if row is None or row[1] is None:
+            return 0
+        streak, last_played, tokens = row
+        gap = days_between(last_played, today)
+        if gap <= 1 or (gap == 2 and tokens > 0):
+            return streak
+        return 0
+
+    def get_freeze_tokens(self, language: str) -> int:
+        with closing(self._conn.cursor()) as cur:
+            cur.execute("SELECT freeze_tokens FROM profile WHERE language = ?", (language,))
             row = cur.fetchone()
             return row[0] if row else 0
+
+    # -- Weekly goal -----------------------------------------------------
+    def count_completions_this_week(self, language: str, today: Optional[str] = None) -> int:
+        """Exercises completed since Monday of the user's current local
+        week (completed_at is UTC, so rows are bucketed in Python)."""
+        today_date = date.fromisoformat(today or today_iso())
+        week_start = today_date - timedelta(days=today_date.weekday())
+        # Pull one extra day so a UTC timestamp just before local Monday 00:00 is still considered.
+        cutoff = (datetime.combine(week_start, datetime.min.time(), tzinfo=timezone.utc) - timedelta(days=1)).isoformat()
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT completed_at FROM lesson_completions WHERE language = ? AND completed_at >= ?",
+                (language, cutoff),
+            )
+            stamps = [row[0] for row in cur.fetchall()]
+        return sum(
+            1 for stamp in stamps
+            if week_start <= datetime.fromisoformat(stamp).astimezone().date() <= today_date
+        )
+
+    # -- Solve times -------------------------------------------------------
+    def record_solve_time(self, language: str, lesson_id: str, seconds: int) -> bool:
+        """Store one timed solve. Returns True when it is a new personal
+        best for this exercise (or the first recorded time)."""
+        seconds = max(1, int(seconds))
+        previous_best = self.get_best_solve_time(language, lesson_id)
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO solve_times (language, lesson_id, seconds, recorded_at) VALUES (?, ?, ?, ?)",
+                (language, lesson_id, seconds, _now()),
+            )
+        return previous_best is None or seconds < previous_best
+
+    def get_best_solve_time(self, language: str, lesson_id: str) -> Optional[int]:
+        with closing(self._conn.cursor()) as cur:
+            cur.execute("SELECT MIN(seconds) FROM solve_times WHERE language = ? AND lesson_id = ?", (language, lesson_id))
+            row = cur.fetchone()
+            return row[0] if row and row[0] is not None else None
+
+    def get_best_solve_times(self, language: str) -> dict[str, int]:
+        """lesson_id -> best seconds, for list screens (one query, not one per row)."""
+        with closing(self._conn.cursor()) as cur:
+            cur.execute("SELECT lesson_id, MIN(seconds) FROM solve_times WHERE language = ? GROUP BY lesson_id", (language,))
+            return {row[0]: row[1] for row in cur.fetchall()}
 
     # -- Exercises -------------------------------------------------------
     def complete_lesson(self, language: str, lesson_id: str, xp_reward: int) -> None:
@@ -247,18 +402,94 @@ class ProgressStore:
                 [(language, pick_date, lesson_id) for lesson_id in lesson_ids],
             )
 
-    def get_lessons_due_for_review(self, language: str, min_age_days: int) -> list[str]:
-        """Lesson ids completed at least `min_age_days` ago, oldest
-        completion first -- candidates for a spaced-review nudge mixed
-        into the Daily Refresher (see app.ui.app_state.resolve_daily_refresher)."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=min_age_days)).isoformat()
+    # -- Spaced repetition -----------------------------------------------
+    def schedule_review(self, language: str, lesson_id: str, passed: bool, today: Optional[str] = None) -> ReviewState:
+        """Record a pass/fail on an exercise and compute its next due date
+        (a simplified SM-2):
+
+        - first pass -> due in REVIEW_FIRST_INTERVAL days; second -> in
+          REVIEW_SECOND_INTERVAL; after that interval *= ease (ease creeps
+          up by REVIEW_EASE_STEP per pass, capped), interval capped at
+          REVIEW_MAX_INTERVAL;
+        - a fail -> due tomorrow, ease drops by REVIEW_EASE_STEP (floored),
+          review_streak resets.
+
+        Called on every successful completion and on a failed attempt at an
+        exercise that had previously been completed (i.e. a review that went
+        wrong). Returns the new state."""
+        today = today or today_iso()
+        current = self.get_review_state(language, lesson_id)
+        ease = current.ease if current else REVIEW_DEFAULT_EASE
+        streak = current.review_streak if current else 0
+
+        if passed:
+            streak += 1
+            if streak <= 1:
+                interval = REVIEW_FIRST_INTERVAL
+            elif streak == 2:
+                interval = REVIEW_SECOND_INTERVAL
+            else:
+                interval = min(REVIEW_MAX_INTERVAL, max(REVIEW_SECOND_INTERVAL + 1, round(current.interval_days * ease)))
+            ease = min(REVIEW_MAX_EASE, ease + REVIEW_EASE_STEP)
+        else:
+            streak = 0
+            interval = 1
+            ease = max(REVIEW_MIN_EASE, ease - REVIEW_EASE_STEP)
+
+        due_date = (date.fromisoformat(today) + timedelta(days=interval)).isoformat()
+        with self._conn:
+            self._conn.execute(
+                """INSERT INTO review_schedule
+                       (language, lesson_id, interval_days, ease, due_date, last_reviewed, review_streak)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(language, lesson_id) DO UPDATE SET
+                       interval_days = excluded.interval_days, ease = excluded.ease,
+                       due_date = excluded.due_date, last_reviewed = excluded.last_reviewed,
+                       review_streak = excluded.review_streak""",
+                (language, lesson_id, interval, ease, due_date, _now(), streak),
+            )
+        return ReviewState(lesson_id, interval, ease, due_date, _now(), streak)
+
+    def get_review_state(self, language: str, lesson_id: str) -> Optional[ReviewState]:
         with closing(self._conn.cursor()) as cur:
             cur.execute(
-                "SELECT lesson_id FROM lesson_completions WHERE language = ? AND completed_at <= ? "
-                "ORDER BY completed_at ASC",
-                (language, cutoff),
+                "SELECT lesson_id, interval_days, ease, due_date, last_reviewed, review_streak "
+                "FROM review_schedule WHERE language = ? AND lesson_id = ?",
+                (language, lesson_id),
             )
+            row = cur.fetchone()
+        return ReviewState(*row) if row else None
+
+    def get_due_reviews(self, language: str, today: Optional[str] = None, limit: Optional[int] = None) -> list[str]:
+        """Lesson ids whose review is due on or before `today`, most
+        overdue first -- the Review queue, and the source of the Daily
+        Refresher's review slot."""
+        today = today or today_iso()
+        sql = "SELECT lesson_id FROM review_schedule WHERE language = ? AND due_date <= ? ORDER BY due_date ASC, lesson_id"
+        params: list = [language, today]
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(sql, params)
             return [row[0] for row in cur.fetchall()]
+
+    def count_due_reviews(self, language: str, today: Optional[str] = None) -> int:
+        today = today or today_iso()
+        with closing(self._conn.cursor()) as cur:
+            cur.execute("SELECT COUNT(*) FROM review_schedule WHERE language = ? AND due_date <= ?", (language, today))
+            return cur.fetchone()[0]
+
+    def count_upcoming_reviews(self, language: str, days: int, today: Optional[str] = None) -> int:
+        """Reviews falling due after today and within the next `days` days."""
+        today = today or today_iso()
+        horizon = (date.fromisoformat(today) + timedelta(days=days)).isoformat()
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM review_schedule WHERE language = ? AND due_date > ? AND due_date <= ?",
+                (language, today, horizon),
+            )
+            return cur.fetchone()[0]
 
     # -- Badges/achievements ----------------------------------------------
     def award_badge(self, language: str, badge_id: str) -> bool:
@@ -362,17 +593,34 @@ class ProgressStore:
                 (language, lesson_id, event_type, detail, _now()),
             )
 
+    def _row_cursor(self) -> sqlite3.Cursor:
+        """A cursor yielding sqlite3.Row, set on the cursor rather than the
+        shared connection so a query in flight elsewhere never sees its
+        row type flip underneath it."""
+        cur = self._conn.cursor()
+        cur.row_factory = sqlite3.Row
+        return cur
+
     def get_activity_since(self, language: str, cutoff_iso: str) -> list[sqlite3.Row]:
-        conn = self._conn
-        conn.row_factory = sqlite3.Row
-        with closing(conn.cursor()) as cur:
+        with closing(self._row_cursor()) as cur:
             cur.execute(
                 "SELECT * FROM activity_log WHERE language = ? AND timestamp >= ? ORDER BY id DESC",
                 (language, cutoff_iso),
             )
-            rows = cur.fetchall()
-        conn.row_factory = None
-        return rows
+            return cur.fetchall()
+
+    def get_recent_errors(self, language: str, days: int = 30, limit: int = 500) -> list[tuple[Optional[str], str]]:
+        """(lesson_id, stderr_tail) for every attempt_error in the last
+        `days` days, most recent first -- input to
+        app.engine.error_insights.summarize_errors()."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT lesson_id, detail FROM activity_log "
+                "WHERE language = ? AND event_type = 'attempt_error' AND timestamp >= ? ORDER BY id DESC LIMIT ?",
+                (language, cutoff, limit),
+            )
+            return [(row[0], row[1] or "") for row in cur.fetchall()]
 
     def get_recent_failure_count(self, language: str, lesson_id: str) -> int:
         """Resets to 0 automatically once the exercise is passed -- powers
@@ -392,17 +640,23 @@ class ProgressStore:
         return count
 
     def get_daily_activity_counts(self, language: str, days: int = 84) -> dict[str, int]:
-        """ISO date -> count of activity_log events that day, for the last
-        `days` days (84 = 12 weeks) -- powers the Progress screen's
-        activity heatmap."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+        """Local ISO date -> count of activity_log events that day, for the
+        last `days` days (84 = 12 weeks) -- powers the Progress screen's
+        activity heatmap. Timestamps are stored in UTC; they're bucketed
+        into the user's local day here so an evening session doesn't show
+        up on "tomorrow" for anyone east of Greenwich."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days + 1)).isoformat()
         with closing(self._conn.cursor()) as cur:
             cur.execute(
-                "SELECT substr(timestamp, 1, 10) AS day, COUNT(*) FROM activity_log "
-                "WHERE language = ? AND timestamp >= ? GROUP BY day",
+                "SELECT timestamp FROM activity_log WHERE language = ? AND timestamp >= ?",
                 (language, cutoff),
             )
-            return {row[0]: row[1] for row in cur.fetchall()}
+            stamps = [row[0] for row in cur.fetchall()]
+        counts: dict[str, int] = {}
+        for stamp in stamps:
+            local_day = datetime.fromisoformat(stamp).astimezone().date().isoformat()
+            counts[local_day] = counts.get(local_day, 0) + 1
+        return counts
 
     def get_weekly_summary(self, language: str) -> WeeklySummary:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
@@ -480,7 +734,7 @@ class ProgressStore:
     def get_bookmarked_lesson_ids(self, language: str) -> list[str]:
         with closing(self._conn.cursor()) as cur:
             cur.execute(
-                "SELECT lesson_id FROM bookmarks WHERE language = ? ORDER BY bookmarked_at DESC", (language,)
+                "SELECT lesson_id FROM bookmarks WHERE language = ? ORDER BY bookmarked_at DESC, rowid DESC", (language,)
             )
             return [row[0] for row in cur.fetchall()]
 
@@ -495,9 +749,11 @@ class ProgressStore:
             self._conn.execute("DELETE FROM quiz_answers WHERE language = ?", (language,))
             self._conn.execute("DELETE FROM exercise_notes WHERE language = ?", (language,))
             self._conn.execute("DELETE FROM bookmarks WHERE language = ?", (language,))
+            self._conn.execute("DELETE FROM review_schedule WHERE language = ?", (language,))
+            self._conn.execute("DELETE FROM solve_times WHERE language = ?", (language,))
             self._conn.execute(
-                "UPDATE profile SET current_exercise_id = NULL, streak_days = 0, last_played_date = NULL "
-                "WHERE language = ?",
+                "UPDATE profile SET current_exercise_id = NULL, streak_days = 0, last_played_date = NULL, "
+                "freeze_tokens = 0 WHERE language = ?",
                 (language,),
             )
             self._conn.execute("UPDATE player_xp SET total_xp = 0 WHERE language = ?", (language,))
@@ -509,17 +765,17 @@ class ProgressStore:
         Progress feature is a full backup/restore, not scoped to just the
         currently-selected track, so switching tracks later never loses
         what a restore brought back."""
-        conn = self._conn
-        conn.row_factory = sqlite3.Row
-        try:
-            tables: dict[str, list[dict]] = {}
-            with closing(conn.cursor()) as cur:
-                for table in _EXPORT_TABLES:
-                    cur.execute(f"SELECT * FROM {table}")
-                    tables[table] = [dict(row) for row in cur.fetchall()]
-        finally:
-            conn.row_factory = None
+        tables: dict[str, list[dict]] = {}
+        with closing(self._row_cursor()) as cur:
+            for table in _EXPORT_TABLES:
+                cur.execute(f"SELECT * FROM {table}")
+                tables[table] = [dict(row) for row in cur.fetchall()]
         return {"version": PROGRESS_EXPORT_VERSION, "exported_at": _now(), "tables": tables}
+
+    def _table_columns(self, table: str) -> set[str]:
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(f"PRAGMA table_info({table})")
+            return {row[1] for row in cur.fetchall()}
 
     def import_progress(self, data: dict) -> None:
         """Replaces EVERY progress table with the given export's data, for
@@ -529,7 +785,14 @@ class ProgressStore:
         moment this runs, and there's no undo once it does. Runs as one
         transaction: if anything here fails, SQLite rolls the whole import
         back rather than leaving some tables overwritten and others not.
+
+        The file is user-supplied, so nothing from it reaches SQL text
+        unchecked: table names come from our own _EXPORT_TABLES list and
+        every column name is validated against the live schema before it
+        is interpolated. Values are always bound parameters.
         """
+        if not isinstance(data, dict):
+            raise ValueError("Can't import this file -- expected a JSON object at the top level.")
         version = data.get("version")
         if version != PROGRESS_EXPORT_VERSION:
             raise ValueError(
@@ -537,14 +800,33 @@ class ProgressStore:
                 f"version of this app (got version {version!r}, expected {PROGRESS_EXPORT_VERSION})."
             )
         tables = data.get("tables", {})
+        if not isinstance(tables, dict):
+            raise ValueError("Can't import this file -- `tables` must be a JSON object.")
+        unknown_tables = sorted(set(tables) - set(_EXPORT_TABLES))
+        if unknown_tables:
+            raise ValueError(f"Can't import this file -- it contains unknown tables {unknown_tables}.")
+
+        schema = {table: self._table_columns(table) for table in _EXPORT_TABLES}
         with self._conn:
             for table in _EXPORT_TABLES:
                 self._conn.execute(f"DELETE FROM {table}")
             for table in _EXPORT_TABLES:
-                for row in tables.get(table, []):
+                rows = tables.get(table, [])
+                if not isinstance(rows, list):
+                    raise ValueError(f"Can't import this file -- `tables.{table}` must be a list of rows.")
+                for row in rows:
+                    if not isinstance(row, dict):
+                        raise ValueError(f"Can't import this file -- a row in `{table}` isn't a JSON object.")
                     columns = list(row.keys())
+                    bad = sorted(set(columns) - schema[table])
+                    if bad:
+                        raise ValueError(
+                            f"Can't import this file -- table `{table}` has columns {bad} this app "
+                            f"doesn't know (expected a subset of {sorted(schema[table])})."
+                        )
                     placeholders = ", ".join("?" for _ in columns)
                     self._conn.execute(
                         f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
                         [row[c] for c in columns],
                     )
+        logger.info("Imported progress export from %s", data.get("exported_at"))

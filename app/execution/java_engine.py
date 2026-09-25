@@ -3,13 +3,20 @@ it with `javac`, then runs it with `java -cp <dir> <ClassName>` under the
 same timeout/RunHandle/stdin contract as python_engine.PythonEngine."""
 from __future__ import annotations
 
-import re
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from app.execution.base import DEFAULT_TIMEOUT_SECONDS, ExecutionEngine, ExecutionResult, RunHandle
+from app.execution.base import (
+    DEFAULT_TIMEOUT_SECONDS,
+    ExecutionEngine,
+    ExecutionResult,
+    RunHandle,
+    blocked_result,
+    run_subprocess,
+)
+from app.execution.java_source import detect_class_name
 from app.execution.toolchain_check import check_toolchain
 
 if TYPE_CHECKING:
@@ -17,18 +24,11 @@ if TYPE_CHECKING:
 
 COMPILE_TIMEOUT_SECONDS = 20.0
 
-_PUBLIC_CLASS_RE = re.compile(r"\bpublic\s+(?:final\s+|abstract\s+)?class\s+(\w+)")
-_ANY_CLASS_RE = re.compile(r"\bclass\s+(\w+)")
-
-
-def _detect_class_name(code: str) -> str:
-    match = _PUBLIC_CLASS_RE.search(code)
-    if match:
-        return match.group(1)
-    match = _ANY_CLASS_RE.search(code)
-    if match:
-        return match.group(1)
-    return "Solution"
+# Crash containment for the JVM side: a runaway `new int[1 << 30]` loop
+# otherwise grows until the host machine swaps. Generous for any
+# exercise here, tight enough that a mistake fails fast with an
+# OutOfMemoryError the error translator can name.
+JVM_MAX_HEAP = "-Xmx256m"
 
 
 class JavaEngine(ExecutionEngine):
@@ -44,17 +44,17 @@ class JavaEngine(ExecutionEngine):
     ) -> ExecutionResult:
         status = check_toolchain("java")
         if not status.available:
-            return ExecutionResult(
-                success=False, blocked=True,
-                blocked_message=f"Java toolchain not found (missing: {', '.join(status.missing)}). {status.install_hint}",
-            )
+            return blocked_result("Java", status)
 
-        class_name = _detect_class_name(code)
+        class_name = detect_class_name(code)
 
         with tempfile.TemporaryDirectory(prefix="codingadventure_java_") as tmp_dir:
             source_file = Path(tmp_dir) / f"{class_name}.java"
             source_file.write_text(code, encoding="utf-8")
 
+            # Both javac and java are given only the bare filename/class name
+            # and run with cwd=tmp_dir, so no host path leaks into a compiler
+            # error or stack trace.
             try:
                 compile_result = subprocess.run(
                     ["javac", source_file.name],
@@ -62,29 +62,13 @@ class JavaEngine(ExecutionEngine):
                 )
             except subprocess.TimeoutExpired:
                 return ExecutionResult(success=False, timed_out=True)
-
             if compile_result.returncode != 0:
                 return ExecutionResult(success=False, stderr=compile_result.stderr)
 
-            process = subprocess.Popen(
-                ["java", "-cp", tmp_dir, class_name],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=tmp_dir,
+            outcome = run_subprocess(
+                ["java", JVM_MAX_HEAP, "-cp", ".", class_name], tmp_dir, stdin_text, timeout, handle,
             )
-            if handle is not None:
-                handle._attach(process)
 
-            try:
-                stdout, stderr = process.communicate(input=stdin_text or "", timeout=timeout)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.communicate()
-                return ExecutionResult(success=False, timed_out=True)
-
-        if handle is not None and handle.cancelled:
+        if outcome.timed_out:
             return ExecutionResult(success=False, timed_out=True)
-
-        return ExecutionResult(success=process.returncode == 0, stdout=stdout, stderr=stderr)
+        return ExecutionResult(success=outcome.returncode == 0, stdout=outcome.stdout, stderr=outcome.stderr)
