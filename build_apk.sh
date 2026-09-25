@@ -70,6 +70,58 @@ if ! command -v flutter >/dev/null 2>&1; then
     fi
 fi
 
+# Flutter builds plugins through symlinks, which on Windows need Developer
+# Mode (it grants SeCreateSymbolicLinkPrivilege to non-admin users).
+# Without it the build fails only after minutes of dependency resolution
+# with "Building with plugins requires symlink support" -- check up front
+# instead. The flag lives in HKLM, so this is read-only here; turning it
+# on is a one-time user action in Windows Settings.
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        if ! reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" \
+                //v AllowDevelopmentWithoutDevLicense 2>/dev/null | grep -q "0x1"; then
+            echo "Windows Developer Mode is off, and Flutter needs it (plugin symlinks)."
+            echo "Turn it on once: Settings > System > For developers > Developer Mode"
+            echo "  (or run:  start ms-settings:developers  ), then re-run this script."
+            exit 1
+        fi
+        ;;
+esac
+
+# Work around a flet bug on Windows: flet installs each missing Android
+# SDK package via `cmd.exe /C echo y | sdkmanager.bat <package>` with the
+# package name UNQUOTED, and cmd.exe treats the ';' in names such as
+# "platforms;android-35" as an argument separator -- sdkmanager is asked
+# for a package called "platforms" and the build dies with a bare
+# "Error installing Android SDK tools". Pre-install whatever is missing
+# from flet's own MINIMAL_PACKAGES list here, through PowerShell with
+# proper quoting, so flet finds every package already present and skips
+# its broken install path. No-op once everything is installed, and on
+# macOS/Linux (where flet uses `sh -c` and quotes correctly).
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$LOCALAPPDATA/Android/Sdk}}"
+        SDKM="$(ls "$SDK_DIR"/cmdline-tools/*/bin/sdkmanager.bat 2>/dev/null | head -1)"
+        if [ -n "$SDKM" ]; then
+            installed_any=0
+            for pkg in $("$PYEXE" -c "from flet_cli.utils.android_sdk import MINIMAL_PACKAGES as p; print(' '.join(p))" 2>/dev/null); do
+                if [ ! -e "$SDK_DIR/${pkg//;//}" ]; then
+                    echo "Installing Android SDK package \"$pkg\" (flet's own installer mis-quotes it on Windows)..."
+                    ANDROID_HOME="$(cygpath -w "$SDK_DIR")" powershell -NoProfile -Command \
+                        "'y' | & '$(cygpath -w "$SDKM")' '$pkg' | Out-Null; exit \$LASTEXITCODE" \
+                        && installed_any=1 \
+                        || echo "  Install of \"$pkg\" reported an error -- letting flet build try anyway."
+                fi
+            done
+            if [ "$installed_any" = 1 ]; then
+                echo "Accepting Android SDK licenses..."
+                ANDROID_HOME="$(cygpath -w "$SDK_DIR")" powershell -NoProfile -Command \
+                    "1..10 | ForEach-Object { 'y' } | & '$(cygpath -w "$SDKM")' --licenses | Out-Null; exit 0"
+            fi
+        fi
+        ;;
+esac
+
 # BUILD_NUMBER is a plain repo-root file holding a single integer, bumped
 # on every build -- Android requires a build's versionCode to strictly
 # increase between installs of the same package, so this file is what

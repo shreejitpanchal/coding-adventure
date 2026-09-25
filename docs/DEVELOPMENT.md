@@ -1107,7 +1107,25 @@ installed flet (`flet.version.flutter_version`, 3.44.8 today) into
 `~/flutter/<version>` and a JDK into `~/java` on the first run -- several
 minutes and roughly a gigabyte, reused by every later build. The Android
 SDK/NDK is fetched by the Flutter toolchain the same way; see
-https://flet.dev/docs/publish/android for the details. Support is deliberately
+https://flet.dev/docs/publish/android for the details.
+
+Two Windows-specific steps the script handles or checks for you:
+
+- **Developer Mode must be on** (Settings > System > For developers).
+  Flutter builds plugins through symlinks and otherwise fails only after
+  minutes of dependency resolution with "Building with plugins requires
+  symlink support". The script reads the HKLM flag first and stops with
+  that instruction if it is off.
+- **flet's SDK package installer mis-quotes on Windows**: it runs
+  `cmd.exe /C echo y | sdkmanager.bat platforms;android-35` with the name
+  unquoted, and cmd splits on the `;`, so the build dies with a bare
+  "Error installing Android SDK tools". The script pre-installs anything
+  missing from flet's `MINIMAL_PACKAGES` through PowerShell (quoted
+  correctly) so flet finds every package present and skips its own
+  install path. `ANDROID_HOME`/`ANDROID_SDK_ROOT` are honoured; the
+  default is `%LOCALAPPDATA%\Android\Sdk`.
+
+Support is deliberately
 **Python-only**: `PythonEngine`, `JavaEngine`, `CppEngine`, and
 `SpringEngine` all spawn real subprocess binaries (`python -I`;
 `javac`/`java`; `g++`; `mvn`) on desktop/web, but a non-rooted Android
