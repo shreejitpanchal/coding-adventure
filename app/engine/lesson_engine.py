@@ -8,10 +8,17 @@ from typing import Optional
 
 import yaml
 
+from app.config.platform_paths import resolve_platform_data_dir
 from app.engine.exercise import Exercise
 from app.execution.android_platform import is_android
 
 CONTENT_ROOT = Path(__file__).resolve().parent.parent.parent / "content"
+
+# User-added exercises live outside the git checkout entirely, so they
+# survive a `git pull` (which would otherwise never touch them, but also
+# never risks clobbering a built-in file the user copied and edited in
+# place). Loaded strictly AFTER built-in content -- see _load().
+CUSTOM_CONTENT_DIRNAME = "custom"
 
 # On Android, Java/C++/Spring/Node can never actually run (no javac/g++/
 # mvn/node on the device), so a user there can never legitimately
@@ -31,23 +38,42 @@ ALWAYS_UNLOCKED_LANGUAGES = {"architecture", "ai"}
 
 
 class ExerciseEngine:
-    def __init__(self, language: str, content_dir: Optional[Path] = None):
+    def __init__(
+        self, language: str, content_dir: Optional[Path] = None, custom_content_dir: Optional[Path] = None,
+    ):
         self.language = language
         self.content_dir = content_dir or (CONTENT_ROOT / language / "lessons")
+        self.custom_content_dir = custom_content_dir or (
+            resolve_platform_data_dir() / CUSTOM_CONTENT_DIRNAME / language / "lessons"
+        )
         self._exercises: dict[str, Exercise] = {}
         self._order: list[str] = []
         self._load()
 
     def _load(self) -> None:
-        if not self.content_dir.is_dir():
-            return
         exercises: list[Exercise] = []
-        for path in sorted(self.content_dir.glob("*.yaml")):
-            data = yaml.safe_load(path.read_text(encoding="utf-8"))
-            if not data:
+        seen_paths: dict[str, Path] = {}
+        # Built-in content first, then the user's custom overlay -- loaded
+        # in that fixed order so a duplicate id always fails loud (below)
+        # rather than one silently shadowing the other depending on
+        # directory iteration order.
+        for directory in (self.content_dir, self.custom_content_dir):
+            if not directory.is_dir():
                 continue
-            data.setdefault("language", self.language)
-            exercises.append(Exercise(**data))
+            for path in sorted(directory.glob("*.yaml")):
+                data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                if not data:
+                    continue
+                data.setdefault("language", self.language)
+                exercise = Exercise(**data)
+                if exercise.id in seen_paths:
+                    raise ValueError(
+                        f"Duplicate exercise id {exercise.id!r}: already loaded from "
+                        f"{seen_paths[exercise.id]}, also found in {path}. Exercise ids "
+                        f"must be unique across both built-in and custom content."
+                    )
+                seen_paths[exercise.id] = path
+                exercises.append(exercise)
         exercises.sort(key=lambda ex: ex.level)
         self._exercises = {ex.id: ex for ex in exercises}
         self._order = [ex.id for ex in exercises]
@@ -143,6 +169,25 @@ class ExerciseEngine:
             if not progressed:
                 break
         return picks
+
+    def search(self, query: str, difficulty: Optional[str] = None, limit: int = 50) -> list[Exercise]:
+        """Case-insensitive substring match across title, objective, and
+        concept_tags, optionally narrowed to one difficulty -- a flat
+        lookup across the whole track's content, in level order, capped at
+        `limit` so a broad/empty query doesn't dump the entire track."""
+        needle = query.strip().lower()
+        results: list[Exercise] = []
+        for ex in self.all_in_order():
+            if difficulty and ex.difficulty != difficulty:
+                continue
+            if needle:
+                haystack = " ".join([ex.title, ex.objective, *ex.concept_tags]).lower()
+                if needle not in haystack:
+                    continue
+            results.append(ex)
+            if len(results) >= limit:
+                break
+        return results
 
     def recommend_practice(self, exercise_id: str, completed_ids: set[str], limit: int = 3) -> list[Exercise]:
         exercise = self.get(exercise_id)

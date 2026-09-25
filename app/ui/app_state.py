@@ -15,8 +15,17 @@ from app.progress.store import ProgressStore
 from app.ui.theme import ThemePreset, get_preset, resolve_font_scale
 
 
+# How many of the Daily Refresher's slots (at most) go to a spaced-review
+# item -- an exercise finished a while ago, resurfaced as a reminder --
+# instead of a fresh, never-completed one. Only actually used when
+# something is old enough to qualify; a freshly-started track (nothing due
+# for review yet) fills every slot with fresh picks, unaffected by this.
+_REVIEW_SLOT_COUNT = 1
+_REVIEW_MIN_AGE_DAYS = 14
+
+
 def resolve_daily_refresher(
-    engine: ExerciseEngine, progress: ProgressStore, language: str, today: str,
+    engine: ExerciseEngine, progress: ProgressStore, language: str, today: str, count: int = 5,
 ) -> list[Exercise]:
     """Pure lookup/generate step behind AppState.daily_refresher_exercises(),
     split out so it's testable without a full AppState (which reads real
@@ -28,7 +37,20 @@ def resolve_daily_refresher(
             return exercises
 
     completed_ids = set(progress.get_completed_lesson_ids(language))
-    exercises = engine.daily_refresher(completed_ids, count=5)
+
+    review_exercises: list[Exercise] = []
+    review_slots = min(_REVIEW_SLOT_COUNT, count)
+    for lesson_id in progress.get_lessons_due_for_review(language, _REVIEW_MIN_AGE_DAYS):
+        if len(review_exercises) >= review_slots:
+            break
+        exercise = engine.get(lesson_id)
+        if exercise is not None:
+            review_exercises.append(exercise)
+
+    fresh_count = max(count - len(review_exercises), 0)
+    fresh_exercises = engine.daily_refresher(completed_ids, count=fresh_count)
+
+    exercises = fresh_exercises + review_exercises
     if exercises:
         progress.save_daily_refresher_picks(language, today, [ex.id for ex in exercises])
     return exercises
@@ -76,7 +98,9 @@ class AppState:
         items get completed during the day."""
         lang = language or self.language
         today = datetime.now(timezone.utc).date().isoformat()
-        return resolve_daily_refresher(self.exercise_engine(lang), self.progress, lang, today)
+        return resolve_daily_refresher(
+            self.exercise_engine(lang), self.progress, lang, today, count=self.settings.daily_refresher_size,
+        )
 
     def select_language(self, language: str) -> None:
         self.language = language
@@ -89,6 +113,10 @@ class AppState:
 
     def apply_font_size(self, size_key: str) -> None:
         self.settings.code_font_size = size_key
+        self.save_settings()
+
+    def apply_daily_refresher_size(self, size: int) -> None:
+        self.settings.daily_refresher_size = size
         self.save_settings()
 
     def save_settings(self) -> None:

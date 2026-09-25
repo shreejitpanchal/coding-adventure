@@ -489,6 +489,33 @@ short daily session naturally touching several topics instead of
 grinding through one category at a time, and stays correct automatically
 as exercises are added, removed, or reordered in content.
 
+The engine call itself is pure and stateless; `app/ui/app_state.py`'s
+`resolve_daily_refresher()` is the layer that makes "today's refresher"
+actually stable across visits — it checks `ProgressStore.
+get_daily_refresher_picks(language, today)` first and only calls the
+engine (then persists the result via `save_daily_refresher_picks`) when
+nothing's been picked yet for that calendar day. `count` is read from
+`Settings.daily_refresher_size` (configurable from the Settings screen,
+`_build_daily_refresher_card`), defaulting to 5; changing it only
+affects the *next* freshly-generated set, since an already-persisted
+day's picks are returned unchanged regardless of the current setting.
+
+**Spaced review.** `resolve_daily_refresher()` also reserves up to
+`_REVIEW_SLOT_COUNT` (1) of the set's slots for a spaced-review pick —
+an exercise the user already completed, resurfaced as a reminder —
+before filling the rest with fresh, never-completed picks from the
+engine. `ProgressStore.get_lessons_due_for_review(language,
+min_age_days)` returns completed lesson ids at least `min_age_days`
+(`_REVIEW_MIN_AGE_DAYS`, 14) old, oldest first, straight off
+`lesson_completions.completed_at`. The reservation only actually
+happens when something genuinely qualifies — `review_slots = min
+(_REVIEW_SLOT_COUNT, count)`, but `fresh_count = count - len
+(review_exercises)`, so a freshly-started track (nothing old enough to
+review yet) fills every slot with fresh picks, unaffected. A review
+pick is, by definition, already in `completed_ids`, so it shows as
+already done the moment it appears in that day's set — the value here
+is the reminder/re-exposure, not a fresh completion gate.
+
 ### Category browser and unlocking
 
 Every exercise has a `category` and a 1-based `category_level`
@@ -521,7 +548,105 @@ A standalone multiple-choice question bank per language
 `start_session(count)` returns a freshly shuffled subset each time —
 both question order and each question's own answer-option order are
 re-randomized — so no two playthroughs look the same and the correct
-answer isn't always in the same position.
+answer isn't always in the same position. `start_session_for_tags
+(tags, count)` is the same shuffle, narrowed to questions sharing at
+least one of `tags` — `quiz_screen.py`'s "Retry missed concepts" button
+(visible only when at least one question was missed) calls this
+directly with the session's accumulated `missed_tags`.
+
+`quiz_screen.py`'s `_on_select()` calls `ProgressStore.
+record_quiz_answer(language, question_id, concept_tags, is_correct)`
+for every question answered — a separate, per-question record from
+`record_quiz_attempt()`'s per-session score/total summary, since a
+per-concept breakdown needs finer granularity than a session total can
+provide. `ProgressStore.get_concept_accuracy(language)` aggregates
+these into `tag -> (correct, total)`, powering the Progress screen's
+"Weakest concepts" panel (`_build_weakest_concepts_card` in
+`progress_screen.py`) — concepts below `_MIN_CONCEPT_SAMPLES` (2)
+recorded answers are excluded, so a single unlucky miss on a
+rarely-asked concept doesn't look identical to a genuinely weak spot;
+the worst `_WEAKEST_CONCEPTS_LIMIT` (5) surface, each with a "Practice"
+button via `recommend_practice_for_tags()`.
+
+### Exercise search
+
+`ExerciseEngine.search(query, difficulty=None, limit=50)`
+(`app/ui/search_screen.py`, routed at `/search`, linked from the track
+hub) is a flat, case-insensitive substring match across `title`,
+`objective`, and `concept_tags`, optionally narrowed to one
+`difficulty`, in the engine's own level order. An empty query with no
+difficulty filter matches everything (capped at `limit`) rather than
+nothing, so browsing by difficulty alone works without typing anything.
+Results reuse `is_unlocked()`/`completed_ids` the same way the category
+browser does, rendering a locked result as non-clickable and dimmed
+rather than omitting it — a search hit for something not yet reachable
+is still useful information (the user still went looking for it, they
+just haven't unlocked it yet).
+
+### Meta-achievements
+
+`app/progress/achievements.py` awards cross-cutting badges — earned
+from milestones spanning multiple exercises/sessions, not one
+exercise's own YAML-declared `achievement` field — through the exact
+same idempotent `ProgressStore.award_badge()` exercise-declared
+achievements use, so the Progress screen's badge list and export/import
+never need to know which kind a given badge is.
+`evaluate_lesson_completion_achievements(progress, engine, language,
+category)`, called from `lesson_screen.py`'s `_on_success()` right
+after `record_play_today()` (streak-based badges need `streak_days` to
+already reflect today), checks for: `first_completion` (this
+language's very first lesson ever completed), `category_complete_
+<category>` (every level in `category` now complete), and `streak_<N>`
+for `N` in `STREAK_MILESTONES` (`[3, 7, 14, 30, 100]`).
+`evaluate_quiz_achievements(progress, language, score, total)`, called
+from `quiz_screen.py`'s `_show_results()`, awards `perfect_quiz` when
+`score == total`. Both return the ids of whatever was *newly* awarded
+this call, which the caller folds into the same "Achievement unlocked"
+text an exercise-declared achievement already shows.
+
+### Notes and bookmarks
+
+Two small per-`(language, lesson_id)` tables: `exercise_notes` (a
+free-text `note`, upserted via `ProgressStore.save_note()` — an
+emptied note is deleted outright rather than kept as a stored blank
+row, so "never wrote one" and "wrote one, then cleared it" look
+identical to every reader) and `bookmarks` (`is_bookmarked()`/
+`set_bookmarked()`/`get_bookmarked_lesson_ids()`, ordered most-recently
+bookmarked first). `lesson_screen.py` renders a "★ Bookmarked"/"☆
+Bookmark" toggle button in the header and a collapsible "Your Notes"
+card with a multiline field and an explicit Save button (no
+autosave-on-blur, to keep the write path simple and visible). The track
+hub's "📌 Revisit later" section (`_build_revisit_later_section` in
+`track_hub.py`) lists every bookmarked exercise for the current
+language, hidden entirely when there are none.
+
+### Activity heatmap
+
+`ProgressStore.get_daily_activity_counts(language, days=84)` groups
+`activity_log` rows by day (`substr(timestamp, 1, 10)`) into `date ->
+count`, for the last `days` days (84 = 12 weeks). `progress_screen.py`'s
+`_build_activity_heatmap_card` renders this as a GitHub-style grid —
+one `ft.Column` of 7 small colored squares per week, aligned so each
+column is a genuine Monday-to-Sunday week (`start -= timedelta(days=
+start.weekday())`) — with `_heatmap_color()` mapping a day's event
+count to one of four existing theme colors (no new palette needed):
+`theme.bg` for zero, `theme.text_muted` for one, `theme.primary` for
+2-3, `theme.success` for 4+.
+
+### User content overlay
+
+`ExerciseEngine.__init__` also accepts `custom_content_dir` (defaulting
+to `<data_dir>/custom/<language>/lessons`, via `app/config/
+platform_paths.py`'s `resolve_platform_data_dir()`), loaded strictly
+*after* `content_dir` in `_load()`. Since `data/` is already gitignored
+(progress.sqlite3/settings.json already live there), anything dropped
+into `data/custom/<language>/lessons/*.yaml` survives a `git pull`
+untouched, letting a user add personal exercises without ever touching
+the tracked `content/` tree. Both directories share one id namespace —
+`_load()` tracks which path each id came from and raises `ValueError`
+immediately on a collision (built-in vs. custom, or two custom files),
+rather than letting one silently shadow the other depending on
+directory iteration order.
 
 ### Execution engines
 
@@ -622,6 +747,16 @@ correct output, and `contains_patterns` is what actually gates
 completion (e.g. requiring `map(` and `filter(` so a submission that
 just resubmits the unmodified starter loop doesn't silently pass).
 
+`diff_output(expected, actual)` builds a readable expected-vs-actual
+comparison for a failed `validate_output()` — every space/tab rendered
+as a visible character (`·`/`→`) and the first genuinely differing line
+called out up front, via `difflib.unified_diff()` — surfaced in
+`lesson_screen.py`'s "Show expected vs. actual" details panel instead of
+leaving a wrong-output failure as a bare pass/fail. Only computed when
+the exercise uses a fixed `expected_output` string, not
+`expected_output_pattern` (a diff against a regex wouldn't mean
+anything).
+
 ### Adaptive practice
 
 After 3 failed attempts in a row on the same exercise
@@ -631,7 +766,12 @@ offers up to 3 related exercises sharing a `concept_tags` value
 hints, or continuing — purely additive. The quiz results screen offers
 the same kind of suggestion from the union of tags across every question
 missed that session (`recommend_practice_for_tags()`), tracked only in
-memory for the session.
+memory for the session. A "Retry missed concepts" button on the results
+screen (visible only when at least one question was missed) re-runs
+`QuizEngine.start_session_for_tags(missed_tags)` directly — a full quiz
+session over every question sharing a missed tag, not just the exact
+questions gotten wrong, since `concept_tags` usually groups more than
+one related question together.
 
 ### Progress, XP, and streaks — one row per language
 

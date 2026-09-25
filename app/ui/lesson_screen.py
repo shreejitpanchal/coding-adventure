@@ -12,11 +12,12 @@ import flet as ft
 
 from app.engine.categories import get_category_meta
 from app.engine.exercise import Exercise
-from app.engine.validator import validate_contains, validate_output
+from app.engine.validator import diff_output, validate_contains, validate_output
 from app.execution.base import ExecutionResult, RunHandle
 from app.execution.errors import extract_error_line_number, translate_error
 from app.execution.registry import get_engine
 from app.execution.toolchain_check import check_toolchain
+from app.progress.achievements import evaluate_lesson_completion_achievements
 from app.ui.app_state import AppState
 from app.ui.code_editor import make_code_editor, make_read_only_code_block
 from app.ui.theme import scaled
@@ -63,6 +64,13 @@ class _ExerciseController:
         exercise = self.exercise
         meta = get_category_meta(exercise.category)
 
+        is_bookmarked = self.state.progress.is_bookmarked(self.state.language, exercise.id)
+        self.bookmark_button = ft.Button(
+            "★ Bookmarked" if is_bookmarked else "☆ Bookmark",
+            on_click=self._on_toggle_bookmark, height=44,
+            style=ft.ButtonStyle(bgcolor=theme.warning if is_bookmarked else theme.text_muted, color="#FFFFFF"),
+        )
+
         header = ft.Row(
             [
                 ft.Button(
@@ -70,12 +78,13 @@ class _ExerciseController:
                     style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
                 ),
                 ft.Text(exercise.title, size=self._fs(22), weight=ft.FontWeight.BOLD, color=theme.primary, expand=True),
+                self.bookmark_button,
                 ft.Container(
                     content=ft.Text(exercise.difficulty.replace("_", " ").title(), size=self._fs(12), color="#FFFFFF"),
                     bgcolor=meta.color, border_radius=8, padding=ft.padding.Padding.symmetric(horizontal=10, vertical=4),
                 ),
             ],
-            spacing=12,
+            spacing=12, wrap=True,
         )
 
         explanation_card = self._card("Objective", [
@@ -86,9 +95,15 @@ class _ExerciseController:
         controls = [header, explanation_card]
 
         if exercise.example_code.strip():
-            controls.append(self._card("Example", [
+            example_children: list[ft.Control] = [
                 make_read_only_code_block(exercise.example_code.strip(), scale=self.scale, theme=theme),
-            ]))
+            ]
+            if exercise.requires_code:
+                example_children.append(ft.Button(
+                    "Copy example into editor", on_click=self._on_copy_example, height=40,
+                    style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
+                ))
+            controls.append(self._card("Example", example_children))
 
         self._build_reward_card()
 
@@ -106,6 +121,7 @@ class _ExerciseController:
                 ]))
             controls.append(self._build_comprehension_card())
 
+        controls.append(self._build_notes_card())
         controls.append(self.reward_card)
 
         self._content_column = ft.Column(controls, scroll=ft.ScrollMode.AUTO, spacing=10, expand=True)
@@ -316,6 +332,22 @@ class _ExerciseController:
         )
         return self._card("Output", [self.output_text, self.details_button, self.details_container, self.practice_container])
 
+    def _build_notes_card(self) -> ft.Control:
+        theme = self.theme
+        existing_note = self.state.progress.get_note(self.state.language, self.exercise.id)
+        self.notes_field = ft.TextField(
+            value=existing_note, multiline=True, min_lines=3, max_lines=8,
+            hint_text="Jot down anything worth remembering about this exercise...",
+        )
+        self.notes_status_text = ft.Text("", size=self._fs(12), color=theme.text_muted)
+        save_button = ft.Button(
+            "Save note", on_click=self._on_save_note, height=40,
+            style=ft.ButtonStyle(bgcolor=theme.primary, color="#FFFFFF"),
+        )
+        return self._card("Your Notes", [
+            self.notes_field, ft.Row([save_button, self.notes_status_text], spacing=10),
+        ])
+
     def _build_reward_card(self) -> None:
         theme = self.theme
         self.reward_text = ft.Text("", size=self._fs(18), weight=ft.FontWeight.BOLD, color=theme.success)
@@ -415,9 +447,17 @@ class _ExerciseController:
                 self.theme.warning,
             )
         else:
+            diff_text = None
+            if not self.exercise.expected_output_pattern:
+                expected_display = self.exercise.expected_output
+                if self._current_input_value is not None and "{input}" in expected_display:
+                    expected_display = expected_display.replace("{input}", self._current_input_value)
+                diff_text = diff_output(expected_display, result.stdout)
             self._show_output(
                 f"{result.stdout or '(no output)'}\n\nNot quite the expected output yet.",
                 self.theme.warning,
+                raw=diff_text,
+                details_label="Show expected vs. actual",
             )
             self.state.progress.log_event(self.state.language, self.exercise.id, "attempt_wrong_output", result.stdout[-200:])
             self._maybe_show_practice()
@@ -435,6 +475,25 @@ class _ExerciseController:
         self._passed = False
         self.page.update()
 
+    def _on_copy_example(self, e) -> None:
+        self.editor.value = self.exercise.example_code.strip()
+        self.page.update()
+
+    def _on_toggle_bookmark(self, e) -> None:
+        progress = self.state.progress
+        now_bookmarked = not progress.is_bookmarked(self.state.language, self.exercise.id)
+        progress.set_bookmarked(self.state.language, self.exercise.id, now_bookmarked)
+        self.bookmark_button.content = "★ Bookmarked" if now_bookmarked else "☆ Bookmark"
+        self.bookmark_button.style = ft.ButtonStyle(
+            bgcolor=self.theme.warning if now_bookmarked else self.theme.text_muted, color="#FFFFFF",
+        )
+        self.page.update()
+
+    def _on_save_note(self, e) -> None:
+        self.state.progress.save_note(self.state.language, self.exercise.id, self.notes_field.value or "")
+        self.notes_status_text.value = "Saved."
+        self.page.update()
+
     def _on_hint(self, e) -> None:
         if not self.exercise.hints:
             return
@@ -445,10 +504,13 @@ class _ExerciseController:
         self.page.update()
 
     # -- output helpers -------------------------------------------------
-    def _show_output(self, text: str, color: str, raw: Optional[str] = None) -> None:
+    def _show_output(
+        self, text: str, color: str, raw: Optional[str] = None, details_label: str = "Show raw output",
+    ) -> None:
         self.output_text.value = text
         self.output_text.color = color
         if raw:
+            self.details_button.content = details_label
             self.details_button.visible = True
             self.details_text.value = raw
         else:
@@ -490,15 +552,22 @@ class _ExerciseController:
 
         progress = self.state.progress
         progress.complete_lesson(self.state.language, self.exercise.id, self.exercise.xp_reward)
-        badge_awarded = False
-        if self.exercise.achievement:
-            badge_awarded = progress.award_badge(self.state.language, self.exercise.achievement)
+        # record_play_today() runs BEFORE the meta-achievement check below,
+        # since a streak milestone badge needs streak_days to already
+        # reflect today's play.
         progress.record_play_today(self.state.language)
+
+        earned_badges: list[str] = []
+        if self.exercise.achievement and progress.award_badge(self.state.language, self.exercise.achievement):
+            earned_badges.append(self.exercise.achievement)
+        earned_badges.extend(evaluate_lesson_completion_achievements(
+            progress, self.state.exercise_engine(), self.state.language, self.exercise.category,
+        ))
 
         self.reward_text.value = f"Nice work! +{self.exercise.xp_reward} XP"
         self.achievement_text.value = (
-            f"Achievement unlocked: {self.exercise.achievement.replace('_', ' ').title()}"
-            if badge_awarded else ""
+            "Achievement unlocked: " + ", ".join(b.replace("_", " ").title() for b in earned_badges)
+            if earned_badges else ""
         )
 
         completed_ids = set(progress.get_completed_lesson_ids(self.state.language))

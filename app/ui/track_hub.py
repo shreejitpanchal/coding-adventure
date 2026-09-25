@@ -89,14 +89,53 @@ def build_track_hub_view(page: ft.Page, state: AppState) -> ft.View:
             "Streak, XP, mastery by topic, and achievements.",
             f"{len(completed_ids)}/{len(engine)} exercises completed", "/progress",
         ),
+        _card(
+            page, theme, fs, "🔍 Search",
+            "Find any exercise by title, objective, or concept.",
+            f"{len(engine)} exercises", "/search",
+        ),
     ]
+
+    controls = [header, ft.Container(height=16), *_stack(cards)]
+    revisit_section = _build_revisit_later_section(page, theme, fs, state, engine)
+    if revisit_section is not None:
+        controls.append(ft.Container(height=16))
+        controls.append(revisit_section)
 
     return ft.View(
         route="/hub",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
         padding=ft.padding.Padding.only(left=24, top=24, right=24, bottom=40),
-        controls=[header, ft.Container(height=16), *_stack(cards)],
+        controls=controls,
+    )
+
+
+def _build_revisit_later_section(page: ft.Page, theme, fs, state: AppState, engine) -> ft.Control | None:
+    bookmarked_ids = state.progress.get_bookmarked_lesson_ids(state.language)
+    exercises = [ex for eid in bookmarked_ids if (ex := engine.get(eid)) is not None]
+    if not exercises:
+        return None
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("📌 Revisit later", size=fs(16), weight=ft.FontWeight.BOLD, color=theme.text),
+                ft.Row(
+                    [
+                        ft.Button(
+                            ex.title, height=36,
+                            on_click=lambda _e, eid=ex.id: page.go(f"/lesson/{eid}"),
+                            style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
+                        )
+                        for ex in exercises
+                    ],
+                    spacing=8, wrap=True,
+                ),
+            ],
+            spacing=10,
+        ),
+        bgcolor=theme.card, border_radius=16, padding=20,
     )
 
 

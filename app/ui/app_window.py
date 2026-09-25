@@ -25,6 +25,7 @@ from app.ui.language_select import build_language_select_view
 from app.ui.lesson_screen import build_lesson_view
 from app.ui.progress_screen import build_progress_view
 from app.ui.quiz_screen import build_quiz_view
+from app.ui.search_screen import build_search_view
 from app.ui.settings_screen import build_settings_view
 from app.ui.setup_wizard import build_setup_wizard_view
 from app.ui.track_hub import build_track_hub_view
@@ -79,6 +80,8 @@ def main(page: ft.Page) -> None:
             page.views.append(build_category_map_view(page, state))
         elif route == "/quiz":
             page.views.append(build_quiz_view(page, state))
+        elif route == "/search":
+            page.views.append(build_search_view(page, state))
         elif route == "/progress":
             page.views.append(build_progress_view(page, state))
         elif route == "/settings":

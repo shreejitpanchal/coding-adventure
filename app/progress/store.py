@@ -60,6 +60,30 @@ CREATE TABLE IF NOT EXISTS daily_refresher_picks (
     lesson_id TEXT NOT NULL,
     PRIMARY KEY (language, pick_date, lesson_id)
 );
+
+CREATE TABLE IF NOT EXISTS quiz_answers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    language TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    concept_tags TEXT NOT NULL,
+    is_correct INTEGER NOT NULL,
+    answered_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS exercise_notes (
+    language TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    note TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (language, lesson_id)
+);
+
+CREATE TABLE IF NOT EXISTS bookmarks (
+    language TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    bookmarked_at TEXT NOT NULL,
+    PRIMARY KEY (language, lesson_id)
+);
 """
 
 # Bumped only if a future schema change makes an old export incompatible
@@ -69,6 +93,7 @@ PROGRESS_EXPORT_VERSION = 1
 _EXPORT_TABLES = [
     "profile", "lesson_completions", "badges", "activity_log",
     "quiz_attempts", "player_xp", "daily_refresher_picks",
+    "quiz_answers", "exercise_notes", "bookmarks",
 ]
 
 # XP cost to clear level N is N * 100 (level 1->2 costs 100, 2->3 costs 200, ...).
@@ -222,6 +247,19 @@ class ProgressStore:
                 [(language, pick_date, lesson_id) for lesson_id in lesson_ids],
             )
 
+    def get_lessons_due_for_review(self, language: str, min_age_days: int) -> list[str]:
+        """Lesson ids completed at least `min_age_days` ago, oldest
+        completion first -- candidates for a spaced-review nudge mixed
+        into the Daily Refresher (see app.ui.app_state.resolve_daily_refresher)."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=min_age_days)).isoformat()
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT lesson_id FROM lesson_completions WHERE language = ? AND completed_at <= ? "
+                "ORDER BY completed_at ASC",
+                (language, cutoff),
+            )
+            return [row[0] for row in cur.fetchall()]
+
     # -- Badges/achievements ----------------------------------------------
     def award_badge(self, language: str, badge_id: str) -> bool:
         """Returns True if newly awarded, False if already had it."""
@@ -254,6 +292,36 @@ class ProgressStore:
         # Every attempt is a freshly randomized session, so unlike exercises
         # there's no first-time-only gate.
         self.add_xp(language, score * 5)
+
+    def record_quiz_answer(self, language: str, question_id: str, concept_tags: list[str], is_correct: bool) -> None:
+        """One row per question answered, independent of record_quiz_attempt()'s
+        per-session score/total summary -- powers get_concept_accuracy()'s
+        "Weakest concepts" panel, which needs per-question, per-tag detail
+        that a session-level score can't provide."""
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO quiz_answers (language, question_id, concept_tags, is_correct, answered_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (language, question_id, ",".join(concept_tags), 1 if is_correct else 0, _now()),
+            )
+
+    def get_concept_accuracy(self, language: str) -> dict[str, tuple[int, int]]:
+        """tag -> (correct, total) across every recorded quiz answer whose
+        question carries that tag. A question with several tags counts
+        toward each of them independently."""
+        with closing(self._conn.cursor()) as cur:
+            cur.execute("SELECT concept_tags, is_correct FROM quiz_answers WHERE language = ?", (language,))
+            rows = cur.fetchall()
+        accuracy: dict[str, list[int]] = {}
+        for tags_str, is_correct in rows:
+            for tag in tags_str.split(","):
+                if not tag:
+                    continue
+                bucket = accuracy.setdefault(tag, [0, 0])
+                bucket[1] += 1
+                if is_correct:
+                    bucket[0] += 1
+        return {tag: (correct, total) for tag, (correct, total) in accuracy.items()}
 
     def get_best_quiz_score(self, language: str) -> Optional[tuple[int, int]]:
         with closing(self._conn.cursor()) as cur:
@@ -323,6 +391,19 @@ class ProgressStore:
                 count += 1
         return count
 
+    def get_daily_activity_counts(self, language: str, days: int = 84) -> dict[str, int]:
+        """ISO date -> count of activity_log events that day, for the last
+        `days` days (84 = 12 weeks) -- powers the Progress screen's
+        activity heatmap."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT substr(timestamp, 1, 10) AS day, COUNT(*) FROM activity_log "
+                "WHERE language = ? AND timestamp >= ? GROUP BY day",
+                (language, cutoff),
+            )
+            return {row[0]: row[1] for row in cur.fetchall()}
+
     def get_weekly_summary(self, language: str) -> WeeklySummary:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         rows = self.get_activity_since(language, cutoff)
@@ -349,6 +430,60 @@ class ProgressStore:
             active_days=len(active_dates),
         )
 
+    # -- Notes and bookmarks ------------------------------------------------
+    def get_note(self, language: str, lesson_id: str) -> str:
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT note FROM exercise_notes WHERE language = ? AND lesson_id = ?", (language, lesson_id)
+            )
+            row = cur.fetchone()
+            return row[0] if row else ""
+
+    def save_note(self, language: str, lesson_id: str, note: str) -> None:
+        """An emptied note is deleted outright rather than kept as a stored
+        blank row, so "never wrote one" and "wrote one, then cleared it"
+        look identical to every reader (get_note, export, a future
+        has-a-note indicator)."""
+        note = note.strip()
+        with self._conn:
+            if note:
+                self._conn.execute(
+                    """INSERT INTO exercise_notes (language, lesson_id, note, updated_at)
+                       VALUES (?, ?, ?, ?)
+                       ON CONFLICT(language, lesson_id) DO UPDATE SET note = excluded.note, updated_at = excluded.updated_at""",
+                    (language, lesson_id, note, _now()),
+                )
+            else:
+                self._conn.execute(
+                    "DELETE FROM exercise_notes WHERE language = ? AND lesson_id = ?", (language, lesson_id)
+                )
+
+    def is_bookmarked(self, language: str, lesson_id: str) -> bool:
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT 1 FROM bookmarks WHERE language = ? AND lesson_id = ?", (language, lesson_id)
+            )
+            return cur.fetchone() is not None
+
+    def set_bookmarked(self, language: str, lesson_id: str, bookmarked: bool) -> None:
+        with self._conn:
+            if bookmarked:
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO bookmarks (language, lesson_id, bookmarked_at) VALUES (?, ?, ?)",
+                    (language, lesson_id, _now()),
+                )
+            else:
+                self._conn.execute(
+                    "DELETE FROM bookmarks WHERE language = ? AND lesson_id = ?", (language, lesson_id)
+                )
+
+    def get_bookmarked_lesson_ids(self, language: str) -> list[str]:
+        with closing(self._conn.cursor()) as cur:
+            cur.execute(
+                "SELECT lesson_id FROM bookmarks WHERE language = ? ORDER BY bookmarked_at DESC", (language,)
+            )
+            return [row[0] for row in cur.fetchall()]
+
     # -- Reset ---------------------------------------------------------
     def reset_progress(self, language: str) -> None:
         with self._conn:
@@ -357,6 +492,9 @@ class ProgressStore:
             self._conn.execute("DELETE FROM activity_log WHERE language = ?", (language,))
             self._conn.execute("DELETE FROM quiz_attempts WHERE language = ?", (language,))
             self._conn.execute("DELETE FROM daily_refresher_picks WHERE language = ?", (language,))
+            self._conn.execute("DELETE FROM quiz_answers WHERE language = ?", (language,))
+            self._conn.execute("DELETE FROM exercise_notes WHERE language = ?", (language,))
+            self._conn.execute("DELETE FROM bookmarks WHERE language = ?", (language,))
             self._conn.execute(
                 "UPDATE profile SET current_exercise_id = NULL, streak_days = 0, last_played_date = NULL "
                 "WHERE language = ?",

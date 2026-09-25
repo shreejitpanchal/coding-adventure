@@ -34,12 +34,13 @@ def build_settings_view(page: ft.Page, state: AppState) -> ft.View:
         padding=ft.padding.Padding.only(left=24, top=24, right=24, bottom=40),
         controls=[
             header, _build_font_card(page, state), _build_theme_card(page, state),
-            _build_backup_card(page, state),
+            _build_daily_refresher_card(page, state), _build_backup_card(page, state),
         ],
     )
 
 
 _FONT_SIZE_LABELS = {"small": "Small", "medium": "Medium", "large": "Large"}
+_DAILY_REFRESHER_SIZE_CHOICES = [3, 5, 8, 10]
 
 
 def _build_font_card(page: ft.Page, state: AppState) -> ft.Control:
@@ -67,6 +68,45 @@ def _build_font_card(page: ft.Page, state: AppState) -> ft.Control:
         content=ft.Column(
             [
                 ft.Text("Code font size", size=fs(18), weight=ft.FontWeight.BOLD, color=theme.text),
+                ft.Row(buttons, wrap=True, spacing=8),
+            ],
+            spacing=10,
+        ),
+        bgcolor=theme.card, border_radius=16, padding=20, margin=ft.margin.Margin.only(top=16),
+    )
+
+
+def _build_daily_refresher_card(page: ft.Page, state: AppState) -> ft.Control:
+    theme = state.theme
+    fs = lambda base: scaled(base, state.font_scale)  # noqa: E731
+
+    def select(size: int):
+        def handler(_e=None) -> None:
+            state.apply_daily_refresher_size(size)
+            page.views.clear()
+            page.views.append(build_settings_view(page, state))
+            page.update()
+        return handler
+
+    current = state.settings.daily_refresher_size
+    buttons = [
+        ft.Button(
+            str(size), on_click=select(size), height=40, width=60, disabled=current == size,
+            style=ft.ButtonStyle(bgcolor=theme.primary if current == size else theme.text_muted, color="#FFFFFF"),
+        )
+        for size in _DAILY_REFRESHER_SIZE_CHOICES
+    ]
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Daily Refresher size", size=fs(18), weight=ft.FontWeight.BOLD, color=theme.text),
+                ft.Text(
+                    "How many exercises show up in a Daily Refresher round. Takes effect "
+                    "the next time a fresh set is generated -- today's set, if you've "
+                    "already started it, stays as-is.",
+                    size=fs(13), color=theme.text_muted,
+                ),
                 ft.Row(buttons, wrap=True, spacing=8),
             ],
             spacing=10,

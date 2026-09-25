@@ -13,6 +13,15 @@ _FAILURE_EVENT_TYPES = {"attempt_error", "attempt_wrong_output", "attempt_timeou
 _ACTIVITY_LOOKBACK_DAYS = 14
 _ACTIVITY_DISPLAY_LIMIT = 15
 
+# A concept needs at least this many recorded quiz answers before its
+# accuracy is shown -- a single unlucky miss on a concept only asked once
+# would otherwise look identical to a genuinely weak spot.
+_MIN_CONCEPT_SAMPLES = 2
+_WEAKEST_CONCEPTS_LIMIT = 5
+
+_HEATMAP_WEEKS = 12
+_HEATMAP_DAYS = _HEATMAP_WEEKS * 7
+
 
 def _relative_time(iso_timestamp: str) -> str:
     dt = datetime.fromisoformat(iso_timestamp)
@@ -44,6 +53,95 @@ def _describe_activity(row, engine) -> str:
     if event_type in _FAILURE_EVENT_TYPES:
         return f'✗ Attempt didn\'t pass on "{title}"'
     return f"{event_type}: {detail}" if detail else event_type
+
+
+def _build_weakest_concepts_card(page: ft.Page, theme, fs, state: AppState) -> ft.Control:
+    accuracy = state.progress.get_concept_accuracy(state.language)
+    scored = [
+        (tag, correct, total, correct / total)
+        for tag, (correct, total) in accuracy.items()
+        if total >= _MIN_CONCEPT_SAMPLES
+    ]
+    scored.sort(key=lambda row: row[3])
+    weakest = scored[:_WEAKEST_CONCEPTS_LIMIT]
+
+    completed_ids = set(state.progress.get_completed_lesson_ids(state.language))
+    engine = state.exercise_engine()
+
+    rows: list[ft.Control] = []
+    for tag, correct, total, ratio in weakest:
+        pct = round(100 * ratio)
+        row_children: list[ft.Control] = [
+            ft.Text(tag.replace("_", " ").title(), size=fs(14), color=theme.text, expand=True),
+            ft.Text(f"{correct}/{total} ({pct}%)", size=fs(13), color=theme.text_muted),
+        ]
+        suggestions = engine.recommend_practice_for_tags({tag}, completed_ids, limit=1)
+        if suggestions:
+            row_children.append(ft.Button(
+                "Practice", height=32,
+                on_click=lambda _e, eid=suggestions[0].id: page.go(f"/lesson/{eid}"),
+                style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
+            ))
+        rows.append(ft.Row(row_children, spacing=8))
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Weakest concepts", size=fs(16), weight=ft.FontWeight.BOLD, color=theme.text),
+                *(rows if rows else [ft.Text(
+                    "Not enough quiz data yet -- answer a few more questions per concept "
+                    "to see this.", size=fs(13), color=theme.text_muted,
+                )]),
+            ],
+            spacing=8,
+        ),
+        bgcolor=theme.card, border_radius=16, padding=20,
+    )
+
+
+def _heatmap_color(theme, count: int) -> str:
+    if count <= 0:
+        return theme.bg
+    if count == 1:
+        return theme.text_muted
+    if count <= 3:
+        return theme.primary
+    return theme.success
+
+
+def _build_activity_heatmap_card(theme, fs, state: AppState) -> ft.Control:
+    counts = state.progress.get_daily_activity_counts(state.language, days=_HEATMAP_DAYS)
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=_HEATMAP_DAYS - 1)
+    start -= timedelta(days=start.weekday())  # align to the Monday on/before start
+    weeks = ((today - start).days // 7) + 1
+
+    columns: list[ft.Control] = []
+    for week in range(weeks):
+        cells: list[ft.Control] = []
+        for day_offset in range(7):
+            day = start + timedelta(days=week * 7 + day_offset)
+            if day > today:
+                cells.append(ft.Container(width=14, height=14))
+                continue
+            count = counts.get(day.isoformat(), 0)
+            cells.append(ft.Container(
+                width=14, height=14, border_radius=3,
+                bgcolor=_heatmap_color(theme, count),
+                tooltip=f"{day.isoformat()}: {count} event(s)",
+            ))
+        columns.append(ft.Column(cells, spacing=3))
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.Text(f"Activity, last {_HEATMAP_WEEKS} weeks", size=fs(16), weight=ft.FontWeight.BOLD, color=theme.text),
+                ft.Row(columns, spacing=3, scroll=ft.ScrollMode.AUTO),
+            ],
+            spacing=10,
+        ),
+        bgcolor=theme.card, border_radius=16, padding=20,
+    )
 
 
 def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
@@ -162,6 +260,9 @@ def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
         bgcolor=theme.card, border_radius=16, padding=20,
     )
 
+    heatmap_card = _build_activity_heatmap_card(theme, fs, state)
+    weakest_concepts_card = _build_weakest_concepts_card(page, theme, fs, state)
+
     return ft.View(
         route="/progress",
         bgcolor=theme.bg,
@@ -169,6 +270,7 @@ def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
         padding=ft.padding.Padding.only(left=24, top=24, right=24, bottom=40),
         controls=[
             header, ft.Container(height=12), xp_card, ft.Container(height=12), mastery_card,
-            ft.Container(height=12), achievements_card, ft.Container(height=12), activity_card,
+            ft.Container(height=12), achievements_card, ft.Container(height=12), heatmap_card,
+            ft.Container(height=12), weakest_concepts_card, ft.Container(height=12), activity_card,
         ],
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import flet as ft
 
+from app.progress.achievements import evaluate_quiz_achievements
 from app.ui.app_state import AppState
 from app.ui.theme import scaled
 
@@ -65,14 +66,20 @@ class _QuizController:
         self.question_card.visible = False
 
         self.results_text = ft.Text("", size=self._fs(20), weight=ft.FontWeight.BOLD, color=theme.text)
+        self.meta_achievement_text = ft.Text("", size=self._fs(14), color=theme.success)
         self.practice_heading = ft.Text("Practice these next:", size=self._fs(14), weight=ft.FontWeight.BOLD, color=theme.text, visible=False)
         self.practice_row = ft.Row([], spacing=8, wrap=True)
+        self.retry_missed_button = ft.Button(
+            "Retry missed concepts", on_click=self._on_retry_missed, height=48, visible=False,
+            style=ft.ButtonStyle(bgcolor=theme.warning, color="#FFFFFF"),
+        )
         self.results_card = ft.Container(
             content=ft.Column(
                 [
-                    self.results_text, self.practice_heading, self.practice_row,
+                    self.results_text, self.meta_achievement_text, self.practice_heading, self.practice_row,
                     ft.Row(
                         [
+                            self.retry_missed_button,
                             ft.Button(
                                 "Play again", on_click=self._on_play_again, height=48,
                                 style=ft.ButtonStyle(bgcolor=theme.success, color="#FFFFFF"),
@@ -82,7 +89,7 @@ class _QuizController:
                                 style=ft.ButtonStyle(bgcolor=theme.text_muted, color="#FFFFFF"),
                             ),
                         ],
-                        spacing=10,
+                        spacing=10, wrap=True,
                     ),
                 ],
                 spacing=12,
@@ -165,6 +172,9 @@ class _QuizController:
             self.score += 1
         else:
             self.missed_tags.update(question.concept_tags)
+        self.state.progress.record_quiz_answer(
+            self.state.language, question.id, question.concept_tags, correct,
+        )
 
         for i, button in enumerate(self.option_buttons):
             button.disabled = True
@@ -195,6 +205,12 @@ class _QuizController:
         percent = round(100 * self.score / self.total)
         self.results_text.value = f"You scored {self.score} / {self.total} ({percent}%)"
 
+        earned_badges = evaluate_quiz_achievements(self.state.progress, self.state.language, self.score, self.total)
+        self.meta_achievement_text.value = (
+            "Achievement unlocked: " + ", ".join(b.replace("_", " ").title() for b in earned_badges)
+            if earned_badges else ""
+        )
+
         completed_ids = set(self.state.progress.get_completed_lesson_ids(self.state.language))
         suggestions = self.state.exercise_engine().recommend_practice_for_tags(self.missed_tags, completed_ids)
         self.practice_heading.visible = bool(suggestions)
@@ -206,10 +222,25 @@ class _QuizController:
             )
             for ex in suggestions
         ]
+        self.retry_missed_button.visible = bool(self.missed_tags)
 
         self.question_card.visible = False
         self.results_card.visible = True
         self.page.update()
+
+    def _on_retry_missed(self, e) -> None:
+        # Re-quiz on every question tagged with something just missed, not
+        # just the exact questions themselves -- concept_tags already
+        # groups related questions, so this pool is usually bigger than
+        # "the ones you got wrong."
+        self.questions = self.state.quiz_engine().start_session_for_tags(self.missed_tags)
+        self.total = len(self.questions)
+        self.index = 0
+        self.score = 0
+        self.missed_tags = set()
+        self.results_card.visible = False
+        self.question_card.visible = True
+        self._render_question()
 
     def _on_play_again(self, e) -> None:
         self.results_card.visible = False

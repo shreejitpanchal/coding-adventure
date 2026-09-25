@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from app.engine.lesson_engine import ExerciseEngine
@@ -42,3 +44,33 @@ def test_daily_refresher_generates_a_new_set_the_next_day(engine, progress):
     day2 = resolve_daily_refresher(engine, progress, "python", "2026-01-02")
     assert day2
     assert {ex.id for ex in day2}.isdisjoint({ex.id for ex in day1})
+
+
+def test_daily_refresher_honors_a_custom_count(engine, progress):
+    default_size = resolve_daily_refresher(engine, progress, "python", "2026-01-01")
+    assert len(default_size) == 5
+
+    custom_size = resolve_daily_refresher(engine, progress, "python", "2026-01-02", count=8)
+    assert len(custom_size) == 8
+
+
+def test_daily_refresher_mixes_in_a_review_due_item(engine, progress):
+    review_candidate = engine.all_in_order()[0].id
+    progress.complete_lesson("python", review_candidate, xp_reward=10)
+    old_timestamp = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
+    with progress._conn:
+        progress._conn.execute(
+            "UPDATE lesson_completions SET completed_at = ? WHERE language = ? AND lesson_id = ?",
+            (old_timestamp, "python", review_candidate),
+        )
+
+    daily = resolve_daily_refresher(engine, progress, "python", "2026-03-01")
+    assert review_candidate in {ex.id for ex in daily}
+    assert len(daily) == 5  # still the default total size, not +1 extra
+
+
+def test_daily_refresher_review_slot_unused_when_nothing_is_due(engine, progress):
+    # Nothing has ever been completed -- the review slot should simply not
+    # be reserved, so the full count comes from fresh picks alone.
+    daily = resolve_daily_refresher(engine, progress, "python", "2026-03-01")
+    assert len(daily) == 5

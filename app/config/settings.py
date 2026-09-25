@@ -66,6 +66,11 @@ class Settings:
     last_selected_language: str = ""
     """Pre-highlights a card on the language picker -- never used to
     auto-route past it; the picker is shown on every launch by design."""
+    daily_refresher_size: int = 5
+    """How many exercises ExerciseEngine.daily_refresher() picks each day --
+    changing this takes effect the next time a fresh set is generated
+    (tomorrow, or today if no set has been generated/saved yet), since
+    today's picks are otherwise a stable, already-persisted checklist."""
 
     def has_handle(self) -> bool:
         return bool(self.handle)

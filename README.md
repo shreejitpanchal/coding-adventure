@@ -20,9 +20,14 @@ through in a few focused minutes, not tutorials to sit through.
   Python interpreter as the Python track (no extra toolchain needed);
   Architecture needs no toolchain at all, since none of its exercises run
   code.
-- **Daily Refresher** — a short, five-exercise round-robin across every
-  topic, so a quick daily session naturally touches everything instead of
-  grinding one category at a time.
+- **Daily Refresher** — a short round-robin across every topic (five
+  exercises by default, adjustable in Settings), so a quick daily session
+  naturally touches everything instead of grinding one category at a
+  time. Occasionally mixes in a spaced-review reminder -- an exercise
+  finished two-plus weeks ago, resurfaced so it doesn't fade.
+- **Search** — find any exercise by title, objective, or concept
+  ("closures", "race conditions"), filterable by difficulty, once a
+  track has hundreds of exercises spread across many categories.
 - **Practice by Topic** — Java and Python both cover the original 14
   categories: Idioms & Gotchas, Core Language Refresher, Data Structures
   & Algorithms, Standard Library Deep Dive, Concurrency & Async, Thread
@@ -134,8 +139,15 @@ through in a few focused minutes, not tutorials to sit through.
 - **Quiz Bank** — 87 Python questions, 70 Java questions, 55 C++
   questions, 44 Spring questions, 63 Node.js questions, 45 AI questions,
   and 20 Architecture questions, reshuffled every session.
-- **Progress** — per-track XP, levels, streaks, mastery-by-topic, and
-  achievements. Every language track keeps its own independent progress.
+- **Progress** — per-track XP, levels, streaks, mastery-by-topic,
+  achievements, a 12-week activity heatmap, and a "Weakest concepts"
+  panel built from your actual quiz answer history (each with a direct
+  "Practice" link). Achievements include per-exercise ones plus
+  cross-cutting meta-achievements (a streak milestone, a fully-completed
+  category, a perfect quiz, your first-ever completion). Every language
+  track keeps its own independent progress.
+- **Notes and bookmarks** — jot a note on any exercise, or bookmark one
+  to "Revisit later" from the track hub.
 - **Real execution, not a simulated sandbox** — Python exercises run
   against your actual local `python` interpreter; Java exercises are
   compiled with `javac` and run with `java`; C++ exercises are compiled

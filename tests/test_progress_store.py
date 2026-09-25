@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from app.progress.store import ProgressStore
@@ -64,6 +66,9 @@ def test_export_then_import_restores_everything(store, tmp_path):
     store.record_quiz_attempt("java", 4, 5)
     store.save_daily_refresher_picks("node", "2026-01-01", ["a", "b"])
     store.record_play_today("python")
+    store.record_quiz_answer("python", "q1", ["closures"], is_correct=True)
+    store.save_note("python", "ex1", "a note worth keeping")
+    store.set_bookmarked("python", "ex1", True)
 
     exported = store.export_progress()
     assert exported["version"] == 1
@@ -78,6 +83,9 @@ def test_export_then_import_restores_everything(store, tmp_path):
         assert fresh.get_best_quiz_score("java") == (4, 5)
         assert fresh.get_daily_refresher_picks("node", "2026-01-01") == ["a", "b"]
         assert fresh.get_streak_days("python") == 1
+        assert fresh.get_concept_accuracy("python")["closures"] == (1, 1)
+        assert fresh.get_note("python", "ex1") == "a note worth keeping"
+        assert fresh.is_bookmarked("python", "ex1")
     finally:
         fresh.close()
 
@@ -101,3 +109,83 @@ def test_import_overwrites_existing_progress(store):
 def test_import_rejects_incompatible_version(store):
     with pytest.raises(ValueError):
         store.import_progress({"version": 999, "tables": {}})
+
+
+def _backdate_completion(store, language, lesson_id, days_ago):
+    old_timestamp = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
+    with store._conn:
+        store._conn.execute(
+            "UPDATE lesson_completions SET completed_at = ? WHERE language = ? AND lesson_id = ?",
+            (old_timestamp, language, lesson_id),
+        )
+
+
+def test_get_lessons_due_for_review_only_returns_old_completions(store):
+    store.complete_lesson("python", "old_lesson", xp_reward=10)
+    store.complete_lesson("python", "recent_lesson", xp_reward=10)
+    _backdate_completion(store, "python", "old_lesson", days_ago=20)
+
+    due = store.get_lessons_due_for_review("python", min_age_days=14)
+    assert due == ["old_lesson"]
+
+
+def test_lessons_due_for_review_ordered_oldest_first(store):
+    store.complete_lesson("python", "a", xp_reward=10)
+    store.complete_lesson("python", "b", xp_reward=10)
+    _backdate_completion(store, "python", "a", days_ago=15)
+    _backdate_completion(store, "python", "b", days_ago=30)
+
+    due = store.get_lessons_due_for_review("python", min_age_days=14)
+    assert due == ["b", "a"]
+
+
+def test_record_quiz_answer_and_concept_accuracy(store):
+    store.record_quiz_answer("python", "q1", ["closures", "scope"], is_correct=True)
+    store.record_quiz_answer("python", "q2", ["closures"], is_correct=False)
+    store.record_quiz_answer("python", "q3", ["recursion"], is_correct=True)
+
+    accuracy = store.get_concept_accuracy("python")
+    assert accuracy["closures"] == (1, 2)
+    assert accuracy["scope"] == (1, 1)
+    assert accuracy["recursion"] == (1, 1)
+
+
+def test_note_round_trip_and_clearing(store):
+    assert store.get_note("python", "ex1") == ""
+    store.save_note("python", "ex1", "remember the gotcha here")
+    assert store.get_note("python", "ex1") == "remember the gotcha here"
+    store.save_note("python", "ex1", "updated note")
+    assert store.get_note("python", "ex1") == "updated note"
+    store.save_note("python", "ex1", "   ")  # blank after stripping -- deletes the row
+    assert store.get_note("python", "ex1") == ""
+
+
+def test_bookmark_toggle_and_listing(store):
+    assert not store.is_bookmarked("python", "ex1")
+    store.set_bookmarked("python", "ex1", True)
+    assert store.is_bookmarked("python", "ex1")
+    store.set_bookmarked("python", "ex2", True)
+    assert store.get_bookmarked_lesson_ids("python") == ["ex2", "ex1"]
+    store.set_bookmarked("python", "ex1", False)
+    assert not store.is_bookmarked("python", "ex1")
+    assert store.get_bookmarked_lesson_ids("python") == ["ex2"]
+
+
+def test_get_daily_activity_counts(store):
+    store.log_event("python", "ex1", "lesson_completed")
+    store.log_event("python", "ex1", "hint_used")
+    counts = store.get_daily_activity_counts("python", days=7)
+    today = datetime.now(timezone.utc).date().isoformat()
+    assert counts[today] == 2
+
+
+def test_reset_progress_clears_new_tables_too(store):
+    store.record_quiz_answer("python", "q1", ["closures"], is_correct=True)
+    store.save_note("python", "ex1", "a note")
+    store.set_bookmarked("python", "ex1", True)
+
+    store.reset_progress("python")
+
+    assert store.get_concept_accuracy("python") == {}
+    assert store.get_note("python", "ex1") == ""
+    assert not store.is_bookmarked("python", "ex1")

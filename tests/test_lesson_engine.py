@@ -1,5 +1,12 @@
+import pytest
+
 from app.engine.lesson_engine import ExerciseEngine
 from app.engine import lesson_engine as lesson_engine_module
+
+_MINIMAL_EXERCISE_TEMPLATE = (
+    "id: {id}\nlanguage: python\nlevel: {level}\ntitle: {title}\n"
+    "objective: obj\nexplanation: exp\n"
+)
 
 
 def test_loads_python_content():
@@ -245,3 +252,67 @@ def test_loads_architecture_content():
     for ex in engine.all_in_order():
         assert ex.requires_code is False
         assert len(ex.comprehension_check) >= 2
+
+
+def test_search_matches_title_objective_and_concept_tags():
+    engine = ExerciseEngine("python")
+    by_title = engine.search("mutable default")
+    assert any(ex.id == "idioms_gotchas_01" for ex in by_title)
+
+    by_tag = engine.search("closures")
+    assert all("closures" in " ".join([ex.title, ex.objective, *ex.concept_tags]).lower() for ex in by_tag)
+    assert len(by_tag) > 0
+
+
+def test_search_filters_by_difficulty():
+    engine = ExerciseEngine("python")
+    results = engine.search("", difficulty="gotcha")
+    assert results
+    assert all(ex.difficulty == "gotcha" for ex in results)
+
+
+def test_search_respects_limit():
+    engine = ExerciseEngine("python")
+    results = engine.search("", limit=3)
+    assert len(results) == 3
+
+
+def _write_exercise(directory, filename, exercise_id, level=1, title="Title"):
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / filename).write_text(
+        _MINIMAL_EXERCISE_TEMPLATE.format(id=exercise_id, level=level, title=title),
+        encoding="utf-8",
+    )
+
+
+def test_custom_content_overlay_loads_after_builtin(tmp_path):
+    builtin_dir = tmp_path / "builtin"
+    custom_dir = tmp_path / "custom"
+    _write_exercise(builtin_dir, "a.yaml", "builtin_a", level=1)
+    _write_exercise(custom_dir, "b.yaml", "custom_b", level=2)
+
+    engine = ExerciseEngine("python", content_dir=builtin_dir, custom_content_dir=custom_dir)
+    assert engine.has("builtin_a")
+    assert engine.has("custom_b")
+    assert len(engine) == 2
+
+
+def test_custom_content_duplicate_id_fails_loud(tmp_path):
+    builtin_dir = tmp_path / "builtin"
+    custom_dir = tmp_path / "custom"
+    _write_exercise(builtin_dir, "a.yaml", "dup_id", level=1)
+    _write_exercise(custom_dir, "b.yaml", "dup_id", level=2)
+
+    with pytest.raises(ValueError, match="dup_id"):
+        ExerciseEngine("python", content_dir=builtin_dir, custom_content_dir=custom_dir)
+
+
+def test_missing_custom_content_dir_is_fine(tmp_path):
+    builtin_dir = tmp_path / "builtin"
+    _write_exercise(builtin_dir, "a.yaml", "builtin_only", level=1)
+
+    engine = ExerciseEngine(
+        "python", content_dir=builtin_dir, custom_content_dir=tmp_path / "no_such_custom_dir",
+    )
+    assert len(engine) == 1
+    assert engine.has("builtin_only")
