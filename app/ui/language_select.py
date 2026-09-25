@@ -4,6 +4,8 @@ auto-skipped by "last selected language" -- that value only pre-highlights
 a card here."""
 from __future__ import annotations
 
+from typing import Optional
+
 import flet as ft
 
 from app.engine.languages import LANGUAGE_ORDER, get_language
@@ -39,16 +41,74 @@ def build_language_select_view(page: ft.Page, state: AppState) -> ft.View:
         for key in LANGUAGE_ORDER
     ]
 
+    overview = _build_overview_card(page, state)
+
+    controls = [header, ft.Container(height=16)]
+    if overview is not None:
+        controls.append(overview)
+        controls.append(ft.Container(height=16))
+    controls.append(ft.Row(cards, wrap=True, spacing=16, run_spacing=16))
+
     return ft.View(
         route="/languages",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
         padding=ft.padding.Padding.only(left=24, top=24, right=24, bottom=40),
-        controls=[
-            header,
-            ft.Container(height=16),
-            ft.Row(cards, wrap=True, spacing=16, run_spacing=16),
+        controls=controls,
+    )
+
+
+def _build_overview_card(page: ft.Page, state: AppState) -> ft.Control | None:
+    """Cross-track summary above the per-language cards: total XP and best
+    streak across every available track, plus a "continue where you left
+    off" link for whichever track was used last. Returns None when there's
+    nothing yet to show (a brand-new profile with no XP and no in-progress
+    exercise) -- an empty summary card would just be noise on first launch."""
+    theme = state.theme
+    fs = lambda base: scaled(base, state.font_scale)  # noqa: E731
+
+    available_keys = [key for key in LANGUAGE_ORDER if get_language(key).available]
+    total_xp = sum(state.progress.get_player_level(key).total_xp for key in available_keys)
+    best_streak = max((state.progress.get_streak_days(key) for key in available_keys), default=0)
+
+    continue_link: Optional[ft.Control] = None
+    last_language = state.language
+    if last_language in available_keys:
+        current_id = state.progress.get_current_exercise(last_language)
+        if current_id:
+            exercise = state.exercise_engine(last_language).get(current_id)
+            if exercise is not None:
+                lang_title = get_language(last_language).title
+
+                def on_continue(_e: ft.ControlEvent, language=last_language, exercise_id=current_id) -> None:
+                    state.select_language(language)
+                    page.go(f"/lesson/{exercise_id}")
+
+                continue_link = ft.Button(
+                    f"▶ Continue: {exercise.title} ({lang_title})", on_click=on_continue, height=44,
+                    style=ft.ButtonStyle(bgcolor=theme.primary, color="#FFFFFF"),
+                )
+
+    if total_xp == 0 and continue_link is None:
+        return None
+
+    stats_row = ft.Row(
+        [
+            ft.Text(f"⭐ {total_xp} total XP", size=fs(14), weight=ft.FontWeight.BOLD, color=theme.text),
+            ft.Text(f"🔥 {best_streak}-day best streak", size=fs(14), weight=ft.FontWeight.BOLD, color=theme.text),
         ],
+        spacing=24,
+    )
+
+    children: list[ft.Control] = [stats_row]
+    if continue_link is not None:
+        children.append(continue_link)
+
+    return ft.Container(
+        content=ft.Row(children, spacing=24, wrap=True, alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        bgcolor=theme.card, border_radius=16, padding=20,
+        border=ft.border.Border.all(1, theme.text_muted),
     )
 
 

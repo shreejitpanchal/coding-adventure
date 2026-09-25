@@ -39,6 +39,15 @@ def test_recent_failure_count_resets_on_completion(store):
     assert store.get_recent_failure_count("python", "ex1") == 0
 
 
+def test_current_exercise_round_trips_and_defaults_to_none(store):
+    assert store.get_current_exercise("python") is None
+    store.set_current_exercise("python", "ex1")
+    assert store.get_current_exercise("python") == "ex1"
+    store.set_current_exercise("python", "ex2")
+    assert store.get_current_exercise("python") == "ex2"
+    assert store.get_current_exercise("java") is None
+
+
 def test_streak_increments_on_consecutive_days(store):
     store.record_play_today("python")
     assert store.get_streak_days("python") == 1

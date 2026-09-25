@@ -56,6 +56,8 @@ class _ExerciseController:
         self._check_index = 0
         self._check_wrong_count = 0
 
+        state.progress.set_current_exercise(state.language, exercise.id)
+
     def _fs(self, base: int) -> int:
         return scaled(base, self.scale)
 
@@ -84,7 +86,7 @@ class _ExerciseController:
                     bgcolor=meta.color, border_radius=8, padding=ft.padding.Padding.symmetric(horizontal=10, vertical=4),
                 ),
             ],
-            spacing=12, wrap=True,
+            spacing=12,
         )
 
         explanation_card = self._card("Objective", [
@@ -336,7 +338,7 @@ class _ExerciseController:
         theme = self.theme
         existing_note = self.state.progress.get_note(self.state.language, self.exercise.id)
         self.notes_field = ft.TextField(
-            value=existing_note, multiline=True, min_lines=3, max_lines=8,
+            value=existing_note, multiline=True, min_lines=3, max_lines=8, height=160,
             hint_text="Jot down anything worth remembering about this exercise...",
         )
         self.notes_status_text = ft.Text("", size=self._fs(12), color=theme.text_muted)

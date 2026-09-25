@@ -206,6 +206,28 @@ track's card shows "Available", "Toolchain needed" (content exists but
 the local machine lacks the compiler/runtime — `app/execution/
 toolchain_check.py`), or "Coming soon" (no content/engine yet).
 
+### Cross-track overview
+
+`language_select.py`'s `_build_overview_card()` renders a summary strip
+above the per-language cards: total XP and best current streak summed/
+maxed across every `available` track (via `ProgressStore.
+get_player_level()`/`get_streak_days()` for each key in `LANGUAGE_ORDER`
+— cheap SQL lookups, no YAML/content loading involved), plus a "Continue:
+`<exercise title>` (`<language>`)" button for whichever track was used
+last. It returns `None` (rendering nothing) on a brand-new profile with
+zero XP and no in-progress exercise, rather than showing an empty card.
+
+The "continue" link relies on `ProgressStore.set_current_exercise()`,
+which `lesson_screen.py`'s `_ExerciseController.__init__` now calls on
+every lesson view build (`state.progress.set_current_exercise(state.
+language, exercise.id)`) — previously this store method existed but had
+no caller anywhere in the app, so `get_current_exercise()` always
+returned `None`. The overview only resolves the *last selected*
+language's (`AppState.language`) current exercise, not all seven — doing
+that for every track would force-load every language's `ExerciseEngine`
+(hundreds of YAML files each) just to render the picker screen, for a
+feature that only ever needs one.
+
 ### Practice by Topic — kept in parity across languages on purpose
 
 Python and Java both define the same original 14 category keys

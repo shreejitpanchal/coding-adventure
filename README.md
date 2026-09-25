@@ -19,7 +19,9 @@ through in a few focused minutes, not tutorials to sit through.
   install hint instead of pretending it's ready. AI runs on the same
   Python interpreter as the Python track (no extra toolchain needed);
   Architecture needs no toolchain at all, since none of its exercises run
-  code.
+  code. A summary strip above the cards shows your total XP and best
+  streak across every track, plus a "Continue where you left off" link
+  straight back into whichever exercise you were last viewing.
 - **Daily Refresher** — a short round-robin across every topic (five
   exercises by default, adjustable in Settings), so a quick daily session
   naturally touches everything instead of grinding one category at a
