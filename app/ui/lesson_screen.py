@@ -40,8 +40,10 @@ from app.ui.components import (
     header_row,
     icon_button,
     icon_circle,
+    is_compact,
     spacer,
     tint,
+    view_padding,
 )
 from app.ui.motion import Pulser, Stagger, confetti, confetti_layer, count_up, pop_in, prepare_pop
 from app.ui.shortcuts import Shortcuts
@@ -145,7 +147,7 @@ class _ExerciseController:
         header = header_row(
             theme, self._fs, exercise.title, self._on_menu,
             subtitle=f"{self.meta.icon} {self.meta.title} · level {exercise.category_level}",
-            trailing=trailing, title_size=22,
+            trailing=trailing, title_size=22, compact=is_compact(self.page),
         )
 
         explanation_card = self._card("Objective", [
@@ -191,7 +193,7 @@ class _ExerciseController:
 
         self._content_column = ft.Column(controls, scroll=ft.ScrollMode.AUTO, spacing=14, expand=True)
         # Inside a Stack, children fill the area via edge positioning (not `expand`).
-        content = ft.Container(content=self._content_column, padding=ft.Padding.only(left=28, right=28, top=22, bottom=40),
+        content = ft.Container(content=self._content_column, padding=view_padding(self.page),
                                left=0, top=0, right=0, bottom=0)
         self.confetti = confetti_layer()
 
@@ -222,7 +224,9 @@ class _ExerciseController:
         starter_lines = exercise.starter_code.strip().count("\n") + 1
         editor_height = max(180, min(520, 30 * starter_lines + 50))
         self.editor = make_code_editor(exercise.starter_code.strip(), height=editor_height, scale=self.scale, theme=theme)
-        children: list[ft.Control] = [frame_editor(self.editor, theme, filename=f"solution.{_extension(exercise.language)}")]
+        children: list[ft.Control] = [
+            frame_editor(self.editor, theme, filename=f"solution.{_extension(exercise.language)}", scale=self.scale),
+        ]
 
         if exercise.input_prompt:
             self.input_field = ft.TextField(

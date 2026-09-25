@@ -51,7 +51,7 @@ def build_category_map_view(page: ft.Page, state: AppState) -> ft.View:
         route="/categories",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
-        padding=view_padding(),
+        padding=view_padding(page),
         controls=[header, spacer(20), ft.ResponsiveRow(cards, spacing=16, run_spacing=16)],
     )
 

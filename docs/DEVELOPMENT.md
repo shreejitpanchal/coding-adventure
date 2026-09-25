@@ -209,6 +209,19 @@ animate on entry (`track_hub`, `progress_screen`) therefore end with a
 scheduled task, and every helper swallows the "control no longer
 mounted" error that a fast navigation away can cause.
 
+**Text size and compact layout.** Every screen builds a local
+`fs = lambda base: scaled(base, state.font_scale)` and passes *all* text,
+chip and icon sizes through it, so the Settings "Text size" choice
+(`Settings.code_font_size`, historical key name; `FONT_SIZE_SCALES`
+small/medium/large/xlarge = 0.85/1.0/1.2/1.4) rescales the whole UI,
+not only code. `components.is_compact(page)` is True below
+`COMPACT_WIDTH` (720 px, i.e. phones): `view_padding(page)` shrinks,
+`header_row(..., compact=True)` drops trailing chips under the title,
+and the hub banner splits into stacked rows so a long title never wraps
+one letter per line. Fixed pixel widths are avoided on anything that
+must fit a phone (option rows stretch to the card; the setup card and XP
+bar are clamped to `page.width`).
+
 **Flutter layout rules that blank a whole subtree silently** (the
 client raises, Flet shows nothing, and only `page.on_error` -- wired in
 `app_window.py` to `data/logs/app.log` -- says why):
@@ -666,6 +679,17 @@ fresh picks, unaffected. A review pick is, by definition, already in
 `completed_ids`, so it shows as done the moment it appears in that
 day's set — the value is the re-exposure, and passing it again pushes
 its next review further out.
+
+### Root route and back navigation
+
+Flutter's own root route `/` (the browser's initial URL, or where a
+fully unwound back stack lands on Android) is mapped by
+`app_window.build_view_for_route()` to the picker, or to `/setup` on a
+first run. `go_back()` with an empty Python history stack goes to the
+picker if not already there; only on desktop (not web, not mobile) does
+a further back close the window, since there is no window to close
+elsewhere. Anything else unknown still logs and shows the "Unknown
+screen" view. Tests: `tests/test_app_window_routes.py`.
 
 ### Keyboard shortcuts (`app/ui/shortcuts.py`)
 

@@ -110,11 +110,41 @@ def test_header_row_and_nav_tile_route():
     row = header_row(THEME, _fs, "Progress", lambda _e: page.go("/hub"), subtitle="sub", icon=ft.Icons.INSIGHTS)
     row.controls[0].on_click(None)
     assert page.routes == ["/hub"]
+    # Compact mode drops trailing controls onto a second row so the title keeps its width.
+    trailing = [chip("Core", THEME.primary, _fs), chip("10 XP", THEME.warning, _fs)]
+    compact = header_row(THEME, _fs, "A long exercise title", lambda _e: None, trailing=trailing, compact=True)
+    assert isinstance(compact, ft.Column) and len(compact.controls) == 2
+    assert compact.controls[1].controls == trailing
+    wide = header_row(THEME, _fs, "Title", lambda _e: None, trailing=trailing, compact=False)
+    assert isinstance(wide, ft.Row)
     tile = nav_tile(page, THEME, _fs, icon=ft.Icons.QUIZ_ROUNDED, title="Quiz", subtitle="s", status="3 left",
                     route="/quiz", color=THEME.accent)
     tile.on_click(None)
     assert page.routes[-1] == "/quiz"
     assert tile.on_hover is not None
+
+
+def test_is_compact_and_padding_follow_page_width():
+    from app.ui.components import is_compact, view_padding
+
+    class Narrow:
+        width = 390
+
+    class Wide:
+        width = 1280
+
+    assert is_compact(Narrow()) and not is_compact(Wide()) and not is_compact(None)
+    assert view_padding(Narrow()).left == 16
+    assert view_padding(Wide()).left == 28
+    assert view_padding(None).left == 28
+
+
+def test_font_scale_steps_are_visibly_distinct():
+    from app.ui.theme import FONT_SIZE_SCALES, resolve_font_scale, scaled
+    values = [FONT_SIZE_SCALES[k] for k in ("small", "medium", "large", "xlarge")]
+    assert values == sorted(values) and values[-1] - values[0] >= 0.5
+    assert scaled(14, resolve_font_scale("xlarge")) > scaled(14, resolve_font_scale("large")) > scaled(14, 1.0)
+    assert resolve_font_scale("nonsense") == 1.0
 
 
 def test_multiple_choice_walkthrough_reports_answers_and_completion():

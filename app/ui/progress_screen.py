@@ -428,6 +428,6 @@ def build_progress_view(page: ft.Page, state: AppState) -> ft.View:
         route="/progress",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
-        padding=view_padding(),
+        padding=view_padding(page),
         controls=controls,
     )

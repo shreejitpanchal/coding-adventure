@@ -71,7 +71,7 @@ class _SearchController:
             route="/search",
             bgcolor=theme.bg,
             scroll=ft.ScrollMode.AUTO,
-            padding=view_padding(),
+            padding=view_padding(self.page),
             controls=[
                 header, spacer(8),
                 self.search_field,

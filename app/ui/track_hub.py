@@ -16,6 +16,7 @@ from app.ui.components import (
     card,
     emoji_circle,
     icon_button,
+    is_compact,
     nav_tile,
     progress_ring,
     route_handler,
@@ -46,52 +47,52 @@ def build_track_hub_view(page: ft.Page, state: AppState) -> ft.View:
     stagger = Stagger(page)
 
     # -- banner -----------------------------------------------------------
-    xp_track, xp_fill = xp_bar(theme, level.xp_into_level / max(1, level.xp_needed_for_level), width=340,
+    compact = is_compact(page)
+    bar_width = 340 if not compact else max(160, int((page.width or 360) - 120))
+    xp_track, xp_fill = xp_bar(theme, level.xp_into_level / max(1, level.xp_needed_for_level), width=bar_width,
                                color=language.color)
+    back_btn = icon_button(ft.Icons.ARROW_BACK_ROUNDED, route_handler(page, "/languages"), theme,
+                           color=WHITE, bgcolor=tint(WHITE, 0.18), tooltip="All tracks")
+    settings_btn = icon_button(ft.Icons.SETTINGS_ROUNDED, route_handler(page, "/settings"), theme,
+                               color=WHITE, bgcolor=tint(WHITE, 0.18), tooltip="Settings")
+    emoji = emoji_circle(language.icon, WHITE, fs, size=60, text_size=30)
+    title_col = ft.Column(
+        [
+            ft.Text(f"{language.title} track", size=fs(30 if not compact else 24), weight=ft.FontWeight.BOLD, color=WHITE),
+            ft.Text(language.tagline, size=fs(13), color=tint(WHITE, 0.88), max_lines=3, overflow=ft.TextOverflow.ELLIPSIS),
+        ],
+        spacing=4, expand=True,
+    )
+    ring = progress_ring(theme, fs, len(completed_ids) / max(1, len(engine)), WHITE, size=78,
+                         label=f"{round(100 * len(completed_ids) / max(1, len(engine)))}%", sublabel="complete")
+    pills = [
+        stat_pill(theme, fs, ft.Icons.WORKSPACE_PREMIUM, f"Level {level.level}",
+                  f"{level.xp_into_level}/{level.xp_needed_for_level} XP to next", theme.warning),
+        stat_pill(theme, fs, ft.Icons.LOCAL_FIRE_DEPARTMENT, f"{streak}",
+                  f"day streak · {freeze_tokens} freeze{'s' if freeze_tokens != 1 else ''}", theme.danger),
+        stat_pill(theme, fs, ft.Icons.FLAG_ROUNDED, f"{week_done}/{week_goal}",
+                  "weekly goal" if week_done < week_goal else "weekly goal · done!", theme.success),
+        stat_pill(theme, fs, ft.Icons.BOLT, f"{level.total_xp:,}", "total XP", theme.warning),
+        ft.Column([ft.Text("Progress to next level", size=fs(11), color=tint(WHITE, 0.85)), xp_track], spacing=6),
+    ]
+    if compact:
+        # Phone: the title keeps the full width; emoji + ring share a row below it.
+        banner_rows: list[ft.Control] = [
+            ft.Row([back_btn, title_col, settings_btn], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Row([emoji, ring], spacing=20, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Row(pills, spacing=10, wrap=True, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ]
+    else:
+        banner_rows = [
+            ft.Row([back_btn, emoji, title_col, ring, settings_btn], spacing=16,
+                   vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Row(pills, spacing=12, wrap=True, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ]
     banner = ft.Container(
-        content=ft.Column(
-            [
-                ft.Row(
-                    [
-                        icon_button(ft.Icons.ARROW_BACK_ROUNDED, route_handler(page, "/languages"), theme,
-                                    color=WHITE, bgcolor=tint(WHITE, 0.18), tooltip="All tracks"),
-                        emoji_circle(language.icon, WHITE, fs, size=60, text_size=30),
-                        ft.Column(
-                            [
-                                ft.Text(f"{language.title} track", size=fs(30), weight=ft.FontWeight.BOLD, color=WHITE),
-                                ft.Text(language.tagline, size=fs(13), color=tint(WHITE, 0.88), max_lines=2,
-                                        overflow=ft.TextOverflow.ELLIPSIS),
-                            ],
-                            spacing=4, expand=True,
-                        ),
-                        progress_ring(theme, fs, len(completed_ids) / max(1, len(engine)), WHITE, size=78,
-                                      label=f"{round(100 * len(completed_ids) / max(1, len(engine)))}%",
-                                      sublabel="complete"),
-                        icon_button(ft.Icons.SETTINGS_ROUNDED, route_handler(page, "/settings"), theme,
-                                    color=WHITE, bgcolor=tint(WHITE, 0.18), tooltip="Settings"),
-                    ],
-                    spacing=16, vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                ft.Row(
-                    [
-                        stat_pill(theme, fs, ft.Icons.WORKSPACE_PREMIUM, f"Level {level.level}",
-                                  f"{level.xp_into_level}/{level.xp_needed_for_level} XP to next", theme.warning),
-                        stat_pill(theme, fs, ft.Icons.LOCAL_FIRE_DEPARTMENT, f"{streak}",
-                                  f"day streak · {freeze_tokens} freeze{'s' if freeze_tokens != 1 else ''}", theme.danger),
-                        stat_pill(theme, fs, ft.Icons.FLAG_ROUNDED, f"{week_done}/{week_goal}",
-                                  "weekly goal" if week_done < week_goal else "weekly goal · done!", theme.success),
-                        stat_pill(theme, fs, ft.Icons.BOLT, f"{level.total_xp:,}", "total XP", theme.warning),
-                        ft.Column([ft.Text("Progress to next level", size=fs(11), color=tint(WHITE, 0.85)), xp_track],
-                                  spacing=6),
-                    ],
-                    spacing=12, wrap=True, vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-            ],
-            spacing=18,
-        ),
+        content=ft.Column(banner_rows, spacing=18),
         gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
                                    colors=[language.color, theme.gradient[1]]),
-        border_radius=RADIUS + 6, padding=ft.Padding.symmetric(horizontal=26, vertical=24),
+        border_radius=RADIUS + 6, padding=ft.Padding.symmetric(horizontal=26 if not compact else 18, vertical=24),
         shadow=shadow(theme, blur=32, y=12, alpha=0.35, color=language.color),
     )
 
@@ -172,7 +173,7 @@ def build_track_hub_view(page: ft.Page, state: AppState) -> ft.View:
         route="/hub",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
-        padding=view_padding(),
+        padding=view_padding(page),
         controls=controls,
     )
 

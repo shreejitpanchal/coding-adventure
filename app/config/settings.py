@@ -67,7 +67,9 @@ class Settings:
     theme: str = "aurora"
     """A key in app/ui/theme.py's THEME_PRESETS."""
     code_font_size: str = "medium"
-    """One of small/medium/large -- see app/ui/theme.py's FONT_SIZE_SCALES."""
+    """Text size for the whole UI (not only code, despite the historical
+    key name, kept so existing settings files still load) -- one of
+    app/ui/theme.py's FONT_SIZE_SCALES keys: small/medium/large/xlarge."""
     setup_complete: bool = False
     last_selected_language: str = ""
     """Pre-highlights a card on the language picker -- never used to

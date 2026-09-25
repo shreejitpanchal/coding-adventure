@@ -39,12 +39,12 @@ def build_settings_view(page: ft.Page, state: AppState) -> ft.View:
         route="/settings",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
-        padding=view_padding(),
+        padding=view_padding(page),
         controls=controls,
     )
 
 
-_FONT_SIZE_LABELS = {"small": "Small", "medium": "Medium", "large": "Large"}
+_FONT_SIZE_LABELS = {"small": "Small", "medium": "Medium", "large": "Large", "xlarge": "Extra large"}
 _DAILY_REFRESHER_SIZE_CHOICES = [3, 5, 8, 10]
 _WEEKLY_GOAL_CHOICES = [5, 10, 15, 25, 40]
 
@@ -80,10 +80,19 @@ def _build_font_card(page: ft.Page, state: AppState) -> ft.Control:
             _rebuild(page, state)
         return handler
 
-    preview = ft.Text("def refresh(skills): return sorted(skills, key=len)", size=fs(14), color=theme.text,
-                      font_family="Consolas, 'Courier New', monospace")
-    return card(theme, fs, "Code font size", [
-        ft.Text("Applies to editors, examples and output.", size=fs(13), color=theme.text_muted),
+    preview = ft.Column(
+        [
+            ft.Text("Heading preview", size=fs(20), weight=ft.FontWeight.BOLD, color=theme.text),
+            ft.Text("Body text scales with this setting on every screen, on desktop and phone.",
+                    size=fs(14), color=theme.text_muted),
+            ft.Text("def refresh(skills): return sorted(skills, key=len)", size=fs(14), color=theme.text,
+                    font_family="Consolas, 'Courier New', monospace"),
+        ],
+        spacing=6,
+    )
+    return card(theme, fs, "Text size", [
+        ft.Text("Applies everywhere: headings, body text, chips, code editors and output.",
+                size=fs(13), color=theme.text_muted),
         _segmented(theme, [(k, _FONT_SIZE_LABELS.get(k, k)) for k in FONT_SIZE_SCALES], state.settings.code_font_size, select),
         ft.Container(content=preview, bgcolor=theme.surface, border_radius=10, padding=12),
     ], icon=ft.Icons.TEXT_FIELDS_ROUNDED, accent=theme.primary, title_size=18, margin_top=4)

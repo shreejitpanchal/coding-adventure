@@ -35,7 +35,20 @@ OPTION_LETTERS = "ABCDEFGH"
 
 # -- layout ------------------------------------------------------------------
 
-def view_padding() -> ft.Padding:
+COMPACT_WIDTH = 720
+"""Below this page width (phones, narrow windows) screens switch to their
+stacked layouts: trailing header controls drop under the title, banner
+rows split, side padding shrinks."""
+
+
+def is_compact(page: Optional[ft.Page]) -> bool:
+    width = getattr(page, "width", None) if page is not None else None
+    return bool(width) and width < COMPACT_WIDTH
+
+
+def view_padding(page: Optional[ft.Page] = None) -> ft.Padding:
+    if is_compact(page):
+        return ft.Padding.only(left=16, top=16, right=16, bottom=40)
     return ft.Padding.only(left=28, top=24, right=28, bottom=48)
 
 
@@ -401,19 +414,32 @@ def header_row(
     title_size: int = 24,
     subtitle: Optional[str] = None,
     icon: Optional[ft.IconData] = None,
-) -> ft.Row:
-    """Back icon-button + title (+ optional subtitle) + trailing controls."""
+    compact: bool = False,
+) -> ft.Control:
+    """Back icon-button + title (+ optional subtitle) + trailing controls.
+    In compact mode the trailing controls wrap onto their own row under
+    the title so the title keeps its width on a phone."""
     title_children: list[ft.Control] = [
-        ft.Text(title, size=fs(title_size), weight=ft.FontWeight.BOLD, color=theme.text, max_lines=2,
-                overflow=ft.TextOverflow.ELLIPSIS),
+        ft.Text(title, size=fs(title_size if not compact else max(18, title_size - 4)), weight=ft.FontWeight.BOLD,
+                color=theme.text, max_lines=3, overflow=ft.TextOverflow.ELLIPSIS),
     ]
     if subtitle:
         title_children.append(ft.Text(subtitle, size=fs(12), color=theme.text_muted))
     leading: list[ft.Control] = [
         icon_button(ft.Icons.ARROW_BACK_ROUNDED, on_back, theme, tooltip=back_label.replace("← ", "Back to ")),
     ]
-    if icon is not None:
+    if icon is not None and not compact:
         leading.append(ft.Icon(icon, color=theme.primary, size=fs(title_size + 2)))
+    trailing = list(trailing)
+    if compact and trailing:
+        return ft.Column(
+            [
+                ft.Row([*leading, ft.Column(title_children, spacing=2, expand=True)], spacing=12,
+                       vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Row(trailing, spacing=8, wrap=True, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ],
+            spacing=10,
+        )
     return ft.Row(
         [*leading, ft.Column(title_children, spacing=2, expand=True), *trailing],
         spacing=14, vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -478,7 +504,7 @@ class MultipleChoiceCard:
         self.progress_bar = ft.ProgressBar(value=0, color=self.accent, bgcolor=tint(self.accent, 0.15),
                                            bar_height=6, border_radius=999)
         self.question_text = ft.Text("", size=fs(17), weight=ft.FontWeight.BOLD, color=theme.text)
-        self.options_column = ft.Column([], spacing=10)
+        self.options_column = ft.Column([], spacing=10, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
         self.body = ft.Column([self.question_text, self.options_column], spacing=16)
         self.switcher = ft.AnimatedSwitcher(
             content=self.body, duration=260, reverse_duration=160,
@@ -558,6 +584,8 @@ class MultipleChoiceCard:
             alignment=ft.Alignment.CENTER,
         )
         label = ft.Text(text, size=self.fs(14), color=theme.text, expand=True)
+        # No fixed width: the options column stretches rows to the card's
+        # width, so they fit a phone and a desktop alike.
         row = ft.Container(
             content=ft.Row([letter, label], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=theme.surface, border_radius=RADIUS_SM, padding=ft.Padding.symmetric(horizontal=14, vertical=10),
@@ -579,6 +607,7 @@ class MultipleChoiceCard:
         self.question_text = ft.Text(question.question, size=self.fs(17), weight=ft.FontWeight.BOLD, color=theme.text)
         self.options_column = ft.Column(
             [self._option_row(i, text) for i, text in enumerate(question.options)], spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,  # width is bounded here, so stretch is safe
         )
         self.body = ft.Column([self.question_text, self.options_column], spacing=16)
         # Reassigning the switcher's content is what triggers the cross-fade.

@@ -6,7 +6,7 @@ import flet as ft
 
 from app.engine.languages import LANGUAGE_ORDER, get_language
 from app.ui.app_state import AppState
-from app.ui.components import RADIUS, WHITE, button, spacer, tint
+from app.ui.components import RADIUS, WHITE, button, is_compact, spacer, tint
 from app.ui.motion import glow, pop_in, prepare_pop
 from app.ui.theme import scaled
 
@@ -72,8 +72,10 @@ def build_setup_wizard_view(page: ft.Page, state: AppState) -> ft.View:
             ],
             spacing=12, horizontal_alignment=ft.CrossAxisAlignment.CENTER, tight=True,
         ),
-        bgcolor=theme.card, border_radius=RADIUS + 8, padding=ft.Padding.symmetric(horizontal=48, vertical=40),
-        width=560, shadow=glow(theme.gradient[1], alpha=0.25, blur=48),
+        bgcolor=theme.card, border_radius=RADIUS + 8,
+        padding=ft.Padding.symmetric(horizontal=48 if not is_compact(page) else 20, vertical=40),
+        width=min(560, int(page.width) - 32) if page.width else 560,
+        shadow=glow(theme.gradient[1], alpha=0.25, blur=48),
     )
     prepare_pop(card_body)
     pop_in(page, card_body)
@@ -84,7 +86,7 @@ def build_setup_wizard_view(page: ft.Page, state: AppState) -> ft.View:
         padding=0,
         controls=[
             ft.Container(
-                content=card_body, alignment=ft.Alignment.CENTER, expand=True, padding=40,
+                content=card_body, alignment=ft.Alignment.CENTER, expand=True, padding=40 if not is_compact(page) else 12,
                 gradient=ft.LinearGradient(
                     begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
                     colors=[tint(theme.gradient[0], 0.35), theme.bg, tint(theme.gradient[1], 0.35)],

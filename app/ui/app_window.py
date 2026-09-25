@@ -33,6 +33,7 @@ from app.ui.search_screen import build_search_view
 from app.ui.settings_screen import build_settings_view
 from app.ui.setup_wizard import build_setup_wizard_view
 from app.ui.shortcuts import Shortcuts
+from app.ui.theme import scaled
 from app.ui.track_hub import build_track_hub_view
 
 logger = logging.getLogger(__name__)
@@ -61,10 +62,18 @@ _PARAM_ROUTES: dict[str, ParamViewBuilder] = {
 }
 
 
+ROOT_ROUTES = {"", "/"}
+"""Flutter's own root route -- what the browser's initial URL and a fully
+unwound back stack resolve to. It means "the start of the app", i.e. the
+language picker (or setup on first run)."""
+
+
 def build_view_for_route(page: ft.Page, state: AppState, route: str) -> ft.View:
     """Resolve a route to a freshly built view. An unknown route is a
     programming error (every page.go() target is one of ours), so it is
     logged and shown as such instead of silently landing on the picker."""
+    if route in ROOT_ROUTES:
+        route = "/setup" if not state.settings.setup_complete else "/languages"
     exact = _ROUTES.get(route)
     if exact is not None:
         return exact(page, state)
@@ -76,7 +85,7 @@ def build_view_for_route(page: ft.Page, state: AppState, route: str) -> ft.View:
     return ft.View(
         route=route, bgcolor=theme.bg, padding=24,
         controls=[
-            ft.Text(f"Unknown screen: {route}", size=18, color=theme.danger),
+            ft.Text(f"Unknown screen: {route}", size=scaled(18, state.font_scale), color=theme.danger),
             ft.Button("Back to tracks", on_click=lambda _e: page.go("/languages")),
         ],
     )
@@ -104,7 +113,8 @@ def main(page: ft.Page) -> None:
     def route_change(_e: ft.RouteChangeEvent) -> None:
         route = page.route
 
-        if not navigating_back["value"] and page.views and page.views[-1].route != "/setup":
+        if (not navigating_back["value"] and page.views and page.views[-1].route != "/setup"
+                and page.views[-1].route != route):
             history.append(page.views[-1].route)
         navigating_back["value"] = False
 
@@ -159,7 +169,15 @@ def main(page: ft.Page) -> None:
             previous_route = history.pop()
             navigating_back["value"] = True
             page.go(previous_route)
-        else:
+            return
+        # Nothing left to go back to. On desktop, back from the picker
+        # closes the app. On Android/web there is no window to close (the
+        # call is a no-op there), so land on the picker instead of letting
+        # the client fall through to Flutter's root route.
+        if page.route not in ("/languages", "/setup"):
+            navigating_back["value"] = True
+            page.go("/languages")
+        elif not page.web and page.platform is not None and page.platform.is_desktop():
             page.run_task(page.window.close)
 
     def view_pop(_e: ft.ViewPopEvent) -> None:

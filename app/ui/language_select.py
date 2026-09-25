@@ -23,6 +23,7 @@ from app.ui.components import (
     chip,
     emoji_circle,
     icon_button,
+    is_compact,
     progress_ring,
     route_handler,
     spacer,
@@ -71,7 +72,7 @@ def build_language_select_view(page: ft.Page, state: AppState) -> ft.View:
         route="/languages",
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
-        padding=view_padding(),
+        padding=view_padding(page),
         controls=controls,
     )
 
@@ -112,19 +113,21 @@ def _build_hero(page: ft.Page, state: AppState, fs, handle: str) -> ft.Control:
         pills.append(continue_link)
 
     greeting = "Welcome back" if total_xp or completed else "Welcome"
+    compact = is_compact(page)
     return ft.Container(
         content=ft.Column(
             [
                 ft.Row(
                     [
-                        ft.Container(
+                        *([] if compact else [ft.Container(
                             content=ft.Icon(ft.Icons.WAVING_HAND_ROUNDED, color=WHITE, size=fs(30)),
                             width=60, height=60, shape=ft.BoxShape.CIRCLE, bgcolor=tint(WHITE, 0.18),
                             alignment=ft.Alignment.CENTER,
-                        ),
+                        )]),
                         ft.Column(
                             [
-                                ft.Text(f"{greeting}, {handle}.", size=fs(30), weight=ft.FontWeight.BOLD, color=WHITE),
+                                ft.Text(f"{greeting}, {handle}.", size=fs(30 if not compact else 24),
+                                        weight=ft.FontWeight.BOLD, color=WHITE),
                                 ft.Text("Ten focused minutes a day keeps every language sharp. What are we refreshing today?",
                                         size=fs(14), color=tint(WHITE, 0.88)),
                             ],

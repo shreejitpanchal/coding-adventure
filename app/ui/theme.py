@@ -111,7 +111,10 @@ def get_preset(theme_key: str) -> ThemePreset:
     return THEME_PRESETS.get(theme_key, THEME_PRESETS[DEFAULT_THEME_KEY])
 
 
-FONT_SIZE_SCALES: dict[str, float] = {"small": 0.9, "medium": 1.0, "large": 1.15}
+# Text-size setting -> multiplier applied by every screen's `fs()` to
+# headings, body text, chips, code and icon sizes alike (see scaled()).
+# Steps are deliberately wide so each one is clearly visible on a phone.
+FONT_SIZE_SCALES: dict[str, float] = {"small": 0.85, "medium": 1.0, "large": 1.2, "xlarge": 1.4}
 DEFAULT_FONT_SIZE_KEY = "medium"
 
 CODE_FONT_FAMILY = "Consolas, 'Courier New', monospace"

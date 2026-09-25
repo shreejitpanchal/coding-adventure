@@ -21,13 +21,13 @@ _FALLBACK_MUTED = "#6B7280"
 _DOTS = ("#FF5F57", "#FEBC2E", "#28C840")
 
 
-def _window_bar(label: str, muted: str) -> ft.Container:
+def _window_bar(label: str, muted: str, scale: float = 1.0) -> ft.Container:
     return ft.Container(
         content=ft.Row(
             [
                 *[ft.Container(width=11, height=11, shape=ft.BoxShape.CIRCLE, bgcolor=c) for c in _DOTS],
                 ft.Container(width=6),
-                ft.Text(label, size=11, color=muted, font_family=CODE_FONT_FAMILY),
+                ft.Text(label, size=max(1, round(11 * scale)), color=muted, font_family=CODE_FONT_FAMILY),
             ],
             spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
@@ -35,11 +35,11 @@ def _window_bar(label: str, muted: str) -> ft.Container:
     )
 
 
-def _frame(theme: Optional[ThemePreset], bar_label: str, body: ft.Control) -> ft.Container:
+def _frame(theme: Optional[ThemePreset], bar_label: str, body: ft.Control, scale: float = 1.0) -> ft.Container:
     bgcolor = theme.surface if theme else _FALLBACK_BGCOLOR
     muted = theme.text_muted if theme else _FALLBACK_MUTED
     return ft.Container(
-        content=ft.Column([_window_bar(bar_label, muted), body], spacing=0),
+        content=ft.Column([_window_bar(bar_label, muted, scale), body], spacing=0),
         bgcolor=bgcolor, border_radius=14,
         border=ft.Border.all(1, ft.Colors.with_opacity(0.10, theme.text if theme else "white")),
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
@@ -70,8 +70,9 @@ def make_code_editor(
     )
 
 
-def frame_editor(editor: ft.TextField, theme: ThemePreset | None = None, filename: str = "your_solution") -> ft.Container:
-    return _frame(theme, filename, editor)
+def frame_editor(editor: ft.TextField, theme: ThemePreset | None = None, filename: str = "your_solution",
+                 scale: float = 1.0) -> ft.Container:
+    return _frame(theme, filename, editor, scale)
 
 
 def make_read_only_code_block(code: str, scale: float = 1.0, theme: ThemePreset | None = None,
@@ -84,4 +85,4 @@ def make_read_only_code_block(code: str, scale: float = 1.0, theme: ThemePreset 
         ),
         padding=ft.Padding.only(left=16, right=16, top=6, bottom=14),
     )
-    return _frame(theme, filename, body)
+    return _frame(theme, filename, body, scale)

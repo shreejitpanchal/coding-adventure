@@ -77,7 +77,7 @@ def build_exercise_list_view(
         route=route,
         bgcolor=theme.bg,
         scroll=ft.ScrollMode.AUTO,
-        padding=view_padding(),
+        padding=view_padding(page),
         controls=controls,
     )
 

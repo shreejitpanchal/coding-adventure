@@ -121,7 +121,7 @@ class _QuizController:
         return ft.View(
             route="/quiz", bgcolor=theme.bg, padding=0,
             controls=[ft.Stack(
-                [ft.Container(content=content, padding=view_padding(), left=0, top=0, right=0, bottom=0), self.confetti],
+                [ft.Container(content=content, padding=view_padding(self.page), left=0, top=0, right=0, bottom=0), self.confetti],
                 expand=True,
             )],
         )
